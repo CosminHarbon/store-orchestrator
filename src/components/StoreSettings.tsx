@@ -122,55 +122,84 @@ const StoreSettings = () => {
   const integrationCode = `<!-- Add this to your website -->
 <script>
 const STORE_API_KEY = "${profile.store_api_key}";
-const API_BASE_URL = "${window.location.origin}";
+const API_BASE_URL = "https://uffmgvdtkoxkjolfrhab.supabase.co/functions/v1/store-api";
+
+// Function to get products
+async function getProducts() {
+  try {
+    const response = await fetch(\`\${API_BASE_URL}/products?api_key=\${STORE_API_KEY}\`);
+    const result = await response.json();
+    if (response.ok) {
+      console.log('Products loaded:', result.products);
+      return result.products || [];
+    } else {
+      console.error('Failed to load products:', result);
+      return [];
+    }
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    return [];
+  }
+}
 
 // Function to create an order
 async function createOrder(orderData) {
   try {
-    const response = await fetch(\`\${API_BASE_URL}/api/orders\`, {
+    const response = await fetch(\`\${API_BASE_URL}/orders?api_key=\${STORE_API_KEY}\`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': \`Bearer \${STORE_API_KEY}\`
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify(orderData)
+      body: JSON.stringify({
+        customer_name: orderData.customer_name,
+        customer_email: orderData.customer_email,
+        customer_address: orderData.customer_address,
+        customer_phone: orderData.customer_phone || null,
+        total: parseFloat(orderData.total),
+        items: orderData.items // Array of {product_id, title, price, quantity}
+      })
     });
     
     const result = await response.json();
     if (response.ok) {
       console.log('Order created:', result);
-      // Redirect to payment or show success message
+      return result;
     } else {
       console.error('Order creation failed:', result);
+      throw new Error(result.error || 'Failed to create order');
     }
   } catch (error) {
     console.error('Error creating order:', error);
+    throw error;
   }
 }
 
-// Function to get products
-async function getProducts() {
-  try {
-    const response = await fetch(\`\${API_BASE_URL}/api/products?key=\${STORE_API_KEY}\`);
-    const products = await response.json();
-    console.log('Products:', products);
-    return products;
-  } catch (error) {
-    console.error('Error fetching products:', error);
+// Store API Class (Recommended approach)
+class StoreAPI {
+  constructor(apiKey) {
+    this.apiKey = apiKey;
+    this.baseUrl = 'https://uffmgvdtkoxkjolfrhab.supabase.co/functions/v1/store-api';
+  }
+
+  async getProducts() {
+    const response = await fetch(\`\${this.baseUrl}/products?api_key=\${this.apiKey}\`);
+    const data = await response.json();
+    return data.products || [];
+  }
+
+  async createOrder(orderData) {
+    const response = await fetch(\`\${this.baseUrl}/orders?api_key=\${this.apiKey}\`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(orderData)
+    });
+    return await response.json();
   }
 }
 
-// Example usage:
-// createOrder({
-//   name: "John Doe",
-//   email: "john@example.com",
-//   phone: "+1234567890",
-//   address: "123 Main St, City, State 12345",
-//   items: [
-//     { product_id: "product-uuid", quantity: 2 }
-//   ],
-//   total: 29.99
-// });
+// Usage:
+// const store = new StoreAPI('${profile.store_api_key}');
+// const products = await store.getProducts();
 </script>`;
 
   return (
@@ -347,14 +376,13 @@ async function getProducts() {
                 <div className="p-4 border rounded-lg">
                   <h4 className="font-semibold mb-2">Get Products</h4>
                   <code className="text-sm bg-muted p-2 rounded block">
-                    GET {window.location.origin}/api/products?key={profile.store_api_key}
+                    GET https://uffmgvdtkoxkjolfrhab.supabase.co/functions/v1/store-api/products?api_key={profile.store_api_key}
                   </code>
                 </div>
                 <div className="p-4 border rounded-lg">
                   <h4 className="font-semibold mb-2">Create Order</h4>
                   <code className="text-sm bg-muted p-2 rounded block">
-                    POST {window.location.origin}/api/orders<br/>
-                    Authorization: Bearer {profile.store_api_key}
+                    POST https://uffmgvdtkoxkjolfrhab.supabase.co/functions/v1/store-api/orders?api_key={profile.store_api_key}
                   </code>
                 </div>
               </div>
