@@ -124,13 +124,17 @@ const StoreSettings = () => {
 const STORE_API_KEY = "${profile.store_api_key}";
 const API_BASE_URL = "https://uffmgvdtkoxkjolfrhab.supabase.co/functions/v1/store-api";
 
-// Function to get products
+// Function to get products with stock information
 async function getProducts() {
   try {
     const response = await fetch(\`\${API_BASE_URL}/products?api_key=\${STORE_API_KEY}\`);
     const result = await response.json();
     if (response.ok) {
       console.log('Products loaded:', result.products);
+      // Each product includes: id, title, description, price, stock, sku, category, image
+      result.products.forEach(product => {
+        console.log(\`Product: \${product.title} - Price: $\${product.price} - Stock: \${product.stock} items\`);
+      });
       return result.products || [];
     } else {
       console.error('Failed to load products:', result);
@@ -142,9 +146,23 @@ async function getProducts() {
   }
 }
 
-// Function to create an order
+// Function to check if product is in stock
+function isInStock(product, requestedQuantity = 1) {
+  return product.stock >= requestedQuantity;
+}
+
+// Function to create an order (includes stock validation)
 async function createOrder(orderData) {
   try {
+    // Validate stock before creating order
+    const products = await getProducts();
+    for (const item of orderData.items) {
+      const product = products.find(p => p.id === item.product_id);
+      if (product && !isInStock(product, item.quantity)) {
+        throw new Error(\`Not enough stock for \${product.title}. Available: \${product.stock}, Requested: \${item.quantity}\`);
+      }
+    }
+
     const response = await fetch(\`\${API_BASE_URL}/orders?api_key=\${STORE_API_KEY}\`, {
       method: 'POST',
       headers: {
@@ -187,7 +205,20 @@ class StoreAPI {
     return data.products || [];
   }
 
+  isInStock(product, quantity = 1) {
+    return product.stock >= quantity;
+  }
+
   async createOrder(orderData) {
+    // Check stock before creating order
+    const products = await this.getProducts();
+    for (const item of orderData.items) {
+      const product = products.find(p => p.id === item.product_id);
+      if (product && !this.isInStock(product, item.quantity)) {
+        throw new Error(\`Insufficient stock for \${product.title}. Available: \${product.stock}\`);
+      }
+    }
+
     const response = await fetch(\`\${this.baseUrl}/orders?api_key=\${this.apiKey}\`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -197,9 +228,19 @@ class StoreAPI {
   }
 }
 
-// Usage:
+// Usage Example:
 // const store = new StoreAPI('${profile.store_api_key}');
 // const products = await store.getProducts();
+// 
+// Display products with stock:
+// products.forEach(product => {
+//   console.log(\`\${product.title} - $\${product.price} - \${product.stock} in stock\`);
+//   if (product.stock === 0) {
+//     console.log('OUT OF STOCK');
+//   } else if (product.stock < 5) {
+//     console.log('LOW STOCK WARNING');
+//   }
+// });
 </script>`;
 
   return (
