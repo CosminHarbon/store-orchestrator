@@ -209,7 +209,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     if (!profile.oblio_email || !profile.oblio_api_key || !profile.oblio_series_name) {
-      throw new Error('Oblio configuration incomplete. Please configure your Oblio settings first.');
+      throw new Error('Oblio configuration incomplete. Please configure your Oblio Email, API Key, and Series Name in Store Settings first.');
     }
 
     // Get order details with items
