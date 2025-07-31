@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Copy, RefreshCw, Eye, Code, TestTube, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -68,34 +68,42 @@ const StoreSettings = () => {
         .single();
       
       if (error) throw error;
-      
-      // Initialize provider configs from profile data
-      if (data) {
-        setProviderConfigs({
-          oblio: {
-            api_key: data.oblio_api_key || '',
-            name: data.oblio_name || '',
-            email: data.oblio_email || '',
-            series_name: data.oblio_series_name || '',
-            first_number: data.oblio_first_number || ''
-          },
-          sameday: {
-            api_key: data.sameday_api_key || '',
-            name: data.sameday_name || '',
-            email: data.sameday_email || ''
-          },
-          netpopia: {
-            api_key: data.netpopia_api_key || '',
-            name: data.netpopia_name || '',
-            email: data.netpopia_email || ''
-          }
-        });
-      }
-      
       return data as Profile;
     },
     enabled: !!user
   });
+
+  // Initialize provider configs when profile data loads
+  useEffect(() => {
+    if (profile) {
+      setProviderConfigs({
+        oblio: {
+          api_key: profile.oblio_api_key || '',
+          name: profile.oblio_name || '',
+          email: profile.oblio_email || '',
+          series_name: profile.oblio_series_name || '',
+          first_number: profile.oblio_first_number || ''
+        },
+        sameday: {
+          api_key: profile.sameday_api_key || '',
+          name: profile.sameday_name || '',
+          email: profile.sameday_email || ''
+        },
+        netpopia: {
+          api_key: profile.netpopia_api_key || '',
+          name: profile.netpopia_name || '',
+          email: profile.netpopia_email || ''
+        }
+      });
+      
+      setStoreName(profile.store_name || '');
+      setIntegrations({
+        invoicing: profile.invoicing_provider || 'oblio.eu',
+        shipping: profile.shipping_provider || 'sameday',
+        payment: profile.payment_provider || 'netpopia'
+      });
+    }
+  }, [profile]);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (updates: Partial<Profile>) => {
