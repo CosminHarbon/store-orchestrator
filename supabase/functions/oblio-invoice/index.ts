@@ -236,7 +236,7 @@ const handler = async (req: Request): Promise<Response> => {
       const { error: updateError } = await supabase
         .from('orders')
         .update({
-          payment_status: 'invoiced',
+          payment_status: 'paid',
           invoice_number: invoiceResult.data.number,
           invoice_series: invoiceResult.data.seriesName,
           invoice_link: invoiceResult.data.link,
@@ -310,7 +310,7 @@ const handler = async (req: Request): Promise<Response> => {
       const { error: updateError } = await supabase
         .from('orders')
         .update({
-          payment_status: 'invoiced',
+          payment_status: 'paid',
           invoice_number: invoiceResult.data.number,
           invoice_series: invoiceResult.data.seriesName,
           invoice_link: invoiceResult.data.link,
