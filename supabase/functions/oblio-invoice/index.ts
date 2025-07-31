@@ -210,7 +210,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Order not found');
     }
 
-    // Get Oblio access token
+    console.log('Order data:', JSON.stringify(order, null, 2));
     const accessToken = await getOblioAccessToken(profile.oblio_email, profile.oblio_api_key);
     
     // Get company CIF
