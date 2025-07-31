@@ -150,8 +150,8 @@ async function createOblioInvoice(
 async function sendOblioInvoice(accessToken: string, cif: string, seriesName: string, number: string): Promise<any> {
   console.log('Sending Oblio invoice via email...');
 
-  const response = await fetch(`https://www.oblio.eu/api/docs/send`, {
-    method: 'POST',
+  const response = await fetch(`https://www.oblio.eu/api/docs/invoice/send`, {
+    method: 'PUT',
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
@@ -159,8 +159,7 @@ async function sendOblioInvoice(accessToken: string, cif: string, seriesName: st
     body: JSON.stringify({
       cif: cif,
       seriesName: seriesName,
-      number: number,
-      type: "Factura"
+      number: number
     }),
   });
 
