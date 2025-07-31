@@ -47,7 +47,7 @@ const ProductImageUpload = ({ productId, onImagesChange }: ProductImageUploadPro
       if (!user.data.user) throw new Error('Not authenticated');
       
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.data.user.id}/${Date.now()}.${fileExt}`;
+      const fileName = `${user.data.user.id}/${productId}/${Date.now()}.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
         .from('product-images')
@@ -136,9 +136,9 @@ const ProductImageUpload = ({ productId, onImagesChange }: ProductImageUploadPro
 
   const deleteImageMutation = useMutation({
     mutationFn: async (image: ProductImage) => {
-      // Delete from storage
+      // Extract the full path from the URL for the new structure: user_id/product_id/filename
       const urlParts = image.image_url.split('/');
-      const fileName = `${urlParts[urlParts.length - 2]}/${urlParts[urlParts.length - 1]}`;
+      const fileName = urlParts.slice(-3).join('/'); // Get the last 3 parts: user_id/product_id/filename
       
       await supabase.storage
         .from('product-images')
