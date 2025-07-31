@@ -124,16 +124,21 @@ const StoreSettings = () => {
 const STORE_API_KEY = "${profile.store_api_key}";
 const API_BASE_URL = "https://uffmgvdtkoxkjolfrhab.supabase.co/functions/v1/store-api";
 
-// Function to get products with stock information
+// Function to get products with images and stock information
 async function getProducts() {
   try {
     const response = await fetch(\`\${API_BASE_URL}/products?api_key=\${STORE_API_KEY}\`);
     const result = await response.json();
     if (response.ok) {
       console.log('Products loaded:', result.products);
-      // Each product includes: id, title, description, price, stock, sku, category, image
+      // Each product now includes: id, title, description, price, stock, sku, category, image, images, primary_image, image_count
       result.products.forEach(product => {
         console.log(\`Product: \${product.title} - Price: $\${product.price} - Stock: \${product.stock} items\`);
+        console.log(\`Primary Image: \${product.primary_image || 'No image'}\`);
+        console.log(\`Total Images: \${product.image_count}\`);
+        if (product.images && product.images.length > 0) {
+          console.log('All images:', product.images.map(img => img.image_url));
+        }
       });
       return result.products || [];
     } else {
@@ -232,9 +237,30 @@ class StoreAPI {
 // const store = new StoreAPI('${profile.store_api_key}');
 // const products = await store.getProducts();
 // 
-// Display products with stock:
+// Display products with images and stock:
 // products.forEach(product => {
 //   console.log(\`\${product.title} - $\${product.price} - \${product.stock} in stock\`);
+//   console.log(\`Primary Image: \${product.primary_image || 'No image'}\`);
+//   console.log(\`Total Images: \${product.image_count}\`);
+//   
+//   // Display product with image in HTML
+//   const productHTML = \`
+//     <div class="product">
+//       <img src="\${product.primary_image || '/placeholder.jpg'}" alt="\${product.title}" style="width: 200px; height: 200px; object-fit: cover;">
+//       <h3>\${product.title}</h3>
+//       <p>$\${product.price}</p>
+//       <p>\${product.stock > 0 ? product.stock + ' in stock' : 'Out of stock'}</p>
+//       \${product.images.length > 1 ? '<p>' + product.images.length + ' images available</p>' : ''}
+//     </div>
+//   \`;
+//   
+//   // Gallery view with all images
+//   if (product.images && product.images.length > 0) {
+//     product.images.forEach((img, index) => {
+//       console.log(\`Image \${index + 1}: \${img.image_url} (Primary: \${img.is_primary})\`);
+//     });
+//   }
+//   
 //   if (product.stock === 0) {
 //     console.log('OUT OF STOCK');
 //   } else if (product.stock < 5) {

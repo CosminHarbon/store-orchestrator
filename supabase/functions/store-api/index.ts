@@ -33,6 +33,17 @@ interface Database {
           updated_at: string
         }
       }
+      product_images: {
+        Row: {
+          id: string
+          product_id: string
+          image_url: string
+          is_primary: boolean
+          display_order: number
+          created_at: string
+          updated_at: string
+        }
+      }
       orders: {
         Row: {
           id: string
@@ -103,13 +114,14 @@ Deno.serve(async (req) => {
     switch (path) {
       case 'products': {
         if (req.method === 'GET') {
-          const { data: products, error } = await supabase
+          // First get products
+          const { data: products, error: productsError } = await supabase
             .from('products')
             .select('*')
             .eq('user_id', userId)
 
-          if (error) {
-            console.log('Error fetching products:', error)
+          if (productsError) {
+            console.log('Error fetching products:', productsError)
             return new Response(
               JSON.stringify({ error: 'Failed to fetch products' }),
               { 
@@ -119,8 +131,33 @@ Deno.serve(async (req) => {
             )
           }
 
+          // Get product images for all products
+          const productIds = products.map(p => p.id)
+          const { data: productImages, error: imagesError } = await supabase
+            .from('product_images')
+            .select('*')
+            .in('product_id', productIds)
+            .order('display_order', { ascending: true })
+
+          if (imagesError) {
+            console.log('Error fetching product images:', imagesError)
+          }
+
+          // Combine products with their images
+          const productsWithImages = products.map(product => {
+            const images = productImages?.filter(img => img.product_id === product.id) || []
+            const primaryImage = images.find(img => img.is_primary) || images[0] || null
+            
+            return {
+              ...product,
+              images: images,
+              primary_image: primaryImage?.image_url || product.image || null,
+              image_count: images.length
+            }
+          })
+
           return new Response(
-            JSON.stringify({ products }),
+            JSON.stringify({ products: productsWithImages }),
             { 
               status: 200, 
               headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
