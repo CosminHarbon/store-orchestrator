@@ -256,7 +256,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      bulk_update_stock: {
+        Args: { updates: Json }
+        Returns: {
+          product_id: string
+          old_stock: number
+          new_stock: number
+          success: boolean
+          error_message: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
