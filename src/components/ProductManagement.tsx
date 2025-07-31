@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ProductImageUpload from './ProductImageUpload';
+import { ResponsiveProductTable } from './ResponsiveProductTable';
 
 interface Product {
   id: string;
@@ -289,73 +290,19 @@ const ProductManagement = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Image</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Stock</TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {products?.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell>
-                    {(() => {
-                      const primaryImage = productImages?.find(img => img.product_id === product.id);
-                      return primaryImage ? (
-                        <img src={primaryImage.image_url} alt={product.title} className="w-12 h-12 object-cover rounded" />
-                      ) : product.image ? (
-                        <img src={product.image} alt={product.title} className="w-12 h-12 object-cover rounded" />
-                      ) : (
-                        <div className="w-12 h-12 bg-muted rounded flex items-center justify-center text-xs">
-                          No img
-                        </div>
-                      );
-                    })()}
-                  </TableCell>
-                  <TableCell className="font-medium">{product.title}</TableCell>
-                  <TableCell>{product.category}</TableCell>
-                  <TableCell>${product.price}</TableCell>
-                  <TableCell>{product.stock}</TableCell>
-                  <TableCell>{product.sku}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setImageDialogProduct(product)}
-                        title="Manage Images"
-                      >
-                        <Images className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEdit(product)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDelete(product.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <ResponsiveProductTable
+            products={products || []}
+            productImages={productImages || []}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onManageImages={setImageDialogProduct}
+          />
           {products?.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
-              No products found. Add your first product to get started.
+              <div className="space-y-2">
+                <p>No products found.</p>
+                <p className="text-sm">Add your first product to get started.</p>
+              </div>
             </div>
           )}
         </CardContent>

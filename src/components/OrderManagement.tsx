@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { ResponsiveOrderTable } from './ResponsiveOrderTable';
 
 interface Order {
   id: string;
@@ -122,147 +123,152 @@ const OrderManagement = () => {
         <CardDescription>Manage customer orders and fulfillment</CardDescription>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Order ID</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Payment</TableHead>
-              <TableHead>Shipping</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {orders?.map((order) => (
-              <TableRow key={order.id}>
-                <TableCell className="font-mono text-sm">
-                  {order.id.slice(0, 8)}...
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <div className="font-medium">{order.customer_name}</div>
-                    <div className="text-sm text-muted-foreground">{order.customer_email}</div>
-                  </div>
-                </TableCell>
-                <TableCell>${order.total}</TableCell>
-                <TableCell>
-                  <Select
-                    value={order.payment_status}
-                    onValueChange={(value) => handleStatusUpdate(order.id, 'payment_status', value)}
-                  >
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="paid">Paid</SelectItem>
-                      <SelectItem value="failed">Failed</SelectItem>
-                      <SelectItem value="refunded">Refunded</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-                <TableCell>
-                  <Select
-                    value={order.shipping_status}
-                    onValueChange={(value) => handleStatusUpdate(order.id, 'shipping_status', value)}
-                  >
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="processing">Processing</SelectItem>
-                      <SelectItem value="shipped">Shipped</SelectItem>
-                      <SelectItem value="delivered">Delivered</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-                <TableCell>
-                  {new Date(order.created_at).toLocaleDateString()}
-                </TableCell>
-                <TableCell>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleViewOrder(order)}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <ResponsiveOrderTable
+          orders={orders || []}
+          onViewOrder={handleViewOrder}
+        />
         {orders?.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">
-            No orders found. Orders will appear here when customers make purchases.
+            <div className="space-y-2">
+              <p>No orders found.</p>
+              <p className="text-sm">Orders will appear here when customers make purchases.</p>
+            </div>
           </div>
         )}
       </CardContent>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Order Details</DialogTitle>
+            <DialogTitle className="text-lg md:text-xl">Order Details</DialogTitle>
           </DialogHeader>
           {selectedOrder && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h3 className="font-semibold mb-2">Customer Information</h3>
-                  <div className="space-y-1 text-sm">
-                    <div><strong>Name:</strong> {selectedOrder.customer_name}</div>
-                    <div><strong>Email:</strong> {selectedOrder.customer_email}</div>
-                    <div><strong>Phone:</strong> {selectedOrder.customer_phone}</div>
-                    <div><strong>Address:</strong> {selectedOrder.customer_address}</div>
+              {/* Order Summary */}
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                  <div>
+                    <p className="font-mono text-sm text-muted-foreground">Order #{selectedOrder.id.slice(-8)}</p>
+                    <p className="text-lg font-semibold">${selectedOrder.total}</p>
                   </div>
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-2">Order Status</h3>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">Payment:</span>
-                      {getStatusBadge(selectedOrder.payment_status, 'payment')}
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Payment Status</p>
+                      <Select
+                        value={selectedOrder.payment_status}
+                        onValueChange={(value) => handleStatusUpdate(selectedOrder.id, 'payment_status', value)}
+                      >
+                        <SelectTrigger className="w-full sm:w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="paid">Paid</SelectItem>
+                          <SelectItem value="failed">Failed</SelectItem>
+                          <SelectItem value="refunded">Refunded</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">Shipping:</span>
-                      {getStatusBadge(selectedOrder.shipping_status, 'shipping')}
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Shipping Status</p>
+                      <Select
+                        value={selectedOrder.shipping_status}
+                        onValueChange={(value) => handleStatusUpdate(selectedOrder.id, 'shipping_status', value)}
+                      >
+                        <SelectTrigger className="w-full sm:w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="processing">Processing</SelectItem>
+                          <SelectItem value="shipped">Shipped</SelectItem>
+                          <SelectItem value="delivered">Delivered</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div>
-                <h3 className="font-semibold mb-2">Order Items</h3>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Total</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {orderItems.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>{item.product_title}</TableCell>
-                        <TableCell>${item.product_price}</TableCell>
-                        <TableCell>{item.quantity}</TableCell>
-                        <TableCell>${(item.product_price * item.quantity).toFixed(2)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <div className="mt-4 text-right">
-                  <div className="text-lg font-semibold">
-                    Total: ${selectedOrder.total}
-                  </div>
-                </div>
+              {/* Customer Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Customer Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    <div><strong>Name:</strong> {selectedOrder.customer_name}</div>
+                    <div><strong>Email:</strong> {selectedOrder.customer_email}</div>
+                    <div><strong>Phone:</strong> {selectedOrder.customer_phone}</div>
+                    <div><strong>Address:</strong> {selectedOrder.customer_address}</div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Order Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    <div><strong>Order Date:</strong> {new Date(selectedOrder.created_at).toLocaleString()}</div>
+                    <div><strong>Order ID:</strong> <span className="font-mono">{selectedOrder.id}</span></div>
+                    <div><strong>Total Amount:</strong> ${selectedOrder.total}</div>
+                    <div><strong>Items:</strong> {orderItems.length} product(s)</div>
+                  </CardContent>
+                </Card>
               </div>
+
+              {/* Order Items */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Order Items</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {/* Desktop Table */}
+                  <div className="hidden md:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Product</TableHead>
+                          <TableHead>Price</TableHead>
+                          <TableHead>Quantity</TableHead>
+                          <TableHead>Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {orderItems.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium">{item.product_title}</TableCell>
+                            <TableCell>${item.product_price}</TableCell>
+                            <TableCell>{item.quantity}</TableCell>
+                            <TableCell>${(item.product_price * item.quantity).toFixed(2)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Mobile Cards */}
+                  <div className="md:hidden space-y-3">
+                    {orderItems.map((item) => (
+                      <div key={item.id} className="border rounded-lg p-3 space-y-2">
+                        <div className="font-medium">{item.product_title}</div>
+                        <div className="flex justify-between text-sm">
+                          <span>${item.product_price} × {item.quantity}</span>
+                          <span className="font-medium">${(item.product_price * item.quantity).toFixed(2)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t">
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-semibold">Total:</span>
+                      <span className="text-lg font-semibold">${selectedOrder.total}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
         </DialogContent>
