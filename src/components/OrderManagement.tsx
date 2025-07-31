@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Eye, Package, Truck, X, Receipt, Send, ExternalLink } from 'lucide-react';
+import { Eye, Package, Truck, X, Receipt, Send, ExternalLink, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ResponsiveOrderTable } from './ResponsiveOrderTable';
@@ -35,31 +37,17 @@ const OrderManagement = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditingOrder, setIsEditingOrder] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    customer_name: '',
+    customer_email: '',
+    customer_phone: '',
+    customer_address: ''
+  });
   
   const queryClient = useQueryClient();
 
-  const generateInvoice = async (orderId: string) => {
-    try {
-      const response = await supabase.functions.invoke('oblio-invoice', {
-        body: {
-          orderId,
-          action: 'generate'
-        }
-      });
-
-      if (response.error) {
-        throw new Error(response.error.message);
-      }
-
-      toast.success('Invoice generated successfully');
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
-    } catch (error: any) {
-      console.error('Error generating invoice:', error);
-      toast.error(error.message || 'Failed to generate invoice');
-    }
-  };
-
-  const sendInvoice = async (orderId: string) => {
+  const generateAndSendInvoice = async (orderId: string) => {
     try {
       const response = await supabase.functions.invoke('oblio-invoice', {
         body: {
@@ -72,11 +60,47 @@ const OrderManagement = () => {
         throw new Error(response.error.message);
       }
 
-      toast.success('Invoice sent to customer successfully');
+      toast.success('Invoice generated and sent to customer successfully');
       queryClient.invalidateQueries({ queryKey: ['orders'] });
     } catch (error: any) {
-      console.error('Error sending invoice:', error);
-      toast.error(error.message || 'Failed to send invoice');
+      console.error('Error generating and sending invoice:', error);
+      toast.error(error.message || 'Failed to generate and send invoice');
+    }
+  };
+
+  const handleEditOrder = (order: Order) => {
+    setEditFormData({
+      customer_name: order.customer_name,
+      customer_email: order.customer_email,
+      customer_phone: order.customer_phone,
+      customer_address: order.customer_address
+    });
+    setIsEditingOrder(true);
+  };
+
+  const saveOrderChanges = async () => {
+    if (!selectedOrder) return;
+    
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update(editFormData)
+        .eq('id', selectedOrder.id);
+
+      if (error) throw error;
+
+      // Update the selected order state
+      setSelectedOrder({
+        ...selectedOrder,
+        ...editFormData
+      });
+
+      setIsEditingOrder(false);
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      toast.success('Order details updated successfully');
+    } catch (error: any) {
+      toast.error('Failed to update order details');
+      console.error(error);
     }
   };
 
@@ -171,8 +195,8 @@ const OrderManagement = () => {
         <ResponsiveOrderTable
           orders={orders || []}
           onViewOrder={handleViewOrder}
-          generateInvoice={generateInvoice}
-          sendInvoice={sendInvoice}
+          generateAndSendInvoice={generateAndSendInvoice}
+          onEditOrder={handleEditOrder}
         />
         {orders?.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">
@@ -241,22 +265,23 @@ const OrderManagement = () => {
                 {/* Invoice Actions */}
                 <div className="flex flex-col sm:flex-row gap-2 mt-4">
                   <Button
-                    onClick={() => generateInvoice(selectedOrder.id)}
+                    onClick={() => setIsEditingOrder(true)}
                     variant="outline"
                     size="sm"
                     className="flex-1"
                   >
-                    <Receipt className="h-4 w-4 mr-2" />
-                    Generate Invoice
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Order
                   </Button>
                   <Button
-                    onClick={() => sendInvoice(selectedOrder.id)}
+                    onClick={() => generateAndSendInvoice(selectedOrder.id)}
                     variant="outline"
                     size="sm"
                     className="flex-1"
+                    disabled={!!selectedOrder.invoice_link}
                   >
-                    <Send className="h-4 w-4 mr-2" />
-                    Send Invoice
+                    <Receipt className="h-4 w-4 mr-2" />
+                    Generate & Send Invoice
                   </Button>
                   {selectedOrder.invoice_link && (
                     <Button
@@ -352,6 +377,58 @@ const OrderManagement = () => {
               </Card>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Order Dialog */}
+      <Dialog open={isEditingOrder} onOpenChange={setIsEditingOrder}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Order Details</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="customer_name">Customer Name</Label>
+              <Input
+                id="customer_name"
+                value={editFormData.customer_name}
+                onChange={(e) => setEditFormData({ ...editFormData, customer_name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="customer_email">Customer Email</Label>
+              <Input
+                id="customer_email"
+                type="email"
+                value={editFormData.customer_email}
+                onChange={(e) => setEditFormData({ ...editFormData, customer_email: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="customer_phone">Customer Phone</Label>
+              <Input
+                id="customer_phone"
+                value={editFormData.customer_phone}
+                onChange={(e) => setEditFormData({ ...editFormData, customer_phone: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="customer_address">Customer Address</Label>
+              <Input
+                id="customer_address"
+                value={editFormData.customer_address}
+                onChange={(e) => setEditFormData({ ...editFormData, customer_address: e.target.value })}
+              />
+            </div>
+            <div className="flex gap-2 pt-4">
+              <Button onClick={saveOrderChanges} className="flex-1">
+                Save Changes
+              </Button>
+              <Button onClick={() => setIsEditingOrder(false)} variant="outline" className="flex-1">
+                Cancel
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </Card>

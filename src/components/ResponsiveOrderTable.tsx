@@ -1,4 +1,4 @@
-import { Eye, Package, User, Mail, Phone, MapPin, Calendar, CreditCard, Truck, Receipt, Send, ExternalLink } from 'lucide-react';
+import { Eye, Package, User, Mail, Phone, MapPin, Calendar, CreditCard, Truck, Receipt, Send, ExternalLink, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,11 +21,11 @@ interface Order {
 interface ResponsiveOrderTableProps {
   orders: Order[];
   onViewOrder: (order: Order) => void;
-  generateInvoice: (orderId: string) => void;
-  sendInvoice: (orderId: string) => void;
+  generateAndSendInvoice: (orderId: string) => void;
+  onEditOrder?: (order: Order) => void;
 }
 
-export function ResponsiveOrderTable({ orders, onViewOrder, generateInvoice, sendInvoice }: ResponsiveOrderTableProps) {
+export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoice, onEditOrder }: ResponsiveOrderTableProps) {
   const getStatusBadge = (status: string, type: 'payment' | 'shipping') => {
     const baseClasses = "text-xs";
     
@@ -128,21 +128,24 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateInvoice, sen
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
+                    {onEditOrder && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onEditOrder(order)}
+                        title="Edit Order"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => generateInvoice(order.id)}
-                      title="Generate Invoice"
+                      onClick={() => generateAndSendInvoice(order.id)}
+                      title="Generate & Send Invoice"
+                      disabled={!!order.invoice_link}
                     >
                       <Receipt className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => sendInvoice(order.id)}
-                      title="Send Invoice"
-                    >
-                      <Send className="h-4 w-4" />
                     </Button>
                     {order.invoice_link && (
                       <Button
@@ -227,21 +230,24 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateInvoice, sen
                     <Eye className="h-4 w-4 mr-1" />
                     View
                   </Button>
+                  {onEditOrder && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onEditOrder(order)}
+                    >
+                      <Edit className="h-4 w-4 mr-1" />
+                      Edit
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => generateInvoice(order.id)}
+                    onClick={() => generateAndSendInvoice(order.id)}
+                    disabled={!!order.invoice_link}
                   >
                     <Receipt className="h-4 w-4 mr-1" />
                     Invoice
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => sendInvoice(order.id)}
-                  >
-                    <Send className="h-4 w-4 mr-1" />
-                    Send
                   </Button>
                   {order.invoice_link && (
                     <Button
