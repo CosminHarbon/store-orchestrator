@@ -38,6 +38,7 @@ const OrderManagement = () => {
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditingOrder, setIsEditingOrder] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [editFormData, setEditFormData] = useState({
     customer_name: '',
     customer_email: '',
@@ -69,6 +70,8 @@ const OrderManagement = () => {
   };
 
   const handleEditOrder = (order: Order) => {
+    console.log('Edit order clicked for:', order);
+    setEditingOrder(order);
     setEditFormData({
       customer_name: order.customer_name,
       customer_email: order.customer_email,
@@ -76,18 +79,27 @@ const OrderManagement = () => {
       customer_address: order.customer_address
     });
     setIsEditingOrder(true);
+    console.log('Edit form data set:', {
+      customer_name: order.customer_name,
+      customer_email: order.customer_email,
+      customer_phone: order.customer_phone,
+      customer_address: order.customer_address
+    });
   };
 
   const saveOrderChanges = async () => {
-    if (!selectedOrder) return;
+    if (!editingOrder) {
+      console.log('No editing order found');
+      return;
+    }
     
     try {
-      console.log('Updating order:', selectedOrder.id, 'with data:', editFormData);
+      console.log('Updating order:', editingOrder.id, 'with data:', editFormData);
       
       const { data, error } = await supabase
         .from('orders')
         .update(editFormData)
-        .eq('id', selectedOrder.id)
+        .eq('id', editingOrder.id)
         .select();
 
       if (error) {
@@ -97,13 +109,16 @@ const OrderManagement = () => {
 
       console.log('Update successful:', data);
 
-      // Update the selected order state
-      setSelectedOrder({
-        ...selectedOrder,
-        ...editFormData
-      });
+      // Update the selected order state if it's the same order
+      if (selectedOrder && selectedOrder.id === editingOrder.id) {
+        setSelectedOrder({
+          ...selectedOrder,
+          ...editFormData
+        });
+      }
 
       setIsEditingOrder(false);
+      setEditingOrder(null);
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       toast.success('Order details updated successfully');
     } catch (error: any) {
