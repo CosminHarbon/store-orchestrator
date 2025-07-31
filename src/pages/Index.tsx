@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import ProductManagement from '@/components/ProductManagement';
 import OrderManagement from '@/components/OrderManagement';
 import StoreSettings from '@/components/StoreSettings';
+import StockManagement from '@/components/StockManagement';
 import { Package, ShoppingCart, DollarSign, Clock, TrendingUp, Users } from 'lucide-react';
 
 const Index = () => {
@@ -178,6 +179,12 @@ const Index = () => {
         return (
           <div className="p-4 md:p-6">
             <ProductManagement />
+          </div>
+        );
+      case 'stock':
+        return (
+          <div className="p-4 md:p-6">
+            <StockManagement />
           </div>
         );
       case 'orders':

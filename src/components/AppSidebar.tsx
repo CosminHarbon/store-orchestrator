@@ -1,4 +1,4 @@
-import { Home, Package, ShoppingCart, Settings, Store, Users } from "lucide-react";
+import { Home, Package, ShoppingCart, Settings, Store, Users, BarChart3 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -15,6 +15,7 @@ import {
 const navigationItems = [
   { title: "Dashboard", url: "/", icon: Home, tab: "dashboard" },
   { title: "Products", url: "/products", icon: Package, tab: "products" },
+  { title: "Stock", url: "/stock", icon: BarChart3, tab: "stock" },
   { title: "Orders", url: "/orders", icon: ShoppingCart, tab: "orders" },
   { title: "Settings", url: "/settings", icon: Settings, tab: "settings" },
 ];
