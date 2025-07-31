@@ -20,6 +20,15 @@ interface Profile {
   invoicing_provider?: string;
   shipping_provider?: string;
   payment_provider?: string;
+  oblio_api_key?: string;
+  oblio_name?: string;
+  oblio_email?: string;
+  sameday_api_key?: string;
+  sameday_name?: string;
+  sameday_email?: string;
+  netpopia_api_key?: string;
+  netpopia_name?: string;
+  netpopia_email?: string;
 }
 
 const StoreSettings = () => {
@@ -29,6 +38,11 @@ const StoreSettings = () => {
     invoicing: 'oblio.eu',
     shipping: 'sameday',
     payment: 'netpopia'
+  });
+  const [providerConfigs, setProviderConfigs] = useState({
+    oblio: { api_key: '', name: '', email: '' },
+    sameday: { api_key: '', name: '', email: '' },
+    netpopia: { api_key: '', name: '', email: '' }
   });
   const [testOrderData, setTestOrderData] = useState({
     name: 'John Doe',
@@ -52,6 +66,28 @@ const StoreSettings = () => {
         .single();
       
       if (error) throw error;
+      
+      // Initialize provider configs from profile data
+      if (data) {
+        setProviderConfigs({
+          oblio: {
+            api_key: data.oblio_api_key || '',
+            name: data.oblio_name || '',
+            email: data.oblio_email || ''
+          },
+          sameday: {
+            api_key: data.sameday_api_key || '',
+            name: data.sameday_name || '',
+            email: data.sameday_email || ''
+          },
+          netpopia: {
+            api_key: data.netpopia_api_key || '',
+            name: data.netpopia_name || '',
+            email: data.netpopia_email || ''
+          }
+        });
+      }
+      
       return data as Profile;
     },
     enabled: !!user
@@ -91,8 +127,27 @@ const StoreSettings = () => {
     updateProfileMutation.mutate({
       invoicing_provider: integrations.invoicing,
       shipping_provider: integrations.shipping,
-      payment_provider: integrations.payment
+      payment_provider: integrations.payment,
+      oblio_api_key: providerConfigs.oblio.api_key,
+      oblio_name: providerConfigs.oblio.name,
+      oblio_email: providerConfigs.oblio.email,
+      sameday_api_key: providerConfigs.sameday.api_key,
+      sameday_name: providerConfigs.sameday.name,
+      sameday_email: providerConfigs.sameday.email,
+      netpopia_api_key: providerConfigs.netpopia.api_key,
+      netpopia_name: providerConfigs.netpopia.name,
+      netpopia_email: providerConfigs.netpopia.email
     });
+  };
+
+  const updateProviderConfig = (provider: 'oblio' | 'sameday' | 'netpopia', field: 'api_key' | 'name' | 'email', value: string) => {
+    setProviderConfigs(prev => ({
+      ...prev,
+      [provider]: {
+        ...prev[provider],
+        [field]: value
+      }
+    }));
   };
 
   const copyToClipboard = (text: string) => {
@@ -507,6 +562,43 @@ class StoreAPI {
                   <p className="text-sm text-muted-foreground">
                     Handles automatic invoice generation for your orders
                   </p>
+                  
+                  {integrations.invoicing === 'oblio.eu' && (
+                    <div className="mt-4 p-4 border rounded-lg space-y-4">
+                      <h4 className="font-medium">Oblio.eu Configuration</h4>
+                      <div className="grid gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="oblio-api-key">API Key</Label>
+                          <Input
+                            id="oblio-api-key"
+                            type="password"
+                            value={providerConfigs.oblio.api_key}
+                            onChange={(e) => updateProviderConfig('oblio', 'api_key', e.target.value)}
+                            placeholder="Enter your Oblio.eu API key"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="oblio-name">Company Name</Label>
+                          <Input
+                            id="oblio-name"
+                            value={providerConfigs.oblio.name}
+                            onChange={(e) => updateProviderConfig('oblio', 'name', e.target.value)}
+                            placeholder="Enter your company name"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="oblio-email">Email Address</Label>
+                          <Input
+                            id="oblio-email"
+                            type="email"
+                            value={providerConfigs.oblio.email}
+                            onChange={(e) => updateProviderConfig('oblio', 'email', e.target.value)}
+                            placeholder="Enter your email address"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -525,6 +617,43 @@ class StoreAPI {
                   <p className="text-sm text-muted-foreground">
                     Manages shipping and delivery for your orders
                   </p>
+                  
+                  {integrations.shipping === 'sameday' && (
+                    <div className="mt-4 p-4 border rounded-lg space-y-4">
+                      <h4 className="font-medium">Sameday Configuration</h4>
+                      <div className="grid gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="sameday-api-key">API Key</Label>
+                          <Input
+                            id="sameday-api-key"
+                            type="password"
+                            value={providerConfigs.sameday.api_key}
+                            onChange={(e) => updateProviderConfig('sameday', 'api_key', e.target.value)}
+                            placeholder="Enter your Sameday API key"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="sameday-name">Company Name</Label>
+                          <Input
+                            id="sameday-name"
+                            value={providerConfigs.sameday.name}
+                            onChange={(e) => updateProviderConfig('sameday', 'name', e.target.value)}
+                            placeholder="Enter your company name"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="sameday-email">Email Address</Label>
+                          <Input
+                            id="sameday-email"
+                            type="email"
+                            value={providerConfigs.sameday.email}
+                            onChange={(e) => updateProviderConfig('sameday', 'email', e.target.value)}
+                            placeholder="Enter your email address"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -543,6 +672,43 @@ class StoreAPI {
                   <p className="text-sm text-muted-foreground">
                     Processes online payments from your customers
                   </p>
+                  
+                  {integrations.payment === 'netpopia' && (
+                    <div className="mt-4 p-4 border rounded-lg space-y-4">
+                      <h4 className="font-medium">Netpopia Configuration</h4>
+                      <div className="grid gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="netpopia-api-key">API Key</Label>
+                          <Input
+                            id="netpopia-api-key"
+                            type="password"
+                            value={providerConfigs.netpopia.api_key}
+                            onChange={(e) => updateProviderConfig('netpopia', 'api_key', e.target.value)}
+                            placeholder="Enter your Netpopia API key"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="netpopia-name">Company Name</Label>
+                          <Input
+                            id="netpopia-name"
+                            value={providerConfigs.netpopia.name}
+                            onChange={(e) => updateProviderConfig('netpopia', 'name', e.target.value)}
+                            placeholder="Enter your company name"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="netpopia-email">Email Address</Label>
+                          <Input
+                            id="netpopia-email"
+                            type="email"
+                            value={providerConfigs.netpopia.email}
+                            onChange={(e) => updateProviderConfig('netpopia', 'email', e.target.value)}
+                            placeholder="Enter your email address"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
