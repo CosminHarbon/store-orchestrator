@@ -65,3 +65,6 @@ port = 54330
 
 [functions.store-api]
 verify_jwt = false
+
+[functions.oblio-invoice]
+verify_jwt = true
