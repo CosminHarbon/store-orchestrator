@@ -89,9 +89,10 @@ async function createOblioInvoice(
   accessToken: string,
   cif: string,
   order: OrderWithItems,
-  seriesName: string
+  seriesName: string,
+  sendEmail: boolean = false
 ): Promise<any> {
-  console.log('Creating Oblio invoice for order:', order.id);
+  console.log('Creating Oblio invoice for order:', order.id, sendEmail ? '(with email)' : '(without email)');
 
   // Prepare products array with VAT included
   const products = order.order_items.map(item => ({
@@ -125,6 +126,11 @@ async function createOblioInvoice(
     workStation: "Sediu"
   };
 
+  // Only add sendEmail parameter if we want to send email
+  if (sendEmail) {
+    invoiceData.sendEmail = 1;
+  }
+
   console.log('Invoice data prepared:', JSON.stringify(invoiceData, null, 2));
 
   const response = await fetch('https://www.oblio.eu/api/docs/invoice', {
@@ -147,32 +153,6 @@ async function createOblioInvoice(
   return result;
 }
 
-async function sendOblioInvoice(accessToken: string, cif: string, seriesName: string, number: string): Promise<any> {
-  console.log('Sending Oblio invoice via email...');
-
-  const response = await fetch(`https://www.oblio.eu/api/docs/invoice/send`, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      cif: cif,
-      seriesName: seriesName,
-      number: number
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('Oblio invoice send failed:', errorText);
-    throw new Error(`Failed to send invoice: ${response.status} - ${errorText}`);
-  }
-
-  const result = await response.json();
-  console.log('Invoice sent successfully:', result);
-  return result;
-}
 
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
@@ -272,26 +252,25 @@ const handler = async (req: Request): Promise<Response> => {
       );
 
     } else if (action === 'send') {
-      // Check if we have an invoice number stored for this order
-      if (!order.invoice_number || !order.invoice_series) {
-        throw new Error('No invoice found for this order. Please generate an invoice first.');
-      }
+      // For "send" action, we create an invoice with sendEmail: 1 to automatically send it via email
+      console.log(`Creating and sending invoice via email for order ${order.id}`);
 
-      console.log(`Sending existing invoice ${order.invoice_series} ${order.invoice_number} for order ${order.id}`);
-
-      // Send the existing invoice via email
-      await sendOblioInvoice(
+      // Create invoice with email sending enabled
+      const invoiceResult = await createOblioInvoice(
         accessToken,
         cif,
-        order.invoice_series,
-        order.invoice_number
+        order as OrderWithItems,
+        profile.oblio_series_name,
+        true  // sendEmail = true
       );
 
-      // Update order status
+      // Update order with invoice details
       await supabase
         .from('orders')
         .update({
           payment_status: 'invoiced',
+          invoice_number: invoiceResult.data.number,
+          invoice_series: invoiceResult.data.seriesName,
           updated_at: new Date().toISOString()
         })
         .eq('id', orderId);
@@ -299,7 +278,8 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(
         JSON.stringify({
           success: true,
-          message: 'Invoice sent successfully to customer'
+          message: 'Invoice created and sent successfully to customer via email',
+          invoice: invoiceResult
         }),
         {
           status: 200,
