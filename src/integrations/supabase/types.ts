@@ -257,14 +257,8 @@ export type Database = {
     }
     Functions: {
       bulk_update_stock: {
-        Args: { updates: Json }
-        Returns: {
-          product_id: string
-          old_stock: number
-          new_stock: number
-          success: boolean
-          error_message: string
-        }[]
+        Args: { stock_updates: Json }
+        Returns: Json
       }
     }
     Enums: {
