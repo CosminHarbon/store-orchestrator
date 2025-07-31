@@ -210,7 +210,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Order not found');
     }
 
-    console.log('Order data:', JSON.stringify(order, null, 2));
+    // Get Oblio access token
     const accessToken = await getOblioAccessToken(profile.oblio_email, profile.oblio_api_key);
     
     // Get company CIF
@@ -242,7 +242,8 @@ const handler = async (req: Request): Promise<Response> => {
           invoice_link: invoiceResult.data.link,
           updated_at: new Date().toISOString()
         })
-        .eq('id', orderId);
+        .eq('id', orderId)
+        .eq('user_id', user.id);
 
       if (updateError) {
         console.error('Error updating order:', updateError);
@@ -315,7 +316,8 @@ const handler = async (req: Request): Promise<Response> => {
           invoice_link: invoiceResult.data.link,
           updated_at: new Date().toISOString()
         })
-        .eq('id', orderId);
+        .eq('id', orderId)
+        .eq('user_id', user.id);
 
       if (updateError) {
         console.error('Error updating order (send action):', updateError);
