@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Eye, Package, Truck, X, Receipt, Send } from 'lucide-react';
+import { Eye, Package, Truck, X, Receipt, Send, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -21,6 +21,7 @@ interface Order {
   payment_status: 'pending' | 'paid' | 'failed' | 'refunded' | 'invoiced';
   shipping_status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   created_at: string;
+  invoice_link?: string;
 }
 
 interface OrderItem {
@@ -257,6 +258,17 @@ const OrderManagement = () => {
                     <Send className="h-4 w-4 mr-2" />
                     Send Invoice
                   </Button>
+                  {selectedOrder.invoice_link && (
+                    <Button
+                      onClick={() => window.open(selectedOrder.invoice_link, '_blank')}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      View Invoice
+                    </Button>
+                  )}
                 </div>
               </div>
 

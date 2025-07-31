@@ -1,4 +1,4 @@
-import { Eye, Package, User, Mail, Phone, MapPin, Calendar, CreditCard, Truck, Receipt, Send } from 'lucide-react';
+import { Eye, Package, User, Mail, Phone, MapPin, Calendar, CreditCard, Truck, Receipt, Send, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,7 @@ interface Order {
   payment_status: 'pending' | 'paid' | 'failed' | 'refunded' | 'invoiced';
   shipping_status: string;
   created_at: string;
+  invoice_link?: string;
 }
 
 interface ResponsiveOrderTableProps {
@@ -143,6 +144,16 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateInvoice, sen
                     >
                       <Send className="h-4 w-4" />
                     </Button>
+                    {order.invoice_link && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => window.open(order.invoice_link, '_blank')}
+                        title="View Invoice"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
@@ -232,6 +243,16 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateInvoice, sen
                     <Send className="h-4 w-4 mr-1" />
                     Send
                   </Button>
+                  {order.invoice_link && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(order.invoice_link, '_blank')}
+                    >
+                      <ExternalLink className="h-4 w-4 mr-1" />
+                      View
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>

@@ -232,6 +232,7 @@ const handler = async (req: Request): Promise<Response> => {
           payment_status: 'invoiced',
           invoice_number: invoiceResult.data.number,
           invoice_series: invoiceResult.data.seriesName,
+          invoice_link: invoiceResult.data.link,
           updated_at: new Date().toISOString()
         })
         .eq('id', orderId);
@@ -271,6 +272,7 @@ const handler = async (req: Request): Promise<Response> => {
           payment_status: 'invoiced',
           invoice_number: invoiceResult.data.number,
           invoice_series: invoiceResult.data.seriesName,
+          invoice_link: invoiceResult.data.link,
           updated_at: new Date().toISOString()
         })
         .eq('id', orderId);
