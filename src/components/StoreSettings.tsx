@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Copy, RefreshCw, Eye, Code, TestTube } from 'lucide-react';
+import { Copy, RefreshCw, Eye, Code, TestTube, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,11 +17,19 @@ interface Profile {
   id: string;
   store_name: string;
   store_api_key: string;
+  invoicing_provider?: string;
+  shipping_provider?: string;
+  payment_provider?: string;
 }
 
 const StoreSettings = () => {
   const [storeName, setStoreName] = useState('');
   const [isCodeDialogOpen, setIsCodeDialogOpen] = useState(false);
+  const [integrations, setIntegrations] = useState({
+    invoicing: 'oblio.eu',
+    shipping: 'sameday',
+    payment: 'netpopia'
+  });
   const [testOrderData, setTestOrderData] = useState({
     name: 'John Doe',
     email: 'john@example.com',
@@ -76,6 +85,14 @@ const StoreSettings = () => {
 
   const updateStoreName = () => {
     updateProfileMutation.mutate({ store_name: storeName });
+  };
+
+  const updateIntegrations = () => {
+    updateProfileMutation.mutate({
+      invoicing_provider: integrations.invoicing,
+      shipping_provider: integrations.shipping,
+      payment_provider: integrations.payment
+    });
   };
 
   const copyToClipboard = (text: string) => {
@@ -271,192 +288,272 @@ class StoreAPI {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Store Settings</CardTitle>
-          <CardDescription>Configure your store information and API access</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="store-name">Store Name</Label>
-            <div className="flex gap-2">
-              <Input
-                id="store-name"
-                value={storeName || profile.store_name}
-                onChange={(e) => setStoreName(e.target.value)}
-                placeholder="Enter store name"
-              />
-              <Button onClick={updateStoreName} disabled={!storeName || storeName === profile.store_name}>
-                Save
-              </Button>
-            </div>
-          </div>
+      <Tabs defaultValue="store-settings" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="store-settings">Store Settings</TabsTrigger>
+          <TabsTrigger value="integrations">Integrations</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="store-settings" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Store Settings</CardTitle>
+              <CardDescription>Configure your store information and API access</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="store-name">Store Name</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="store-name"
+                    value={storeName || profile.store_name}
+                    onChange={(e) => setStoreName(e.target.value)}
+                    placeholder="Enter store name"
+                  />
+                  <Button onClick={updateStoreName} disabled={!storeName || storeName === profile.store_name}>
+                    Save
+                  </Button>
+                </div>
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="api-key">Store API Key</Label>
-            <div className="flex gap-2">
-              <Input
-                id="api-key"
-                value={profile.store_api_key}
-                readOnly
-                type="password"
-              />
-              <Button
-                variant="outline"
-                onClick={() => copyToClipboard(profile.store_api_key)}
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                onClick={regenerateApiKey}
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              This key is used to authenticate API requests from your website. Keep it secure!
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+              <div className="space-y-2">
+                <Label htmlFor="api-key">Store API Key</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="api-key"
+                    value={profile.store_api_key}
+                    readOnly
+                    type="password"
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => copyToClipboard(profile.store_api_key)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={regenerateApiKey}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  This key is used to authenticate API requests from your website. Keep it secure!
+                </p>
+              </div>
+            </CardContent>
+          </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Website Integration</CardTitle>
-          <CardDescription>Copy this code to integrate with your website</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <Dialog open={isCodeDialogOpen} onOpenChange={setIsCodeDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Code className="h-4 w-4 mr-2" />
-                  View Integration Code
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Website Integration Code</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="relative">
-                    <pre className="bg-muted p-4 rounded-lg text-sm overflow-x-auto">
-                      <code>{integrationCode}</code>
-                    </pre>
-                    <Button
-                      className="absolute top-2 right-2"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copyToClipboard(integrationCode)}
-                    >
-                      <Copy className="h-4 w-4" />
+          <Card>
+            <CardHeader>
+              <CardTitle>Website Integration</CardTitle>
+              <CardDescription>Copy this code to integrate with your website</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Dialog open={isCodeDialogOpen} onOpenChange={setIsCodeDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Code className="h-4 w-4 mr-2" />
+                      View Integration Code
                     </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-            
-            <Button
-              variant="outline"
-              onClick={() => copyToClipboard(integrationCode)}
-            >
-              <Copy className="h-4 w-4 mr-2" />
-              Copy Code
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Website Integration Code</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="relative">
+                        <pre className="bg-muted p-4 rounded-lg text-sm overflow-x-auto">
+                          <code>{integrationCode}</code>
+                        </pre>
+                        <Button
+                          className="absolute top-2 right-2"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => copyToClipboard(integrationCode)}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                
+                <Button
+                  variant="outline"
+                  onClick={() => copyToClipboard(integrationCode)}
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy Code
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Test Your Integration</CardTitle>
-          <CardDescription>Create a test order to verify your setup</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="test-order" className="w-full">
-            <TabsList>
-              <TabsTrigger value="test-order">Test Order</TabsTrigger>
-              <TabsTrigger value="api-endpoints">API Endpoints</TabsTrigger>
-            </TabsList>
-            <TabsContent value="test-order" className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Test Your Integration</CardTitle>
+              <CardDescription>Create a test order to verify your setup</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="test-order" className="w-full">
+                <TabsList>
+                  <TabsTrigger value="test-order">Test Order</TabsTrigger>
+                  <TabsTrigger value="api-endpoints">API Endpoints</TabsTrigger>
+                </TabsList>
+                <TabsContent value="test-order" className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="test-name">Customer Name</Label>
+                      <Input
+                        id="test-name"
+                        value={testOrderData.name}
+                        onChange={(e) => setTestOrderData({ ...testOrderData, name: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="test-email">Customer Email</Label>
+                      <Input
+                        id="test-email"
+                        value={testOrderData.email}
+                        onChange={(e) => setTestOrderData({ ...testOrderData, email: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="test-phone">Customer Phone</Label>
+                      <Input
+                        id="test-phone"
+                        value={testOrderData.phone}
+                        onChange={(e) => setTestOrderData({ ...testOrderData, phone: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="test-total">Total Amount</Label>
+                      <Input
+                        id="test-total"
+                        type="number"
+                        step="0.01"
+                        value={testOrderData.total}
+                        onChange={(e) => setTestOrderData({ ...testOrderData, total: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="test-address">Customer Address</Label>
+                    <Textarea
+                      id="test-address"
+                      value={testOrderData.address}
+                      onChange={(e) => setTestOrderData({ ...testOrderData, address: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="test-items">Order Items (JSON)</Label>
+                    <Textarea
+                      id="test-items"
+                      value={testOrderData.items}
+                      onChange={(e) => setTestOrderData({ ...testOrderData, items: e.target.value })}
+                      placeholder='[{"product_id": "uuid", "quantity": 1}]'
+                    />
+                  </div>
+                  <Button onClick={createTestOrder}>
+                    <TestTube className="h-4 w-4 mr-2" />
+                    Create Test Order
+                  </Button>
+                </TabsContent>
+                <TabsContent value="api-endpoints" className="space-y-4">
+                  <div className="space-y-4">
+                    <div className="p-4 border rounded-lg">
+                      <h4 className="font-semibold mb-2">Get Products</h4>
+                      <code className="text-sm bg-muted p-2 rounded block">
+                        GET https://uffmgvdtkoxkjolfrhab.supabase.co/functions/v1/store-api/products?api_key={profile.store_api_key}
+                      </code>
+                    </div>
+                    <div className="p-4 border rounded-lg">
+                      <h4 className="font-semibold mb-2">Create Order</h4>
+                      <code className="text-sm bg-muted p-2 rounded block">
+                        POST https://uffmgvdtkoxkjolfrhab.supabase.co/functions/v1/store-api/orders?api_key={profile.store_api_key}
+                      </code>
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="integrations" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Service Integrations</CardTitle>
+              <CardDescription>Connect your store with invoicing, shipping, and payment providers</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="test-name">Customer Name</Label>
-                  <Input
-                    id="test-name"
-                    value={testOrderData.name}
-                    onChange={(e) => setTestOrderData({ ...testOrderData, name: e.target.value })}
-                  />
+                  <Label htmlFor="invoicing-provider">Invoicing Provider</Label>
+                  <Select
+                    value={integrations.invoicing}
+                    onValueChange={(value) => setIntegrations({ ...integrations, invoicing: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select invoicing provider" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="oblio.eu">Oblio.eu</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    Handles automatic invoice generation for your orders
+                  </p>
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="test-email">Customer Email</Label>
-                  <Input
-                    id="test-email"
-                    value={testOrderData.email}
-                    onChange={(e) => setTestOrderData({ ...testOrderData, email: e.target.value })}
-                  />
+                  <Label htmlFor="shipping-provider">Shipping Provider</Label>
+                  <Select
+                    value={integrations.shipping}
+                    onValueChange={(value) => setIntegrations({ ...integrations, shipping: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select shipping provider" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sameday">Sameday</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    Manages shipping and delivery for your orders
+                  </p>
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="test-phone">Customer Phone</Label>
-                  <Input
-                    id="test-phone"
-                    value={testOrderData.phone}
-                    onChange={(e) => setTestOrderData({ ...testOrderData, phone: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="test-total">Total Amount</Label>
-                  <Input
-                    id="test-total"
-                    type="number"
-                    step="0.01"
-                    value={testOrderData.total}
-                    onChange={(e) => setTestOrderData({ ...testOrderData, total: e.target.value })}
-                  />
+                  <Label htmlFor="payment-provider">Payment Processor</Label>
+                  <Select
+                    value={integrations.payment}
+                    onValueChange={(value) => setIntegrations({ ...integrations, payment: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select payment processor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="netpopia">Netpopia Payments</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    Processes online payments from your customers
+                  </p>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="test-address">Customer Address</Label>
-                <Textarea
-                  id="test-address"
-                  value={testOrderData.address}
-                  onChange={(e) => setTestOrderData({ ...testOrderData, address: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="test-items">Order Items (JSON)</Label>
-                <Textarea
-                  id="test-items"
-                  value={testOrderData.items}
-                  onChange={(e) => setTestOrderData({ ...testOrderData, items: e.target.value })}
-                  placeholder='[{"product_id": "uuid", "quantity": 1}]'
-                />
-              </div>
-              <Button onClick={createTestOrder}>
-                <TestTube className="h-4 w-4 mr-2" />
-                Create Test Order
+
+              <Button onClick={updateIntegrations} className="w-full">
+                <Settings className="h-4 w-4 mr-2" />
+                Save Integration Settings
               </Button>
-            </TabsContent>
-            <TabsContent value="api-endpoints" className="space-y-4">
-              <div className="space-y-4">
-                <div className="p-4 border rounded-lg">
-                  <h4 className="font-semibold mb-2">Get Products</h4>
-                  <code className="text-sm bg-muted p-2 rounded block">
-                    GET https://uffmgvdtkoxkjolfrhab.supabase.co/functions/v1/store-api/products?api_key={profile.store_api_key}
-                  </code>
-                </div>
-                <div className="p-4 border rounded-lg">
-                  <h4 className="font-semibold mb-2">Create Order</h4>
-                  <code className="text-sm bg-muted p-2 rounded block">
-                    POST https://uffmgvdtkoxkjolfrhab.supabase.co/functions/v1/store-api/orders?api_key={profile.store_api_key}
-                  </code>
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
