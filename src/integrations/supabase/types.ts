@@ -183,7 +183,9 @@ export type Database = {
           netpopia_name: string | null
           oblio_api_key: string | null
           oblio_email: string | null
+          oblio_first_number: string | null
           oblio_name: string | null
+          oblio_series_name: string | null
           payment_provider: string | null
           sameday_api_key: string | null
           sameday_email: string | null
@@ -203,7 +205,9 @@ export type Database = {
           netpopia_name?: string | null
           oblio_api_key?: string | null
           oblio_email?: string | null
+          oblio_first_number?: string | null
           oblio_name?: string | null
+          oblio_series_name?: string | null
           payment_provider?: string | null
           sameday_api_key?: string | null
           sameday_email?: string | null
@@ -223,7 +227,9 @@ export type Database = {
           netpopia_name?: string | null
           oblio_api_key?: string | null
           oblio_email?: string | null
+          oblio_first_number?: string | null
           oblio_name?: string | null
+          oblio_series_name?: string | null
           payment_provider?: string | null
           sameday_api_key?: string | null
           sameday_email?: string | null

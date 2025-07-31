@@ -23,6 +23,8 @@ interface Profile {
   oblio_api_key?: string;
   oblio_name?: string;
   oblio_email?: string;
+  oblio_series_name?: string;
+  oblio_first_number?: string;
   sameday_api_key?: string;
   sameday_name?: string;
   sameday_email?: string;
@@ -40,7 +42,7 @@ const StoreSettings = () => {
     payment: 'netpopia'
   });
   const [providerConfigs, setProviderConfigs] = useState({
-    oblio: { api_key: '', name: '', email: '' },
+    oblio: { api_key: '', name: '', email: '', series_name: '', first_number: '' },
     sameday: { api_key: '', name: '', email: '' },
     netpopia: { api_key: '', name: '', email: '' }
   });
@@ -73,7 +75,9 @@ const StoreSettings = () => {
           oblio: {
             api_key: data.oblio_api_key || '',
             name: data.oblio_name || '',
-            email: data.oblio_email || ''
+            email: data.oblio_email || '',
+            series_name: data.oblio_series_name || '',
+            first_number: data.oblio_first_number || ''
           },
           sameday: {
             api_key: data.sameday_api_key || '',
@@ -131,6 +135,8 @@ const StoreSettings = () => {
       oblio_api_key: providerConfigs.oblio.api_key,
       oblio_name: providerConfigs.oblio.name,
       oblio_email: providerConfigs.oblio.email,
+      oblio_series_name: providerConfigs.oblio.series_name,
+      oblio_first_number: providerConfigs.oblio.first_number,
       sameday_api_key: providerConfigs.sameday.api_key,
       sameday_name: providerConfigs.sameday.name,
       sameday_email: providerConfigs.sameday.email,
@@ -140,7 +146,7 @@ const StoreSettings = () => {
     });
   };
 
-  const updateProviderConfig = (provider: 'oblio' | 'sameday' | 'netpopia', field: 'api_key' | 'name' | 'email', value: string) => {
+  const updateProviderConfig = (provider: 'oblio' | 'sameday' | 'netpopia', field: 'api_key' | 'name' | 'email' | 'series_name' | 'first_number', value: string) => {
     setProviderConfigs(prev => ({
       ...prev,
       [provider]: {
@@ -568,14 +574,54 @@ class StoreAPI {
                       <h4 className="font-medium">Oblio.eu Configuration</h4>
                       <div className="grid gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="oblio-api-key">API Key</Label>
+                          <Label htmlFor="oblio-email">Oblio Email Address</Label>
+                          <Input
+                            id="oblio-email"
+                            type="email"
+                            value={providerConfigs.oblio.email}
+                            onChange={(e) => updateProviderConfig('oblio', 'email', e.target.value)}
+                            placeholder="Enter your Oblio.eu account email"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            This is your Oblio.eu login email (client_id)
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="oblio-api-key">API Secret Key</Label>
                           <Input
                             id="oblio-api-key"
                             type="password"
                             value={providerConfigs.oblio.api_key}
                             onChange={(e) => updateProviderConfig('oblio', 'api_key', e.target.value)}
-                            placeholder="Enter your Oblio.eu API key"
+                            placeholder="Enter your Oblio.eu API secret key"
                           />
+                          <p className="text-xs text-muted-foreground">
+                            Found in Oblio.eu Settings → Account Data (client_secret)
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="oblio-series-name">Invoice Series</Label>
+                          <Input
+                            id="oblio-series-name"
+                            value={providerConfigs.oblio.series_name}
+                            onChange={(e) => updateProviderConfig('oblio', 'series_name', e.target.value)}
+                            placeholder="e.g., APM"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Series prefix for your invoices (e.g., APM, FCT)
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="oblio-first-number">First Invoice Number</Label>
+                          <Input
+                            id="oblio-first-number"
+                            value={providerConfigs.oblio.first_number}
+                            onChange={(e) => updateProviderConfig('oblio', 'first_number', e.target.value)}
+                            placeholder="e.g., 001"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Starting number for your invoices (e.g., 001, 0001)
+                          </p>
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="oblio-name">Company Name</Label>
@@ -584,16 +630,6 @@ class StoreAPI {
                             value={providerConfigs.oblio.name}
                             onChange={(e) => updateProviderConfig('oblio', 'name', e.target.value)}
                             placeholder="Enter your company name"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="oblio-email">Email Address</Label>
-                          <Input
-                            id="oblio-email"
-                            type="email"
-                            value={providerConfigs.oblio.email}
-                            onChange={(e) => updateProviderConfig('oblio', 'email', e.target.value)}
-                            placeholder="Enter your email address"
                           />
                         </div>
                       </div>

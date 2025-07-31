@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Eye, Package, Truck, X } from 'lucide-react';
+import { Eye, Package, Truck, X, Receipt, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -18,7 +18,7 @@ interface Order {
   customer_phone: string;
   customer_address: string;
   total: number;
-  payment_status: 'pending' | 'paid' | 'failed' | 'refunded';
+  payment_status: 'pending' | 'paid' | 'failed' | 'refunded' | 'invoiced';
   shipping_status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   created_at: string;
 }
@@ -37,7 +37,50 @@ const OrderManagement = () => {
   
   const queryClient = useQueryClient();
 
-  const { data: orders, isLoading } = useQuery({
+  const generateInvoice = async (orderId: string) => {
+    try {
+      const response = await supabase.functions.invoke('oblio-invoice', {
+        body: {
+          orderId,
+          action: 'generate'
+        }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      toast.success('Invoice generated successfully');
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    } catch (error: any) {
+      console.error('Error generating invoice:', error);
+      toast.error(error.message || 'Failed to generate invoice');
+    }
+  };
+
+  const sendInvoice = async (orderId: string) => {
+    try {
+      const response = await supabase.functions.invoke('oblio-invoice', {
+        body: {
+          orderId,
+          action: 'send'
+        }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      toast.success('Invoice sent to customer successfully');
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    } catch (error: any) {
+      console.error('Error sending invoice:', error);
+      toast.error(error.message || 'Failed to send invoice');
+    }
+  };
+
+
+  const { data: orders, isLoading, refetch } = useQuery({
     queryKey: ['orders'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -102,7 +145,8 @@ const OrderManagement = () => {
       delivered: 'default',
       failed: 'destructive',
       cancelled: 'destructive',
-      refunded: 'destructive'
+      refunded: 'destructive',
+      invoiced: 'default'
     };
 
     return (
@@ -126,6 +170,8 @@ const OrderManagement = () => {
         <ResponsiveOrderTable
           orders={orders || []}
           onViewOrder={handleViewOrder}
+          generateInvoice={generateInvoice}
+          sendInvoice={sendInvoice}
         />
         {orders?.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">
@@ -166,6 +212,7 @@ const OrderManagement = () => {
                           <SelectItem value="paid">Paid</SelectItem>
                           <SelectItem value="failed">Failed</SelectItem>
                           <SelectItem value="refunded">Refunded</SelectItem>
+                          <SelectItem value="invoiced">Invoiced</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -188,6 +235,28 @@ const OrderManagement = () => {
                       </Select>
                     </div>
                   </div>
+                </div>
+
+                {/* Invoice Actions */}
+                <div className="flex flex-col sm:flex-row gap-2 mt-4">
+                  <Button
+                    onClick={() => generateInvoice(selectedOrder.id)}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                  >
+                    <Receipt className="h-4 w-4 mr-2" />
+                    Generate Invoice
+                  </Button>
+                  <Button
+                    onClick={() => sendInvoice(selectedOrder.id)}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    Send Invoice
+                  </Button>
                 </div>
               </div>
 

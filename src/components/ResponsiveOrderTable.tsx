@@ -1,4 +1,4 @@
-import { Eye, Package, User, Mail, Phone, MapPin, Calendar, CreditCard, Truck } from 'lucide-react';
+import { Eye, Package, User, Mail, Phone, MapPin, Calendar, CreditCard, Truck, Receipt, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +12,7 @@ interface Order {
   customer_address: string;
   customer_phone?: string;
   total: number;
-  payment_status: string;
+  payment_status: 'pending' | 'paid' | 'failed' | 'refunded' | 'invoiced';
   shipping_status: string;
   created_at: string;
 }
@@ -20,9 +20,11 @@ interface Order {
 interface ResponsiveOrderTableProps {
   orders: Order[];
   onViewOrder: (order: Order) => void;
+  generateInvoice: (orderId: string) => void;
+  sendInvoice: (orderId: string) => void;
 }
 
-export function ResponsiveOrderTable({ orders, onViewOrder }: ResponsiveOrderTableProps) {
+export function ResponsiveOrderTable({ orders, onViewOrder, generateInvoice, sendInvoice }: ResponsiveOrderTableProps) {
   const getStatusBadge = (status: string, type: 'payment' | 'shipping') => {
     const baseClasses = "text-xs";
     
@@ -34,6 +36,8 @@ export function ResponsiveOrderTable({ orders, onViewOrder }: ResponsiveOrderTab
           return <Badge variant="default" className={baseClasses}>Paid</Badge>;
         case 'failed':
           return <Badge variant="destructive" className={baseClasses}>Failed</Badge>;
+        case 'invoiced':
+          return <Badge variant="outline" className={baseClasses}>Invoiced</Badge>;
         default:
           return <Badge variant="outline" className={baseClasses}>{status}</Badge>;
       }
@@ -115,13 +119,31 @@ export function ResponsiveOrderTable({ orders, onViewOrder }: ResponsiveOrderTab
                   {formatDate(order.created_at)}
                 </TableCell>
                 <TableCell>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => onViewOrder(order)}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onViewOrder(order)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => generateInvoice(order.id)}
+                      title="Generate Invoice"
+                    >
+                      <Receipt className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => sendInvoice(order.id)}
+                      title="Send Invoice"
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -185,14 +207,32 @@ export function ResponsiveOrderTable({ orders, onViewOrder }: ResponsiveOrderTab
                     {getStatusBadge(order.shipping_status, 'shipping')}
                   </div>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onViewOrder(order)}
-                >
-                  <Eye className="h-4 w-4 mr-1" />
-                  View Details
-                </Button>
+                <div className="flex gap-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onViewOrder(order)}
+                  >
+                    <Eye className="h-4 w-4 mr-1" />
+                    View
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => generateInvoice(order.id)}
+                  >
+                    <Receipt className="h-4 w-4 mr-1" />
+                    Invoice
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => sendInvoice(order.id)}
+                  >
+                    <Send className="h-4 w-4 mr-1" />
+                    Send
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
