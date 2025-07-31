@@ -82,12 +82,20 @@ const OrderManagement = () => {
     if (!selectedOrder) return;
     
     try {
-      const { error } = await supabase
+      console.log('Updating order:', selectedOrder.id, 'with data:', editFormData);
+      
+      const { data, error } = await supabase
         .from('orders')
         .update(editFormData)
-        .eq('id', selectedOrder.id);
+        .eq('id', selectedOrder.id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Update error:', error);
+        throw error;
+      }
+
+      console.log('Update successful:', data);
 
       // Update the selected order state
       setSelectedOrder({
@@ -99,8 +107,8 @@ const OrderManagement = () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       toast.success('Order details updated successfully');
     } catch (error: any) {
-      toast.error('Failed to update order details');
-      console.error(error);
+      console.error('Failed to update order:', error);
+      toast.error(`Failed to update order details: ${error.message}`);
     }
   };
 
