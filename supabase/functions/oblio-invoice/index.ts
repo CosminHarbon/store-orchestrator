@@ -253,7 +253,26 @@ const handler = async (req: Request): Promise<Response> => {
       );
 
     } else if (action === 'send') {
-      // For "send" action, we create an invoice with sendEmail: 1 to automatically send it via email
+      // Check if invoice already exists for this order
+      if (order.invoice_number && order.invoice_series) {
+        // Invoice already exists, but Oblio API doesn't have a separate endpoint to send existing invoices
+        // We need to inform the user that the invoice was already created and they should use the existing link
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Invoice already exists for this order. Please use the "View Invoice" button to access the existing invoice. Oblio API does not support sending existing invoices via email separately.'
+          }),
+          {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders,
+            },
+          }
+        );
+      }
+
+      // No existing invoice, create and send a new one
       console.log(`Creating and sending invoice via email for order ${order.id}`);
 
       // Create invoice with email sending enabled
