@@ -271,28 +271,57 @@ const handler = async (req: Request): Promise<Response> => {
       );
 
     } else if (action === 'send') {
-      // First check if invoice exists, if not create it
-      let invoiceResult;
+      // For sending, we need to get the latest invoice number for this series
+      // Since the invoice was already generated, we'll get the latest invoice number
+      
+      // Get the latest invoice from Oblio for this series
+      let latestInvoiceNumber;
       try {
-        invoiceResult = await createOblioInvoice(
-          accessToken,
-          cif,
-          order as OrderWithItems,
-          profile.oblio_series_name
-        );
+        const invoicesResponse = await fetch(`https://www.oblio.eu/api/docs/invoice?cif=${cif}&seriesName=${profile.oblio_series_name}&limit=1`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        });
+
+        if (invoicesResponse.ok) {
+          const invoicesData = await invoicesResponse.json();
+          if (invoicesData.data && invoicesData.data.length > 0) {
+            latestInvoiceNumber = invoicesData.data[0].number;
+          }
+        }
       } catch (error) {
-        // If invoice already exists, we'll need to get the existing invoice details
-        console.log('Invoice might already exist, attempting to send existing invoice');
+        console.log('Could not fetch latest invoice, will try to create new one');
+      }
+
+      // If we don't have an invoice number, try to create one
+      if (!latestInvoiceNumber) {
+        try {
+          const invoiceResult = await createOblioInvoice(
+            accessToken,
+            cif,
+            order as OrderWithItems,
+            profile.oblio_series_name
+          );
+          if (invoiceResult && invoiceResult.data) {
+            latestInvoiceNumber = invoiceResult.data.number;
+          }
+        } catch (error) {
+          console.error('Failed to create invoice for sending:', error);
+          throw new Error('Could not create or find invoice to send');
+        }
       }
 
       // Send invoice via email
-      if (invoiceResult && invoiceResult.data) {
+      if (latestInvoiceNumber) {
         await sendOblioInvoice(
           accessToken,
           cif,
           profile.oblio_series_name,
-          invoiceResult.data.number
+          latestInvoiceNumber
         );
+      } else {
+        throw new Error('No invoice number available to send');
       }
 
       // Update order status
