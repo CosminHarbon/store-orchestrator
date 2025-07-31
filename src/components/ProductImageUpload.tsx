@@ -59,7 +59,7 @@ const ProductImageUpload = ({ productId, onImagesChange }: ProductImageUploadPro
         .from('product-images')
         .getPublicUrl(fileName);
       
-      const maxOrder = Math.max(...(images?.map(img => img.display_order) || [0]));
+      const maxOrder = images && images.length > 0 ? Math.max(...images.map(img => img.display_order)) : 0;
       
       const { data, error } = await supabase
         .from('product_images')

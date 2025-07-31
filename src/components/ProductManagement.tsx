@@ -35,11 +35,11 @@ const ProductManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [imageDialogProduct, setImageDialogProduct] = useState<Product | null>(null);
+  const [newProductForImages, setNewProductForImages] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     price: '',
-    image: '',
     category: '',
     stock: '',
     sku: ''
@@ -88,9 +88,14 @@ const ProductManagement = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       toast.success('Product created successfully');
+      const newProduct = data[0];
+      if (newProduct) {
+        setNewProductForImages(newProduct.id);
+        setImageDialogProduct(newProduct);
+      }
       resetForm();
     },
     onError: (error) => {
@@ -149,13 +154,13 @@ const ProductManagement = () => {
       title: '',
       description: '',
       price: '',
-      image: '',
       category: '',
       stock: '',
       sku: ''
     });
     setEditingProduct(null);
     setIsDialogOpen(false);
+    setNewProductForImages(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -174,7 +179,6 @@ const ProductManagement = () => {
       title: product.title,
       description: product.description || '',
       price: product.price.toString(),
-      image: product.image || '',
       category: product.category || '',
       stock: product.stock.toString(),
       sku: product.sku || ''
@@ -193,186 +197,184 @@ const ProductManagement = () => {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex justify-between items-center">
-          <div>
-            <CardTitle>Products</CardTitle>
-            <CardDescription>Manage your store products</CardDescription>
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Products</CardTitle>
+              <CardDescription>Manage your store products</CardDescription>
+            </div>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={() => resetForm()}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Product
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingProduct ? 'Edit Product' : 'Add New Product'}
+                  </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Title</Label>
+                    <Input
+                      id="title"
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="price">Price</Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        step="0.01"
+                        value={formData.price}
+                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="stock">Stock</Label>
+                      <Input
+                        id="stock"
+                        type="number"
+                        value={formData.stock}
+                        onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Category</Label>
+                    <Input
+                      id="category"
+                      value={formData.category}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sku">SKU</Label>
+                    <Input
+                      id="sku"
+                      value={formData.sku}
+                      onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="submit" disabled={createProductMutation.isPending || updateProductMutation.isPending}>
+                      {editingProduct ? 'Update' : 'Create'} Product
+                    </Button>
+                    <Button type="button" variant="outline" onClick={resetForm}>
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => resetForm()}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Product
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingProduct ? 'Edit Product' : 'Add New Product'}
-                </DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Title</Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="price">Price</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      step="0.01"
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="stock">Stock</Label>
-                    <Input
-                      id="stock"
-                      type="number"
-                      value={formData.stock}
-                      onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Input
-                    id="category"
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="sku">SKU</Label>
-                  <Input
-                    id="sku"
-                    value={formData.sku}
-                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="image">Image URL</Label>
-                  <Input
-                    id="image"
-                    type="url"
-                    value={formData.image}
-                    onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button type="submit" disabled={createProductMutation.isPending || updateProductMutation.isPending}>
-                    {editingProduct ? 'Update' : 'Create'} Product
-                  </Button>
-                  <Button type="button" variant="outline" onClick={resetForm}>
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Image</TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead>Stock</TableHead>
-              <TableHead>SKU</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {products?.map((product) => (
-              <TableRow key={product.id}>
-                <TableCell>
-                   {(() => {
-                     const primaryImage = productImages?.find(img => img.product_id === product.id);
-                     return primaryImage ? (
-                       <img src={primaryImage.image_url} alt={product.title} className="w-12 h-12 object-cover rounded" />
-                     ) : product.image ? (
-                       <img src={product.image} alt={product.title} className="w-12 h-12 object-cover rounded" />
-                     ) : (
-                       <div className="w-12 h-12 bg-muted rounded flex items-center justify-center text-xs">
-                         No img
-                       </div>
-                     );
-                   })()}
-                 </TableCell>
-                <TableCell className="font-medium">{product.title}</TableCell>
-                <TableCell>{product.category}</TableCell>
-                <TableCell>${product.price}</TableCell>
-                <TableCell>{product.stock}</TableCell>
-                <TableCell>{product.sku}</TableCell>
-                 <TableCell>
-                   <div className="flex gap-2">
-                     <Button
-                       size="sm"
-                       variant="outline"
-                       onClick={() => setImageDialogProduct(product)}
-                       title="Manage Images"
-                     >
-                       <Images className="h-4 w-4" />
-                     </Button>
-                     <Button
-                       size="sm"
-                       variant="outline"
-                       onClick={() => handleEdit(product)}
-                     >
-                       <Edit className="h-4 w-4" />
-                     </Button>
-                     <Button
-                       size="sm"
-                       variant="outline"
-                       onClick={() => handleDelete(product.id)}
-                     >
-                       <Trash2 className="h-4 w-4" />
-                     </Button>
-                   </div>
-                 </TableCell>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Image</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Price</TableHead>
+                <TableHead>Stock</TableHead>
+                <TableHead>SKU</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        {products?.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            No products found. Add your first product to get started.
-          </div>
-        )}
-      </CardContent>
+            </TableHeader>
+            <TableBody>
+              {products?.map((product) => (
+                <TableRow key={product.id}>
+                  <TableCell>
+                    {(() => {
+                      const primaryImage = productImages?.find(img => img.product_id === product.id);
+                      return primaryImage ? (
+                        <img src={primaryImage.image_url} alt={product.title} className="w-12 h-12 object-cover rounded" />
+                      ) : product.image ? (
+                        <img src={product.image} alt={product.title} className="w-12 h-12 object-cover rounded" />
+                      ) : (
+                        <div className="w-12 h-12 bg-muted rounded flex items-center justify-center text-xs">
+                          No img
+                        </div>
+                      );
+                    })()}
+                  </TableCell>
+                  <TableCell className="font-medium">{product.title}</TableCell>
+                  <TableCell>{product.category}</TableCell>
+                  <TableCell>${product.price}</TableCell>
+                  <TableCell>{product.stock}</TableCell>
+                  <TableCell>{product.sku}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setImageDialogProduct(product)}
+                        title="Manage Images"
+                      >
+                        <Images className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEdit(product)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDelete(product.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          {products?.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              No products found. Add your first product to get started.
+            </div>
+          )}
+        </CardContent>
+      </Card>
       
       {/* Image Management Dialog */}
-      <Dialog open={!!imageDialogProduct} onOpenChange={() => setImageDialogProduct(null)}>
+      <Dialog open={!!imageDialogProduct || !!newProductForImages} onOpenChange={() => {
+        setImageDialogProduct(null);
+        setNewProductForImages(null);
+      }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Manage Images - {imageDialogProduct?.title}</DialogTitle>
+            <DialogTitle>
+              Manage Images - {imageDialogProduct?.title || products?.find(p => p.id === newProductForImages)?.title}
+            </DialogTitle>
           </DialogHeader>
-          {imageDialogProduct && (
+          {(imageDialogProduct || newProductForImages) && (
             <ProductImageUpload 
-              productId={imageDialogProduct.id}
+              productId={imageDialogProduct?.id || newProductForImages || ''}
               onImagesChange={() => {
                 queryClient.invalidateQueries({ queryKey: ['all-product-images'] });
               }}
@@ -380,7 +382,7 @@ const ProductManagement = () => {
           )}
         </DialogContent>
       </Dialog>
-    </Card>
+    </>
   );
 };
 
