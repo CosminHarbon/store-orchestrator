@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Images } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import ProductImageUpload from './ProductImageUpload';
 
 interface Product {
   id: string;
@@ -22,9 +23,18 @@ interface Product {
   sku: string;
 }
 
+interface ProductImage {
+  id: string;
+  product_id: string;
+  image_url: string;
+  is_primary: boolean;
+  display_order: number;
+}
+
 const ProductManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [imageDialogProduct, setImageDialogProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -47,6 +57,19 @@ const ProductManagement = () => {
       
       if (error) throw error;
       return data as Product[];
+    }
+  });
+
+  const { data: productImages } = useQuery({
+    queryKey: ['all-product-images'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('product_images')
+        .select('*')
+        .eq('is_primary', true);
+      
+      if (error) throw error;
+      return data as ProductImage[];
     }
   });
 
@@ -286,37 +309,50 @@ const ProductManagement = () => {
             {products?.map((product) => (
               <TableRow key={product.id}>
                 <TableCell>
-                  {product.image ? (
-                    <img src={product.image} alt={product.title} className="w-12 h-12 object-cover rounded" />
-                  ) : (
-                    <div className="w-12 h-12 bg-muted rounded flex items-center justify-center text-xs">
-                      No img
-                    </div>
-                  )}
-                </TableCell>
+                   {(() => {
+                     const primaryImage = productImages?.find(img => img.product_id === product.id);
+                     return primaryImage ? (
+                       <img src={primaryImage.image_url} alt={product.title} className="w-12 h-12 object-cover rounded" />
+                     ) : product.image ? (
+                       <img src={product.image} alt={product.title} className="w-12 h-12 object-cover rounded" />
+                     ) : (
+                       <div className="w-12 h-12 bg-muted rounded flex items-center justify-center text-xs">
+                         No img
+                       </div>
+                     );
+                   })()}
+                 </TableCell>
                 <TableCell className="font-medium">{product.title}</TableCell>
                 <TableCell>{product.category}</TableCell>
                 <TableCell>${product.price}</TableCell>
                 <TableCell>{product.stock}</TableCell>
                 <TableCell>{product.sku}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEdit(product)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDelete(product.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
+                 <TableCell>
+                   <div className="flex gap-2">
+                     <Button
+                       size="sm"
+                       variant="outline"
+                       onClick={() => setImageDialogProduct(product)}
+                       title="Manage Images"
+                     >
+                       <Images className="h-4 w-4" />
+                     </Button>
+                     <Button
+                       size="sm"
+                       variant="outline"
+                       onClick={() => handleEdit(product)}
+                     >
+                       <Edit className="h-4 w-4" />
+                     </Button>
+                     <Button
+                       size="sm"
+                       variant="outline"
+                       onClick={() => handleDelete(product.id)}
+                     >
+                       <Trash2 className="h-4 w-4" />
+                     </Button>
+                   </div>
+                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -327,6 +363,23 @@ const ProductManagement = () => {
           </div>
         )}
       </CardContent>
+      
+      {/* Image Management Dialog */}
+      <Dialog open={!!imageDialogProduct} onOpenChange={() => setImageDialogProduct(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Manage Images - {imageDialogProduct?.title}</DialogTitle>
+          </DialogHeader>
+          {imageDialogProduct && (
+            <ProductImageUpload 
+              productId={imageDialogProduct.id}
+              onImagesChange={() => {
+                queryClient.invalidateQueries({ queryKey: ['all-product-images'] });
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
