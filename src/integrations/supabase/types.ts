@@ -177,6 +177,9 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          invoicing_provider: string | null
+          payment_provider: string | null
+          shipping_provider: string | null
           store_api_key: string
           store_name: string | null
           updated_at: string
@@ -185,6 +188,9 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          invoicing_provider?: string | null
+          payment_provider?: string | null
+          shipping_provider?: string | null
           store_api_key?: string
           store_name?: string | null
           updated_at?: string
@@ -193,6 +199,9 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          invoicing_provider?: string | null
+          payment_provider?: string | null
+          shipping_provider?: string | null
           store_api_key?: string
           store_name?: string | null
           updated_at?: string
