@@ -226,7 +226,14 @@ const handler = async (req: Request): Promise<Response> => {
       );
 
       // Update order with invoice details
-      await supabase
+      console.log('Updating order with invoice details:', {
+        orderId,
+        invoice_number: invoiceResult.data.number,
+        invoice_series: invoiceResult.data.seriesName,
+        invoice_link: invoiceResult.data.link
+      });
+      
+      const { error: updateError } = await supabase
         .from('orders')
         .update({
           payment_status: 'invoiced',
@@ -236,6 +243,13 @@ const handler = async (req: Request): Promise<Response> => {
           updated_at: new Date().toISOString()
         })
         .eq('id', orderId);
+
+      if (updateError) {
+        console.error('Error updating order:', updateError);
+        throw new Error(`Failed to update order: ${updateError.message}`);
+      }
+      
+      console.log('Order updated successfully');
 
       return new Response(
         JSON.stringify({
@@ -285,7 +299,14 @@ const handler = async (req: Request): Promise<Response> => {
       );
 
       // Update order with invoice details
-      await supabase
+      console.log('Updating order with invoice details (send action):', {
+        orderId,
+        invoice_number: invoiceResult.data.number,
+        invoice_series: invoiceResult.data.seriesName,
+        invoice_link: invoiceResult.data.link
+      });
+      
+      const { error: updateError } = await supabase
         .from('orders')
         .update({
           payment_status: 'invoiced',
@@ -295,6 +316,13 @@ const handler = async (req: Request): Promise<Response> => {
           updated_at: new Date().toISOString()
         })
         .eq('id', orderId);
+
+      if (updateError) {
+        console.error('Error updating order (send action):', updateError);
+        throw new Error(`Failed to update order: ${updateError.message}`);
+      }
+      
+      console.log('Order updated successfully (send action)');
 
       return new Response(
         JSON.stringify({
