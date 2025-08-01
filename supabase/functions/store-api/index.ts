@@ -59,6 +59,25 @@ interface Database {
           updated_at: string
         }
       }
+      collections: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          description: string | null
+          image_url: string | null
+          created_at: string
+          updated_at: string
+        }
+      }
+      product_collections: {
+        Row: {
+          id: string
+          product_id: string
+          collection_id: string
+          created_at: string
+        }
+      }
     }
   }
 }
@@ -327,11 +346,105 @@ Deno.serve(async (req) => {
         break
       }
 
+      case 'collections': {
+        if (req.method === 'GET') {
+          // Get all collections for the user
+          const { data: collections, error: collectionsError } = await supabase
+            .from('collections')
+            .select('*')
+            .eq('user_id', userId)
+            .order('name')
+
+          if (collectionsError) {
+            console.log('Error fetching collections:', collectionsError)
+            return new Response(
+              JSON.stringify({ error: 'Failed to fetch collections' }),
+              { 
+                status: 500, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          }
+
+          // Get products for each collection with images
+          const collectionsWithProducts = await Promise.all(
+            collections.map(async (collection) => {
+              // Get product-collection relationships
+              const { data: productCollections, error: pcError } = await supabase
+                .from('product_collections')
+                .select('product_id')
+                .eq('collection_id', collection.id)
+
+              if (pcError) {
+                console.log('Error fetching product collections:', pcError)
+                return { ...collection, products: [], product_count: 0 }
+              }
+
+              const productIds = productCollections.map(pc => pc.product_id)
+              
+              if (productIds.length === 0) {
+                return { ...collection, products: [], product_count: 0 }
+              }
+
+              // Get products
+              const { data: products, error: productsError } = await supabase
+                .from('products')
+                .select('*')
+                .in('id', productIds)
+
+              if (productsError) {
+                console.log('Error fetching products for collection:', productsError)
+                return { ...collection, products: [], product_count: 0 }
+              }
+
+              // Get images for these products
+              const { data: productImages, error: imagesError } = await supabase
+                .from('product_images')
+                .select('*')
+                .in('product_id', productIds)
+                .order('display_order', { ascending: true })
+
+              if (imagesError) {
+                console.log('Error fetching product images for collection:', imagesError)
+              }
+
+              // Combine products with their images
+              const productsWithImages = products.map(product => {
+                const images = productImages?.filter(img => img.product_id === product.id) || []
+                const primaryImage = images.find(img => img.is_primary) || images[0] || null
+                
+                return {
+                  ...product,
+                  images: images,
+                  primary_image: primaryImage?.image_url || product.image || null,
+                  image_count: images.length
+                }
+              })
+
+              return {
+                ...collection,
+                products: productsWithImages,
+                product_count: products.length
+              }
+            })
+          )
+
+          return new Response(
+            JSON.stringify({ collections: collectionsWithProducts }),
+            { 
+              status: 200, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          )
+        }
+        break
+      }
+
       default: {
         return new Response(
           JSON.stringify({ 
             error: 'Invalid endpoint',
-            available_endpoints: ['products', 'orders']
+            available_endpoints: ['products', 'orders', 'collections']
           }),
           { 
             status: 404, 
