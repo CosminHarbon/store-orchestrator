@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Package, Upload, Download, RefreshCw, Save, AlertTriangle } from 'lucide-react';
+import { Package, Upload, Download, RefreshCw, Save, AlertTriangle, Plus, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -45,7 +45,7 @@ const StockManagement = () => {
   const bulkUpdateMutation = useMutation({
     mutationFn: async (updates: StockUpdate[]) => {
       const { data, error } = await supabase.rpc('bulk_update_stock', {
-        updates: JSON.stringify(updates)
+        updates: updates as any
       });
       
       if (error) throw error;
@@ -79,6 +79,11 @@ const StockManagement = () => {
       ...prev,
       [productId]: newStock
     }));
+  };
+
+  const handleStockAdjustment = (productId: string, currentStock: number, adjustment: number) => {
+    const newStock = Math.max(0, currentStock + adjustment);
+    handleStockChange(productId, newStock);
   };
 
   const handleSaveChanges = async () => {
@@ -224,15 +229,34 @@ const StockManagement = () => {
                         {product.stock}
                       </span>
                     </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={newStock}
-                        onChange={(e) => handleStockChange(product.id, parseInt(e.target.value) || 0)}
-                        className="w-20"
-                      />
-                    </TableCell>
+                     <TableCell>
+                       <div className="flex items-center gap-1">
+                         <Button
+                           size="sm"
+                           variant="outline"
+                           onClick={() => handleStockAdjustment(product.id, newStock, -1)}
+                           disabled={newStock <= 0}
+                           className="h-8 w-8 p-0"
+                         >
+                           <Minus className="h-3 w-3" />
+                         </Button>
+                         <Input
+                           type="number"
+                           min="0"
+                           value={newStock}
+                           onChange={(e) => handleStockChange(product.id, parseInt(e.target.value) || 0)}
+                           className="w-16 text-center"
+                         />
+                         <Button
+                           size="sm"
+                           variant="outline"
+                           onClick={() => handleStockAdjustment(product.id, newStock, 1)}
+                           className="h-8 w-8 p-0"
+                         >
+                           <Plus className="h-3 w-3" />
+                         </Button>
+                       </div>
+                     </TableCell>
                     <TableCell>${product.price}</TableCell>
                     <TableCell>{product.category || '-'}</TableCell>
                   </TableRow>
