@@ -228,15 +228,15 @@ const OrderManagement = () => {
   return (
     <Card>
       <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col gap-4">
           <div>
             <CardTitle>Orders</CardTitle>
             <CardDescription>Manage customer orders and fulfillment</CardDescription>
           </div>
-          <div className="relative w-full sm:w-80">
+          <div className="relative w-full max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search orders by customer, email, ID, or status..."
+              placeholder="Search orders..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"

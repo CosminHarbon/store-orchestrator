@@ -214,49 +214,55 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
               <Separator />
 
               {/* Status and Actions */}
-              <div className="flex justify-between items-center">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Truck className="h-4 w-4 text-muted-foreground" />
-                    {getStatusBadge(order.shipping_status, 'shipping')}
-                  </div>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Truck className="h-4 w-4 text-muted-foreground" />
+                  {getStatusBadge(order.shipping_status, 'shipping')}
                 </div>
-                <div className="flex gap-1">
+                <div className="flex flex-col gap-2">
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={() => onViewOrder(order)}
+                    className="w-full"
                   >
-                    <Eye className="h-4 w-4 mr-1" />
-                    View
+                    <Eye className="h-4 w-4 mr-2" />
+                    View Details
                   </Button>
-                  {onEditOrder && (
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    {onEditOrder && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onEditOrder(order)}
+                        className="w-full"
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => onEditOrder(order)}
+                      onClick={() => generateAndSendInvoice(order.id)}
+                      disabled={!!order.invoice_link}
+                      className="w-full"
                     >
-                      <Edit className="h-4 w-4 mr-1" />
-                      Edit
+                      <Receipt className="h-4 w-4 mr-1" />
+                      Invoice
                     </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => generateAndSendInvoice(order.id)}
-                    disabled={!!order.invoice_link}
-                  >
-                    <Receipt className="h-4 w-4 mr-1" />
-                    Invoice
-                  </Button>
+                  </div>
+                  
                   {order.invoice_link && (
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => window.open(order.invoice_link, '_blank')}
+                      className="w-full"
                     >
-                      <ExternalLink className="h-4 w-4 mr-1" />
-                      View
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      View Invoice
                     </Button>
                   )}
                 </div>

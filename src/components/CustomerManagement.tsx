@@ -252,7 +252,8 @@ const CustomerManagement: React.FC = () => {
           <CardTitle>Customer Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          {/* Desktop Table */}
+          <div className="hidden lg:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -357,8 +358,8 @@ const CustomerManagement: React.FC = () => {
                                   <div className="space-y-3">
                                     {getPaginatedOrders(customer).map((order) => (
                                       <div key={order.id} className="border rounded-lg p-3 bg-background">
-                                        <div className="flex justify-between items-start mb-2">
-                                          <div>
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
+                                          <div className="space-y-1">
                                             <div className="font-medium text-sm">Order #{order.id.slice(-8)}</div>
                                             <div className="text-xs text-muted-foreground">
                                               {formatDate(order.created_at)} • {order.customer_name}
@@ -367,9 +368,9 @@ const CustomerManagement: React.FC = () => {
                                               {order.customer_address}
                                             </div>
                                           </div>
-                                          <div className="text-right">
+                                          <div className="flex flex-col sm:text-right gap-2">
                                             <div className="font-medium text-sm">{formatCurrency(order.total)}</div>
-                                            <div className="flex gap-1 mt-1">
+                                            <div className="flex flex-wrap gap-1">
                                               <Badge variant={order.payment_status === 'paid' ? 'default' : 'secondary'} className="text-xs">
                                                 {order.payment_status}
                                               </Badge>
@@ -381,11 +382,11 @@ const CustomerManagement: React.FC = () => {
                                         </div>
                                         
                                         {/* Products in order */}
-                                        <div className="space-y-1">
+                                        <div className="space-y-1 mt-3">
                                           {order.order_items.map((item, idx) => (
                                             <div key={idx} className="flex justify-between text-xs text-muted-foreground">
-                                              <span>{item.quantity}x {item.product_title}</span>
-                                              <span>{formatCurrency(item.product_price * item.quantity)}</span>
+                                              <span className="truncate mr-2">{item.quantity}x {item.product_title}</span>
+                                              <span className="flex-shrink-0">{formatCurrency(item.product_price * item.quantity)}</span>
                                             </div>
                                           ))}
                                         </div>
@@ -394,11 +395,11 @@ const CustomerManagement: React.FC = () => {
                                     
                                     {/* Pagination */}
                                     {getTotalPages(customer) > 1 && (
-                                      <div className="flex items-center justify-between pt-2">
-                                        <div className="text-sm text-muted-foreground">
+                                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
+                                        <div className="text-sm text-muted-foreground text-center sm:text-left">
                                           Page {getCurrentPage(customer.customer_email)} of {getTotalPages(customer)}
                                         </div>
-                                        <div className="flex gap-2">
+                                        <div className="flex justify-center gap-2">
                                           <Button
                                             variant="outline"
                                             size="sm"
@@ -409,18 +410,34 @@ const CustomerManagement: React.FC = () => {
                                             <ChevronLeft className="h-3 w-3" />
                                           </Button>
                                           
-                                          {/* Page number buttons */}
-                                          {Array.from({ length: getTotalPages(customer) }, (_, i) => i + 1).map((pageNum) => (
-                                            <Button
-                                              key={pageNum}
-                                              variant={getCurrentPage(customer.customer_email) === pageNum ? "default" : "outline"}
-                                              size="sm"
-                                              onClick={() => setCustomerPage(customer.customer_email, pageNum)}
-                                              className="h-8 w-8 p-0"
-                                            >
-                                              {pageNum}
-                                            </Button>
-                                          ))}
+                                          {/* Page number buttons - limit to 3 on mobile */}
+                                          {Array.from({ length: Math.min(getTotalPages(customer), 3) }, (_, i) => {
+                                            const currentPage = getCurrentPage(customer.customer_email);
+                                            const totalPages = getTotalPages(customer);
+                                            let pageNum;
+                                            
+                                            if (totalPages <= 3) {
+                                              pageNum = i + 1;
+                                            } else if (currentPage === 1) {
+                                              pageNum = i + 1;
+                                            } else if (currentPage === totalPages) {
+                                              pageNum = totalPages - 2 + i;
+                                            } else {
+                                              pageNum = currentPage - 1 + i;
+                                            }
+                                            
+                                            return (
+                                              <Button
+                                                key={pageNum}
+                                                variant={getCurrentPage(customer.customer_email) === pageNum ? "default" : "outline"}
+                                                size="sm"
+                                                onClick={() => setCustomerPage(customer.customer_email, pageNum)}
+                                                className="h-8 w-8 p-0"
+                                              >
+                                                {pageNum}
+                                              </Button>
+                                            );
+                                          })}
                                           
                                           <Button
                                             variant="outline"
@@ -446,6 +463,194 @@ const CustomerManagement: React.FC = () => {
                 ))}
               </TableBody>
             </Table>
+          </div>
+          
+          {/* Mobile Card View */}
+          <div className="lg:hidden space-y-4">
+            {customers?.map((customer) => (
+              <Card key={customer.customer_email} className="overflow-hidden">
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-1 flex-1">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleCustomerExpansion(customer.customer_email)}
+                          className="p-0 h-6 w-6"
+                        >
+                          {expandedCustomers.has(customer.customer_email) ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <CardTitle className="text-base font-medium">{customer.unique_names[0]}</CardTitle>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{customer.customer_email}</p>
+                      {customer.unique_names.length > 1 && (
+                        <p className="text-xs text-muted-foreground">
+                          +{customer.unique_names.length - 1} other name{customer.unique_names.length > 2 ? 's' : ''}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right space-y-1">
+                      <p className="text-lg font-semibold">{formatCurrency(customer.total_spent)}</p>
+                      <Badge variant={customer.total_orders > 1 ? "default" : "secondary"} className="text-xs">
+                        {customer.total_orders} order{customer.total_orders > 1 ? 's' : ''}
+                      </Badge>
+                    </div>
+                  </div>
+                </CardHeader>
+                
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Avg Order:</span>
+                      <div className="font-medium">{formatCurrency(customer.average_order_value)}</div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">First Order:</span>
+                      <div className="font-medium">{formatDate(customer.first_order_date)}</div>
+                    </div>
+                  </div>
+                  
+                  {/* Expanded mobile details */}
+                  {expandedCustomers.has(customer.customer_email) && (
+                    <div className="space-y-4 pt-3 border-t">
+                      {/* Names and Addresses */}
+                      <div className="space-y-3">
+                        <div>
+                          <h4 className="text-sm font-medium mb-2">Names Used</h4>
+                          <div className="space-y-1">
+                            {customer.unique_names.map((name, idx) => (
+                              <div key={idx} className="text-sm bg-muted/50 p-2 rounded">{name}</div>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <h4 className="text-sm font-medium mb-2">Addresses Used</h4>
+                          <div className="space-y-1">
+                            {customer.unique_addresses.map((address, idx) => (
+                              <div key={idx} className="text-sm bg-muted/50 p-2 rounded break-words">{address}</div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Order History */}
+                      <div>
+                        <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                          <Package className="h-4 w-4" />
+                          Order History ({customer.orders.length} orders)
+                        </h4>
+                        <div className="space-y-3">
+                          {getPaginatedOrders(customer).map((order) => (
+                            <div key={order.id} className="border rounded-lg p-3 bg-background">
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <div className="font-medium text-sm">Order #{order.id.slice(-8)}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {formatDate(order.created_at)}
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="font-medium text-sm">{formatCurrency(order.total)}</div>
+                                  </div>
+                                </div>
+                                
+                                <div className="flex flex-wrap gap-1">
+                                  <Badge variant={order.payment_status === 'paid' ? 'default' : 'secondary'} className="text-xs">
+                                    {order.payment_status}
+                                  </Badge>
+                                  <Badge variant={order.shipping_status === 'delivered' ? 'default' : 'secondary'} className="text-xs">
+                                    {order.shipping_status}
+                                  </Badge>
+                                </div>
+                                
+                                {/* Products in order */}
+                                <div className="space-y-1">
+                                  {order.order_items.map((item, idx) => (
+                                    <div key={idx} className="flex justify-between text-xs text-muted-foreground">
+                                      <span className="truncate mr-2">{item.quantity}x {item.product_title}</span>
+                                      <span className="flex-shrink-0">{formatCurrency(item.product_price * item.quantity)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          
+                          {/* Mobile Pagination */}
+                          {getTotalPages(customer) > 1 && (
+                            <div className="flex flex-col gap-3 pt-2">
+                              <div className="text-sm text-muted-foreground text-center">
+                                Page {getCurrentPage(customer.customer_email)} of {getTotalPages(customer)}
+                              </div>
+                              <div className="flex justify-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setCustomerPage(customer.customer_email, getCurrentPage(customer.customer_email) - 1)}
+                                  disabled={getCurrentPage(customer.customer_email) === 1}
+                                  className="h-8 px-3"
+                                >
+                                  <ChevronLeft className="h-3 w-3 mr-1" />
+                                  Prev
+                                </Button>
+                                
+                                <div className="flex gap-1">
+                                  {Array.from({ length: Math.min(getTotalPages(customer), 3) }, (_, i) => {
+                                    const currentPage = getCurrentPage(customer.customer_email);
+                                    const totalPages = getTotalPages(customer);
+                                    let pageNum;
+                                    
+                                    if (totalPages <= 3) {
+                                      pageNum = i + 1;
+                                    } else if (currentPage === 1) {
+                                      pageNum = i + 1;
+                                    } else if (currentPage === totalPages) {
+                                      pageNum = totalPages - 2 + i;
+                                    } else {
+                                      pageNum = currentPage - 1 + i;
+                                    }
+                                    
+                                    return (
+                                      <Button
+                                        key={pageNum}
+                                        variant={getCurrentPage(customer.customer_email) === pageNum ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => setCustomerPage(customer.customer_email, pageNum)}
+                                        className="h-8 w-8 p-0"
+                                      >
+                                        {pageNum}
+                                      </Button>
+                                    );
+                                  })}
+                                </div>
+                                
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setCustomerPage(customer.customer_email, getCurrentPage(customer.customer_email) + 1)}
+                                  disabled={getCurrentPage(customer.customer_email) === getTotalPages(customer)}
+                                  className="h-8 px-3"
+                                >
+                                  Next
+                                  <ChevronRight className="h-3 w-3 ml-1" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </CardContent>
       </Card>
