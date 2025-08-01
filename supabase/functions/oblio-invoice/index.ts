@@ -210,6 +210,11 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Order not found');
     }
 
+    // Check if order has any items
+    if (!order.order_items || order.order_items.length === 0) {
+      throw new Error('Cannot create invoice: Order has no items. Please ensure the order contains products before generating an invoice.');
+    }
+
     // Get Oblio access token
     const accessToken = await getOblioAccessToken(profile.oblio_email, profile.oblio_api_key);
     
