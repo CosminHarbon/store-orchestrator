@@ -12,6 +12,7 @@ import ProductManagement from '@/components/ProductManagement';
 import OrderManagement from '@/components/OrderManagement';
 import StoreSettings from '@/components/StoreSettings';
 import StockManagement from '@/components/StockManagement';
+import CustomerManagement from '@/components/CustomerManagement';
 import { Package, ShoppingCart, DollarSign, Clock, TrendingUp, Users } from 'lucide-react';
 
 const Index = () => {
@@ -191,6 +192,12 @@ const Index = () => {
         return (
           <div className="p-4 md:p-6">
             <OrderManagement />
+          </div>
+        );
+      case 'customers':
+        return (
+          <div className="p-4 md:p-6">
+            <CustomerManagement />
           </div>
         );
       case 'settings':

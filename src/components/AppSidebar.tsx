@@ -17,6 +17,7 @@ const navigationItems = [
   { title: "Products", url: "/products", icon: Package, tab: "products" },
   { title: "Stock", url: "/stock", icon: BarChart3, tab: "stock" },
   { title: "Orders", url: "/orders", icon: ShoppingCart, tab: "orders" },
+  { title: "Customers", url: "/customers", icon: Users, tab: "customers" },
   { title: "Settings", url: "/settings", icon: Settings, tab: "settings" },
 ];
 

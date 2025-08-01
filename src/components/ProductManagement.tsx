@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit, Trash2, Images, Folder, Users } from 'lucide-react';
+import { Plus, Edit, Trash2, Images, Folder } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -14,7 +14,6 @@ import ProductImageUpload from './ProductImageUpload';
 import { ResponsiveProductTable } from './ResponsiveProductTable';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CollectionsManagement from './CollectionsManagement';
-import CustomerManagement from './CustomerManagement';
 
 interface Product {
   id: string;
@@ -202,7 +201,7 @@ const ProductManagement = () => {
 
   return (
     <Tabs defaultValue="products" className="w-full">
-      <TabsList className="grid w-full grid-cols-3">
+      <TabsList className="grid w-full grid-cols-2">
         <TabsTrigger value="products" className="flex items-center gap-2">
           <Plus className="h-4 w-4" />
           Products
@@ -210,10 +209,6 @@ const ProductManagement = () => {
         <TabsTrigger value="collections" className="flex items-center gap-2">
           <Folder className="h-4 w-4" />
           Collections
-        </TabsTrigger>
-        <TabsTrigger value="customers" className="flex items-center gap-2">
-          <Users className="h-4 w-4" />
-          Customers
         </TabsTrigger>
       </TabsList>
       
@@ -352,10 +347,6 @@ const ProductManagement = () => {
       
       <TabsContent value="collections">
         <CollectionsManagement />
-      </TabsContent>
-      
-      <TabsContent value="customers">
-        <CustomerManagement />
       </TabsContent>
     </Tabs>
   );
