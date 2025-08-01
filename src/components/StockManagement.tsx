@@ -192,8 +192,8 @@ const StockManagement = () => {
           </Button>
         </div>
 
-        {/* Stock Table */}
-        <div className="border rounded-lg">
+        {/* Desktop Table */}
+        <div className="hidden lg:block border rounded-lg">
           <Table>
             <TableHeader>
               <TableRow>
@@ -264,6 +264,112 @@ const StockManagement = () => {
               })}
             </TableBody>
           </Table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="lg:hidden space-y-4">
+          {products?.map((product) => {
+            const hasChanges = stockUpdates[product.id] !== undefined;
+            const newStock = stockUpdates[product.id] ?? product.stock;
+            
+            return (
+              <Card key={product.id} className={`overflow-hidden ${hasChanges ? 'border-yellow-300 bg-yellow-50' : ''}`}>
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-1 flex-1">
+                      <CardTitle className="text-base font-medium">{product.title}</CardTitle>
+                      <div className="flex flex-wrap gap-2 text-sm">
+                        {product.sku && (
+                          <span className="text-muted-foreground">SKU: {product.sku}</span>
+                        )}
+                        {product.category && (
+                          <Badge variant="outline" className="text-xs">{product.category}</Badge>
+                        )}
+                      </div>
+                      {hasChanges && (
+                        <div className="flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3 text-yellow-600" />
+                          <span className="text-xs text-yellow-600">Modified</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right space-y-1">
+                      <div className="text-lg font-semibold">${product.price}</div>
+                      {getStockBadge(newStock)}
+                    </div>
+                  </div>
+                </CardHeader>
+                
+                <CardContent className="space-y-4">
+                  {/* Stock Information */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Current Stock</label>
+                      <div className={`text-lg font-medium ${hasChanges ? 'line-through text-gray-500' : ''}`}>
+                        {product.stock}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">New Stock</label>
+                      <div className="text-lg font-medium">
+                        {newStock}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Stock Controls */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">Adjust Stock</label>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleStockAdjustment(product.id, newStock, -5)}
+                        disabled={newStock <= 0}
+                        className="flex-1"
+                      >
+                        <Minus className="h-3 w-3 mr-1" />
+                        -5
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleStockAdjustment(product.id, newStock, -1)}
+                        disabled={newStock <= 0}
+                        className="h-9 w-9 p-0"
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={newStock}
+                        onChange={(e) => handleStockChange(product.id, parseInt(e.target.value) || 0)}
+                        className="w-20 text-center"
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleStockAdjustment(product.id, newStock, 1)}
+                        className="h-9 w-9 p-0"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleStockAdjustment(product.id, newStock, 5)}
+                        className="flex-1"
+                      >
+                        +5
+                        <Plus className="h-3 w-3 ml-1" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {products?.length === 0 && (
