@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Users, ShoppingBag, DollarSign, TrendingUp, ChevronDown, ChevronRight, Package } from "lucide-react";
+import { Users, ShoppingBag, DollarSign, TrendingUp, ChevronDown, ChevronRight, Package, ChevronLeft } from "lucide-react";
 
 interface CustomerOrder {
   id: string;
@@ -38,6 +38,9 @@ interface CustomerDetails {
 
 const CustomerManagement: React.FC = () => {
   const [expandedCustomers, setExpandedCustomers] = useState<Set<string>>(new Set());
+  const [customerPages, setCustomerPages] = useState<Map<string, number>>(new Map());
+  
+  const ORDERS_PER_PAGE = 5;
 
   const { data: customers, isLoading, error } = useQuery({
     queryKey: ['customer-details'],
@@ -116,10 +119,37 @@ const CustomerManagement: React.FC = () => {
     const newExpanded = new Set(expandedCustomers);
     if (newExpanded.has(email)) {
       newExpanded.delete(email);
+      // Reset page when collapsing
+      const newPages = new Map(customerPages);
+      newPages.delete(email);
+      setCustomerPages(newPages);
     } else {
       newExpanded.add(email);
+      // Initialize to page 1 when expanding
+      const newPages = new Map(customerPages);
+      newPages.set(email, 1);
+      setCustomerPages(newPages);
     }
     setExpandedCustomers(newExpanded);
+  };
+
+  const setCustomerPage = (email: string, page: number) => {
+    const newPages = new Map(customerPages);
+    newPages.set(email, page);
+    setCustomerPages(newPages);
+  };
+
+  const getCurrentPage = (email: string) => customerPages.get(email) || 1;
+
+  const getPaginatedOrders = (customer: CustomerDetails) => {
+    const currentPage = getCurrentPage(customer.customer_email);
+    const startIndex = (currentPage - 1) * ORDERS_PER_PAGE;
+    const endIndex = startIndex + ORDERS_PER_PAGE;
+    return customer.orders.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = (customer: CustomerDetails) => {
+    return Math.ceil(customer.orders.length / ORDERS_PER_PAGE);
   };
 
   const totalCustomers = customers?.length || 0;
@@ -325,7 +355,7 @@ const CustomerManagement: React.FC = () => {
                                 </CardHeader>
                                 <CardContent className="pt-0">
                                   <div className="space-y-3">
-                                    {customer.orders.slice(0, 5).map((order) => (
+                                    {getPaginatedOrders(customer).map((order) => (
                                       <div key={order.id} className="border rounded-lg p-3 bg-background">
                                         <div className="flex justify-between items-start mb-2">
                                           <div>
@@ -362,9 +392,46 @@ const CustomerManagement: React.FC = () => {
                                       </div>
                                     ))}
                                     
-                                    {customer.orders.length > 5 && (
-                                      <div className="text-center text-sm text-muted-foreground">
-                                        And {customer.orders.length - 5} more orders...
+                                    {/* Pagination */}
+                                    {getTotalPages(customer) > 1 && (
+                                      <div className="flex items-center justify-between pt-2">
+                                        <div className="text-sm text-muted-foreground">
+                                          Page {getCurrentPage(customer.customer_email)} of {getTotalPages(customer)}
+                                        </div>
+                                        <div className="flex gap-2">
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setCustomerPage(customer.customer_email, getCurrentPage(customer.customer_email) - 1)}
+                                            disabled={getCurrentPage(customer.customer_email) === 1}
+                                            className="h-8 px-2"
+                                          >
+                                            <ChevronLeft className="h-3 w-3" />
+                                          </Button>
+                                          
+                                          {/* Page number buttons */}
+                                          {Array.from({ length: getTotalPages(customer) }, (_, i) => i + 1).map((pageNum) => (
+                                            <Button
+                                              key={pageNum}
+                                              variant={getCurrentPage(customer.customer_email) === pageNum ? "default" : "outline"}
+                                              size="sm"
+                                              onClick={() => setCustomerPage(customer.customer_email, pageNum)}
+                                              className="h-8 w-8 p-0"
+                                            >
+                                              {pageNum}
+                                            </Button>
+                                          ))}
+                                          
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setCustomerPage(customer.customer_email, getCurrentPage(customer.customer_email) + 1)}
+                                            disabled={getCurrentPage(customer.customer_email) === getTotalPages(customer)}
+                                            className="h-8 px-2"
+                                          >
+                                            <ChevronRight className="h-3 w-3" />
+                                          </Button>
+                                        </div>
                                       </div>
                                     )}
                                   </div>
