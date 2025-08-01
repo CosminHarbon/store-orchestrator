@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Eye, Package, Truck, X, Receipt, Send, ExternalLink, Edit } from 'lucide-react';
+import { Eye, Package, Truck, X, Receipt, Send, ExternalLink, Edit, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -39,6 +39,7 @@ const OrderManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditingOrder, setIsEditingOrder] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [editFormData, setEditFormData] = useState({
     customer_name: '',
     customer_email: '',
@@ -204,6 +205,22 @@ const OrderManagement = () => {
     );
   };
 
+  // Filter orders based on search query
+  const filteredOrders = orders?.filter(order => {
+    if (!searchQuery) return true;
+    
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      order.customer_name.toLowerCase().includes(searchLower) ||
+      order.customer_email.toLowerCase().includes(searchLower) ||
+      order.customer_phone?.toLowerCase().includes(searchLower) ||
+      order.customer_address.toLowerCase().includes(searchLower) ||
+      order.id.toLowerCase().includes(searchLower) ||
+      order.payment_status.toLowerCase().includes(searchLower) ||
+      order.shipping_status.toLowerCase().includes(searchLower)
+    );
+  }) || [];
+
   if (isLoading) {
     return <div>Loading orders...</div>;
   }
@@ -211,21 +228,42 @@ const OrderManagement = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Orders</CardTitle>
-        <CardDescription>Manage customer orders and fulfillment</CardDescription>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <CardTitle>Orders</CardTitle>
+            <CardDescription>Manage customer orders and fulfillment</CardDescription>
+          </div>
+          <div className="relative w-full sm:w-80">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search orders by customer, email, ID, or status..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <ResponsiveOrderTable
-          orders={orders || []}
+          orders={filteredOrders}
           onViewOrder={handleViewOrder}
           generateAndSendInvoice={generateAndSendInvoice}
           onEditOrder={handleEditOrder}
         />
-        {orders?.length === 0 && (
+        {filteredOrders.length === 0 && !searchQuery && (
           <div className="text-center py-8 text-muted-foreground">
             <div className="space-y-2">
               <p>No orders found.</p>
               <p className="text-sm">Orders will appear here when customers make purchases.</p>
+            </div>
+          </div>
+        )}
+        {filteredOrders.length === 0 && searchQuery && (
+          <div className="text-center py-8 text-muted-foreground">
+            <div className="space-y-2">
+              <p>No orders match your search.</p>
+              <p className="text-sm">Try adjusting your search terms.</p>
             </div>
           </div>
         )}
