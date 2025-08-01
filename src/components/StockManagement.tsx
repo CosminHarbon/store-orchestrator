@@ -318,52 +318,83 @@ const StockManagement = () => {
                   </div>
                   
                   {/* Stock Controls */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-muted-foreground">Adjust Stock</label>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleStockAdjustment(product.id, newStock, -5)}
-                        disabled={newStock <= 0}
-                        className="flex-1"
-                      >
-                        <Minus className="h-3 w-3 mr-1" />
-                        -5
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleStockAdjustment(product.id, newStock, -1)}
-                        disabled={newStock <= 0}
-                        className="h-9 w-9 p-0"
-                      >
-                        <Minus className="h-3 w-3" />
-                      </Button>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={newStock}
-                        onChange={(e) => handleStockChange(product.id, parseInt(e.target.value) || 0)}
-                        className="w-20 text-center"
-                      />
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleStockAdjustment(product.id, newStock, 1)}
-                        className="h-9 w-9 p-0"
-                      >
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleStockAdjustment(product.id, newStock, 5)}
-                        className="flex-1"
-                      >
-                        +5
-                        <Plus className="h-3 w-3 ml-1" />
-                      </Button>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-muted-foreground">Update Stock</label>
+                      {hasChanges && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            const { [product.id]: _, ...rest } = stockUpdates;
+                            setStockUpdates(rest);
+                          }}
+                          className="text-xs h-auto p-1"
+                        >
+                          Reset
+                        </Button>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {/* Direct input with simple +/- */}
+                      <div className="flex items-center gap-3">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleStockAdjustment(product.id, newStock, -1)}
+                          disabled={newStock <= 0}
+                          className="h-10 w-10 p-0 rounded-full"
+                        >
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                        <div className="flex-1">
+                          <Input
+                            type="number"
+                            min="0"
+                            value={newStock}
+                            onChange={(e) => handleStockChange(product.id, parseInt(e.target.value) || 0)}
+                            className="text-center text-lg h-10"
+                            placeholder="Stock quantity"
+                          />
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleStockAdjustment(product.id, newStock, 1)}
+                          className="h-10 w-10 p-0 rounded-full"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      
+                      {/* Quick action buttons */}
+                      <div className="grid grid-cols-3 gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => handleStockChange(product.id, 0)}
+                          className="h-9 text-xs"
+                        >
+                          Set to 0
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => handleStockChange(product.id, 10)}
+                          className="h-9 text-xs"
+                        >
+                          Set to 10
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => handleStockChange(product.id, 50)}
+                          className="h-9 text-xs"
+                        >
+                          Set to 50
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
