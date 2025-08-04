@@ -13,12 +13,14 @@ import OrderManagement from '@/components/OrderManagement';
 import StoreSettings from '@/components/StoreSettings';
 import StockManagement from '@/components/StockManagement';
 import CustomerManagement from '@/components/CustomerManagement';
-import { Package, ShoppingCart, DollarSign, Clock, TrendingUp, Users } from 'lucide-react';
+import { Package, ShoppingCart, DollarSign, Clock, TrendingUp, Users, MessageCircle } from 'lucide-react';
+import AIChat from '@/components/AIChat';
 
 const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -226,6 +228,18 @@ const Index = () => {
             {renderContent()}
           </main>
         </div>
+        
+        {/* AI Chat Button */}
+        <Button
+          onClick={() => setIsChatOpen(true)}
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-40"
+          size="sm"
+        >
+          <MessageCircle className="h-6 w-6" />
+        </Button>
+        
+        {/* AI Chat Modal */}
+        <AIChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
       </div>
     </SidebarProvider>
   );
