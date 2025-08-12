@@ -69,7 +69,7 @@ const Index = () => {
   }
 
   const renderDashboard = () => (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className="space-y-6 p-4 md:p-6 safe-area-bottom">
       <div className="space-y-2">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
           Welcome back to {stats?.storeName}
@@ -215,7 +215,7 @@ const Index = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="mobile-viewport flex w-full bg-background safe-area-left safe-area-right">
         <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
         
         <div className="flex-1 flex flex-col min-w-0">
@@ -232,7 +232,7 @@ const Index = () => {
         {/* AI Chat Button */}
         <Button
           onClick={() => setIsChatOpen(true)}
-          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-40"
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-40 safe-area-bottom safe-area-right"
           size="sm"
         >
           <MessageCircle className="h-6 w-6" />
