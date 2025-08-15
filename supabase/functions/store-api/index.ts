@@ -440,11 +440,143 @@ Deno.serve(async (req) => {
         break
       }
 
+      case 'payments': {
+        if (req.method === 'POST') {
+          const paymentData = await req.json()
+          console.log('Creating payment:', paymentData)
+
+          // Call the Netpopia payment edge function
+          try {
+            const { data: netopiaResponse, error: netopiaError } = await supabase.functions.invoke('netopia-payment', {
+              body: {
+                action: 'create_payment',
+                ...paymentData
+              },
+              headers: {
+                'Authorization': req.headers.get('Authorization') || `Bearer ${apiKey}`
+              }
+            })
+
+            if (netopiaError) {
+              console.error('Netpopia payment error:', netopiaError)
+              return new Response(
+                JSON.stringify({ error: 'Payment creation failed: ' + netopiaError.message }),
+                { 
+                  status: 500, 
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+                }
+              )
+            }
+
+            return new Response(
+              JSON.stringify(netopiaResponse),
+              { 
+                status: 200, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          } catch (error) {
+            console.error('Unexpected payment error:', error)
+            return new Response(
+              JSON.stringify({ error: 'Payment service unavailable' }),
+              { 
+                status: 500, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          }
+        }
+        break
+      }
+
+      case 'payment-status': {
+        if (req.method === 'GET') {
+          const paymentId = url.searchParams.get('payment_id')
+          if (!paymentId) {
+            return new Response(
+              JSON.stringify({ error: 'payment_id parameter required' }),
+              { 
+                status: 400, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          }
+
+          try {
+            const { data: statusResponse, error: statusError } = await supabase.functions.invoke('netopia-payment', {
+              body: {
+                action: 'payment_status',
+                payment_id: paymentId
+              },
+              headers: {
+                'Authorization': req.headers.get('Authorization') || `Bearer ${apiKey}`
+              }
+            })
+
+            if (statusError) {
+              console.error('Payment status error:', statusError)
+              return new Response(
+                JSON.stringify({ error: 'Failed to get payment status: ' + statusError.message }),
+                { 
+                  status: 500, 
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+                }
+              )
+            }
+
+            return new Response(
+              JSON.stringify(statusResponse),
+              { 
+                status: 200, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          } catch (error) {
+            console.error('Unexpected status check error:', error)
+            return new Response(
+              JSON.stringify({ error: 'Payment status service unavailable' }),
+              { 
+                status: 500, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          }
+        }
+        break
+      }
+
+      case 'payment-webhook': {
+        if (req.method === 'POST') {
+          const webhookData = await req.json()
+          console.log('Processing payment webhook:', webhookData)
+
+          try {
+            const { data: webhookResponse, error: webhookError } = await supabase.functions.invoke('netopia-payment', {
+              body: {
+                action: 'process_webhook',
+                ...webhookData
+              }
+            })
+
+            if (webhookError) {
+              console.error('Webhook processing error:', webhookError)
+              return new Response('Error', { status: 500 })
+            }
+
+            return new Response('OK', { status: 200 })
+          } catch (error) {
+            console.error('Unexpected webhook error:', error)
+            return new Response('Error', { status: 500 })
+          }
+        }
+        break
+      }
+
       default: {
         return new Response(
           JSON.stringify({ 
             error: 'Invalid endpoint',
-            available_endpoints: ['products', 'orders', 'collections']
+            available_endpoints: ['products', 'orders', 'collections', 'payments', 'payment-status', 'payment-webhook']
           }),
           { 
             status: 404, 

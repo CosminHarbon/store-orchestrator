@@ -7,13 +7,43 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
   }
   public: {
     Tables: {
+      collections: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string
@@ -110,6 +140,89 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          error_message: string | null
+          id: string
+          netopia_order_id: string | null
+          netopia_payment_id: string | null
+          order_id: string | null
+          payment_method: string | null
+          payment_provider: string
+          payment_status: string
+          provider_response: Json | null
+          transaction_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          error_message?: string | null
+          id?: string
+          netopia_order_id?: string | null
+          netopia_payment_id?: string | null
+          order_id?: string | null
+          payment_method?: string | null
+          payment_provider?: string
+          payment_status?: string
+          provider_response?: Json | null
+          transaction_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          error_message?: string | null
+          id?: string
+          netopia_order_id?: string | null
+          netopia_payment_id?: string | null
+          order_id?: string | null
+          payment_method?: string | null
+          payment_provider?: string
+          payment_status?: string
+          provider_response?: Json | null
+          transaction_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_collections: {
+        Row: {
+          collection_id: string
+          created_at: string
+          id: string
+          product_id: string
+        }
+        Insert: {
+          collection_id: string
+          created_at?: string
+          id?: string
+          product_id: string
+        }
+        Update: {
+          collection_id?: string
+          created_at?: string
+          id?: string
+          product_id?: string
+        }
+        Relationships: []
+      }
       product_images: {
         Row: {
           created_at: string
@@ -190,6 +303,9 @@ export type Database = {
           netpopia_api_key: string | null
           netpopia_email: string | null
           netpopia_name: string | null
+          netpopia_pos_id: string | null
+          netpopia_sandbox: boolean | null
+          netpopia_signature: string | null
           oblio_api_key: string | null
           oblio_email: string | null
           oblio_first_number: string | null
@@ -212,6 +328,9 @@ export type Database = {
           netpopia_api_key?: string | null
           netpopia_email?: string | null
           netpopia_name?: string | null
+          netpopia_pos_id?: string | null
+          netpopia_sandbox?: boolean | null
+          netpopia_signature?: string | null
           oblio_api_key?: string | null
           oblio_email?: string | null
           oblio_first_number?: string | null
@@ -234,6 +353,9 @@ export type Database = {
           netpopia_api_key?: string | null
           netpopia_email?: string | null
           netpopia_name?: string | null
+          netpopia_pos_id?: string | null
+          netpopia_sandbox?: boolean | null
+          netpopia_signature?: string | null
           oblio_api_key?: string | null
           oblio_email?: string | null
           oblio_first_number?: string | null
@@ -259,11 +381,11 @@ export type Database = {
       bulk_update_stock: {
         Args: { updates: Json }
         Returns: {
-          product_id: string
-          old_stock: number
-          new_stock: number
-          success: boolean
           error_message: string
+          new_stock: number
+          old_stock: number
+          product_id: string
+          success: boolean
         }[]
       }
     }

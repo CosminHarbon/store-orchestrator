@@ -13,6 +13,8 @@ import OrderManagement from '@/components/OrderManagement';
 import StoreSettings from '@/components/StoreSettings';
 import StockManagement from '@/components/StockManagement';
 import CustomerManagement from '@/components/CustomerManagement';
+import PaymentStatistics from '@/components/PaymentStatistics';
+import CollectionsManagement from '@/components/CollectionsManagement';
 import { Package, ShoppingCart, DollarSign, Clock, TrendingUp, Users, MessageCircle } from 'lucide-react';
 import AIChat from '@/components/AIChat';
 
@@ -200,6 +202,12 @@ const Index = () => {
         return (
           <div className="p-4 md:p-6">
             <CustomerManagement />
+          </div>
+        );
+      case 'payments':
+        return (
+          <div className="p-4 md:p-6">
+            <PaymentStatistics />
           </div>
         );
       case 'settings':

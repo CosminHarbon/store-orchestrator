@@ -31,6 +31,9 @@ interface Profile {
   netpopia_api_key?: string;
   netpopia_name?: string;
   netpopia_email?: string;
+  netpopia_signature?: string;
+  netpopia_pos_id?: string;
+  netpopia_sandbox?: boolean;
 }
 
 const StoreSettings = () => {
@@ -44,7 +47,7 @@ const StoreSettings = () => {
   const [providerConfigs, setProviderConfigs] = useState({
     oblio: { api_key: '', name: '', email: '', series_name: '', first_number: '' },
     sameday: { api_key: '', name: '', email: '' },
-    netpopia: { api_key: '', name: '', email: '' }
+    netpopia: { api_key: '', name: '', email: '', signature: '', pos_id: '', sandbox: true }
   });
   const [testOrderData, setTestOrderData] = useState({
     name: 'John Doe',
@@ -92,7 +95,10 @@ const StoreSettings = () => {
         netpopia: {
           api_key: profile.netpopia_api_key || '',
           name: profile.netpopia_name || '',
-          email: profile.netpopia_email || ''
+          email: profile.netpopia_email || '',
+          signature: profile.netpopia_signature || '',
+          pos_id: profile.netpopia_pos_id || '',
+          sandbox: profile.netpopia_sandbox ?? true
         }
       });
       
@@ -150,11 +156,14 @@ const StoreSettings = () => {
       sameday_email: providerConfigs.sameday.email,
       netpopia_api_key: providerConfigs.netpopia.api_key,
       netpopia_name: providerConfigs.netpopia.name,
-      netpopia_email: providerConfigs.netpopia.email
+      netpopia_email: providerConfigs.netpopia.email,
+      netpopia_signature: providerConfigs.netpopia.signature,
+      netpopia_pos_id: providerConfigs.netpopia.pos_id,
+      netpopia_sandbox: providerConfigs.netpopia.sandbox
     });
   };
 
-  const updateProviderConfig = (provider: 'oblio' | 'sameday' | 'netpopia', field: 'api_key' | 'name' | 'email' | 'series_name' | 'first_number', value: string) => {
+  const updateProviderConfig = (provider: 'oblio' | 'sameday' | 'netpopia', field: 'api_key' | 'name' | 'email' | 'series_name' | 'first_number' | 'signature' | 'pos_id' | 'sandbox', value: string | boolean) => {
     setProviderConfigs(prev => ({
       ...prev,
       [provider]: {
@@ -283,6 +292,64 @@ async function createOrder(orderData) {
   }
 }
 
+// Function to create payment (redirects to Netpopia)
+async function createPayment(orderData) {
+  try {
+    const response = await fetch(\`\${API_BASE_URL}/payments?api_key=\${STORE_API_KEY}\`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        order_id: orderData.order_id,
+        amount: parseFloat(orderData.total),
+        currency: 'RON',
+        description: \`Order \${orderData.order_id}\`,
+        customer_name: orderData.customer_name,
+        customer_email: orderData.customer_email,
+        customer_phone: orderData.customer_phone,
+        return_url: orderData.return_url || window.location.origin + '/payment-success',
+        notify_url: orderData.notify_url || \`\${API_BASE_URL}/payment-webhook\`
+      })
+    });
+    
+    const result = await response.json();
+    if (response.ok) {
+      console.log('Payment created:', result);
+      // Redirect to payment page
+      if (result.payment_url) {
+        window.location.href = result.payment_url;
+      }
+      return result;
+    } else {
+      console.error('Payment creation failed:', result);
+      throw new Error(result.error || 'Failed to create payment');
+    }
+  } catch (error) {
+    console.error('Error creating payment:', error);
+    throw error;
+  }
+}
+
+// Function to check payment status
+async function checkPaymentStatus(paymentId) {
+  try {
+    const response = await fetch(\`\${API_BASE_URL}/payment-status?api_key=\${STORE_API_KEY}&payment_id=\${paymentId}\`);
+    const result = await response.json();
+    
+    if (response.ok) {
+      console.log('Payment status:', result);
+      return result;
+    } else {
+      console.error('Failed to get payment status:', result);
+      throw new Error(result.error || 'Failed to get payment status');
+    }
+  } catch (error) {
+    console.error('Error checking payment status:', error);
+    throw error;
+  }
+}
+
 // Store API Class (Recommended approach)
 class StoreAPI {
   constructor(apiKey) {
@@ -315,6 +382,34 @@ class StoreAPI {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(orderData)
     });
+    return await response.json();
+  }
+
+  async createPayment(orderData) {
+    const response = await fetch(\`\${this.baseUrl}/payments?api_key=\${this.apiKey}\`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        order_id: orderData.order_id,
+        amount: parseFloat(orderData.total),
+        currency: 'RON',
+        description: \`Order \${orderData.order_id}\`,
+        customer_name: orderData.customer_name,
+        customer_email: orderData.customer_email,
+        customer_phone: orderData.customer_phone,
+        return_url: orderData.return_url || window.location.origin + '/payment-success',
+        notify_url: orderData.notify_url || \`\${this.baseUrl}/payment-webhook\`
+      })
+    });
+    const result = await response.json();
+    if (result.payment_url) {
+      window.location.href = result.payment_url;
+    }
+    return result;
+  }
+
+  async checkPaymentStatus(paymentId) {
+    const response = await fetch(\`\${this.baseUrl}/payment-status?api_key=\${this.apiKey}&payment_id=\${paymentId}\`);
     return await response.json();
   }
 }
@@ -740,19 +835,62 @@ class StoreAPI {
                             placeholder="Enter your company name"
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="netpopia-email">Email Address</Label>
-                          <Input
-                            id="netpopia-email"
-                            type="email"
-                            value={providerConfigs.netpopia.email}
-                            onChange={(e) => updateProviderConfig('netpopia', 'email', e.target.value)}
-                            placeholder="Enter your email address"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                         <div className="space-y-2">
+                           <Label htmlFor="netpopia-email">Email Address</Label>
+                           <Input
+                             id="netpopia-email"
+                             type="email"
+                             value={providerConfigs.netpopia.email}
+                             onChange={(e) => updateProviderConfig('netpopia', 'email', e.target.value)}
+                             placeholder="Enter your email address"
+                           />
+                         </div>
+                         <div className="space-y-2">
+                           <Label htmlFor="netpopia-signature">POS Signature</Label>
+                           <Input
+                             id="netpopia-signature"
+                             type="password"
+                             value={providerConfigs.netpopia.signature}
+                             onChange={(e) => updateProviderConfig('netpopia', 'signature', e.target.value)}
+                             placeholder="Enter your POS signature"
+                           />
+                           <p className="text-xs text-muted-foreground">
+                             Found in Netpopia admin panel under POS settings
+                           </p>
+                         </div>
+                         <div className="space-y-2">
+                           <Label htmlFor="netpopia-pos-id">POS ID</Label>
+                           <Input
+                             id="netpopia-pos-id"
+                             value={providerConfigs.netpopia.pos_id}
+                             onChange={(e) => updateProviderConfig('netpopia', 'pos_id', e.target.value)}
+                             placeholder="Enter your POS ID"
+                           />
+                           <p className="text-xs text-muted-foreground">
+                             Your Netpopia Point of Sale identifier
+                           </p>
+                         </div>
+                         <div className="space-y-2">
+                           <Label htmlFor="netpopia-sandbox">Environment</Label>
+                           <Select
+                             value={providerConfigs.netpopia.sandbox ? 'sandbox' : 'live'}
+                             onValueChange={(value) => updateProviderConfig('netpopia', 'sandbox', value === 'sandbox')}
+                           >
+                             <SelectTrigger>
+                               <SelectValue />
+                             </SelectTrigger>
+                             <SelectContent>
+                               <SelectItem value="sandbox">Sandbox (Testing)</SelectItem>
+                               <SelectItem value="live">Live (Production)</SelectItem>
+                             </SelectContent>
+                           </Select>
+                           <p className="text-xs text-muted-foreground">
+                             Use sandbox for testing, live for production
+                           </p>
+                         </div>
+                       </div>
+                     </div>
+                   )}
                 </div>
               </div>
 
