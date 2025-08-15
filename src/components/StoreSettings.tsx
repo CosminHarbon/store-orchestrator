@@ -33,6 +33,7 @@ interface Profile {
   netpopia_email?: string;
   netpopia_signature?: string;
   netpopia_pos_id?: string;
+  netpopia_public_key?: string;
   netpopia_sandbox?: boolean;
 }
 
@@ -47,7 +48,7 @@ const StoreSettings = () => {
   const [providerConfigs, setProviderConfigs] = useState({
     oblio: { api_key: '', name: '', email: '', series_name: '', first_number: '' },
     sameday: { api_key: '', name: '', email: '' },
-    netpopia: { api_key: '', name: '', email: '', signature: '', pos_id: '', sandbox: true }
+    netpopia: { api_key: '', name: '', email: '', signature: '', pos_id: '', public_key: '', sandbox: true }
   });
   const [testOrderData, setTestOrderData] = useState({
     name: 'John Doe',
@@ -98,6 +99,7 @@ const StoreSettings = () => {
           email: profile.netpopia_email || '',
           signature: profile.netpopia_signature || '',
           pos_id: profile.netpopia_pos_id || '',
+          public_key: profile.netpopia_public_key || '',
           sandbox: profile.netpopia_sandbox ?? true
         }
       });
@@ -159,11 +161,12 @@ const StoreSettings = () => {
       netpopia_email: providerConfigs.netpopia.email,
       netpopia_signature: providerConfigs.netpopia.signature,
       netpopia_pos_id: providerConfigs.netpopia.pos_id,
+      netpopia_public_key: providerConfigs.netpopia.public_key,
       netpopia_sandbox: providerConfigs.netpopia.sandbox
     });
   };
 
-  const updateProviderConfig = (provider: 'oblio' | 'sameday' | 'netpopia', field: 'api_key' | 'name' | 'email' | 'series_name' | 'first_number' | 'signature' | 'pos_id' | 'sandbox', value: string | boolean) => {
+  const updateProviderConfig = (provider: 'oblio' | 'sameday' | 'netpopia', field: 'api_key' | 'name' | 'email' | 'series_name' | 'first_number' | 'signature' | 'pos_id' | 'public_key' | 'sandbox', value: string | boolean) => {
     setProviderConfigs(prev => ({
       ...prev,
       [provider]: {
@@ -869,9 +872,22 @@ class StoreAPI {
                            <p className="text-xs text-muted-foreground">
                              Your Netpopia Point of Sale identifier
                            </p>
-                         </div>
-                         <div className="space-y-2">
-                           <Label htmlFor="netpopia-sandbox">Environment</Label>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="netpopia-public-key">Public Key</Label>
+                            <Textarea
+                              id="netpopia-public-key"
+                              value={providerConfigs.netpopia.public_key}
+                              onChange={(e) => updateProviderConfig('netpopia', 'public_key', e.target.value)}
+                              placeholder="Enter your Netpopia public key certificate"
+                              rows={4}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              The public key certificate from Netpopia for encryption
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="netpopia-sandbox">Environment</Label>
                            <Select
                              value={providerConfigs.netpopia.sandbox ? 'sandbox' : 'live'}
                              onValueChange={(value) => updateProviderConfig('netpopia', 'sandbox', value === 'sandbox')}

@@ -304,6 +304,7 @@ export type Database = {
           netpopia_email: string | null
           netpopia_name: string | null
           netpopia_pos_id: string | null
+          netpopia_public_key: string | null
           netpopia_sandbox: boolean | null
           netpopia_signature: string | null
           oblio_api_key: string | null
@@ -329,6 +330,7 @@ export type Database = {
           netpopia_email?: string | null
           netpopia_name?: string | null
           netpopia_pos_id?: string | null
+          netpopia_public_key?: string | null
           netpopia_sandbox?: boolean | null
           netpopia_signature?: string | null
           oblio_api_key?: string | null
@@ -354,6 +356,7 @@ export type Database = {
           netpopia_email?: string | null
           netpopia_name?: string | null
           netpopia_pos_id?: string | null
+          netpopia_public_key?: string | null
           netpopia_sandbox?: boolean | null
           netpopia_signature?: string | null
           oblio_api_key?: string | null
