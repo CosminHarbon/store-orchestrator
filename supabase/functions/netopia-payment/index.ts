@@ -20,6 +20,7 @@ interface NetopiaPaymentRequest {
 
 interface NetopiaConfig {
   api_key: string;
+  public_key: string;
   signature: string;
   pos_id: string;
   sandbox: boolean;
@@ -87,7 +88,7 @@ async function createPayment(supabase: any, userId: string, paymentData: Netopia
     // Get user's Netopia configuration
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('netpopia_api_key, netpopia_signature, netpopia_pos_id, netpopia_sandbox')
+      .select('netpopia_api_key, netpopia_public_key, netpopia_signature, netpopia_pos_id, netpopia_sandbox')
       .eq('user_id', userId)
       .single();
 
@@ -115,6 +116,7 @@ async function createPayment(supabase: any, userId: string, paymentData: Netopia
 
     const netopiaConfig: NetopiaConfig = {
       api_key: profile.netpopia_api_key,
+      public_key: profile.netpopia_public_key || '',
       signature: profile.netpopia_signature || '',
       pos_id: profile.netpopia_pos_id || '',
       sandbox: profile.netpopia_sandbox ?? true
