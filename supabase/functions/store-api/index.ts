@@ -107,10 +107,18 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Verify API key and get user
+    // Verify API key and get user with netopia configuration
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('user_id, store_name')
+      .select(`
+        user_id, 
+        store_name,
+        netpopia_api_key,
+        netpopia_public_key,
+        netpopia_signature,
+        netpopia_pos_id,
+        netpopia_sandbox
+      `)
       .eq('store_api_key', apiKey)
       .single()
 
@@ -124,6 +132,12 @@ Deno.serve(async (req) => {
         }
       )
     }
+
+    // Check if Netopia is configured for payment endpoints
+    const isNetopiaConfigured = profile.netpopia_api_key && 
+                                profile.netpopia_public_key && 
+                                profile.netpopia_signature && 
+                                profile.netpopia_pos_id
 
     const userId = profile.user_id
 
@@ -442,6 +456,19 @@ Deno.serve(async (req) => {
 
       case 'payments': {
         if (req.method === 'POST') {
+          // Check if Netopia is configured before processing payment
+          if (!isNetopiaConfigured) {
+            return new Response(
+              JSON.stringify({ 
+                error: 'Netopia payment gateway not configured. Please configure API key, public key, signature, and POS ID in your store settings.' 
+              }),
+              { 
+                status: 400, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          }
+
           const paymentData = await req.json()
           console.log('Creating payment:', paymentData)
 
@@ -492,6 +519,19 @@ Deno.serve(async (req) => {
 
       case 'payment-status': {
         if (req.method === 'GET') {
+          // Check if Netopia is configured before checking payment status
+          if (!isNetopiaConfigured) {
+            return new Response(
+              JSON.stringify({ 
+                error: 'Netopia payment gateway not configured. Please configure API key, public key, signature, and POS ID in your store settings.' 
+              }),
+              { 
+                status: 400, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          }
+
           const paymentId = url.searchParams.get('payment_id')
           if (!paymentId) {
             return new Response(
