@@ -20,6 +20,7 @@ interface NetopiaPaymentRequest {
 
 interface NetopiaConfig {
   api_key: string;
+  signature: string;
   sandbox: boolean;
 }
 
@@ -95,7 +96,7 @@ async function createPayment(supabase: any, userId: string, paymentData: Netopia
     // Get user's Netopia configuration
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('netpopia_api_key, netpopia_sandbox')
+      .select('netpopia_api_key, netpopia_signature, netpopia_sandbox')
       .eq('user_id', userId)
       .single();
 
@@ -123,13 +124,14 @@ async function createPayment(supabase: any, userId: string, paymentData: Netopia
 
     const netopiaConfig: NetopiaConfig = {
       api_key: profile.netpopia_api_key,
+      signature: profile.netpopia_signature || '',
       sandbox: profile.netpopia_sandbox ?? true
     };
 
     // Create payment with Netopia
     const netopiaUrl = netopiaConfig.sandbox 
-      ? 'https://sandbox.netopia-payments.com/payment/card'
-      : 'https://secure.netopia-payments.com/payment/card';
+      ? 'https://secure.sandbox.netopia-payments.com/payment/card/start'
+      : 'https://secure.netopia-payments.com/payment/card/start';
 
     const paymentRequest = {
       config: {
@@ -140,30 +142,33 @@ async function createPayment(supabase: any, userId: string, paymentData: Netopia
       },
       payment: {
         options: {
-          installments: 1,
+          installments: 0,
           bonus: 0
         },
         instrument: {
           type: 'card'
         },
-        data: [
-          {
-            orderId: paymentData.order_id,
-            amount: paymentData.amount,
-            currency: paymentData.currency || 'RON',
-            orderDesc: paymentData.description || `Order ${paymentData.order_id}`,
-            billing: {
-              firstName: paymentData.customer_name.split(' ')[0] || '',
-              lastName: paymentData.customer_name.split(' ').slice(1).join(' ') || '',
-              email: paymentData.customer_email,
-              phone: paymentData.customer_phone || '',
-              address: '',
-              city: '',
-              zipCode: '',
-              countryCode: 'RO'
-            }
-          }
-        ]
+        data: {}
+      },
+      order: {
+        posSignature: netopiaConfig.signature,
+        dateTime: new Date().toISOString(),
+        description: paymentData.description || `Order ${paymentData.order_id}`,
+        orderID: paymentData.order_id,
+        amount: paymentData.amount,
+        currency: paymentData.currency || 'RON',
+        billing: {
+          email: paymentData.customer_email,
+          phone: paymentData.customer_phone || '',
+          firstName: paymentData.customer_name.split(' ')[0] || '',
+          lastName: paymentData.customer_name.split(' ').slice(1).join(' ') || '',
+          city: '',
+          country: 642,
+          countryName: 'Romania',
+          state: '',
+          postalCode: '',
+          details: ''
+        }
       }
     };
 
