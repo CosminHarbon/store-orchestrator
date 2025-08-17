@@ -134,10 +134,7 @@ Deno.serve(async (req) => {
     }
 
     // Check if Netopia is configured for payment endpoints
-    const isNetopiaConfigured = profile.netpopia_api_key && 
-                                profile.netpopia_public_key && 
-                                profile.netpopia_signature && 
-                                profile.netpopia_pos_id
+    const isNetopiaConfigured = profile.netpopia_api_key
 
     const userId = profile.user_id
 
@@ -460,7 +457,7 @@ Deno.serve(async (req) => {
           if (!isNetopiaConfigured) {
             return new Response(
               JSON.stringify({ 
-                error: 'Netopia payment gateway not configured. Please configure API key, public key, signature, and POS ID in your store settings.' 
+                error: 'Netopia payment gateway not configured. Please configure API key in your store settings.' 
               }),
               { 
                 status: 400, 
@@ -523,7 +520,7 @@ Deno.serve(async (req) => {
           if (!isNetopiaConfigured) {
             return new Response(
               JSON.stringify({ 
-                error: 'Netopia payment gateway not configured. Please configure API key, public key, signature, and POS ID in your store settings.' 
+                error: 'Netopia payment gateway not configured. Please configure API key in your store settings.' 
               }),
               { 
                 status: 400, 
