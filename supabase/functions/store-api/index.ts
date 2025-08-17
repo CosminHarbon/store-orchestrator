@@ -114,9 +114,6 @@ Deno.serve(async (req) => {
         user_id, 
         store_name,
         netpopia_api_key,
-        netpopia_public_key,
-        netpopia_signature,
-        netpopia_pos_id,
         netpopia_sandbox
       `)
       .eq('store_api_key', apiKey)
