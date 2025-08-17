@@ -46,6 +46,7 @@ const OrderManagement = () => {
     customer_phone: '',
     customer_address: ''
   });
+  const [refreshingPayments, setRefreshingPayments] = useState<Set<string>>(new Set());
   
   const queryClient = useQueryClient();
 
@@ -163,6 +164,60 @@ const OrderManagement = () => {
     }
   });
 
+  const refreshPaymentMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      // Get payment transactions for this order
+      const { data: transactions, error } = await supabase
+        .from('payment_transactions')
+        .select('*')
+        .eq('order_id', orderId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      if (error || !transactions || transactions.length === 0) {
+        throw new Error('No payment transaction found for this order');
+      }
+      
+      const transaction = transactions[0];
+      if (!transaction.netopia_payment_id) {
+        throw new Error('No payment ID found for this transaction');
+      }
+
+      // Call the payment status function
+      const { data, error: statusError } = await supabase.functions.invoke('netopia-payment', {
+        body: {
+          action: 'payment_status',
+          payment_id: transaction.netopia_payment_id,
+          user_id: transaction.user_id
+        }
+      });
+
+      if (statusError) throw statusError;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      toast.success("Payment status refreshed");
+    },
+    onError: (error) => {
+      console.error('Error refreshing payment status:', error);
+      toast.error("Failed to refresh payment status");
+    }
+  });
+
+  const handleRefreshPayment = async (orderId: string) => {
+    setRefreshingPayments(prev => new Set(prev).add(orderId));
+    try {
+      await refreshPaymentMutation.mutateAsync(orderId);
+    } finally {
+      setRefreshingPayments(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(orderId);
+        return newSet;
+      });
+    }
+  };
+
   const handleViewOrder = async (order: Order) => {
     setSelectedOrder(order);
     
@@ -246,10 +301,12 @@ const OrderManagement = () => {
       </CardHeader>
       <CardContent>
         <ResponsiveOrderTable
-          orders={filteredOrders}
-          onViewOrder={handleViewOrder}
-          generateAndSendInvoice={generateAndSendInvoice}
-          onEditOrder={handleEditOrder}
+        orders={filteredOrders}
+        onViewOrder={handleViewOrder}
+        generateAndSendInvoice={generateAndSendInvoice}
+        onEditOrder={handleEditOrder}
+        onRefreshPayment={handleRefreshPayment}
+        refreshingPayments={refreshingPayments}
         />
         {filteredOrders.length === 0 && !searchQuery && (
           <div className="text-center py-8 text-muted-foreground">

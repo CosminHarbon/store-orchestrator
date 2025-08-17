@@ -220,8 +220,8 @@ async function createPayment(supabase: any, userId: string, paymentData: Netopia
         payment_status: 'pending',
         amount: paymentData.amount,
         currency: paymentData.currency || 'RON',
-        netopia_payment_id: responseData.paymentId || responseData.payment?.paymentId,
-        netopia_order_id: responseData.orderId || responseData.payment?.orderId,
+        netopia_payment_id: responseData.payment?.ntpID || responseData.ntpID,
+        netopia_order_id: responseData.order?.orderID || paymentData.order_id,
         provider_response: responseData
       })
       .select()
@@ -361,16 +361,44 @@ async function processWebhook(supabase: any, webhookData: any) {
   try {
     console.log('Processing Netopia webhook:', JSON.stringify(webhookData, null, 2));
 
+    // Try different possible fields for payment ID
+    const paymentId = webhookData.paymentId || 
+                     webhookData.payment_id || 
+                     webhookData.ntpID || 
+                     webhookData.payment?.ntpID ||
+                     (webhookData.payment && webhookData.payment.ntpID);
+    
+    console.log('Looking for payment ID:', paymentId);
+
     // Find transaction by Netopia payment ID
     const { data: transaction, error } = await supabase
       .from('payment_transactions')
       .select('*')
-      .eq('netopia_payment_id', webhookData.paymentId || webhookData.payment_id)
+      .eq('netopia_payment_id', paymentId)
       .single();
 
     if (error || !transaction) {
-      console.log('Transaction not found for webhook:', webhookData.paymentId || webhookData.payment_id);
-      return new Response('OK', { status: 200 });
+      console.log('Transaction not found for webhook. Payment ID:', paymentId);
+      console.log('Database error:', error);
+      // Try to find by order ID if payment ID fails
+      const orderId = webhookData.orderID || webhookData.order_id || webhookData.orderId;
+      if (orderId) {
+        console.log('Trying to find by order ID:', orderId);
+        const { data: orderTransaction, error: orderError } = await supabase
+          .from('payment_transactions')
+          .select('*')
+          .eq('netopia_order_id', orderId)
+          .single();
+        
+        if (orderError || !orderTransaction) {
+          console.log('Transaction also not found by order ID:', orderId);
+          return new Response('OK', { status: 200 });
+        }
+        // Use the transaction found by order ID
+        transaction = orderTransaction;
+      } else {
+        return new Response('OK', { status: 200 });
+      }
     }
 
     // Update transaction status based on webhook
