@@ -68,3 +68,6 @@ verify_jwt = false
 
 [functions.oblio-invoice]
 verify_jwt = true
+
+[functions.netopia-payment]
+verify_jwt = false
