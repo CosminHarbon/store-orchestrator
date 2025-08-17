@@ -25,9 +25,14 @@ interface ResponsiveOrderTableProps {
   onEditOrder?: (order: Order) => void;
   onRefreshPayment: (orderId: string) => void;
   refreshingPayments: Set<string>;
+  onManualComplete: (orderId: string) => void;
 }
 
-export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoice, onEditOrder, onRefreshPayment, refreshingPayments }: ResponsiveOrderTableProps) {
+export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoice, onEditOrder, onRefreshPayment, refreshingPayments, onManualComplete }: ResponsiveOrderTableProps) {
+  
+  const handleManualComplete = (orderId: string) => {
+    onManualComplete(orderId);
+  };
   const getStatusBadge = (status: string, type: 'payment' | 'shipping') => {
     const baseClasses = "text-xs";
     
@@ -150,16 +155,26 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                        <Receipt className="h-4 w-4" />
                      </Button>
                      {order.payment_status === 'pending' && (
-                       <Button
-                         size="sm"
-                         variant="ghost"
-                         onClick={() => onRefreshPayment(order.id)}
-                         disabled={refreshingPayments.has(order.id)}
-                         title="Check Payment Status"
-                       >
-                         {refreshingPayments.has(order.id) ? '...' : '↻'}
-                       </Button>
-                     )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onRefreshPayment(order.id)}
+                          disabled={refreshingPayments.has(order.id)}
+                          title="Check Payment Status"
+                        >
+                          {refreshingPayments.has(order.id) ? '...' : '↻'}
+                        </Button>
+                      )}
+                      {order.payment_status === 'pending' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleManualComplete(order.id)}
+                          title="Mark as Paid (if payment was successful)"
+                        >
+                          Mark Paid
+                        </Button>
+                      )}
                     {order.invoice_link && (
                       <Button
                         size="sm"
@@ -274,6 +289,16 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                          className="w-full"
                        >
                          {refreshingPayments.has(order.id) ? 'Checking...' : 'Check Payment'}
+                       </Button>
+                     )}
+                     {order.payment_status === 'pending' && (
+                       <Button
+                         size="sm"
+                         variant="outline"
+                         onClick={() => handleManualComplete(order.id)}
+                         className="w-full"
+                       >
+                         Mark as Paid
                        </Button>
                      )}
                   </div>

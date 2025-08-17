@@ -74,6 +74,8 @@ serve(async (req) => {
         return await getPaymentStatus(supabase, userId, payload.payment_id);
       } else if (action === 'process_webhook') {
         return await processWebhook(supabase, payload);
+      } else if (action === 'manual_update') {
+        return await manualUpdatePayment(supabase, userId, payload.order_id);
       }
     }
 
@@ -359,67 +361,97 @@ async function processWebhook(supabase: any, webhookData: any) {
   try {
     console.log('Processing Netopia webhook:', JSON.stringify(webhookData, null, 2));
 
-    // Try different possible fields for payment ID
+    // Try different possible fields for payment ID from Netopia webhook
     const paymentId = webhookData.paymentId || 
                      webhookData.payment_id || 
                      webhookData.ntpID || 
                      webhookData.payment?.ntpID ||
                      (webhookData.payment && webhookData.payment.ntpID);
     
-    console.log('Looking for payment ID:', paymentId);
+    const orderId = webhookData.orderID || 
+                   webhookData.order_id || 
+                   webhookData.orderId ||
+                   webhookData.order?.orderID;
+    
+    console.log('Webhook data - Payment ID:', paymentId, 'Order ID:', orderId);
 
-    // Find transaction by Netopia payment ID
-    const { data: transaction, error } = await supabase
-      .from('payment_transactions')
-      .select('*')
-      .eq('netopia_payment_id', paymentId)
-      .single();
+    let transaction = null;
 
-    if (error || !transaction) {
-      console.log('Transaction not found for webhook. Payment ID:', paymentId);
-      console.log('Database error:', error);
-      // Try to find by order ID if payment ID fails
-      const orderId = webhookData.orderID || webhookData.order_id || webhookData.orderId;
-      if (orderId) {
-        console.log('Trying to find by order ID:', orderId);
-        const { data: orderTransaction, error: orderError } = await supabase
-          .from('payment_transactions')
-          .select('*')
-          .eq('netopia_order_id', orderId)
-          .single();
-        
-        if (orderError || !orderTransaction) {
-          console.log('Transaction also not found by order ID:', orderId);
-          return new Response('OK', { status: 200 });
-        }
-        // Use the transaction found by order ID
-        transaction = orderTransaction;
-      } else {
-        return new Response('OK', { status: 200 });
+    // Try to find transaction by payment ID first
+    if (paymentId) {
+      const { data: txByPaymentId, error: err1 } = await supabase
+        .from('payment_transactions')
+        .select('*')
+        .eq('netopia_payment_id', paymentId)
+        .single();
+      
+      if (!err1 && txByPaymentId) {
+        transaction = txByPaymentId;
+        console.log('Found transaction by payment ID:', transaction.id);
       }
     }
 
-    // Update transaction status based on webhook
+    // If not found by payment ID, try by order ID
+    if (!transaction && orderId) {
+      const { data: txByOrderId, error: err2 } = await supabase
+        .from('payment_transactions')
+        .select('*')
+        .eq('netopia_order_id', orderId)
+        .single();
+      
+      if (!err2 && txByOrderId) {
+        transaction = txByOrderId;
+        console.log('Found transaction by order ID:', transaction.id);
+      }
+    }
+
+    if (!transaction) {
+      console.log('Transaction not found for webhook data:', { paymentId, orderId });
+      console.log('Available webhook fields:', Object.keys(webhookData));
+      return new Response('Transaction not found but OK', { status: 200 });
+    }
+
+    // Determine new status from webhook - check various possible status fields
     let newStatus = 'pending';
-    if (webhookData.status) {
-      switch (webhookData.status.toLowerCase()) {
+    const webhookStatus = webhookData.status || 
+                         webhookData.payment?.status || 
+                         webhookData.orderStatus ||
+                         webhookData.paymentStatus;
+                         
+    console.log('Webhook status received:', webhookStatus);
+    
+    if (webhookStatus) {
+      switch (String(webhookStatus).toLowerCase()) {
         case 'confirmed':
         case 'completed':
+        case 'success':
+        case 'paid':
+        case '1': // Netopia often uses numeric status
           newStatus = 'completed';
           break;
         case 'cancelled':
         case 'canceled':
+        case 'cancel':
+        case '0':
           newStatus = 'cancelled';
           break;
         case 'failed':
+        case 'error':
+        case 'rejected':
+        case '-1':
           newStatus = 'failed';
           break;
         case 'processing':
+        case 'pending':
+        case '2':
           newStatus = 'processing';
           break;
       }
     }
 
+    console.log(`Updating transaction ${transaction.id} from ${transaction.payment_status} to ${newStatus}`);
+
+    // Update transaction status
     await supabase
       .from('payment_transactions')
       .update({ 
@@ -431,13 +463,16 @@ async function processWebhook(supabase: any, webhookData: any) {
 
     // Update order status if payment completed
     if (newStatus === 'completed') {
+      console.log(`Updating order ${transaction.order_id} payment status to completed`);
       await supabase
         .from('orders')
         .update({ payment_status: 'completed' })
         .eq('id', transaction.order_id);
+        
+      console.log('Order payment status updated successfully');
     }
 
-    console.log(`Updated transaction ${transaction.id} to status: ${newStatus}`);
+    console.log(`Webhook processed successfully. Transaction ${transaction.id} status: ${newStatus}`);
 
     return new Response('OK', { 
       status: 200,
@@ -450,5 +485,63 @@ async function processWebhook(supabase: any, webhookData: any) {
       status: 500,
       headers: corsHeaders 
     });
+  }
+}
+
+async function manualUpdatePayment(supabase: any, userId: string, orderId: string) {
+  try {
+    console.log('Manual update payment status for order:', orderId, 'user:', userId);
+    
+    // Find the transaction for this order
+    const { data: transaction, error } = await supabase
+      .from('payment_transactions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('order_id', orderId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    
+    if (error || !transaction) {
+      return new Response(
+        JSON.stringify({ error: 'Transaction not found for this order' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    console.log('Found transaction:', transaction.id, 'current status:', transaction.payment_status);
+    
+    // Update transaction to completed
+    await supabase
+      .from('payment_transactions')
+      .update({ 
+        payment_status: 'completed',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', transaction.id);
+    
+    // Update order payment status
+    await supabase
+      .from('orders')
+      .update({ payment_status: 'completed' })
+      .eq('id', orderId);
+    
+    console.log('Manual update completed for order:', orderId);
+    
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: 'Payment status updated to completed',
+        transaction_id: transaction.id 
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+    
+  } catch (error) {
+    console.error('Error in manual update:', error);
+    return new Response(
+      JSON.stringify({ error: 'Internal server error', details: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 }

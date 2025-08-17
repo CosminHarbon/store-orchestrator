@@ -129,7 +129,6 @@ const OrderManagement = () => {
     }
   };
 
-
   const { data: orders, isLoading, refetch } = useQuery({
     queryKey: ['orders'],
     queryFn: async () => {
@@ -218,6 +217,25 @@ const OrderManagement = () => {
     }
   };
 
+  const handleManualComplete = async (orderId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('netopia-payment', {
+        body: {
+          action: 'manual_update',
+          order_id: orderId
+        }
+      });
+
+      if (error) throw error;
+      
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      toast.success("Payment status updated to completed");
+    } catch (error) {
+      console.error('Error marking payment as completed:', error);
+      toast.error("Failed to update payment status");
+    }
+  };
+
   const handleViewOrder = async (order: Order) => {
     setSelectedOrder(order);
     
@@ -301,12 +319,13 @@ const OrderManagement = () => {
       </CardHeader>
       <CardContent>
         <ResponsiveOrderTable
-        orders={filteredOrders}
-        onViewOrder={handleViewOrder}
-        generateAndSendInvoice={generateAndSendInvoice}
-        onEditOrder={handleEditOrder}
-        onRefreshPayment={handleRefreshPayment}
-        refreshingPayments={refreshingPayments}
+          orders={filteredOrders}
+          onViewOrder={handleViewOrder}
+          generateAndSendInvoice={generateAndSendInvoice}
+          onEditOrder={handleEditOrder}
+          onRefreshPayment={handleRefreshPayment}
+          refreshingPayments={refreshingPayments}
+          onManualComplete={handleManualComplete}
         />
         {filteredOrders.length === 0 && !searchQuery && (
           <div className="text-center py-8 text-muted-foreground">
