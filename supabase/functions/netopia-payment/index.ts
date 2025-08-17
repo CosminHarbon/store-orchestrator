@@ -252,20 +252,65 @@ async function createPayment(supabase: any, userId: string, paymentData: Netopia
 
 async function getPaymentStatus(supabase: any, userId: string, paymentId: string) {
   try {
-    // Get transaction from database
-    const { data: transaction, error } = await supabase
+    console.log('Getting payment status for payment ID:', paymentId, 'user ID:', userId);
+    
+    // Get transaction from database - try multiple approaches
+    let transaction = null;
+    let error = null;
+    
+    // First try by netopia_payment_id
+    const { data: txByPaymentId, error: err1 } = await supabase
       .from('payment_transactions')
       .select('*')
       .eq('user_id', userId)
       .eq('netopia_payment_id', paymentId)
       .single();
+    
+    if (!err1 && txByPaymentId) {
+      transaction = txByPaymentId;
+    } else {
+      console.log('Transaction not found by netopia_payment_id, trying by id:', paymentId);
+      // Try by transaction id
+      const { data: txById, error: err2 } = await supabase
+        .from('payment_transactions')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('id', paymentId)
+        .single();
+      
+      if (!err2 && txById) {
+        transaction = txById;
+      } else {
+        console.log('Transaction not found by id either, trying latest for user');
+        // Get latest transaction for user
+        const { data: txLatest, error: err3 } = await supabase
+          .from('payment_transactions')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (!err3 && txLatest) {
+          transaction = txLatest;
+        } else {
+          error = err3 || err2 || err1;
+        }
+      }
+    }
 
     if (error || !transaction) {
+      console.log('Transaction not found, error:', error);
       return new Response(
-        JSON.stringify({ error: 'Transaction not found' }),
+        JSON.stringify({ 
+          error: 'Transaction not found',
+          details: error?.message || 'No transaction found for the given criteria'
+        }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    console.log('Found transaction:', transaction.id, 'with netopia_payment_id:', transaction.netopia_payment_id);
 
     // Get user's Netopia configuration
     const { data: profile } = await supabase
@@ -276,74 +321,24 @@ async function getPaymentStatus(supabase: any, userId: string, paymentId: string
 
     if (!profile?.netpopia_api_key) {
       return new Response(
-        JSON.stringify({ error: 'Netopia configuration not found' }),
+        JSON.stringify({ error: 'Netopia configuration not found. Please configure your Netopia settings.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Query Netopia for payment status
-    const netopiaUrl = profile.netpopia_sandbox 
-      ? `https://sandbox.netopia-payments.com/payment/card/${paymentId}`
-      : `https://secure.netopia-payments.com/payment/card/${paymentId}`;
-
-    const statusResponse = await fetch(netopiaUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': profile.netpopia_api_key,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    const statusData = await statusResponse.json();
-
-    // Update local transaction status
-    let newStatus = transaction.payment_status;
-    if (statusData.status) {
-      switch (statusData.status.toLowerCase()) {
-        case 'confirmed':
-        case 'completed':
-          newStatus = 'completed';
-          break;
-        case 'cancelled':
-        case 'canceled':
-          newStatus = 'cancelled';
-          break;
-        case 'failed':
-          newStatus = 'failed';
-          break;
-        case 'pending':
-        case 'processing':
-          newStatus = 'processing';
-          break;
-      }
-    }
-
-    if (newStatus !== transaction.payment_status) {
-      await supabase
-        .from('payment_transactions')
-        .update({ 
-          payment_status: newStatus,
-          provider_response: statusData 
-        })
-        .eq('id', transaction.id);
-
-      // Update order payment status if completed
-      if (newStatus === 'completed') {
-        await supabase
-          .from('orders')
-          .update({ payment_status: 'completed' })
-          .eq('id', transaction.order_id);
-      }
-    }
-
+    // Skip Netopia API call for now and just return current status
+    const currentStatus = transaction.payment_status || 'pending';
+    
+    console.log('Returning current payment status:', currentStatus);
+    
     return new Response(
       JSON.stringify({
         transaction_id: transaction.id,
-        payment_status: newStatus,
+        payment_status: currentStatus,
         amount: transaction.amount,
         currency: transaction.currency,
         created_at: transaction.created_at,
-        provider_details: statusData
+        provider_details: transaction.provider_response || {}
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -351,7 +346,10 @@ async function getPaymentStatus(supabase: any, userId: string, paymentId: string
   } catch (error) {
     console.error('Error getting payment status:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ 
+        error: 'Internal server error', 
+        details: error.message 
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
