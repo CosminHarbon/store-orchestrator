@@ -450,6 +450,7 @@ Deno.serve(async (req) => {
             const { data: netopiaResponse, error: netopiaError } = await supabase.functions.invoke('netopia-payment', {
               body: {
                 action: 'create_payment',
+                user_id: userId, // Pass user_id explicitly for API key authentication
                 ...paymentData
               },
               headers: {
@@ -506,6 +507,7 @@ Deno.serve(async (req) => {
             const { data: statusResponse, error: statusError } = await supabase.functions.invoke('netopia-payment', {
               body: {
                 action: 'payment_status',
+                user_id: userId, // Pass user_id explicitly for API key authentication
                 payment_id: paymentId
               },
               headers: {

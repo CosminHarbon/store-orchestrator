@@ -41,7 +41,7 @@ serve(async (req) => {
     if (req.method === 'POST') {
       const { action, ...payload } = await req.json();
       
-      // Get user from auth header
+      // Get user from auth header - handle both user tokens and API keys
       const authHeader = req.headers.get('Authorization');
       if (!authHeader) {
         return new Response(
@@ -51,19 +51,29 @@ serve(async (req) => {
       }
 
       const token = authHeader.replace('Bearer ', '');
+      let userId: string;
+      
+      // First try as user token
       const { data: { user }, error: authError } = await supabase.auth.getUser(token);
       
       if (authError || !user) {
-        return new Response(
-          JSON.stringify({ error: 'Invalid authentication' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        // If user auth fails, check if it's an API key and get user_id from payload
+        if (payload.user_id) {
+          userId = payload.user_id;
+        } else {
+          return new Response(
+            JSON.stringify({ error: 'Invalid authentication or missing user_id' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } else {
+        userId = user.id;
       }
 
       if (action === 'create_payment') {
-        return await createPayment(supabase, user.id, payload);
+        return await createPayment(supabase, userId, payload);
       } else if (action === 'payment_status') {
-        return await getPaymentStatus(supabase, user.id, payload.payment_id);
+        return await getPaymentStatus(supabase, userId, payload.payment_id);
       } else if (action === 'process_webhook') {
         return await processWebhook(supabase, payload);
       }
