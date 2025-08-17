@@ -32,8 +32,6 @@ interface Profile {
   netpopia_name?: string;
   netpopia_email?: string;
   netpopia_signature?: string;
-  netpopia_pos_id?: string;
-  netpopia_public_key?: string;
   netpopia_sandbox?: boolean;
 }
 
@@ -48,7 +46,7 @@ const StoreSettings = () => {
   const [providerConfigs, setProviderConfigs] = useState({
     oblio: { api_key: '', name: '', email: '', series_name: '', first_number: '' },
     sameday: { api_key: '', name: '', email: '' },
-    netpopia: { api_key: '', name: '', email: '', signature: '', pos_id: '', public_key: '', sandbox: true }
+    netpopia: { api_key: '', name: '', email: '', signature: '', sandbox: true }
   });
   const [testOrderData, setTestOrderData] = useState({
     name: 'John Doe',
@@ -98,8 +96,6 @@ const StoreSettings = () => {
           name: profile.netpopia_name || '',
           email: profile.netpopia_email || '',
           signature: profile.netpopia_signature || '',
-          pos_id: profile.netpopia_pos_id || '',
-          public_key: profile.netpopia_public_key || '',
           sandbox: profile.netpopia_sandbox ?? true
         }
       });
@@ -160,13 +156,11 @@ const StoreSettings = () => {
       netpopia_name: providerConfigs.netpopia.name,
       netpopia_email: providerConfigs.netpopia.email,
       netpopia_signature: providerConfigs.netpopia.signature,
-      netpopia_pos_id: providerConfigs.netpopia.pos_id,
-      netpopia_public_key: providerConfigs.netpopia.public_key,
       netpopia_sandbox: providerConfigs.netpopia.sandbox
     });
   };
 
-  const updateProviderConfig = (provider: 'oblio' | 'sameday' | 'netpopia', field: 'api_key' | 'name' | 'email' | 'series_name' | 'first_number' | 'signature' | 'pos_id' | 'public_key' | 'sandbox', value: string | boolean) => {
+  const updateProviderConfig = (provider: 'oblio' | 'sameday' | 'netpopia', field: 'api_key' | 'name' | 'email' | 'series_name' | 'first_number' | 'signature' | 'sandbox', value: string | boolean) => {
     setProviderConfigs(prev => ({
       ...prev,
       [provider]: {
@@ -848,42 +842,18 @@ class StoreAPI {
                              placeholder="Enter your email address"
                            />
                          </div>
-                         <div className="space-y-2">
-                           <Label htmlFor="netpopia-signature">POS Signature</Label>
-                           <Input
-                             id="netpopia-signature"
-                             type="password"
-                             value={providerConfigs.netpopia.signature}
-                             onChange={(e) => updateProviderConfig('netpopia', 'signature', e.target.value)}
-                             placeholder="Enter your POS signature"
-                           />
-                           <p className="text-xs text-muted-foreground">
-                             Found in Netpopia admin panel under POS settings
-                           </p>
-                         </div>
-                         <div className="space-y-2">
-                           <Label htmlFor="netpopia-pos-id">POS ID</Label>
-                           <Input
-                             id="netpopia-pos-id"
-                             value={providerConfigs.netpopia.pos_id}
-                             onChange={(e) => updateProviderConfig('netpopia', 'pos_id', e.target.value)}
-                             placeholder="Enter your POS ID"
-                           />
-                           <p className="text-xs text-muted-foreground">
-                             Your Netpopia Point of Sale identifier
-                           </p>
-                          </div>
                           <div className="space-y-2">
-                            <Label htmlFor="netpopia-public-key">Public Key</Label>
-                            <Textarea
-                              id="netpopia-public-key"
-                              value={providerConfigs.netpopia.public_key}
-                              onChange={(e) => updateProviderConfig('netpopia', 'public_key', e.target.value)}
-                              placeholder="Enter your Netpopia public key certificate"
-                              rows={4}
+                            <Label htmlFor="netpopia-signature">POS Signature *</Label>
+                            <Input
+                              id="netpopia-signature"
+                              type="password"
+                              value={providerConfigs.netpopia.signature}
+                              onChange={(e) => updateProviderConfig('netpopia', 'signature', e.target.value)}
+                              placeholder="Enter your POS signature"
+                              required
                             />
                             <p className="text-xs text-muted-foreground">
-                              The public key certificate from Netpopia for encryption
+                              Required for payment processing. Found in your Netpopia admin panel.
                             </p>
                           </div>
                           <div className="space-y-2">
