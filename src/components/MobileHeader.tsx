@@ -28,45 +28,57 @@ export function MobileHeader({ userEmail, storeName }: MobileHeaderProps) {
   const initials = userEmail ? userEmail.slice(0, 2).toUpperCase() : "?";
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 safe-area-top">
-      <div className="container flex h-14 items-center justify-between px-4 safe-area-left safe-area-right">
-        <div className="flex items-center gap-2">
-          <SidebarTrigger className="md:hidden" />
-          <div className="flex items-center gap-2">
-            <Store className="h-6 w-6 text-primary" />
+    <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-xl border-b border-border/50 safe-area-top">
+      <div className="flex h-16 items-center justify-between px-4 safe-area-left safe-area-right">
+        <div className="flex items-center gap-3">
+          <SidebarTrigger className="md:hidden p-2 hover:bg-muted/50 rounded-lg transition-colors" />
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-primary rounded-xl">
+              <Store className="h-5 w-5 text-white" />
+            </div>
             <div className="hidden sm:block">
-              <h1 className="text-lg font-semibold">{storeName || "Store Admin"}</h1>
+              <h1 className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">
+                {storeName || "Store Admin"}
+              </h1>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-primary/10 text-primary">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56 bg-background border" align="end">
-              <div className="flex items-center justify-start gap-2 p-2">
-                <div className="flex flex-col space-y-1 leading-none">
-                  {userEmail && (
-                    <p className="text-sm text-muted-foreground">{userEmail}</p>
-                  )}
-                </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-muted/50">
+              <Avatar className="h-10 w-10 ring-2 ring-primary/20">
+                <AvatarFallback className="bg-gradient-primary text-white font-semibold text-sm">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-64 bg-background/95 backdrop-blur-xl border border-border/50 shadow-elegant" align="end">
+            <div className="flex items-center gap-3 p-4 border-b border-border/50">
+              <Avatar className="h-12 w-12 ring-2 ring-primary/20">
+                <AvatarFallback className="bg-gradient-primary text-white font-semibold">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col">
+                <p className="text-sm font-medium">Store Manager</p>
+                {userEmail && (
+                  <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
+                )}
               </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut} className="text-red-600 focus:text-red-600">
-                <LogOut className="mr-2 h-4 w-4" />
+            </div>
+            <div className="p-2">
+              <DropdownMenuItem 
+                onClick={handleSignOut} 
+                className="text-destructive hover:text-destructive hover:bg-destructive/5 rounded-lg cursor-pointer"
+              >
+                <LogOut className="mr-3 h-4 w-4" />
                 <span>Sign out</span>
               </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );

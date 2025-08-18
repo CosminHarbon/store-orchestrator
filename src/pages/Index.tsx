@@ -17,6 +17,7 @@ import PaymentStatistics from '@/components/PaymentStatistics';
 import CollectionsManagement from '@/components/CollectionsManagement';
 import { Package, ShoppingCart, DollarSign, Clock, TrendingUp, Users, MessageCircle } from 'lucide-react';
 import AIChat from '@/components/AIChat';
+import { BottomNavigation } from '@/components/BottomNavigation';
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -71,108 +72,157 @@ const Index = () => {
   }
 
   const renderDashboard = () => (
-    <div className="space-y-6 p-4 md:p-6 safe-area-bottom">
-      <div className="space-y-2">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-          Welcome back to {stats?.storeName}
-        </h1>
-        <p className="text-muted-foreground">
-          Here's what's happening with your store today.
-        </p>
+    <div className="space-y-4 p-3 md:p-6 pb-20 safe-area-bottom">
+      {/* Hero Value Card */}
+      <div className="bg-gradient-primary rounded-2xl p-6 md:p-8 text-white shadow-glow relative overflow-hidden">
+        <div className="relative z-10">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <p className="text-white/80 text-sm mb-1">Your Store Value</p>
+              <h1 className="text-3xl md:text-4xl font-bold">
+                ${stats?.totalRevenue?.toFixed(2) || '0.00'}
+              </h1>
+              <p className="text-white/80 text-sm mt-1">
+                ▲ ${((stats?.totalRevenue || 0) * 0.15).toFixed(2)} this week
+              </p>
+            </div>
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              className="bg-white/20 border-white/30 text-white hover:bg-white/30 rounded-full px-4"
+              onClick={() => setActiveTab('payments')}
+            >
+              + View Analytics
+            </Button>
+          </div>
+        </div>
+        
+        {/* Decorative gradient overlay */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8"></div>
+        <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-8 -translate-x-8"></div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Products</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalProducts || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats?.lowStockProducts || 0} low stock
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalOrders || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats?.pendingOrders || 0} pending
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${stats?.totalRevenue?.toFixed(2) || '0.00'}</div>
-            <p className="text-xs text-muted-foreground">
-              All time revenue
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.pendingOrders || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              Require attention
-            </p>
-          </CardContent>
-        </Card>
+      {/* Quick Stats Grid */}
+      <div className="grid grid-cols-2 gap-3 md:gap-4">
+        <div className="bg-gradient-card rounded-xl p-4 shadow-card border border-border/50">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-blue-50 rounded-lg">
+              <Package className="h-4 w-4 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Products</p>
+              <p className="text-lg font-semibold">{stats?.totalProducts || 0}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gradient-card rounded-xl p-4 shadow-card border border-border/50">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-green-50 rounded-lg">
+              <ShoppingCart className="h-4 w-4 text-green-600" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Orders</p>
+              <p className="text-lg font-semibold">{stats?.totalOrders || 0}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gradient-card rounded-xl p-4 shadow-card border border-border/50">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-orange-50 rounded-lg">
+              <Clock className="h-4 w-4 text-orange-600" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Pending</p>
+              <p className="text-lg font-semibold">{stats?.pendingOrders || 0}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gradient-card rounded-xl p-4 shadow-card border border-border/50">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-red-50 rounded-lg">
+              <TrendingUp className="h-4 w-4 text-red-600" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Low Stock</p>
+              <p className="text-lg font-semibold">{stats?.lowStockProducts || 0}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Get Started Section */}
+      <div className="bg-gradient-card rounded-xl p-4 shadow-card border border-border/50">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="font-semibold text-lg">Get set up</h3>
+            <p className="text-sm text-muted-foreground">3 of 6 complete</p>
+          </div>
+          <div className="w-12 h-12 rounded-full border-4 border-primary relative">
+            <div className="absolute inset-1 rounded-full bg-primary/20"></div>
+          </div>
+        </div>
       </div>
 
       {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>
-            Common tasks to manage your store
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Button 
-              variant="outline" 
-              className="h-20 flex flex-col gap-2 hover:bg-muted/50"
-              onClick={() => setActiveTab('products')}
-            >
-              <Package className="h-6 w-6" />
-              <span className="text-sm font-medium">Manage Products</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-20 flex flex-col gap-2 hover:bg-muted/50"
-              onClick={() => setActiveTab('orders')}
-            >
-              <ShoppingCart className="h-6 w-6" />
-              <span className="text-sm font-medium">View Orders</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-20 flex flex-col gap-2 hover:bg-muted/50"
-              onClick={() => setActiveTab('settings')}
-            >
-              <TrendingUp className="h-6 w-6" />
-              <span className="text-sm font-medium">Store Settings</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-3">
+        <h3 className="font-semibold text-lg px-1">Quick Actions</h3>
+        
+        <div className="space-y-3">
+          <Button 
+            variant="outline" 
+            className="w-full justify-start h-14 bg-gradient-card shadow-card border border-border/50 rounded-xl hover:shadow-elegant transition-all duration-200"
+            onClick={() => setActiveTab('products')}
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Package className="h-5 w-5 text-primary" />
+              </div>
+              <div className="text-left">
+                <p className="font-medium">Manage Products</p>
+                <p className="text-xs text-muted-foreground">Add, edit, and organize your inventory</p>
+              </div>
+            </div>
+          </Button>
+
+          <Button 
+            variant="outline" 
+            className="w-full justify-start h-14 bg-gradient-card shadow-card border border-border/50 rounded-xl hover:shadow-elegant transition-all duration-200"
+            onClick={() => setActiveTab('orders')}
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-2 bg-green-50 rounded-lg">
+                <ShoppingCart className="h-5 w-5 text-green-600" />
+              </div>
+              <div className="text-left">
+                <p className="font-medium">View Orders</p>
+                <p className="text-xs text-muted-foreground">Process and track customer orders</p>
+              </div>
+            </div>
+          </Button>
+
+          <Button 
+            variant="outline" 
+            className="w-full justify-start h-14 bg-gradient-card shadow-card border border-border/50 rounded-xl hover:shadow-elegant transition-all duration-200"
+            onClick={() => setActiveTab('customers')}
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-2 bg-blue-50 rounded-lg">
+                <Users className="h-5 w-5 text-blue-600" />
+              </div>
+              <div className="text-left">
+                <p className="font-medium">Customers</p>
+                <p className="text-xs text-muted-foreground">Manage customer relationships</p>
+              </div>
+            </div>
+          </Button>
+        </div>
+      </div>
+
+      {/* Bottom Navigation Spacer - ensures content is not hidden behind nav */}
+      <div className="h-20"></div>
     </div>
   );
 
@@ -182,37 +232,37 @@ const Index = () => {
         return renderDashboard();
       case 'products':
         return (
-          <div className="p-4 md:p-6">
+          <div className="p-3 md:p-6 pb-20 md:pb-6">
             <ProductManagement />
           </div>
         );
       case 'stock':
         return (
-          <div className="p-4 md:p-6">
+          <div className="p-3 md:p-6 pb-20 md:pb-6">
             <StockManagement />
           </div>
         );
       case 'orders':
         return (
-          <div className="p-4 md:p-6">
+          <div className="p-3 md:p-6 pb-20 md:pb-6">
             <OrderManagement />
           </div>
         );
       case 'customers':
         return (
-          <div className="p-4 md:p-6">
+          <div className="p-3 md:p-6 pb-20 md:pb-6">
             <CustomerManagement />
           </div>
         );
       case 'payments':
         return (
-          <div className="p-4 md:p-6">
+          <div className="p-3 md:p-6 pb-20 md:pb-6">
             <PaymentStatistics />
           </div>
         );
       case 'settings':
         return (
-          <div className="p-4 md:p-6">
+          <div className="p-3 md:p-6 pb-20 md:pb-6">
             <StoreSettings />
           </div>
         );
@@ -232,18 +282,21 @@ const Index = () => {
             storeName={stats?.storeName}
           />
           
-          <main className="flex-1 overflow-auto">
+          <main className="flex-1 overflow-auto hide-scrollbar">
             {renderContent()}
           </main>
         </div>
         
+        {/* Bottom Navigation */}
+        <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+        
         {/* AI Chat Button */}
         <Button
           onClick={() => setIsChatOpen(true)}
-          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-40 safe-area-bottom safe-area-right"
+          className="fixed bottom-20 right-4 h-14 w-14 rounded-full bg-gradient-primary shadow-glow z-40 safe-area-right hover:shadow-elegant transition-all duration-200 border-0 md:bottom-6 md:right-6 md:h-16 md:w-16"
           size="sm"
         >
-          <MessageCircle className="h-6 w-6" />
+          <MessageCircle className="h-6 w-6 text-white md:h-7 md:w-7" />
         </Button>
         
         {/* AI Chat Modal */}
