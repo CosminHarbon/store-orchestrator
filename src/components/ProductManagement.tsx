@@ -14,6 +14,7 @@ import ProductImageUpload from './ProductImageUpload';
 import { ResponsiveProductTable } from './ResponsiveProductTable';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CollectionsManagement from './CollectionsManagement';
+import { ProductDetailModal } from './ProductDetailModal';
 
 interface Product {
   id: string;
@@ -39,6 +40,7 @@ const ProductManagement = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [imageDialogProduct, setImageDialogProduct] = useState<Product | null>(null);
   const [newProductForImages, setNewProductForImages] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -327,6 +329,7 @@ const ProductManagement = () => {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onManageImages={setImageDialogProduct}
+            onProductClick={setSelectedProduct}
           />
         ) : (
           <div className="flex flex-col items-center justify-center py-16 space-y-4">
@@ -348,6 +351,21 @@ const ProductManagement = () => {
             </Button>
           </div>
         )}
+        
+        {/* Product Detail Modal */}
+        <ProductDetailModal
+          product={selectedProduct}
+          isOpen={!!selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          onEdit={(product) => {
+            setSelectedProduct(null);
+            handleEdit(product);
+          }}
+          onManageImages={(product) => {
+            setSelectedProduct(null);
+            setImageDialogProduct(product);
+          }}
+        />
         
         {/* Image Management Dialog */}
         <Dialog open={!!imageDialogProduct || !!newProductForImages} onOpenChange={() => {

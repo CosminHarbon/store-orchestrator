@@ -29,6 +29,7 @@ interface ResponsiveProductTableProps {
   onEdit: (product: Product) => void;
   onDelete: (id: string) => void;
   onManageImages: (product: Product) => void;
+  onProductClick: (product: Product) => void;
 }
 
 export function ResponsiveProductTable({ 
@@ -36,7 +37,8 @@ export function ResponsiveProductTable({
   productImages, 
   onEdit, 
   onDelete, 
-  onManageImages 
+  onManageImages,
+  onProductClick 
 }: ResponsiveProductTableProps) {
   const getPrimaryImage = (productId: string) => {
     return productImages?.find(img => img.product_id === productId);
@@ -59,7 +61,10 @@ export function ResponsiveProductTable({
               <Card key={product.id} className="group overflow-hidden bg-gradient-card border border-border/50 hover:shadow-elegant transition-all duration-300 hover:-translate-y-1">
                 <CardContent className="p-0">
                   {/* Product Image */}
-                  <div className="aspect-square relative overflow-hidden bg-gradient-subtle">
+                  <div 
+                    className="aspect-square relative overflow-hidden bg-gradient-subtle cursor-pointer"
+                    onClick={() => onProductClick(product)}
+                  >
                     {primaryImage ? (
                       <img 
                         src={primaryImage.image_url} 
@@ -80,11 +85,14 @@ export function ResponsiveProductTable({
                     
                     {/* Action Buttons Overlay */}
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                      <div className="flex gap-2">
+                      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                         <Button
                           size="sm"
                           variant="secondary"
-                          onClick={() => onManageImages(product)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onManageImages(product);
+                          }}
                           className="bg-white/90 hover:bg-white text-black border-0 shadow-lg"
                           title="Manage Images"
                         >
@@ -93,7 +101,10 @@ export function ResponsiveProductTable({
                         <Button
                           size="sm"
                           variant="secondary"
-                          onClick={() => onEdit(product)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(product);
+                          }}
                           className="bg-white/90 hover:bg-white text-black border-0 shadow-lg"
                           title="Edit Product"
                         >
@@ -102,7 +113,10 @@ export function ResponsiveProductTable({
                         <Button
                           size="sm"
                           variant="secondary"
-                          onClick={() => onDelete(product.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(product.id);
+                          }}
                           className="bg-destructive/90 hover:bg-destructive text-white border-0 shadow-lg"
                           title="Delete Product"
                         >
@@ -151,7 +165,10 @@ export function ResponsiveProductTable({
             return (
               <Card key={product.id} className="group overflow-hidden bg-gradient-card border border-border/50 hover:shadow-elegant transition-all duration-300">
                 <CardContent className="p-0">
-                  <div className="aspect-[4/3] relative overflow-hidden bg-gradient-subtle">
+                  <div 
+                    className="aspect-[4/3] relative overflow-hidden bg-gradient-subtle cursor-pointer"
+                    onClick={() => onProductClick(product)}
+                  >
                     {primaryImage ? (
                       <img 
                         src={primaryImage.image_url} 
@@ -188,7 +205,10 @@ export function ResponsiveProductTable({
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => onManageImages(product)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onManageImages(product);
+                          }}
                           className="h-8 w-8 p-0"
                         >
                           <Images className="h-4 w-4" />
@@ -196,7 +216,10 @@ export function ResponsiveProductTable({
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => onEdit(product)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(product);
+                          }}
                           className="h-8 w-8 p-0"
                         >
                           <Edit className="h-4 w-4" />
@@ -204,7 +227,10 @@ export function ResponsiveProductTable({
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => onDelete(product.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(product.id);
+                          }}
                           className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -228,7 +254,10 @@ export function ResponsiveProductTable({
               <Card key={product.id} className="group overflow-hidden bg-gradient-card border border-border/50 hover:shadow-card transition-all duration-200">
                 <CardContent className="p-0">
                   {/* Product Image */}
-                  <div className="aspect-square relative overflow-hidden bg-gradient-subtle">
+                  <div 
+                    className="aspect-square relative overflow-hidden bg-gradient-subtle cursor-pointer"
+                    onClick={() => onProductClick(product)}
+                  >
                     {primaryImage ? (
                       <img 
                         src={primaryImage.image_url} 
@@ -267,7 +296,10 @@ export function ResponsiveProductTable({
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => onManageImages(product)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onManageImages(product);
+                        }}
                         className="text-xs h-8 px-2"
                       >
                         <Images className="h-3 w-3" />
@@ -275,7 +307,10 @@ export function ResponsiveProductTable({
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => onEdit(product)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEdit(product);
+                        }}
                         className="text-xs h-8 px-2"
                       >
                         <Edit className="h-3 w-3" />
@@ -283,7 +318,10 @@ export function ResponsiveProductTable({
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => onDelete(product.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(product.id);
+                        }}
                         className="text-xs h-8 px-2 text-destructive hover:text-destructive"
                       >
                         <Trash2 className="h-3 w-3" />
