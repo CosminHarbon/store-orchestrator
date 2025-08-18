@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit, Trash2, Images, Folder, Package } from 'lucide-react';
+import { Plus, Edit, Trash2, Images, Folder, Package, Search, Grid, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,6 +15,8 @@ import { ResponsiveProductTable } from './ResponsiveProductTable';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CollectionsManagement from './CollectionsManagement';
 import { ProductDetailModal } from './ProductDetailModal';
+import { ProductListView } from './ProductListView';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 interface Product {
   id: string;
@@ -41,6 +43,8 @@ const ProductManagement = () => {
   const [imageDialogProduct, setImageDialogProduct] = useState<Product | null>(null);
   const [newProductForImages, setNewProductForImages] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -77,6 +81,20 @@ const ProductManagement = () => {
       return data as ProductImage[];
     }
   });
+
+  // Filter products based on search query
+  const filteredProducts = useMemo(() => {
+    if (!products) return [];
+    if (!searchQuery.trim()) return products;
+
+    const query = searchQuery.toLowerCase();
+    return products.filter(product => 
+      product.title.toLowerCase().includes(query) ||
+      product.description?.toLowerCase().includes(query) ||
+      product.category?.toLowerCase().includes(query) ||
+      product.sku?.toLowerCase().includes(query)
+    );
+  }, [products, searchQuery]);
 
   const createProductMutation = useMutation({
     mutationFn: async (productData: any) => {
@@ -215,140 +233,203 @@ const ProductManagement = () => {
       </TabsList>
       
       <TabsContent value="products" className="space-y-6">
-        {/* Header with Add Product Button */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold">Products</h2>
-            <p className="text-muted-foreground">Manage your store inventory</p>
+        {/* Header with Search and Controls */}
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold">Products</h2>
+              <p className="text-muted-foreground">Manage your store inventory</p>
+            </div>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={() => resetForm()} className="bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Product
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md bg-background/95 backdrop-blur-xl border border-border/50">
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-semibold">
+                    {editingProduct ? 'Edit Product' : 'Add New Product'}
+                  </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="title" className="text-sm font-medium">Product Name</Label>
+                    <Input
+                      id="title"
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      className="border-border/50 focus:border-primary"
+                      placeholder="Enter product name"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description" className="text-sm font-medium">Description</Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      className="border-border/50 focus:border-primary resize-none"
+                      placeholder="Product description..."
+                      rows={3}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="price" className="text-sm font-medium">Price ($)</Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        step="0.01"
+                        value={formData.price}
+                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                        className="border-border/50 focus:border-primary"
+                        placeholder="0.00"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="stock" className="text-sm font-medium">Stock</Label>
+                      <Input
+                        id="stock"
+                        type="number"
+                        value={formData.stock}
+                        onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                        className="border-border/50 focus:border-primary"
+                        placeholder="0"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="category" className="text-sm font-medium">Category</Label>
+                    <Input
+                      id="category"
+                      value={formData.category}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      className="border-border/50 focus:border-primary"
+                      placeholder="e.g. Electronics, Clothing"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sku" className="text-sm font-medium">SKU</Label>
+                    <Input
+                      id="sku"
+                      value={formData.sku}
+                      onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                      className="border-border/50 focus:border-primary"
+                      placeholder="Product SKU"
+                    />
+                  </div>
+                  <div className="flex gap-3 pt-4">
+                    <Button 
+                      type="submit" 
+                      disabled={createProductMutation.isPending || updateProductMutation.isPending}
+                      className="flex-1 bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0"
+                    >
+                      {editingProduct ? 'Update' : 'Create'} Product
+                    </Button>
+                    <Button type="button" variant="outline" onClick={resetForm} className="border-border/50">
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => resetForm()} className="bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Product
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md bg-background/95 backdrop-blur-xl border border-border/50">
-              <DialogHeader>
-                <DialogTitle className="text-xl font-semibold">
-                  {editingProduct ? 'Edit Product' : 'Add New Product'}
-                </DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title" className="text-sm font-medium">Product Name</Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="border-border/50 focus:border-primary"
-                    placeholder="Enter product name"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description" className="text-sm font-medium">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="border-border/50 focus:border-primary resize-none"
-                    placeholder="Product description..."
-                    rows={3}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="price" className="text-sm font-medium">Price ($)</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      step="0.01"
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                      className="border-border/50 focus:border-primary"
-                      placeholder="0.00"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="stock" className="text-sm font-medium">Stock</Label>
-                    <Input
-                      id="stock"
-                      type="number"
-                      value={formData.stock}
-                      onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                      className="border-border/50 focus:border-primary"
-                      placeholder="0"
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="category" className="text-sm font-medium">Category</Label>
-                  <Input
-                    id="category"
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="border-border/50 focus:border-primary"
-                    placeholder="e.g. Electronics, Clothing"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="sku" className="text-sm font-medium">SKU</Label>
-                  <Input
-                    id="sku"
-                    value={formData.sku}
-                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                    className="border-border/50 focus:border-primary"
-                    placeholder="Product SKU"
-                  />
-                </div>
-                <div className="flex gap-3 pt-4">
-                  <Button 
-                    type="submit" 
-                    disabled={createProductMutation.isPending || updateProductMutation.isPending}
-                    className="flex-1 bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0"
-                  >
-                    {editingProduct ? 'Update' : 'Create'} Product
-                  </Button>
-                  <Button type="button" variant="outline" onClick={resetForm} className="border-border/50">
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+
+          {/* Search and View Controls */}
+          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 border-border/50 focus:border-primary bg-gradient-subtle"
+              />
+            </div>
+            
+            <ToggleGroup 
+              type="single" 
+              value={viewMode} 
+              onValueChange={(value) => value && setViewMode(value as 'grid' | 'list')}
+              className="bg-muted/50 rounded-lg p-1"
+            >
+              <ToggleGroupItem 
+                value="grid" 
+                aria-label="Grid view"
+                className="rounded-md px-3 py-2 data-[state=on]:bg-background data-[state=on]:shadow-sm"
+              >
+                <Grid className="h-4 w-4 mr-2" />
+                Grid
+              </ToggleGroupItem>
+              <ToggleGroupItem 
+                value="list" 
+                aria-label="List view"
+                className="rounded-md px-3 py-2 data-[state=on]:bg-background data-[state=on]:shadow-sm"
+              >
+                <List className="h-4 w-4 mr-2" />
+                List
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+
+          {/* Results count */}
+          {searchQuery && (
+            <div className="text-sm text-muted-foreground">
+              Found {filteredProducts?.length || 0} products matching "{searchQuery}"
+            </div>
+          )}
         </div>
 
-        {/* Products Grid */}
-        {products && products.length > 0 ? (
-          <ResponsiveProductTable
-            products={products}
-            productImages={productImages || []}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onManageImages={setImageDialogProduct}
-            onProductClick={setSelectedProduct}
-          />
+        {/* Products View */}
+        {filteredProducts && filteredProducts.length > 0 ? (
+          viewMode === 'grid' ? (
+            <ResponsiveProductTable
+              products={filteredProducts}
+              productImages={productImages || []}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onManageImages={setImageDialogProduct}
+              onProductClick={setSelectedProduct}
+            />
+          ) : (
+            <ProductListView
+              products={filteredProducts}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onManageImages={setImageDialogProduct}
+              onProductClick={setSelectedProduct}
+            />
+          )
         ) : (
           <div className="flex flex-col items-center justify-center py-16 space-y-4">
             <div className="w-24 h-24 bg-gradient-primary/10 rounded-full flex items-center justify-center">
               <Package className="h-12 w-12 text-primary" />
             </div>
             <div className="text-center space-y-2">
-              <h3 className="text-lg font-semibold">No products yet</h3>
+              <h3 className="text-lg font-semibold">
+                {searchQuery ? 'No matching products' : 'No products yet'}
+              </h3>
               <p className="text-muted-foreground max-w-md">
-                Start building your inventory by adding your first product. You can manage images, pricing, and stock levels.
+                {searchQuery 
+                  ? `No products found matching "${searchQuery}". Try adjusting your search.`
+                  : 'Start building your inventory by adding your first product. You can manage images, pricing, and stock levels.'
+                }
               </p>
             </div>
-            <Button 
-              onClick={() => setIsDialogOpen(true)} 
-              className="bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Your First Product
-            </Button>
+            {!searchQuery && (
+              <Button 
+                onClick={() => setIsDialogOpen(true)} 
+                className="bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Your First Product
+              </Button>
+            )}
           </div>
         )}
         
