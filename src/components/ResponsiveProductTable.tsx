@@ -43,185 +43,258 @@ export function ResponsiveProductTable({
   };
 
   const getStockBadge = (stock: number) => {
-    if (stock === 0) return <Badge variant="destructive">Out of Stock</Badge>;
-    if (stock < 5) return <Badge variant="secondary">Low Stock</Badge>;
-    return <Badge variant="default">{stock} in stock</Badge>;
+    if (stock === 0) return <Badge variant="destructive" className="text-xs">Out of Stock</Badge>;
+    if (stock < 5) return <Badge variant="secondary" className="text-xs">Low Stock</Badge>;
+    return <Badge variant="outline" className="text-xs">{stock} in stock</Badge>;
   };
 
   return (
     <>
-      {/* Desktop Table View */}
-      <div className="hidden md:block">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Image</TableHead>
-              <TableHead>Product</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead>Stock</TableHead>
-              <TableHead>SKU</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {products?.map((product) => {
-              const primaryImage = getPrimaryImage(product.id);
-              return (
-                <TableRow key={product.id}>
-                  <TableCell>
+      {/* Desktop Grid View */}
+      <div className="hidden lg:block">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {products?.map((product) => {
+            const primaryImage = getPrimaryImage(product.id);
+            return (
+              <Card key={product.id} className="group overflow-hidden bg-gradient-card border border-border/50 hover:shadow-elegant transition-all duration-300 hover:-translate-y-1">
+                <CardContent className="p-0">
+                  {/* Product Image */}
+                  <div className="aspect-square relative overflow-hidden bg-gradient-subtle">
                     {primaryImage ? (
                       <img 
                         src={primaryImage.image_url} 
                         alt={product.title} 
-                        className="w-12 h-12 object-cover rounded-md border" 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
                       />
                     ) : product.image ? (
                       <img 
                         src={product.image} 
                         alt={product.title} 
-                        className="w-12 h-12 object-cover rounded-md border" 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
                       />
                     ) : (
-                      <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center">
-                        <Package className="h-6 w-6 text-muted-foreground" />
+                      <div className="w-full h-full bg-muted/50 flex items-center justify-center">
+                        <Package className="h-16 w-16 text-muted-foreground/50" />
                       </div>
                     )}
-                  </TableCell>
-                  <TableCell>
+                    
+                    {/* Action Buttons Overlay */}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => onManageImages(product)}
+                          className="bg-white/90 hover:bg-white text-black border-0 shadow-lg"
+                          title="Manage Images"
+                        >
+                          <Images className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => onEdit(product)}
+                          className="bg-white/90 hover:bg-white text-black border-0 shadow-lg"
+                          title="Edit Product"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => onDelete(product.id)}
+                          className="bg-destructive/90 hover:bg-destructive text-white border-0 shadow-lg"
+                          title="Delete Product"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Product Info */}
+                  <div className="p-4 space-y-3">
                     <div className="space-y-1">
-                      <p className="font-medium">{product.title}</p>
-                      {product.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-1">
-                          {product.description}
-                        </p>
+                      <h3 className="font-semibold text-base line-clamp-2 leading-tight">{product.title}</h3>
+                      {product.category && (
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">{product.category}</p>
                       )}
                     </div>
-                  </TableCell>
-                  <TableCell>{product.category || '-'}</TableCell>
-                  <TableCell className="font-medium">${product.price}</TableCell>
-                  <TableCell>{getStockBadge(product.stock)}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{product.sku || '-'}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => onManageImages(product)}
-                        title="Manage Images"
-                      >
-                        <Images className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => onEdit(product)}
-                        title="Edit Product"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => onDelete(product.id)}
-                        title="Delete Product"
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="text-xl font-bold text-primary">${product.price}</div>
+                      {getStockBadge(product.stock)}
                     </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                    
+                    {product.description && (
+                      <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+                        {product.description}
+                      </p>
+                    )}
+                    
+                    {product.sku && (
+                      <p className="text-xs text-muted-foreground font-mono">SKU: {product.sku}</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Mobile Card View */}
-      <div className="md:hidden space-y-4">
-        {products?.map((product) => {
-          const primaryImage = getPrimaryImage(product.id);
-          return (
-            <Card key={product.id} className="overflow-hidden">
-              <CardContent className="p-4">
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0">
+      {/* Tablet Grid View */}
+      <div className="hidden md:block lg:hidden">
+        <div className="grid grid-cols-2 gap-4">
+          {products?.map((product) => {
+            const primaryImage = getPrimaryImage(product.id);
+            return (
+              <Card key={product.id} className="group overflow-hidden bg-gradient-card border border-border/50 hover:shadow-elegant transition-all duration-300">
+                <CardContent className="p-0">
+                  <div className="aspect-[4/3] relative overflow-hidden bg-gradient-subtle">
                     {primaryImage ? (
                       <img 
                         src={primaryImage.image_url} 
                         alt={product.title} 
-                        className="w-16 h-16 object-cover rounded-md border" 
+                        className="w-full h-full object-cover" 
                       />
                     ) : product.image ? (
                       <img 
                         src={product.image} 
                         alt={product.title} 
-                        className="w-16 h-16 object-cover rounded-md border" 
+                        className="w-full h-full object-cover" 
                       />
                     ) : (
-                      <div className="w-16 h-16 bg-muted rounded-md flex items-center justify-center">
-                        <Package className="h-8 w-8 text-muted-foreground" />
+                      <div className="w-full h-full bg-muted/50 flex items-center justify-center">
+                        <Package className="h-12 w-12 text-muted-foreground/50" />
                       </div>
                     )}
                   </div>
                   
-                  <div className="flex-1 min-w-0 space-y-2">
-                    <div>
-                      <h3 className="font-medium text-base truncate">{product.title}</h3>
-                      {product.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                          {product.description}
-                        </p>
-                      )}
+                  <div className="p-3 space-y-2">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-sm line-clamp-1">{product.title}</h3>
+                        {product.category && (
+                          <p className="text-xs text-muted-foreground">{product.category}</p>
+                        )}
+                      </div>
+                      <div className="text-lg font-bold text-primary ml-2">${product.price}</div>
                     </div>
                     
-                    <div className="flex flex-wrap gap-2">
-                      <div className="text-lg font-semibold">${product.price}</div>
+                    <div className="flex items-center justify-between">
                       {getStockBadge(product.stock)}
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => onManageImages(product)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Images className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => onEdit(product)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => onDelete(product.id)}
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Mobile Grid View */}
+      <div className="md:hidden">
+        <div className="grid grid-cols-2 gap-3">
+          {products?.map((product) => {
+            const primaryImage = getPrimaryImage(product.id);
+            return (
+              <Card key={product.id} className="group overflow-hidden bg-gradient-card border border-border/50 hover:shadow-card transition-all duration-200">
+                <CardContent className="p-0">
+                  {/* Product Image */}
+                  <div className="aspect-square relative overflow-hidden bg-gradient-subtle">
+                    {primaryImage ? (
+                      <img 
+                        src={primaryImage.image_url} 
+                        alt={product.title} 
+                        className="w-full h-full object-cover" 
+                      />
+                    ) : product.image ? (
+                      <img 
+                        src={product.image} 
+                        alt={product.title} 
+                        className="w-full h-full object-cover" 
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-muted/50 flex items-center justify-center">
+                        <Package className="h-10 w-10 text-muted-foreground/50" />
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Product Info */}
+                  <div className="p-3 space-y-2">
+                    <div className="space-y-1">
+                      <h3 className="font-semibold text-sm line-clamp-2 leading-tight">{product.title}</h3>
                       {product.category && (
-                        <Badge variant="outline">{product.category}</Badge>
+                        <p className="text-xs text-muted-foreground truncate">{product.category}</p>
                       )}
                     </div>
                     
-                    {product.sku && (
-                      <p className="text-xs text-muted-foreground">SKU: {product.sku}</p>
-                    )}
+                    <div className="flex items-center justify-between">
+                      <div className="text-lg font-bold text-primary">${product.price}</div>
+                      {getStockBadge(product.stock)}
+                    </div>
                     
-                    <div className="flex gap-2 pt-2">
+                    {/* Action Buttons */}
+                    <div className="grid grid-cols-3 gap-1 pt-2 border-t border-border/50">
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => onManageImages(product)}
-                        className="flex-1"
+                        className="text-xs h-8 px-2"
                       >
-                        <Images className="h-4 w-4 mr-1" />
-                        Images
+                        <Images className="h-3 w-3" />
                       </Button>
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => onEdit(product)}
-                        className="flex-1"
+                        className="text-xs h-8 px-2"
                       >
-                        <Edit className="h-4 w-4 mr-1" />
-                        Edit
+                        <Edit className="h-3 w-3" />
                       </Button>
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => onDelete(product.id)}
-                        className="text-destructive hover:text-destructive"
+                        className="text-xs h-8 px-2 text-destructive hover:text-destructive"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </div>
     </>
   );

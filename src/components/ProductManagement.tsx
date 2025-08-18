@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit, Trash2, Images, Folder } from 'lucide-react';
+import { Plus, Edit, Trash2, Images, Folder, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -212,115 +212,142 @@ const ProductManagement = () => {
         </TabsTrigger>
       </TabsList>
       
-      <TabsContent value="products">
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle>Products</CardTitle>
-                <CardDescription>Manage your store products</CardDescription>
-              </div>
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button onClick={() => resetForm()}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Product
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {editingProduct ? 'Edit Product' : 'Add New Product'}
-                    </DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="title">Title</Label>
-                      <Input
-                        id="title"
-                        value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="description">Description</Label>
-                      <Textarea
-                        id="description"
-                        value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="price">Price</Label>
-                        <Input
-                          id="price"
-                          type="number"
-                          step="0.01"
-                          value={formData.price}
-                          onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="stock">Stock</Label>
-                        <Input
-                          id="stock"
-                          type="number"
-                          value={formData.stock}
-                          onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="category">Category</Label>
-                      <Input
-                        id="category"
-                        value={formData.category}
-                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="sku">SKU</Label>
-                      <Input
-                        id="sku"
-                        value={formData.sku}
-                        onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button type="submit" disabled={createProductMutation.isPending || updateProductMutation.isPending}>
-                        {editingProduct ? 'Update' : 'Create'} Product
-                      </Button>
-                      <Button type="button" variant="outline" onClick={resetForm}>
-                        Cancel
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveProductTable
-              products={products || []}
-              productImages={productImages || []}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onManageImages={setImageDialogProduct}
-            />
-            {products?.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
+      <TabsContent value="products" className="space-y-6">
+        {/* Header with Add Product Button */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Products</h2>
+            <p className="text-muted-foreground">Manage your store inventory</p>
+          </div>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => resetForm()} className="bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Product
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md bg-background/95 backdrop-blur-xl border border-border/50">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-semibold">
+                  {editingProduct ? 'Edit Product' : 'Add New Product'}
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <p>No products found.</p>
-                  <p className="text-sm">Add your first product to get started.</p>
+                  <Label htmlFor="title" className="text-sm font-medium">Product Name</Label>
+                  <Input
+                    id="title"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    className="border-border/50 focus:border-primary"
+                    placeholder="Enter product name"
+                    required
+                  />
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                <div className="space-y-2">
+                  <Label htmlFor="description" className="text-sm font-medium">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="border-border/50 focus:border-primary resize-none"
+                    placeholder="Product description..."
+                    rows={3}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="price" className="text-sm font-medium">Price ($)</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      step="0.01"
+                      value={formData.price}
+                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                      className="border-border/50 focus:border-primary"
+                      placeholder="0.00"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="stock" className="text-sm font-medium">Stock</Label>
+                    <Input
+                      id="stock"
+                      type="number"
+                      value={formData.stock}
+                      onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                      className="border-border/50 focus:border-primary"
+                      placeholder="0"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="category" className="text-sm font-medium">Category</Label>
+                  <Input
+                    id="category"
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    className="border-border/50 focus:border-primary"
+                    placeholder="e.g. Electronics, Clothing"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sku" className="text-sm font-medium">SKU</Label>
+                  <Input
+                    id="sku"
+                    value={formData.sku}
+                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                    className="border-border/50 focus:border-primary"
+                    placeholder="Product SKU"
+                  />
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <Button 
+                    type="submit" 
+                    disabled={createProductMutation.isPending || updateProductMutation.isPending}
+                    className="flex-1 bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0"
+                  >
+                    {editingProduct ? 'Update' : 'Create'} Product
+                  </Button>
+                  <Button type="button" variant="outline" onClick={resetForm} className="border-border/50">
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Products Grid */}
+        {products && products.length > 0 ? (
+          <ResponsiveProductTable
+            products={products}
+            productImages={productImages || []}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onManageImages={setImageDialogProduct}
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center py-16 space-y-4">
+            <div className="w-24 h-24 bg-gradient-primary/10 rounded-full flex items-center justify-center">
+              <Package className="h-12 w-12 text-primary" />
+            </div>
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-semibold">No products yet</h3>
+              <p className="text-muted-foreground max-w-md">
+                Start building your inventory by adding your first product. You can manage images, pricing, and stock levels.
+              </p>
+            </div>
+            <Button 
+              onClick={() => setIsDialogOpen(true)} 
+              className="bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Your First Product
+            </Button>
+          </div>
+        )}
         
         {/* Image Management Dialog */}
         <Dialog open={!!imageDialogProduct || !!newProductForImages} onOpenChange={() => {
