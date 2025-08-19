@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { calculateProductPrice, formatPrice, formatDiscount, PriceInfo } from '@/lib/discountUtils';
 
 interface Product {
   id: string;
@@ -23,9 +24,25 @@ interface ProductImage {
   display_order: number;
 }
 
+interface Discount {
+  id: string;
+  discount_type: 'percentage' | 'fixed_amount';
+  discount_value: number;
+  start_date: string;
+  end_date: string | null;
+  is_active: boolean;
+}
+
+interface ProductDiscount {
+  product_id: string;
+  discount_id: string;
+}
+
 interface ResponsiveProductTableProps {
   products: Product[];
   productImages: ProductImage[];
+  discounts?: Discount[];
+  productDiscounts?: ProductDiscount[];
   onEdit: (product: Product) => void;
   onDelete: (id: string) => void;
   onManageImages: (product: Product) => void;
@@ -34,7 +51,9 @@ interface ResponsiveProductTableProps {
 
 export function ResponsiveProductTable({ 
   products, 
-  productImages, 
+  productImages,
+  discounts = [],
+  productDiscounts = [],
   onEdit, 
   onDelete, 
   onManageImages,
@@ -48,6 +67,45 @@ export function ResponsiveProductTable({
     if (stock === 0) return <Badge variant="destructive" className="text-xs">Out of Stock</Badge>;
     if (stock < 5) return <Badge variant="secondary" className="text-xs">Low Stock</Badge>;
     return <Badge variant="outline" className="text-xs">{stock} in stock</Badge>;
+  };
+
+  const renderPriceDisplay = (product: Product) => {
+    const priceInfo = calculateProductPrice(product.id, product.price, discounts, productDiscounts);
+    
+    if (!priceInfo.hasDiscount || !priceInfo.discountedPrice) {
+      return <div className="text-xl font-bold text-primary">{formatPrice(product.price)}</div>;
+    }
+
+    return (
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <div className="text-xl font-bold text-primary">{formatPrice(priceInfo.discountedPrice)}</div>
+          <Badge variant="destructive" className="text-xs px-2 py-1">
+            {formatDiscount(priceInfo.discountPercentage || 0)}
+          </Badge>
+        </div>
+        <div className="text-sm text-muted-foreground line-through">
+          {formatPrice(priceInfo.originalPrice)}
+        </div>
+      </div>
+    );
+  };
+
+  const renderMobilePriceDisplay = (product: Product) => {
+    const priceInfo = calculateProductPrice(product.id, product.price, discounts, productDiscounts);
+    
+    if (!priceInfo.hasDiscount || !priceInfo.discountedPrice) {
+      return <div className="text-lg font-bold text-primary">{formatPrice(product.price)}</div>;
+    }
+
+    return (
+      <div className="space-y-1">
+        <div className="text-lg font-bold text-primary">{formatPrice(priceInfo.discountedPrice)}</div>
+        <div className="text-xs text-muted-foreground line-through">
+          {formatPrice(priceInfo.originalPrice)}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -136,7 +194,7 @@ export function ResponsiveProductTable({
                     </div>
                     
                     <div className="flex items-center justify-between">
-                      <div className="text-xl font-bold text-primary">${product.price}</div>
+                      {renderPriceDisplay(product)}
                       {getStockBadge(product.stock)}
                     </div>
                     
@@ -196,7 +254,7 @@ export function ResponsiveProductTable({
                           <p className="text-xs text-muted-foreground">{product.category}</p>
                         )}
                       </div>
-                      <div className="text-lg font-bold text-primary ml-2">${product.price}</div>
+                      <div className="text-lg font-bold text-primary ml-2">{formatPrice(product.price)}</div>
                     </div>
                     
                     <div className="flex items-center justify-between">
@@ -287,7 +345,7 @@ export function ResponsiveProductTable({
                     </div>
                     
                     <div className="flex items-center justify-between">
-                      <div className="text-lg font-bold text-primary">${product.price}</div>
+                      {renderMobilePriceDisplay(product)}
                       {getStockBadge(product.stock)}
                     </div>
                     

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit, Trash2, Images, Folder, Package, Search, Grid, List } from 'lucide-react';
+import { Plus, Edit, Trash2, Images, Folder, Package, Search, Grid, List, Percent } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -17,6 +17,7 @@ import CollectionsManagement from './CollectionsManagement';
 import { ProductDetailModal } from './ProductDetailModal';
 import { ProductListView } from './ProductListView';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import DiscountManagement from './DiscountManagement';
 
 interface Product {
   id: string;
@@ -79,6 +80,42 @@ const ProductManagement = () => {
       
       if (error) throw error;
       return data as ProductImage[];
+    }
+  });
+
+  // Fetch discounts and product discounts
+  const { data: discounts } = useQuery({
+    queryKey: ['discounts-for-products'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('discounts')
+        .select('*')
+        .eq('is_active', true);
+      
+      if (error) throw error;
+      return data as Array<{
+        id: string;
+        discount_type: 'percentage' | 'fixed_amount';
+        discount_value: number;
+        start_date: string;
+        end_date: string | null;
+        is_active: boolean;
+      }>;
+    }
+  });
+
+  const { data: productDiscounts } = useQuery({
+    queryKey: ['product-discounts-for-products'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('product_discounts')
+        .select('*');
+      
+      if (error) throw error;
+      return data as Array<{
+        product_id: string;
+        discount_id: string;
+      }>;
     }
   });
 
@@ -221,14 +258,18 @@ const ProductManagement = () => {
 
   return (
     <Tabs defaultValue="products" className="w-full">
-      <TabsList className="grid w-full grid-cols-2">
+      <TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="products" className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
+          <Package className="h-4 w-4" />
           Products
         </TabsTrigger>
         <TabsTrigger value="collections" className="flex items-center gap-2">
           <Folder className="h-4 w-4" />
           Collections
+        </TabsTrigger>
+        <TabsTrigger value="discounts" className="flex items-center gap-2">
+          <Percent className="h-4 w-4" />
+          Discounts
         </TabsTrigger>
       </TabsList>
       
@@ -405,6 +446,8 @@ const ProductManagement = () => {
             <ResponsiveProductTable
               products={filteredProducts}
               productImages={productImages || []}
+              discounts={discounts || []}
+              productDiscounts={productDiscounts || []}
               onEdit={handleEdit}
               onDelete={handleDelete}
               onManageImages={setImageDialogProduct}
@@ -413,6 +456,8 @@ const ProductManagement = () => {
           ) : (
             <ProductListView
               products={filteredProducts}
+              discounts={discounts || []}
+              productDiscounts={productDiscounts || []}
               onEdit={handleEdit}
               onDelete={handleDelete}
               onManageImages={setImageDialogProduct}
@@ -487,6 +532,10 @@ const ProductManagement = () => {
       
       <TabsContent value="collections">
         <CollectionsManagement />
+      </TabsContent>
+      
+      <TabsContent value="discounts">
+        <DiscountManagement />
       </TabsContent>
     </Tabs>
   );

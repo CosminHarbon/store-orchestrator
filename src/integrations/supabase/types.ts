@@ -44,6 +44,48 @@ export type Database = {
         }
         Relationships: []
       }
+      discounts: {
+        Row: {
+          created_at: string
+          description: string | null
+          discount_type: string
+          discount_value: number
+          end_date: string | null
+          id: string
+          is_active: boolean
+          name: string
+          start_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          discount_type: string
+          discount_value: number
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          start_date?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          start_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string
@@ -218,6 +260,27 @@ export type Database = {
         Update: {
           collection_id?: string
           created_at?: string
+          id?: string
+          product_id?: string
+        }
+        Relationships: []
+      }
+      product_discounts: {
+        Row: {
+          created_at: string
+          discount_id: string
+          id: string
+          product_id: string
+        }
+        Insert: {
+          created_at?: string
+          discount_id: string
+          id?: string
+          product_id: string
+        }
+        Update: {
+          created_at?: string
+          discount_id?: string
           id?: string
           product_id?: string
         }
