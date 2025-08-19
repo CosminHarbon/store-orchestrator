@@ -147,6 +147,55 @@ const DiscountManagement = () => {
     }
   });
 
+  // Update discount mutation
+  const updateDiscountMutation = useMutation({
+    mutationFn: async ({ id, discountData }: { id: string; discountData: any }) => {
+      const { data, error } = await supabase
+        .from('discounts')
+        .update({
+          ...discountData,
+          discount_value: parseFloat(discountData.discount_value),
+          start_date: new Date(discountData.start_date).toISOString(),
+          end_date: discountData.end_date ? new Date(discountData.end_date).toISOString() : null
+        })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: async (discount) => {
+      // Update product associations - first delete existing ones, then add new ones
+      await supabase
+        .from('product_discounts')
+        .delete()
+        .eq('discount_id', discount.id);
+
+      if (selectedProducts.length > 0) {
+        const productDiscountInserts = selectedProducts.map(productId => ({
+          product_id: productId,
+          discount_id: discount.id
+        }));
+
+        const { error } = await supabase
+          .from('product_discounts')
+          .insert(productDiscountInserts);
+
+        if (error) throw error;
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['discounts'] });
+      queryClient.invalidateQueries({ queryKey: ['product-discounts'] });
+      toast.success('Discount updated successfully');
+      resetForm();
+    },
+    onError: (error) => {
+      toast.error('Failed to update discount');
+      console.error(error);
+    }
+  });
+
   // Delete discount mutation
   const deleteDiscountMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -190,9 +239,31 @@ const DiscountManagement = () => {
     setIsDialogOpen(false);
   };
 
+  const handleEdit = (discount: Discount) => {
+    setEditingDiscount(discount);
+    setFormData({
+      name: discount.name,
+      description: discount.description || '',
+      discount_type: discount.discount_type,
+      discount_value: discount.discount_value.toString(),
+      start_date: new Date(discount.start_date).toISOString().split('T')[0],
+      end_date: discount.end_date ? new Date(discount.end_date).toISOString().split('T')[0] : '',
+      is_active: discount.is_active
+    });
+    
+    // Set selected products for this discount
+    const discountProducts = getDiscountProducts(discount.id);
+    setSelectedProducts(discountProducts.map(p => p.id));
+    setIsDialogOpen(true);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createDiscountMutation.mutate(formData);
+    if (editingDiscount) {
+      updateDiscountMutation.mutate({ id: editingDiscount.id, discountData: formData });
+    } else {
+      createDiscountMutation.mutate(formData);
+    }
   };
 
   const handleDelete = (id: string) => {
@@ -351,10 +422,10 @@ const DiscountManagement = () => {
               <div className="flex gap-3 pt-4">
                 <Button 
                   type="submit" 
-                  disabled={createDiscountMutation.isPending}
+                  disabled={createDiscountMutation.isPending || updateDiscountMutation.isPending}
                   className="flex-1 bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0"
                 >
-                  Create Discount
+                  {editingDiscount ? 'Update Discount' : 'Create Discount'}
                 </Button>
                 <Button type="button" variant="outline" onClick={resetForm} className="border-border/50">
                   Cancel
@@ -390,7 +461,12 @@ const DiscountManagement = () => {
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" className="border-border/50">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => handleEdit(discount)}
+                        className="border-border/50"
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button 
