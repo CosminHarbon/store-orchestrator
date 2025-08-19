@@ -11,6 +11,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const navigationItems = [
   { title: "Dashboard", url: "/", icon: Home, tab: "dashboard" },
@@ -28,7 +29,8 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
-  const { state } = useSidebar();
+  const { state, setOpenMobile } = useSidebar();
+  const isMobile = useIsMobile();
   const collapsed = state === "collapsed";
 
   const getTabClass = (tab: string) => {
@@ -37,8 +39,16 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
       : "hover:bg-muted/50 text-muted-foreground hover:text-foreground";
   };
 
+  const handleTabChange = (tab: string) => {
+    onTabChange(tab);
+    // Auto-close sidebar on mobile after tab selection
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
+
   return (
-    <Sidebar className={collapsed ? "w-14" : "w-64"} collapsible="icon">
+    <Sidebar className={`${collapsed ? "w-14" : "w-64"} ${isMobile ? "top-16" : ""}`} collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="px-4 py-2">
@@ -57,7 +67,7 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
                     className={getTabClass(item.tab)}
                   >
                     <button
-                      onClick={() => onTabChange(item.tab)}
+                      onClick={() => handleTabChange(item.tab)}
                       className="w-full flex items-center gap-3 px-3 py-2 text-left rounded-md transition-colors"
                     >
                       <item.icon className="h-4 w-4 shrink-0" />
