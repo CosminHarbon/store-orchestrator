@@ -183,34 +183,210 @@ const StockManagement = () => {
       const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       
       if (isMobile) {
-        // On mobile, open CSV content in a new window
+        // On mobile, create a beautiful HTML table
+        const csvLines = csvContent.split('\n');
+        const headers = csvLines[0].split(',').map(h => h.replace(/"/g, ''));
+        const rows = csvLines.slice(1).filter(line => line.trim());
+        
+        const htmlContent = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Stock Export - ${fileName}</title>
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <style>
+                * { box-sizing: border-box; }
+                body { 
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                  margin: 0;
+                  padding: 20px;
+                  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                  min-height: 100vh;
+                }
+                .container {
+                  background: white;
+                  border-radius: 12px;
+                  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+                  overflow: hidden;
+                  margin-bottom: 20px;
+                }
+                .header {
+                  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+                  color: white;
+                  padding: 20px;
+                  text-align: center;
+                }
+                .header h1 {
+                  margin: 0;
+                  font-size: 24px;
+                  font-weight: 600;
+                }
+                .header p {
+                  margin: 8px 0 0 0;
+                  opacity: 0.9;
+                  font-size: 14px;
+                }
+                .table-container {
+                  overflow-x: auto;
+                }
+                table {
+                  width: 100%;
+                  border-collapse: collapse;
+                  margin: 0;
+                }
+                th {
+                  background: #f8fafc;
+                  color: #374151;
+                  font-weight: 600;
+                  padding: 16px 12px;
+                  text-align: left;
+                  border-bottom: 2px solid #e5e7eb;
+                  font-size: 14px;
+                  text-transform: uppercase;
+                  letter-spacing: 0.5px;
+                }
+                td {
+                  padding: 16px 12px;
+                  border-bottom: 1px solid #f1f5f9;
+                  color: #374151;
+                  font-size: 14px;
+                }
+                tr:hover {
+                  background: #f8fafc;
+                }
+                .stock-badge {
+                  display: inline-block;
+                  padding: 4px 8px;
+                  border-radius: 6px;
+                  font-weight: 500;
+                  font-size: 12px;
+                }
+                .stock-high {
+                  background: #dcfce7;
+                  color: #166534;
+                }
+                .stock-medium {
+                  background: #fef3c7;
+                  color: #92400e;
+                }
+                .stock-low {
+                  background: #fecaca;
+                  color: #991b1b;
+                }
+                .price {
+                  font-weight: 600;
+                  color: #059669;
+                }
+                .category-badge {
+                  background: #e0e7ff;
+                  color: #3730a3;
+                  padding: 4px 8px;
+                  border-radius: 6px;
+                  font-size: 12px;
+                  font-weight: 500;
+                }
+                .download-section {
+                  background: white;
+                  border-radius: 12px;
+                  padding: 20px;
+                  text-align: center;
+                  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                }
+                .download-btn {
+                  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                  color: white;
+                  border: none;
+                  padding: 12px 24px;
+                  border-radius: 8px;
+                  font-weight: 600;
+                  cursor: pointer;
+                  margin: 0 8px;
+                  text-decoration: none;
+                  display: inline-block;
+                }
+                @media (max-width: 640px) {
+                  body { padding: 10px; }
+                  th, td { padding: 12px 8px; font-size: 12px; }
+                  .header h1 { font-size: 20px; }
+                }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h1>📊 Stock Export Report</h1>
+                  <p>Generated on ${new Date().toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}</p>
+                </div>
+                <div class="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        ${headers.map(header => `<th>${header}</th>`).join('')}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${rows.map(row => {
+                        const cells = row.split(',').map(cell => cell.replace(/"/g, ''));
+                        const stock = parseInt(cells[2]) || 0;
+                        const price = parseFloat(cells[3]) || 0;
+                        
+                        return `
+                          <tr>
+                            <td><strong>${cells[0]}</strong></td>
+                            <td><code>${cells[1] || 'N/A'}</code></td>
+                            <td>
+                              <span class="stock-badge ${stock === 0 ? 'stock-low' : stock < 10 ? 'stock-medium' : 'stock-high'}">
+                                ${stock} ${stock === 1 ? 'unit' : 'units'}
+                              </span>
+                            </td>
+                            <td><span class="price">$${price.toFixed(2)}</span></td>
+                            <td><span class="category-badge">${cells[4] || 'Uncategorized'}</span></td>
+                          </tr>
+                        `;
+                      }).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              
+              <div class="download-section">
+                <h3 style="margin-top: 0; color: #374151;">Export Options</h3>
+                <p style="color: #6b7280; margin-bottom: 16px;">Save this data to your device</p>
+                <button class="download-btn" onclick="downloadRawCSV()">📄 Download CSV</button>
+                <button class="download-btn" onclick="window.print()" style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);">🖨️ Print Report</button>
+              </div>
+
+              <script>
+                function downloadRawCSV() {
+                  const csvData = \`${csvContent.replace(/`/g, '\\`')}\`;
+                  const blob = new Blob([csvData], { type: 'text/csv' });
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = '${fileName}';
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  window.URL.revokeObjectURL(url);
+                }
+              </script>
+            </body>
+          </html>
+        `;
+        
         const csvWindow = window.open('', '_blank');
         if (csvWindow) {
-          csvWindow.document.write(`
-            <html>
-              <head>
-                <title>Stock Export - ${fileName}</title>
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <style>
-                  body { font-family: monospace; padding: 20px; white-space: pre-wrap; }
-                  .download-info { background: #f0f0f0; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
-                </style>
-              </head>
-              <body>
-                <div class="download-info">
-                  <strong>Stock Export Data</strong><br>
-                  Copy the text below or use your browser's "Save Page As" feature to save as CSV.
-                  <br><br>
-                  Filename: ${fileName}
-                </div>
-                ${csvContent}
-              </body>
-            </html>
-          `);
+          csvWindow.document.write(htmlContent);
           csvWindow.document.close();
-          toast.success('Stock data opened in new window');
+          toast.success('Beautiful stock report opened!');
         } else {
-          toast.error('Please allow popups to export data on mobile');
+          toast.error('Please allow popups to view the stock report');
         }
       } else {
         // Desktop download
