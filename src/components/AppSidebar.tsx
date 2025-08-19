@@ -20,7 +20,6 @@ const navigationItems = [
   { title: "Orders", url: "/orders", icon: ShoppingCart, tab: "orders" },
   { title: "Customers", url: "/customers", icon: Users, tab: "customers" },
   { title: "Payments", url: "/payments", icon: CreditCard, tab: "payments" },
-  { title: "Settings", url: "/settings", icon: Settings, tab: "settings" },
 ];
 
 interface AppSidebarProps {

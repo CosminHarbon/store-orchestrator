@@ -1,4 +1,4 @@
-import { Menu, Store, LogOut, User } from "lucide-react";
+import { Menu, Store, LogOut, User, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
@@ -15,9 +15,10 @@ import { useNavigate } from "react-router-dom";
 interface MobileHeaderProps {
   userEmail?: string;
   storeName?: string;
+  onTabChange: (tab: string) => void;
 }
 
-export function MobileHeader({ userEmail, storeName }: MobileHeaderProps) {
+export function MobileHeader({ userEmail, storeName, onTabChange }: MobileHeaderProps) {
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -69,15 +70,22 @@ export function MobileHeader({ userEmail, storeName }: MobileHeaderProps) {
                   )}
                 </div>
               </div>
-              <div className="p-2">
-                <DropdownMenuItem 
-                  onClick={handleSignOut} 
-                  className="text-destructive hover:text-destructive hover:bg-destructive/5 rounded-lg cursor-pointer"
-                >
-                  <LogOut className="mr-3 h-4 w-4" />
-                  <span>Sign out</span>
-                </DropdownMenuItem>
-              </div>
+            <div className="p-2">
+              <DropdownMenuItem 
+                onClick={() => onTabChange('settings')} 
+                className="hover:bg-muted/50 rounded-lg cursor-pointer"
+              >
+                <Settings className="mr-3 h-4 w-4" />
+                <span>Settings</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={handleSignOut} 
+                className="text-destructive hover:text-destructive hover:bg-destructive/5 rounded-lg cursor-pointer"
+              >
+                <LogOut className="mr-3 h-4 w-4" />
+                <span>Sign out</span>
+              </DropdownMenuItem>
+            </div>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

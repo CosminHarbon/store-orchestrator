@@ -314,6 +314,7 @@ const Index = () => {
           <MobileHeader 
             userEmail={user.email || undefined} 
             storeName={stats?.storeName}
+            onTabChange={setActiveTab}
           />
           
           <main className="flex-1 overflow-auto hide-scrollbar">
