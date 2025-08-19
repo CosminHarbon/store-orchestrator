@@ -359,29 +359,34 @@ const ProductManagement = () => {
             <div className="w-full flex justify-end">
               <div className="flex flex-col items-end space-y-2">
                 <Label className="text-sm font-medium text-foreground">View Mode</Label>
-                <ToggleGroup 
-                  type="single" 
-                  value={viewMode} 
-                  onValueChange={(value) => value && setViewMode(value as 'grid' | 'list')}
-                  className="bg-muted/50 rounded-lg p-1"
-                >
-                  <ToggleGroupItem 
-                    value="grid" 
-                    aria-label="Grid view"
-                    className="rounded-md px-4 py-2 data-[state=on]:bg-gradient-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-elegant hover:bg-primary/10 transition-all duration-200"
+                <div className="relative bg-muted/50 rounded-full p-1 w-40 h-12">
+                  {/* Sliding Background */}
+                  <div 
+                    className={`absolute top-1 h-10 w-[calc(50%-4px)] bg-gradient-primary rounded-full shadow-elegant transition-transform duration-300 ease-in-out ${
+                      viewMode === 'list' ? 'translate-x-[calc(100%+8px)]' : 'translate-x-1'
+                    }`}
+                  />
+                  
+                  {/* Grid Option */}
+                  <button
+                    onClick={() => setViewMode('grid')}
+                    className={`relative z-10 flex items-center justify-center w-1/2 h-10 rounded-full transition-colors duration-300 ${
+                      viewMode === 'grid' ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                    }`}
                   >
-                    <Grid className="h-4 w-4 mr-2" />
-                    Grid
-                  </ToggleGroupItem>
-                  <ToggleGroupItem 
-                    value="list" 
-                    aria-label="List view"
-                    className="rounded-md px-4 py-2 data-[state=on]:bg-gradient-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-elegant hover:bg-primary/10 transition-all duration-200"
+                    <Grid className="h-4 w-4" />
+                  </button>
+                  
+                  {/* List Option */}
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`relative z-10 flex items-center justify-center w-1/2 h-10 rounded-full transition-colors duration-300 ${
+                      viewMode === 'list' ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                    }`}
                   >
-                    <List className="h-4 w-4 mr-2" />
-                    List
-                  </ToggleGroupItem>
-                </ToggleGroup>
+                    <List className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
