@@ -234,16 +234,20 @@ const ProductManagement = () => {
       
       <TabsContent value="products" className="space-y-6">
         {/* Header with Search and Controls */}
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold">Products</h2>
-              <p className="text-muted-foreground">Manage your store inventory</p>
+        <div className="space-y-6">
+          {/* Centered Header */}
+          <div className="text-center space-y-4">
+            <div className="space-y-2">
+              <h2 className="text-3xl font-bold">Products</h2>
+              <p className="text-muted-foreground text-lg">Manage your store inventory</p>
             </div>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button onClick={() => resetForm()} className="bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0">
-                  <Plus className="h-4 w-4 mr-2" />
+                <Button 
+                  onClick={() => resetForm()} 
+                  className="bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0 px-8 py-3 text-lg rounded-full"
+                >
+                  <Plus className="h-5 w-5 mr-2" />
                   Add Product
                 </Button>
               </DialogTrigger>
@@ -341,40 +345,42 @@ const ProductManagement = () => {
           </div>
 
           {/* Search and View Controls */}
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="flex flex-col items-center gap-6">
+            <div className="relative w-full max-w-lg">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
                 placeholder="Search products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 border-border/50 focus:border-primary bg-gradient-subtle"
+                className="pl-12 pr-4 py-3 text-lg border-border/50 focus:border-primary bg-gradient-subtle rounded-full"
               />
             </div>
             
-            <ToggleGroup 
-              type="single" 
-              value={viewMode} 
-              onValueChange={(value) => value && setViewMode(value as 'grid' | 'list')}
-              className="bg-muted/50 rounded-lg p-1"
-            >
-              <ToggleGroupItem 
-                value="grid" 
-                aria-label="Grid view"
-                className="rounded-md px-3 py-2 data-[state=on]:bg-background data-[state=on]:shadow-sm"
+            <div className="w-full flex justify-end">
+              <ToggleGroup 
+                type="single" 
+                value={viewMode} 
+                onValueChange={(value) => value && setViewMode(value as 'grid' | 'list')}
+                className="bg-muted/50 rounded-lg p-1"
               >
-                <Grid className="h-4 w-4 mr-2" />
-                Grid
-              </ToggleGroupItem>
-              <ToggleGroupItem 
-                value="list" 
-                aria-label="List view"
-                className="rounded-md px-3 py-2 data-[state=on]:bg-background data-[state=on]:shadow-sm"
-              >
-                <List className="h-4 w-4 mr-2" />
-                List
-              </ToggleGroupItem>
-            </ToggleGroup>
+                <ToggleGroupItem 
+                  value="grid" 
+                  aria-label="Grid view"
+                  className="rounded-md px-4 py-2 data-[state=on]:bg-background data-[state=on]:shadow-sm"
+                >
+                  <Grid className="h-4 w-4 mr-2" />
+                  Grid
+                </ToggleGroupItem>
+                <ToggleGroupItem 
+                  value="list" 
+                  aria-label="List view"
+                  className="rounded-md px-4 py-2 data-[state=on]:bg-background data-[state=on]:shadow-sm"
+                >
+                  <List className="h-4 w-4 mr-2" />
+                  List
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
           </div>
 
           {/* Results count */}
