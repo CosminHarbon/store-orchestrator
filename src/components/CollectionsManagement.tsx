@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import CollectionImageUpload from './CollectionImageUpload';
 
 interface Collection {
   id: string;
@@ -253,15 +254,22 @@ const CollectionsManagement = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {collections?.map((collection) => (
             <Card key={collection.id} className="overflow-hidden">
-              {collection.image_url && (
-                <div className="aspect-video relative overflow-hidden">
+              <div className="aspect-video relative overflow-hidden bg-muted">
+                {collection.image_url ? (
                   <img
                     src={collection.image_url}
                     alt={collection.name}
                     className="w-full h-full object-cover"
                   />
-                </div>
-              )}
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-muted/50">
+                    <div className="text-center">
+                      <ImageIcon className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">No image</p>
+                    </div>
+                  </div>
+                )}
+              </div>
               <CardContent className="p-4">
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-semibold">{collection.name}</h3>
@@ -323,12 +331,11 @@ const CollectionsManagement = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="image_url">Image URL</Label>
-                <Input
-                  id="image_url"
-                  value={formData.image_url}
-                  onChange={(e) => setFormData(prev => ({ ...prev, image_url: e.target.value }))}
-                  placeholder="Enter image URL"
+                <Label>Collection Image</Label>
+                <CollectionImageUpload
+                  currentImageUrl={formData.image_url}
+                  onImageChange={(imageUrl) => setFormData(prev => ({ ...prev, image_url: imageUrl }))}
+                  onImageRemove={() => setFormData(prev => ({ ...prev, image_url: '' }))}
                 />
               </div>
             </div>
@@ -376,12 +383,12 @@ const CollectionsManagement = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="edit-image_url">Image URL</Label>
-                <Input
-                  id="edit-image_url"
-                  value={formData.image_url}
-                  onChange={(e) => setFormData(prev => ({ ...prev, image_url: e.target.value }))}
-                  placeholder="Enter image URL"
+                <Label>Collection Image</Label>
+                <CollectionImageUpload
+                  collectionId={selectedCollection?.id}
+                  currentImageUrl={formData.image_url}
+                  onImageChange={(imageUrl) => setFormData(prev => ({ ...prev, image_url: imageUrl }))}
+                  onImageRemove={() => setFormData(prev => ({ ...prev, image_url: '' }))}
                 />
               </div>
             </div>
