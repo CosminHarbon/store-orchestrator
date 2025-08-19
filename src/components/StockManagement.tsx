@@ -22,10 +22,12 @@ interface Product {
 interface StockUpdate {
   product_id: string;
   stock: number;
+  low_stock_threshold?: number;
 }
 
 const StockManagement = () => {
   const [stockUpdates, setStockUpdates] = useState<{ [key: string]: number }>({});
+  const [thresholdUpdates, setThresholdUpdates] = useState<{ [key: string]: number }>({});
   const [isUpdating, setIsUpdating] = useState(false);
   
   const queryClient = useQueryClient();
@@ -44,36 +46,55 @@ const StockManagement = () => {
   });
 
   const bulkUpdateMutation = useMutation({
-    mutationFn: async (updates: StockUpdate[]) => {
-      const { data, error } = await supabase.rpc('bulk_update_stock', {
-        updates: updates as any
-      });
-      
-      if (error) throw error;
-      return data;
+    mutationFn: async (updates: { stock: StockUpdate[], threshold: { product_id: string; low_stock_threshold: number }[] }) => {
+      // Update stock using the existing RPC function
+      if (updates.stock.length > 0) {
+        const { error: stockError } = await supabase.rpc('bulk_update_stock', {
+          updates: updates.stock as any
+        });
+        if (stockError) throw stockError;
+      }
+
+      // Update thresholds using regular update queries
+      if (updates.threshold.length > 0) {
+        const promises = updates.threshold.map(update => 
+          supabase
+            .from('products')
+            .update({ low_stock_threshold: update.low_stock_threshold })
+            .eq('id', update.product_id)
+        );
+        
+        const results = await Promise.all(promises);
+        const errors = results.filter(result => result.error);
+        if (errors.length > 0) {
+          throw new Error(`Failed to update ${errors.length} thresholds`);
+        }
+      }
+
+      return { stock: updates.stock.length, threshold: updates.threshold.length };
     },
     onSuccess: (results) => {
-      const successful = results.filter(r => r.success).length;
-      const failed = results.filter(r => !r.success);
-      
-      if (failed.length > 0) {
-        console.error('Failed updates:', failed);
-        toast.error(`${failed.length} updates failed. Check console for details.`);
-      }
-      
-      if (successful > 0) {
-        toast.success(`Successfully updated stock for ${successful} products`);
+      const totalUpdates = results.stock + results.threshold;
+      if (totalUpdates > 0) {
+        toast.success(`Successfully updated ${totalUpdates} product settings`);
         setStockUpdates({});
+        setThresholdUpdates({});
         queryClient.invalidateQueries({ queryKey: ['products'] });
       }
-      
       setIsUpdating(false);
     },
     onError: (error: any) => {
-      toast.error(`Failed to update stock: ${error.message}`);
+      toast.error(`Failed to update products: ${error.message}`);
       setIsUpdating(false);
     }
   });
+
+  const handleThresholdChange = (productId: string, newThreshold: number) => {
+    setThresholdUpdates(prev => ({
+      ...prev,
+      [productId]: newThreshold
+    }));
+  };
 
   const handleStockChange = (productId: string, newStock: number) => {
     setStockUpdates(prev => ({
@@ -87,24 +108,33 @@ const StockManagement = () => {
     handleStockChange(productId, newStock);
   };
 
-  const handleSaveChanges = async () => {
-    const updates: StockUpdate[] = Object.entries(stockUpdates).map(([product_id, stock]) => ({
-      product_id,
+  const handleSaveChanges = () => {
+    const stockUpdatesArray = Object.entries(stockUpdates).map(([productId, stock]) => ({
+      product_id: productId,
       stock
     }));
 
-    if (updates.length === 0) {
-      toast.info('No changes to save');
+    const thresholdUpdatesArray = Object.entries(thresholdUpdates).map(([productId, threshold]) => ({
+      product_id: productId,
+      low_stock_threshold: threshold
+    }));
+    
+    if (stockUpdatesArray.length === 0 && thresholdUpdatesArray.length === 0) {
+      toast.error('No changes to save');
       return;
     }
-
+    
     setIsUpdating(true);
-    bulkUpdateMutation.mutate(updates);
+    bulkUpdateMutation.mutate({
+      stock: stockUpdatesArray,
+      threshold: thresholdUpdatesArray
+    });
   };
 
   const handleResetChanges = () => {
     setStockUpdates({});
-    toast.info('Changes reset');
+    setThresholdUpdates({});
+    toast.success('Changes reset');
   };
 
   const exportStock = () => {
@@ -125,13 +155,14 @@ const StockManagement = () => {
   };
 
   const getPendingChangesCount = () => {
-    return Object.keys(stockUpdates).length;
+    return Object.keys(stockUpdates).length + Object.keys(thresholdUpdates).length;
   };
 
-  const getStockBadge = (product: Product, newStock?: number) => {
+  const getStockBadge = (product: Product, newStock?: number, newThreshold?: number) => {
     const stockToCheck = newStock !== undefined ? newStock : product.stock;
+    const thresholdToCheck = newThreshold !== undefined ? newThreshold : product.low_stock_threshold;
     if (stockToCheck <= 0) return <Badge variant="destructive">Out of Stock</Badge>;
-    if (stockToCheck <= product.low_stock_threshold) return <Badge variant="secondary">Low Stock</Badge>;
+    if (stockToCheck <= thresholdToCheck) return <Badge variant="secondary">Low Stock</Badge>;
     return <Badge variant="default">In Stock</Badge>;
   };
 
@@ -204,20 +235,24 @@ const StockManagement = () => {
                 <TableHead>Status</TableHead>
                 <TableHead>Current Stock</TableHead>
                 <TableHead>New Stock</TableHead>
+                <TableHead>Low Stock Alert</TableHead>
                 <TableHead>Price</TableHead>
                 <TableHead>Category</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {products?.map((product) => {
-                const hasChanges = stockUpdates[product.id] !== undefined;
+                const hasStockChanges = stockUpdates[product.id] !== undefined;
+                const hasThresholdChanges = thresholdUpdates[product.id] !== undefined;
+                const hasAnyChanges = hasStockChanges || hasThresholdChanges;
                 const newStock = stockUpdates[product.id] ?? product.stock;
+                const newThreshold = thresholdUpdates[product.id] ?? product.low_stock_threshold;
                 
                 return (
-                  <TableRow key={product.id} className={hasChanges ? 'bg-yellow-50' : ''}>
+                  <TableRow key={product.id} className={hasAnyChanges ? 'bg-yellow-50' : ''}>
                     <TableCell className="font-medium">
                       {product.title}
-                      {hasChanges && (
+                      {hasAnyChanges && (
                         <div className="flex items-center gap-1 mt-1">
                           <AlertTriangle className="h-3 w-3 text-yellow-600" />
                           <span className="text-xs text-yellow-600">Modified</span>
@@ -225,9 +260,9 @@ const StockManagement = () => {
                       )}
                     </TableCell>
                     <TableCell>{product.sku || '-'}</TableCell>
-                    <TableCell>{getStockBadge(product, newStock)}</TableCell>
+                    <TableCell>{getStockBadge(product, newStock, newThreshold)}</TableCell>
                     <TableCell>
-                      <span className={hasChanges ? 'line-through text-gray-500' : ''}>
+                      <span className={hasStockChanges ? 'line-through text-gray-500' : ''}>
                         {product.stock}
                       </span>
                     </TableCell>
@@ -259,23 +294,35 @@ const StockManagement = () => {
                          </Button>
                        </div>
                      </TableCell>
-                    <TableCell>${product.price}</TableCell>
-                    <TableCell>{product.category || '-'}</TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+                     <TableCell>
+                       <Input
+                         type="number"
+                         min="0"
+                         value={newThreshold}
+                         onChange={(e) => handleThresholdChange(product.id, parseInt(e.target.value) || 0)}
+                         className="w-20"
+                       />
+                     </TableCell>
+                     <TableCell>${product.price}</TableCell>
+                     <TableCell>{product.category || '-'}</TableCell>
+                   </TableRow>
+                 );
+               })}
+             </TableBody>
+           </Table>
+         </div>
 
         {/* Mobile Card View */}
         <div className="lg:hidden space-y-4">
           {products?.map((product) => {
-            const hasChanges = stockUpdates[product.id] !== undefined;
+            const hasStockChanges = stockUpdates[product.id] !== undefined;
+            const hasThresholdChanges = thresholdUpdates[product.id] !== undefined;
+            const hasAnyChanges = hasStockChanges || hasThresholdChanges;
             const newStock = stockUpdates[product.id] ?? product.stock;
+            const newThreshold = thresholdUpdates[product.id] ?? product.low_stock_threshold;
             
             return (
-              <Card key={product.id} className={`overflow-hidden ${hasChanges ? 'border-yellow-300 bg-yellow-50' : ''}`}>
+              <Card key={product.id} className={`overflow-hidden ${hasAnyChanges ? 'border-yellow-300 bg-yellow-50' : ''}`}>
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start">
                     <div className="space-y-1 flex-1">
@@ -288,7 +335,7 @@ const StockManagement = () => {
                           <Badge variant="outline" className="text-xs">{product.category}</Badge>
                         )}
                       </div>
-                      {hasChanges && (
+                      {hasAnyChanges && (
                         <div className="flex items-center gap-1">
                           <AlertTriangle className="h-3 w-3 text-yellow-600" />
                           <span className="text-xs text-yellow-600">Modified</span>
@@ -297,7 +344,7 @@ const StockManagement = () => {
                     </div>
                     <div className="text-right space-y-1">
                       <div className="text-lg font-semibold">${product.price}</div>
-                      {getStockBadge(product, newStock)}
+                      {getStockBadge(product, newStock, newThreshold)}
                     </div>
                   </div>
                 </CardHeader>
@@ -307,14 +354,20 @@ const StockManagement = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Current Stock</label>
-                      <div className={`text-lg font-medium ${hasChanges ? 'line-through text-gray-500' : ''}`}>
+                      <div className={`text-lg font-medium ${hasStockChanges ? 'line-through text-gray-500' : ''}`}>
                         {product.stock}
                       </div>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-muted-foreground">New Stock</label>
-                      <div className="text-lg font-medium">
-                        {newStock}
+                      <label className="text-sm font-medium text-muted-foreground">Alert Threshold</label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min="0"
+                          value={newThreshold}
+                          onChange={(e) => handleThresholdChange(product.id, parseInt(e.target.value) || 0)}
+                          className="w-20 h-8"
+                        />
                       </div>
                     </div>
                   </div>
@@ -323,13 +376,15 @@ const StockManagement = () => {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <label className="text-sm font-medium text-muted-foreground">Update Stock</label>
-                      {hasChanges && (
+                      {hasAnyChanges && (
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => {
-                            const { [product.id]: _, ...rest } = stockUpdates;
-                            setStockUpdates(rest);
+                            const { [product.id]: _, ...restStock } = stockUpdates;
+                            const { [product.id]: __, ...restThreshold } = thresholdUpdates;
+                            setStockUpdates(restStock);
+                            setThresholdUpdates(restThreshold);
                           }}
                           className="text-xs h-auto p-1"
                         >
