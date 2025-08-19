@@ -207,7 +207,7 @@ const Index = () => {
         <div className="space-y-3">
           <Button 
             variant="ghost" 
-            className="w-full justify-start h-14 bg-gradient-card shadow-card border border-border/50 rounded-xl hover:bg-muted/80 hover:shadow-elegant transition-all duration-200 text-foreground hover:text-foreground"
+            className="w-full justify-start h-14 bg-gradient-card shadow-card border border-border/50 rounded-xl hover:bg-muted/80 hover:shadow-elegant transition-all duration-200 text-foreground hover:text-purple-600"
             onClick={() => setActiveTab('products')}
           >
             <div className="flex items-center gap-4">
@@ -223,7 +223,7 @@ const Index = () => {
 
           <Button 
             variant="ghost" 
-            className="w-full justify-start h-14 bg-gradient-card shadow-card border border-border/50 rounded-xl hover:bg-muted/80 hover:shadow-elegant transition-all duration-200 text-foreground hover:text-foreground"
+            className="w-full justify-start h-14 bg-gradient-card shadow-card border border-border/50 rounded-xl hover:bg-muted/80 hover:shadow-elegant transition-all duration-200 text-foreground hover:text-purple-600"
             onClick={() => setActiveTab('orders')}
           >
             <div className="flex items-center gap-4">
@@ -239,7 +239,7 @@ const Index = () => {
 
           <Button 
             variant="ghost" 
-            className="w-full justify-start h-14 bg-gradient-card shadow-card border border-border/50 rounded-xl hover:bg-muted/80 hover:shadow-elegant transition-all duration-200 text-foreground hover:text-foreground"
+            className="w-full justify-start h-14 bg-gradient-card shadow-card border border-border/50 rounded-xl hover:bg-muted/80 hover:shadow-elegant transition-all duration-200 text-foreground hover:text-purple-600"
             onClick={() => setActiveTab('customers')}
           >
             <div className="flex items-center gap-4">
