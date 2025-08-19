@@ -359,7 +359,7 @@ const ProductManagement = () => {
             <div className="w-full flex justify-end">
               <div className="flex flex-col items-end space-y-2">
                 <Label className="text-sm font-medium text-foreground">View Mode</Label>
-                <div className="relative bg-muted/50 rounded-full p-1 w-40 h-12">
+                <div className="relative bg-muted/50 rounded-full p-1 w-40 h-12 flex">
                   {/* Sliding Background */}
                   <div 
                     className={`absolute top-1 h-10 w-[calc(50%-4px)] bg-gradient-primary rounded-full shadow-elegant transition-transform duration-300 ease-in-out ${
