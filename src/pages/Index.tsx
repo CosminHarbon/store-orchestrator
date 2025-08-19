@@ -34,15 +34,29 @@ const Index = () => {
   const { data: stats } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
-      const [productsRes, ordersRes, profileRes] = await Promise.all([
+      const today = new Date();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+      
+      const [productsRes, ordersRes, todayOrdersRes, profileRes] = await Promise.all([
         supabase.from('products').select('*', { count: 'exact' }),
         supabase.from('orders').select('*', { count: 'exact' }),
+        supabase
+          .from('orders')
+          .select('*')
+          .gte('created_at', startOfDay.toISOString())
+          .lt('created_at', endOfDay.toISOString()),
         supabase.from('profiles').select('store_name').eq('user_id', user?.id).single()
       ]);
 
       const totalRevenue = ordersRes.data?.reduce((sum, order) => sum + Number(order.total), 0) || 0;
       const pendingOrders = ordersRes.data?.filter(order => order.payment_status === 'pending').length || 0;
       const lowStockProducts = productsRes.data?.filter(product => product.stock < 5).length || 0;
+      
+      // Today's real data
+      const todayOrders = todayOrdersRes.data || [];
+      const todayRevenue = todayOrders.reduce((sum, order) => sum + Number(order.total), 0);
+      const todayNewOrders = todayOrders.length;
 
       return {
         totalProducts: productsRes.count || 0,
@@ -50,7 +64,9 @@ const Index = () => {
         totalRevenue,
         pendingOrders,
         lowStockProducts,
-        storeName: profileRes.data?.store_name || 'My Store'
+        storeName: profileRes.data?.store_name || 'My Store',
+        todayOrders: todayNewOrders,
+        todayRevenue: todayRevenue
       };
     },
     enabled: !!user
@@ -167,7 +183,7 @@ const Index = () => {
                 <p className="text-xs text-muted-foreground">Last 24 hours</p>
               </div>
             </div>
-            <span className="text-sm font-semibold">{Math.floor((stats?.totalOrders || 0) * 0.1)}</span>
+            <span className="text-sm font-semibold">{stats?.todayOrders || 0}</span>
           </div>
           
           <div className="flex items-center justify-between py-2 border-b border-border/20">
@@ -180,7 +196,7 @@ const Index = () => {
                 <p className="text-xs text-muted-foreground">Revenue generated</p>
               </div>
             </div>
-            <span className="text-sm font-semibold">${((stats?.totalRevenue || 0) * 0.05).toFixed(2)}</span>
+            <span className="text-sm font-semibold">${(stats?.todayRevenue || 0).toFixed(2)}</span>
           </div>
           
           {stats?.lowStockProducts > 0 && (
