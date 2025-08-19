@@ -206,8 +206,8 @@ const Index = () => {
         
         <div className="space-y-3">
           <Button 
-            variant="outline" 
-            className="w-full justify-start h-14 bg-gradient-card shadow-card border border-border/50 rounded-xl hover:shadow-elegant transition-all duration-200"
+            variant="ghost" 
+            className="w-full justify-start h-14 bg-gradient-card shadow-card border border-border/50 rounded-xl hover:bg-muted/80 hover:shadow-elegant transition-all duration-200 text-foreground hover:text-foreground"
             onClick={() => setActiveTab('products')}
           >
             <div className="flex items-center gap-4">
@@ -222,8 +222,8 @@ const Index = () => {
           </Button>
 
           <Button 
-            variant="outline" 
-            className="w-full justify-start h-14 bg-gradient-card shadow-card border border-border/50 rounded-xl hover:shadow-elegant transition-all duration-200"
+            variant="ghost" 
+            className="w-full justify-start h-14 bg-gradient-card shadow-card border border-border/50 rounded-xl hover:bg-muted/80 hover:shadow-elegant transition-all duration-200 text-foreground hover:text-foreground"
             onClick={() => setActiveTab('orders')}
           >
             <div className="flex items-center gap-4">
@@ -238,8 +238,8 @@ const Index = () => {
           </Button>
 
           <Button 
-            variant="outline" 
-            className="w-full justify-start h-14 bg-gradient-card shadow-card border border-border/50 rounded-xl hover:shadow-elegant transition-all duration-200"
+            variant="ghost" 
+            className="w-full justify-start h-14 bg-gradient-card shadow-card border border-border/50 rounded-xl hover:bg-muted/80 hover:shadow-elegant transition-all duration-200 text-foreground hover:text-foreground"
             onClick={() => setActiveTab('customers')}
           >
             <div className="flex items-center gap-4">
