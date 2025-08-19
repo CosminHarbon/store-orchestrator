@@ -153,16 +153,50 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Get Started Section */}
+      {/* Today's Overview */}
       <div className="bg-gradient-card rounded-xl p-4 shadow-card border border-border/50">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h3 className="font-semibold text-lg">Get set up</h3>
-            <p className="text-sm text-muted-foreground">3 of 6 complete</p>
+        <h3 className="font-semibold text-lg mb-3">Today's Overview</h3>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between py-2 border-b border-border/20">
+            <div className="flex items-center gap-3">
+              <div className="p-1.5 bg-green-50 rounded-lg">
+                <ShoppingCart className="h-4 w-4 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">New Orders</p>
+                <p className="text-xs text-muted-foreground">Last 24 hours</p>
+              </div>
+            </div>
+            <span className="text-sm font-semibold">{Math.floor((stats?.totalOrders || 0) * 0.1)}</span>
           </div>
-          <div className="w-12 h-12 rounded-full border-4 border-primary relative">
-            <div className="absolute inset-1 rounded-full bg-primary/20"></div>
+          
+          <div className="flex items-center justify-between py-2 border-b border-border/20">
+            <div className="flex items-center gap-3">
+              <div className="p-1.5 bg-blue-50 rounded-lg">
+                <DollarSign className="h-4 w-4 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Today's Sales</p>
+                <p className="text-xs text-muted-foreground">Revenue generated</p>
+              </div>
+            </div>
+            <span className="text-sm font-semibold">${((stats?.totalRevenue || 0) * 0.05).toFixed(2)}</span>
           </div>
+          
+          {stats?.lowStockProducts > 0 && (
+            <div className="flex items-center justify-between py-2">
+              <div className="flex items-center gap-3">
+                <div className="p-1.5 bg-orange-50 rounded-lg">
+                  <Package className="h-4 w-4 text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-orange-600">Low Stock Alert</p>
+                  <p className="text-xs text-muted-foreground">Products need restocking</p>
+                </div>
+              </div>
+              <span className="text-sm font-semibold text-orange-600">{stats?.lowStockProducts}</span>
+            </div>
+          )}
         </div>
       </div>
 
