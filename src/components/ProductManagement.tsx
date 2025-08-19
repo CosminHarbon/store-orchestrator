@@ -357,29 +357,32 @@ const ProductManagement = () => {
             </div>
             
             <div className="w-full flex justify-end">
-              <ToggleGroup 
-                type="single" 
-                value={viewMode} 
-                onValueChange={(value) => value && setViewMode(value as 'grid' | 'list')}
-                className="bg-muted/50 rounded-lg p-1"
-              >
-                <ToggleGroupItem 
-                  value="grid" 
-                  aria-label="Grid view"
-                  className="rounded-md px-4 py-2 data-[state=on]:bg-background data-[state=on]:shadow-sm"
+              <div className="flex flex-col items-end space-y-2">
+                <Label className="text-sm font-medium text-foreground">View Mode</Label>
+                <ToggleGroup 
+                  type="single" 
+                  value={viewMode} 
+                  onValueChange={(value) => value && setViewMode(value as 'grid' | 'list')}
+                  className="bg-muted/50 rounded-lg p-1"
                 >
-                  <Grid className="h-4 w-4 mr-2" />
-                  Grid
-                </ToggleGroupItem>
-                <ToggleGroupItem 
-                  value="list" 
-                  aria-label="List view"
-                  className="rounded-md px-4 py-2 data-[state=on]:bg-background data-[state=on]:shadow-sm"
-                >
-                  <List className="h-4 w-4 mr-2" />
-                  List
-                </ToggleGroupItem>
-              </ToggleGroup>
+                  <ToggleGroupItem 
+                    value="grid" 
+                    aria-label="Grid view"
+                    className="rounded-md px-4 py-2 data-[state=on]:bg-gradient-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-elegant hover:bg-primary/10 transition-all duration-200"
+                  >
+                    <Grid className="h-4 w-4 mr-2" />
+                    Grid
+                  </ToggleGroupItem>
+                  <ToggleGroupItem 
+                    value="list" 
+                    aria-label="List view"
+                    className="rounded-md px-4 py-2 data-[state=on]:bg-gradient-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-elegant hover:bg-primary/10 transition-all duration-200"
+                  >
+                    <List className="h-4 w-4 mr-2" />
+                    List
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
             </div>
           </div>
 
