@@ -420,6 +420,16 @@ const OrderManagement = () => {
                     <Receipt className="h-4 w-4 mr-2" />
                     Generate & Send Invoice
                   </Button>
+                  <Button
+                    onClick={() => toast.info("Shipping integration coming soon!")}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    disabled={selectedOrder.shipping_status === 'delivered' || selectedOrder.shipping_status === 'cancelled'}
+                  >
+                    <Truck className="h-4 w-4 mr-2" />
+                    Create Shipment
+                  </Button>
                   {selectedOrder.invoice_link && (
                     <Button
                       onClick={() => window.open(selectedOrder.invoice_link, '_blank')}
