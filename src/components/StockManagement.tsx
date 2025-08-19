@@ -143,15 +143,87 @@ const StockManagement = () => {
     const csvContent = "Product,SKU,Current Stock,Price,Category\n" + 
       products.map(p => `"${p.title}","${p.sku || ''}",${p.stock},${p.price},"${p.category || ''}"`).join('\n');
     
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `stock-export-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+    const fileName = `stock-export-${new Date().toISOString().split('T')[0]}.csv`;
     
-    toast.success('Stock data exported');
+    // Check if we're on mobile and if Web Share API is available
+    if (navigator.share && /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const file = new File([blob], fileName, { type: 'text/csv' });
+      
+      navigator.share({
+        title: 'Stock Export',
+        text: 'Stock data export',
+        files: [file]
+      }).then(() => {
+        toast.success('Stock data shared');
+      }).catch((error) => {
+        // Fallback to download if sharing fails
+        fallbackDownload(csvContent, fileName);
+      });
+    } else {
+      // Desktop or browsers without Web Share API
+      fallbackDownload(csvContent, fileName);
+    }
+  };
+
+  const fallbackDownload = (csvContent: string, fileName: string) => {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    
+    // Try modern approach first
+    if (window.navigator && (window.navigator as any).msSaveOrOpenBlob) {
+      // IE/Edge
+      (window.navigator as any).msSaveOrOpenBlob(blob, fileName);
+      toast.success('Stock data exported');
+    } else {
+      // Modern browsers
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      
+      // For mobile browsers, try opening in new tab as fallback
+      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      if (isMobile) {
+        // On mobile, open CSV content in a new window
+        const csvWindow = window.open('', '_blank');
+        if (csvWindow) {
+          csvWindow.document.write(`
+            <html>
+              <head>
+                <title>Stock Export - ${fileName}</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <style>
+                  body { font-family: monospace; padding: 20px; white-space: pre-wrap; }
+                  .download-info { background: #f0f0f0; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+                </style>
+              </head>
+              <body>
+                <div class="download-info">
+                  <strong>Stock Export Data</strong><br>
+                  Copy the text below or use your browser's "Save Page As" feature to save as CSV.
+                  <br><br>
+                  Filename: ${fileName}
+                </div>
+                ${csvContent}
+              </body>
+            </html>
+          `);
+          csvWindow.document.close();
+          toast.success('Stock data opened in new window');
+        } else {
+          toast.error('Please allow popups to export data on mobile');
+        }
+      } else {
+        // Desktop download
+        link.href = url;
+        link.download = fileName;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        toast.success('Stock data exported');
+      }
+    }
   };
 
   const getPendingChangesCount = () => {
