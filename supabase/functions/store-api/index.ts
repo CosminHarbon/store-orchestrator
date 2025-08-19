@@ -44,6 +44,27 @@ interface Database {
           updated_at: string
         }
       }
+      discounts: {
+        Row: {
+          id: string
+          user_id: string
+          discount_type: 'percentage' | 'fixed_amount'
+          discount_value: number
+          start_date: string
+          end_date: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+      }
+      product_discounts: {
+        Row: {
+          id: string
+          product_id: string
+          discount_id: string
+          created_at: string
+        }
+      }
       orders: {
         Row: {
           id: string
@@ -80,6 +101,75 @@ interface Database {
       }
     }
   }
+}
+
+// Discount calculation function
+function calculateProductPrice(
+  productId: string,
+  originalPrice: number,
+  discounts: any[],
+  productDiscounts: any[]
+) {
+  // Find active discounts for this product
+  const productDiscountIds = productDiscounts
+    .filter(pd => pd.product_id === productId)
+    .map(pd => pd.discount_id);
+
+  if (productDiscountIds.length === 0) {
+    return {
+      originalPrice,
+      discountedPrice: null,
+      hasDiscount: false
+    };
+  }
+
+  // Find the best (highest discount) active discount
+  const activeDiscounts = discounts.filter(discount => {
+    const isInList = productDiscountIds.includes(discount.id);
+    const isActive = discount.is_active;
+    const isInDateRange = new Date(discount.start_date) <= new Date() && 
+      (!discount.end_date || new Date(discount.end_date) >= new Date());
+    
+    return isInList && isActive && isInDateRange;
+  });
+
+  if (activeDiscounts.length === 0) {
+    return {
+      originalPrice,
+      discountedPrice: null,
+      hasDiscount: false
+    };
+  }
+
+  // Calculate discount amounts and find the best one
+  let bestDiscount = 0;
+  let bestDiscountType: 'percentage' | 'fixed_amount' = 'percentage';
+
+  activeDiscounts.forEach(discount => {
+    let discountAmount = 0;
+    
+    if (discount.discount_type === 'percentage') {
+      discountAmount = originalPrice * (discount.discount_value / 100);
+    } else {
+      discountAmount = Math.min(discount.discount_value, originalPrice);
+    }
+
+    if (discountAmount > bestDiscount) {
+      bestDiscount = discountAmount;
+      bestDiscountType = discount.discount_type;
+    }
+  });
+
+  const discountedPrice = Math.max(0, originalPrice - bestDiscount);
+  const discountPercentage = (bestDiscount / originalPrice) * 100;
+
+  return {
+    originalPrice,
+    discountedPrice,
+    hasDiscount: true,
+    discountPercentage,
+    savingsAmount: bestDiscount
+  };
 }
 
 Deno.serve(async (req) => {
@@ -171,21 +261,54 @@ Deno.serve(async (req) => {
             console.log('Error fetching product images:', imagesError)
           }
 
-          // Combine products with their images
-          const productsWithImages = products.map(product => {
+          // Get discounts and product discounts
+          const { data: discounts, error: discountsError } = await supabase
+            .from('discounts')
+            .select('*')
+            .eq('user_id', userId)
+
+          const { data: productDiscounts, error: productDiscountsError } = await supabase
+            .from('product_discounts')
+            .select('*')
+
+          if (discountsError) {
+            console.log('Error fetching discounts:', discountsError)
+          }
+
+          if (productDiscountsError) {
+            console.log('Error fetching product discounts:', productDiscountsError)
+          }
+
+          // Combine products with their images and discount information
+          const productsWithImagesAndDiscounts = products.map(product => {
             const images = productImages?.filter(img => img.product_id === product.id) || []
             const primaryImage = images.find(img => img.is_primary) || images[0] || null
+            
+            // Calculate discount price
+            const priceInfo = calculateProductPrice(
+              product.id,
+              product.price,
+              discounts || [],
+              productDiscounts || []
+            )
             
             return {
               ...product,
               images: images,
               primary_image: primaryImage?.image_url || product.image || null,
-              image_count: images.length
+              image_count: images.length,
+              // Add discount information
+              original_price: priceInfo.originalPrice,
+              discounted_price: priceInfo.discountedPrice,
+              has_discount: priceInfo.hasDiscount,
+              discount_percentage: priceInfo.discountPercentage,
+              savings_amount: priceInfo.savingsAmount,
+              final_price: priceInfo.discountedPrice || priceInfo.originalPrice
             }
           })
 
           return new Response(
-            JSON.stringify({ products: productsWithImages }),
+            JSON.stringify({ products: productsWithImagesAndDiscounts }),
             { 
               status: 200, 
               headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -375,7 +498,25 @@ Deno.serve(async (req) => {
             )
           }
 
-          // Get products for each collection with images
+          // Get discounts and product discounts for collections
+          const { data: discounts, error: discountsError } = await supabase
+            .from('discounts')
+            .select('*')
+            .eq('user_id', userId)
+
+          const { data: productDiscounts, error: productDiscountsError } = await supabase
+            .from('product_discounts')
+            .select('*')
+
+          if (discountsError) {
+            console.log('Error fetching discounts for collections:', discountsError)
+          }
+
+          if (productDiscountsError) {
+            console.log('Error fetching product discounts for collections:', productDiscountsError)
+          }
+
+          // Get products for each collection with images and discounts
           const collectionsWithProducts = await Promise.all(
             collections.map(async (collection) => {
               // Get product-collection relationships
@@ -417,22 +558,37 @@ Deno.serve(async (req) => {
                 console.log('Error fetching product images for collection:', imagesError)
               }
 
-              // Combine products with their images
-              const productsWithImages = products.map(product => {
+              // Combine products with their images and discount information
+              const productsWithImagesAndDiscounts = products.map(product => {
                 const images = productImages?.filter(img => img.product_id === product.id) || []
                 const primaryImage = images.find(img => img.is_primary) || images[0] || null
+                
+                // Calculate discount price
+                const priceInfo = calculateProductPrice(
+                  product.id,
+                  product.price,
+                  discounts || [],
+                  productDiscounts || []
+                )
                 
                 return {
                   ...product,
                   images: images,
                   primary_image: primaryImage?.image_url || product.image || null,
-                  image_count: images.length
+                  image_count: images.length,
+                  // Add discount information
+                  original_price: priceInfo.originalPrice,
+                  discounted_price: priceInfo.discountedPrice,
+                  has_discount: priceInfo.hasDiscount,
+                  discount_percentage: priceInfo.discountPercentage,
+                  savings_amount: priceInfo.savingsAmount,
+                  final_price: priceInfo.discountedPrice || priceInfo.originalPrice
                 }
               })
 
               return {
                 ...collection,
-                products: productsWithImages,
+                products: productsWithImagesAndDiscounts,
                 product_count: products.length
               }
             })
