@@ -51,7 +51,7 @@ const CollectionsManagement = () => {
     queryKey: ['collections'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('collections' as any)
+        .from('collections')
         .select('*')
         .order('name');
       
@@ -59,9 +59,9 @@ const CollectionsManagement = () => {
       
       // Get product counts for each collection
       const collectionsWithCounts = await Promise.all(
-        data.map(async (collection: any) => {
+        data.map(async (collection) => {
           const { count } = await supabase
-            .from('product_collections' as any)
+            .from('product_collections')
             .select('*', { count: 'exact', head: true })
             .eq('collection_id', collection.id);
           
@@ -95,7 +95,7 @@ const CollectionsManagement = () => {
       if (!selectedCollection) return [];
       
       const { data, error } = await supabase
-        .from('product_collections' as any)
+        .from('product_collections')
         .select('product_id')
         .eq('collection_id', selectedCollection.id);
       
@@ -114,7 +114,7 @@ const CollectionsManagement = () => {
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       const { data: result, error } = await supabase
-        .from('collections' as any)
+        .from('collections')
         .insert([{ ...data, user_id: (await supabase.auth.getUser()).data.user?.id }])
         .select()
         .single();
@@ -136,7 +136,7 @@ const CollectionsManagement = () => {
   const updateMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       const { data: result, error } = await supabase
-        .from('collections' as any)
+        .from('collections')
         .update(data)
         .eq('id', selectedCollection?.id)
         .select()
@@ -159,7 +159,7 @@ const CollectionsManagement = () => {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from('collections' as any)
+        .from('collections')
         .delete()
         .eq('id', id);
       
@@ -180,12 +180,12 @@ const CollectionsManagement = () => {
       
       if (inCollection) {
         const { error } = await supabase
-          .from('product_collections' as any)
+          .from('product_collections')
           .insert([{ product_id: productId, collection_id: selectedCollection.id }]);
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from('product_collections' as any)
+          .from('product_collections')
           .delete()
           .eq('product_id', productId)
           .eq('collection_id', selectedCollection.id);
