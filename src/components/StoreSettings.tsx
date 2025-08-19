@@ -512,12 +512,12 @@ class StoreAPI {
               <CardDescription>Copy this code to integrate with your website</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Dialog open={isCodeDialogOpen} onOpenChange={setIsCodeDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button>
-                      <Code className="h-4 w-4 mr-2" />
-                      View Integration Code
+                    <Button className="w-full sm:w-auto text-sm">
+                      <Code className="h-4 w-4 mr-2 flex-shrink-0" />
+                      <span className="truncate">View Integration Code</span>
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
@@ -543,11 +543,12 @@ class StoreAPI {
                 </Dialog>
                 
                 <Button
+                  className="w-full sm:w-auto text-sm"
                   variant="outline"
                   onClick={() => copyToClipboard(integrationCode)}
                 >
-                  <Copy className="h-4 w-4 mr-2" />
-                  Copy Code
+                  <Copy className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <span className="truncate">Copy Code</span>
                 </Button>
               </div>
             </CardContent>
