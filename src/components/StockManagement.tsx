@@ -16,6 +16,7 @@ interface Product {
   stock: number;
   price: number;
   category: string;
+  low_stock_threshold: number;
 }
 
 interface StockUpdate {
@@ -34,7 +35,7 @@ const StockManagement = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
-        .select('id, title, sku, stock, price, category')
+        .select('id, title, sku, stock, price, category, low_stock_threshold')
         .order('title');
       
       if (error) throw error;
@@ -127,9 +128,10 @@ const StockManagement = () => {
     return Object.keys(stockUpdates).length;
   };
 
-  const getStockBadge = (stock: number) => {
-    if (stock <= 0) return <Badge variant="destructive">Out of Stock</Badge>;
-    if (stock <= 5) return <Badge variant="secondary">Low Stock</Badge>;
+  const getStockBadge = (product: Product, newStock?: number) => {
+    const stockToCheck = newStock !== undefined ? newStock : product.stock;
+    if (stockToCheck <= 0) return <Badge variant="destructive">Out of Stock</Badge>;
+    if (stockToCheck <= product.low_stock_threshold) return <Badge variant="secondary">Low Stock</Badge>;
     return <Badge variant="default">In Stock</Badge>;
   };
 
@@ -223,7 +225,7 @@ const StockManagement = () => {
                       )}
                     </TableCell>
                     <TableCell>{product.sku || '-'}</TableCell>
-                    <TableCell>{getStockBadge(newStock)}</TableCell>
+                    <TableCell>{getStockBadge(product, newStock)}</TableCell>
                     <TableCell>
                       <span className={hasChanges ? 'line-through text-gray-500' : ''}>
                         {product.stock}
@@ -295,7 +297,7 @@ const StockManagement = () => {
                     </div>
                     <div className="text-right space-y-1">
                       <div className="text-lg font-semibold">${product.price}</div>
-                      {getStockBadge(newStock)}
+                      {getStockBadge(product, newStock)}
                     </div>
                   </div>
                 </CardHeader>

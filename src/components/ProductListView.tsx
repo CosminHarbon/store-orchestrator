@@ -14,6 +14,7 @@ interface Product {
   category: string;
   stock: number;
   sku: string;
+  low_stock_threshold: number;
 }
 
 interface Discount {
@@ -50,10 +51,10 @@ export function ProductListView({
   onProductClick 
 }: ProductListViewProps) {
 
-  const getStockBadge = (stock: number) => {
-    if (stock === 0) return <Badge variant="destructive" className="text-xs">Out of Stock</Badge>;
-    if (stock < 5) return <Badge variant="secondary" className="text-xs">Low Stock</Badge>;
-    return <Badge variant="outline" className="text-xs">{stock} in stock</Badge>;
+  const getStockBadge = (product: Product) => {
+    if (product.stock === 0) return <Badge variant="destructive" className="text-xs">Out of Stock</Badge>;
+    if (product.stock <= product.low_stock_threshold) return <Badge variant="secondary" className="text-xs">Low Stock</Badge>;
+    return <Badge variant="outline" className="text-xs">{product.stock} in stock</Badge>;
   };
 
   const renderPriceDisplay = (product: Product) => {
@@ -131,7 +132,7 @@ export function ProductListView({
                   {renderPriceDisplay(product)}
                 </TableCell>
                 <TableCell className="py-4">
-                  {getStockBadge(product.stock)}
+                  {getStockBadge(product)}
                 </TableCell>
                 <TableCell className="py-4">
                   <span className="text-sm font-mono text-muted-foreground">
@@ -230,7 +231,7 @@ export function ProductListView({
               {/* Stock and SKU Row */}
               <div className="flex items-center justify-between">
                 <div>
-                  {getStockBadge(product.stock)}
+                  {getStockBadge(product)}
                 </div>
                 {product.sku && (
                   <span className="text-xs font-mono text-muted-foreground">

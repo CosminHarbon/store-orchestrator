@@ -323,6 +323,7 @@ export type Database = {
           description: string | null
           id: string
           image: string | null
+          low_stock_threshold: number
           price: number
           sku: string | null
           stock: number
@@ -336,6 +337,7 @@ export type Database = {
           description?: string | null
           id?: string
           image?: string | null
+          low_stock_threshold?: number
           price: number
           sku?: string | null
           stock?: number
@@ -349,6 +351,7 @@ export type Database = {
           description?: string | null
           id?: string
           image?: string | null
+          low_stock_threshold?: number
           price?: number
           sku?: string | null
           stock?: number

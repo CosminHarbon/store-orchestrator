@@ -15,6 +15,7 @@ interface Product {
   category: string;
   stock: number;
   sku: string;
+  low_stock_threshold: number;
 }
 
 interface ProductImage {
@@ -82,7 +83,7 @@ export function ProductDetailModal({
 
   const getStockStatus = () => {
     if (product.stock === 0) return { text: 'Out of Stock', variant: 'destructive' as const };
-    if (product.stock < 5) return { text: 'Low Stock', variant: 'secondary' as const };
+    if (product.stock <= product.low_stock_threshold) return { text: 'Low Stock', variant: 'secondary' as const };
     return { text: 'In Stock', variant: 'default' as const };
   };
 

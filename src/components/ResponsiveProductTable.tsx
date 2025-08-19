@@ -14,6 +14,7 @@ interface Product {
   category: string;
   stock: number;
   sku: string;
+  low_stock_threshold: number;
 }
 
 interface ProductImage {
@@ -63,10 +64,10 @@ export function ResponsiveProductTable({
     return productImages?.find(img => img.product_id === productId);
   };
 
-  const getStockBadge = (stock: number) => {
-    if (stock === 0) return <Badge variant="destructive" className="text-xs">Out of Stock</Badge>;
-    if (stock < 5) return <Badge variant="secondary" className="text-xs">Low Stock</Badge>;
-    return <Badge variant="outline" className="text-xs">{stock} in stock</Badge>;
+  const getStockBadge = (product: Product) => {
+    if (product.stock === 0) return <Badge variant="destructive" className="text-xs">Out of Stock</Badge>;
+    if (product.stock <= product.low_stock_threshold) return <Badge variant="secondary" className="text-xs">Low Stock</Badge>;
+    return <Badge variant="outline" className="text-xs">{product.stock} in stock</Badge>;
   };
 
   const renderPriceDisplay = (product: Product) => {
@@ -195,7 +196,7 @@ export function ResponsiveProductTable({
                     
                     <div className="flex items-center justify-between">
                       {renderPriceDisplay(product)}
-                      {getStockBadge(product.stock)}
+                      {getStockBadge(product)}
                     </div>
                     
                     {product.description && (
@@ -258,7 +259,7 @@ export function ResponsiveProductTable({
                     </div>
                     
                     <div className="flex items-center justify-between">
-                      {getStockBadge(product.stock)}
+                      {getStockBadge(product)}
                       <div className="flex gap-1">
                         <Button
                           size="sm"
@@ -346,7 +347,7 @@ export function ResponsiveProductTable({
                     
                     <div className="flex items-center justify-between">
                       {renderMobilePriceDisplay(product)}
-                      {getStockBadge(product.stock)}
+                      {getStockBadge(product)}
                     </div>
                     
                     {/* Action Buttons */}

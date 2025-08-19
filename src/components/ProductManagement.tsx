@@ -28,6 +28,7 @@ interface Product {
   category: string;
   stock: number;
   sku: string;
+  low_stock_threshold: number;
 }
 
 interface ProductImage {
@@ -52,7 +53,8 @@ const ProductManagement = () => {
     price: '',
     category: '',
     stock: '',
-    sku: ''
+    sku: '',
+    low_stock_threshold: '5'
   });
   
   const queryClient = useQueryClient();
@@ -141,6 +143,7 @@ const ProductManagement = () => {
           ...productData,
           price: parseFloat(productData.price),
           stock: parseInt(productData.stock),
+          low_stock_threshold: parseInt(productData.low_stock_threshold || '5'),
           user_id: (await supabase.auth.getUser()).data.user?.id
         })
         .select();
@@ -171,7 +174,8 @@ const ProductManagement = () => {
         .update({
           ...productData,
           price: parseFloat(productData.price),
-          stock: parseInt(productData.stock)
+          stock: parseInt(productData.stock),
+          low_stock_threshold: parseInt(productData.low_stock_threshold || '5')
         })
         .eq('id', id)
         .select();
@@ -216,7 +220,8 @@ const ProductManagement = () => {
       price: '',
       category: '',
       stock: '',
-      sku: ''
+      sku: '',
+      low_stock_threshold: '5'
     });
     setEditingProduct(null);
     setIsDialogOpen(false);
@@ -241,7 +246,8 @@ const ProductManagement = () => {
       price: product.price.toString(),
       category: product.category || '',
       stock: product.stock.toString(),
-      sku: product.sku || ''
+      sku: product.sku || '',
+      low_stock_threshold: product.low_stock_threshold.toString()
     });
     setIsDialogOpen(true);
   };
@@ -347,6 +353,17 @@ const ProductManagement = () => {
                         required
                       />
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="low_stock_threshold" className="text-sm font-medium">Low Stock Alert Threshold</Label>
+                    <Input
+                      id="low_stock_threshold"
+                      type="number"
+                      value={formData.low_stock_threshold}
+                      onChange={(e) => setFormData({ ...formData, low_stock_threshold: e.target.value })}
+                      className="border-border/50 focus:border-primary"
+                      placeholder="5"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="category" className="text-sm font-medium">Category</Label>
