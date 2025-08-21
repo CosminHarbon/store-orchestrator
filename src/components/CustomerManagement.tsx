@@ -160,7 +160,7 @@ const CustomerManagement: React.FC = () => {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
             <Card key={i}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -201,45 +201,45 @@ const CustomerManagement: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-xs sm:text-sm font-medium truncate">Total Customers</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalCustomers}</div>
+          <CardContent className="pb-4">
+            <div className="text-xl sm:text-2xl font-bold truncate">{totalCustomers}</div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-xs sm:text-sm font-medium truncate">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
+          <CardContent className="pb-4">
+            <div className="text-xl sm:text-2xl font-bold truncate">{formatCurrency(totalRevenue)}</div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Customer Value</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-xs sm:text-sm font-medium truncate">Avg Customer Value</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(averageCustomerValue)}</div>
+          <CardContent className="pb-4">
+            <div className="text-xl sm:text-2xl font-bold truncate">{formatCurrency(averageCustomerValue)}</div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Repeat Customers</CardTitle>
-            <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-xs sm:text-sm font-medium truncate">Repeat Customers</CardTitle>
+            <ShoppingBag className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{repeatCustomers}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardContent className="pb-4">
+            <div className="text-xl sm:text-2xl font-bold truncate">{repeatCustomers}</div>
+            <p className="text-xs text-muted-foreground truncate">
               {totalCustomers > 0 ? Math.round((repeatCustomers / totalCustomers) * 100) : 0}% retention
             </p>
           </CardContent>
