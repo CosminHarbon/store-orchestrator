@@ -29,13 +29,16 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
               variant="ghost"
               size="sm"
               className={cn(
-                "flex flex-col gap-1 h-12 px-1 rounded-xl transition-all duration-200",
+                "flex flex-col gap-1 h-12 px-1 rounded-xl transition-all duration-200 relative",
                 isActive 
-                  ? "text-primary bg-primary/10" 
+                  ? "text-primary" 
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               )}
               onClick={() => onTabChange(item.id)}
             >
+              {isActive && (
+                <div className="absolute top-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-primary rounded-full" />
+              )}
               <Icon className={cn("h-5 w-5", isActive && "text-primary")} />
               <span className={cn(
                 "text-xs font-medium leading-none",
