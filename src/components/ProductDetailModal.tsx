@@ -91,7 +91,7 @@ export function ProductDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl h-[90vh] bg-background/95 backdrop-blur-xl border border-border/50 p-0 overflow-hidden">
+      <DialogContent className="max-w-4xl h-[95vh] md:h-[90vh] bg-background/95 backdrop-blur-xl border border-border/50 p-0 overflow-hidden">
         {/* Close Button */}
         <Button
           onClick={onClose}
@@ -102,11 +102,11 @@ export function ProductDetailModal({
           <X className="h-4 w-4" />
         </Button>
 
-        <div className="flex flex-col md:flex-row h-full">
+        <div className="flex flex-col md:flex-row h-full overflow-hidden">
           {/* Image Section */}
-          <div className="flex-1 relative bg-gradient-subtle">
+          <div className="flex-1 relative bg-gradient-subtle md:flex-1">
             {currentImage ? (
-              <div className="relative h-64 md:h-full flex items-center justify-center p-4 md:p-8">
+              <div className="relative h-48 md:h-full flex items-center justify-center p-4 md:p-8">
                 <img 
                   src={currentImage} 
                   alt={product.title}
@@ -153,7 +153,7 @@ export function ProductDetailModal({
                 )}
               </div>
             ) : (
-              <div className="h-64 md:h-full flex items-center justify-center">
+              <div className="h-48 md:h-full flex items-center justify-center">
                 <div className="text-center space-y-4">
                   <Package className="h-24 w-24 text-muted-foreground/30 mx-auto" />
                   <p className="text-muted-foreground">No image available</p>
@@ -163,8 +163,8 @@ export function ProductDetailModal({
           </div>
 
           {/* Product Details Section */}
-          <div className="w-full md:w-96 lg:w-[28rem] bg-background border-t md:border-t-0 md:border-l border-border/50 flex flex-col">
-            <div className="flex-1 p-6 md:p-8 overflow-y-auto space-y-6">
+          <div className="w-full md:w-96 lg:w-[28rem] bg-background border-t md:border-t-0 md:border-l border-border/50 flex flex-col min-h-0">
+            <div className="flex-1 p-6 md:p-8 overflow-y-auto space-y-6 min-h-0">
               {/* Price */}
               <div className="text-3xl md:text-4xl font-bold text-primary">
                 ${product.price.toFixed(2)}
