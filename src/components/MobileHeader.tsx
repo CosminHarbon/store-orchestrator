@@ -29,9 +29,8 @@ export function MobileHeader({ userEmail, storeName, onTabChange }: MobileHeader
   const initials = userEmail ? userEmail.slice(0, 2).toUpperCase() : "?";
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-xl border-b border-border/50">
-      <div className="pt-safe-area-top">
-        <div className="flex h-16 items-center justify-between px-4">
+    <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-xl border-b border-border/50 safe-area-top">
+      <div className="flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-3">
             <SidebarTrigger className="md:hidden p-2 hover:bg-muted/50 rounded-lg transition-colors" />
             <div className="flex items-center gap-3">
@@ -89,7 +88,6 @@ export function MobileHeader({ userEmail, storeName, onTabChange }: MobileHeader
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </div>
     </header>
   );
 }
