@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Copy, RefreshCw, Eye, Code, TestTube, Settings } from 'lucide-react';
+import { Copy, RefreshCw, Eye, Code, TestTube, Settings, ChevronDown, FileText, CreditCard, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -38,6 +39,11 @@ interface Profile {
 const StoreSettings = () => {
   const [storeName, setStoreName] = useState('');
   const [isCodeDialogOpen, setIsCodeDialogOpen] = useState(false);
+  const [openCollapsibles, setOpenCollapsibles] = useState({
+    invoicing: false,
+    payment: false,
+    delivery: false
+  });
   const [integrations, setIntegrations] = useState({
     invoicing: 'oblio.eu',
     shipping: 'sameday',
@@ -652,233 +658,535 @@ class StoreAPI {
               <CardDescription>Connect your store with invoicing, shipping, and payment providers</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="invoicing-provider">Invoicing Provider</Label>
-                  <Select
-                    value={integrations.invoicing}
-                    onValueChange={(value) => setIntegrations({ ...integrations, invoicing: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select invoicing provider" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="oblio.eu">Oblio.eu</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground">
-                    Handles automatic invoice generation for your orders
-                  </p>
-                  
-                  {integrations.invoicing === 'oblio.eu' && (
-                    <div className="mt-4 p-4 border rounded-lg space-y-4">
-                      <h4 className="font-medium">Oblio.eu Configuration</h4>
-                      <div className="grid gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="oblio-email">Oblio Email Address</Label>
-                          <Input
-                            id="oblio-email"
-                            type="email"
-                            value={providerConfigs.oblio.email}
-                            onChange={(e) => updateProviderConfig('oblio', 'email', e.target.value)}
-                            placeholder="Enter your Oblio.eu account email"
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            This is your Oblio.eu login email (client_id)
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="oblio-api-key">API Secret Key</Label>
-                          <Input
-                            id="oblio-api-key"
-                            type="password"
-                            value={providerConfigs.oblio.api_key}
-                            onChange={(e) => updateProviderConfig('oblio', 'api_key', e.target.value)}
-                            placeholder="Enter your Oblio.eu API secret key"
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Found in Oblio.eu Settings → Account Data (client_secret)
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="oblio-series-name">Invoice Series</Label>
-                          <Input
-                            id="oblio-series-name"
-                            value={providerConfigs.oblio.series_name}
-                            onChange={(e) => updateProviderConfig('oblio', 'series_name', e.target.value)}
-                            placeholder="e.g., APM"
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Series prefix for your invoices (e.g., APM, FCT)
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="oblio-first-number">First Invoice Number</Label>
-                          <Input
-                            id="oblio-first-number"
-                            value={providerConfigs.oblio.first_number}
-                            onChange={(e) => updateProviderConfig('oblio', 'first_number', e.target.value)}
-                            placeholder="e.g., 001"
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Starting number for your invoices (e.g., 001, 0001)
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="oblio-name">Company Name</Label>
-                          <Input
-                            id="oblio-name"
-                            value={providerConfigs.oblio.name}
-                            onChange={(e) => updateProviderConfig('oblio', 'name', e.target.value)}
-                            placeholder="Enter your company name"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="shipping-provider">Shipping Provider</Label>
-                  <Select
-                    value={integrations.shipping}
-                    onValueChange={(value) => setIntegrations({ ...integrations, shipping: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select shipping provider" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="sameday">Sameday</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground">
-                    Manages shipping and delivery for your orders
-                  </p>
-                  
-                  {integrations.shipping === 'sameday' && (
-                    <div className="mt-4 p-4 border rounded-lg space-y-4">
-                      <h4 className="font-medium">Sameday Configuration</h4>
-                      <div className="grid gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="sameday-api-key">API Key</Label>
-                          <Input
-                            id="sameday-api-key"
-                            type="password"
-                            value={providerConfigs.sameday.api_key}
-                            onChange={(e) => updateProviderConfig('sameday', 'api_key', e.target.value)}
-                            placeholder="Enter your Sameday API key"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="sameday-name">Company Name</Label>
-                          <Input
-                            id="sameday-name"
-                            value={providerConfigs.sameday.name}
-                            onChange={(e) => updateProviderConfig('sameday', 'name', e.target.value)}
-                            placeholder="Enter your company name"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="sameday-email">Email Address</Label>
-                          <Input
-                            id="sameday-email"
-                            type="email"
-                            value={providerConfigs.sameday.email}
-                            onChange={(e) => updateProviderConfig('sameday', 'email', e.target.value)}
-                            placeholder="Enter your email address"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="payment-provider">Payment Processor</Label>
-                  <Select
-                    value={integrations.payment}
-                    onValueChange={(value) => setIntegrations({ ...integrations, payment: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select payment processor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="netpopia">Netpopia Payments</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground">
-                    Processes online payments from your customers
-                  </p>
-                  
-                  {integrations.payment === 'netpopia' && (
-                    <div className="mt-4 p-4 border rounded-lg space-y-4">
-                      <h4 className="font-medium">Netpopia Configuration</h4>
-                      <div className="grid gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="netpopia-api-key">API Key</Label>
-                          <Input
-                            id="netpopia-api-key"
-                            type="password"
-                            value={providerConfigs.netpopia.api_key}
-                            onChange={(e) => updateProviderConfig('netpopia', 'api_key', e.target.value)}
-                            placeholder="Enter your Netpopia API key"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="netpopia-name">Company Name</Label>
-                          <Input
-                            id="netpopia-name"
-                            value={providerConfigs.netpopia.name}
-                            onChange={(e) => updateProviderConfig('netpopia', 'name', e.target.value)}
-                            placeholder="Enter your company name"
-                          />
-                        </div>
-                         <div className="space-y-2">
-                           <Label htmlFor="netpopia-email">Email Address</Label>
-                           <Input
-                             id="netpopia-email"
-                             type="email"
-                             value={providerConfigs.netpopia.email}
-                             onChange={(e) => updateProviderConfig('netpopia', 'email', e.target.value)}
-                             placeholder="Enter your email address"
-                           />
-                         </div>
+              {/* Desktop View - Original Layout */}
+              <div className="hidden md:block">
+                <div className="grid gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="invoicing-provider">Invoicing Provider</Label>
+                    <Select
+                      value={integrations.invoicing}
+                      onValueChange={(value) => setIntegrations({ ...integrations, invoicing: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select invoicing provider" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="oblio.eu">Oblio.eu</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground">
+                      Handles automatic invoice generation for your orders
+                    </p>
+                    
+                    {integrations.invoicing === 'oblio.eu' && (
+                      <div className="mt-4 p-4 border rounded-lg space-y-4">
+                        <h4 className="font-medium">Oblio.eu Configuration</h4>
+                        <div className="grid gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="netpopia-signature">POS Signature *</Label>
+                            <Label htmlFor="oblio-email">Oblio Email Address</Label>
                             <Input
-                              id="netpopia-signature"
-                              type="password"
-                              value={providerConfigs.netpopia.signature}
-                              onChange={(e) => updateProviderConfig('netpopia', 'signature', e.target.value)}
-                              placeholder="Enter your POS signature"
-                              required
+                              id="oblio-email"
+                              type="email"
+                              value={providerConfigs.oblio.email}
+                              onChange={(e) => updateProviderConfig('oblio', 'email', e.target.value)}
+                              placeholder="Enter your Oblio.eu account email"
                             />
                             <p className="text-xs text-muted-foreground">
-                              Required for payment processing. Found in your Netpopia admin panel.
+                              This is your Oblio.eu login email (client_id)
                             </p>
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="netpopia-sandbox">Environment</Label>
-                           <Select
-                             value={providerConfigs.netpopia.sandbox ? 'sandbox' : 'live'}
-                             onValueChange={(value) => updateProviderConfig('netpopia', 'sandbox', value === 'sandbox')}
-                           >
-                             <SelectTrigger>
-                               <SelectValue />
-                             </SelectTrigger>
-                             <SelectContent>
-                               <SelectItem value="sandbox">Sandbox (Testing)</SelectItem>
-                               <SelectItem value="live">Live (Production)</SelectItem>
-                             </SelectContent>
-                           </Select>
-                           <p className="text-xs text-muted-foreground">
-                             Use sandbox for testing, live for production
-                           </p>
+                            <Label htmlFor="oblio-api-key">API Secret Key</Label>
+                            <Input
+                              id="oblio-api-key"
+                              type="password"
+                              value={providerConfigs.oblio.api_key}
+                              onChange={(e) => updateProviderConfig('oblio', 'api_key', e.target.value)}
+                              placeholder="Enter your Oblio.eu API secret key"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Found in Oblio.eu Settings → Account Data (client_secret)
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="oblio-series-name">Invoice Series</Label>
+                            <Input
+                              id="oblio-series-name"
+                              value={providerConfigs.oblio.series_name}
+                              onChange={(e) => updateProviderConfig('oblio', 'series_name', e.target.value)}
+                              placeholder="e.g., APM"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Series prefix for your invoices (e.g., APM, FCT)
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="oblio-first-number">First Invoice Number</Label>
+                            <Input
+                              id="oblio-first-number"
+                              value={providerConfigs.oblio.first_number}
+                              onChange={(e) => updateProviderConfig('oblio', 'first_number', e.target.value)}
+                              placeholder="e.g., 001"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Starting number for your invoices (e.g., 001, 0001)
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="oblio-name">Company Name</Label>
+                            <Input
+                              id="oblio-name"
+                              value={providerConfigs.oblio.name}
+                              onChange={(e) => updateProviderConfig('oblio', 'name', e.target.value)}
+                              placeholder="Enter your company name"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="shipping-provider">Shipping Provider</Label>
+                    <Select
+                      value={integrations.shipping}
+                      onValueChange={(value) => setIntegrations({ ...integrations, shipping: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select shipping provider" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sameday">Sameday</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground">
+                      Manages shipping and delivery for your orders
+                    </p>
+                    
+                    {integrations.shipping === 'sameday' && (
+                      <div className="mt-4 p-4 border rounded-lg space-y-4">
+                        <h4 className="font-medium">Sameday Configuration</h4>
+                        <div className="grid gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="sameday-api-key">API Key</Label>
+                            <Input
+                              id="sameday-api-key"
+                              type="password"
+                              value={providerConfigs.sameday.api_key}
+                              onChange={(e) => updateProviderConfig('sameday', 'api_key', e.target.value)}
+                              placeholder="Enter your Sameday API key"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="sameday-name">Company Name</Label>
+                            <Input
+                              id="sameday-name"
+                              value={providerConfigs.sameday.name}
+                              onChange={(e) => updateProviderConfig('sameday', 'name', e.target.value)}
+                              placeholder="Enter your company name"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="sameday-email">Email Address</Label>
+                            <Input
+                              id="sameday-email"
+                              type="email"
+                              value={providerConfigs.sameday.email}
+                              onChange={(e) => updateProviderConfig('sameday', 'email', e.target.value)}
+                              placeholder="Enter your email address"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="payment-provider">Payment Processor</Label>
+                    <Select
+                      value={integrations.payment}
+                      onValueChange={(value) => setIntegrations({ ...integrations, payment: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select payment processor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="netpopia">Netpopia Payments</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground">
+                      Processes online payments from your customers
+                    </p>
+                    
+                    {integrations.payment === 'netpopia' && (
+                      <div className="mt-4 p-4 border rounded-lg space-y-4">
+                        <h4 className="font-medium">Netpopia Configuration</h4>
+                        <div className="grid gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="netpopia-api-key">API Key</Label>
+                            <Input
+                              id="netpopia-api-key"
+                              type="password"
+                              value={providerConfigs.netpopia.api_key}
+                              onChange={(e) => updateProviderConfig('netpopia', 'api_key', e.target.value)}
+                              placeholder="Enter your Netpopia API key"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="netpopia-name">Company Name</Label>
+                            <Input
+                              id="netpopia-name"
+                              value={providerConfigs.netpopia.name}
+                              onChange={(e) => updateProviderConfig('netpopia', 'name', e.target.value)}
+                              placeholder="Enter your company name"
+                            />
+                          </div>
+                           <div className="space-y-2">
+                             <Label htmlFor="netpopia-email">Email Address</Label>
+                             <Input
+                               id="netpopia-email"
+                               type="email"
+                               value={providerConfigs.netpopia.email}
+                               onChange={(e) => updateProviderConfig('netpopia', 'email', e.target.value)}
+                               placeholder="Enter your email address"
+                             />
+                           </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="netpopia-signature">POS Signature *</Label>
+                              <Input
+                                id="netpopia-signature"
+                                type="password"
+                                value={providerConfigs.netpopia.signature}
+                                onChange={(e) => updateProviderConfig('netpopia', 'signature', e.target.value)}
+                                placeholder="Enter your POS signature"
+                                required
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Required for payment processing. Found in your Netpopia admin panel.
+                              </p>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="netpopia-sandbox">Environment</Label>
+                             <Select
+                               value={providerConfigs.netpopia.sandbox ? 'sandbox' : 'live'}
+                               onValueChange={(value) => updateProviderConfig('netpopia', 'sandbox', value === 'sandbox')}
+                             >
+                               <SelectTrigger>
+                                 <SelectValue />
+                               </SelectTrigger>
+                               <SelectContent>
+                                 <SelectItem value="sandbox">Sandbox (Testing)</SelectItem>
+                                 <SelectItem value="live">Live (Production)</SelectItem>
+                               </SelectContent>
+                             </Select>
+                             <p className="text-xs text-muted-foreground">
+                               Use sandbox for testing, live for production
+                             </p>
+                           </div>
                          </div>
                        </div>
-                     </div>
-                   )}
+                     )}
+                  </div>
                 </div>
+              </div>
+
+              {/* Mobile View - Collapsible Sections */}
+              <div className="md:hidden space-y-4">
+                {/* Invoicing Section */}
+                <Collapsible
+                  open={openCollapsibles.invoicing}
+                  onOpenChange={(isOpen) => setOpenCollapsibles(prev => ({ ...prev, invoicing: isOpen }))}
+                >
+                  <CollapsibleTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-between h-auto p-4 bg-background/95 backdrop-blur-xl border border-border/50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-5 w-5 text-primary" />
+                        <div className="text-left">
+                          <div className="font-medium">Invoicing</div>
+                          <div className="text-sm text-muted-foreground">Oblio.eu Integration</div>
+                        </div>
+                      </div>
+                      <ChevronDown className={`h-4 w-4 transition-transform ${openCollapsibles.invoicing ? 'rotate-180' : ''}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2 space-y-4 p-4 border rounded-lg bg-muted/30">
+                    <div className="space-y-2">
+                      <Label htmlFor="mobile-invoicing-provider">Invoicing Provider</Label>
+                      <Select
+                        value={integrations.invoicing}
+                        onValueChange={(value) => setIntegrations({ ...integrations, invoicing: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select invoicing provider" />
+                        </SelectTrigger>
+                        <SelectContent className="z-50 bg-background border border-border/50">
+                          <SelectItem value="oblio.eu">Oblio.eu</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-sm text-muted-foreground">
+                        Handles automatic invoice generation for your orders
+                      </p>
+                    </div>
+                    
+                    {integrations.invoicing === 'oblio.eu' && (
+                      <div className="space-y-4">
+                        <h4 className="font-medium">Oblio.eu Configuration</h4>
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="mobile-oblio-email">Oblio Email Address</Label>
+                            <Input
+                              id="mobile-oblio-email"
+                              type="email"
+                              value={providerConfigs.oblio.email}
+                              onChange={(e) => updateProviderConfig('oblio', 'email', e.target.value)}
+                              placeholder="Enter your Oblio.eu account email"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              This is your Oblio.eu login email (client_id)
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="mobile-oblio-api-key">API Secret Key</Label>
+                            <Input
+                              id="mobile-oblio-api-key"
+                              type="password"
+                              value={providerConfigs.oblio.api_key}
+                              onChange={(e) => updateProviderConfig('oblio', 'api_key', e.target.value)}
+                              placeholder="Enter your Oblio.eu API secret key"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Found in Oblio.eu Settings → Account Data (client_secret)
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="mobile-oblio-series-name">Invoice Series</Label>
+                            <Input
+                              id="mobile-oblio-series-name"
+                              value={providerConfigs.oblio.series_name}
+                              onChange={(e) => updateProviderConfig('oblio', 'series_name', e.target.value)}
+                              placeholder="e.g., APM"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Series prefix for your invoices (e.g., APM, FCT)
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="mobile-oblio-first-number">First Invoice Number</Label>
+                            <Input
+                              id="mobile-oblio-first-number"
+                              value={providerConfigs.oblio.first_number}
+                              onChange={(e) => updateProviderConfig('oblio', 'first_number', e.target.value)}
+                              placeholder="e.g., 001"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Starting number for your invoices (e.g., 001, 0001)
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="mobile-oblio-name">Company Name</Label>
+                            <Input
+                              id="mobile-oblio-name"
+                              value={providerConfigs.oblio.name}
+                              onChange={(e) => updateProviderConfig('oblio', 'name', e.target.value)}
+                              placeholder="Enter your company name"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Payment Section */}
+                <Collapsible
+                  open={openCollapsibles.payment}
+                  onOpenChange={(isOpen) => setOpenCollapsibles(prev => ({ ...prev, payment: isOpen }))}
+                >
+                  <CollapsibleTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-between h-auto p-4 bg-background/95 backdrop-blur-xl border border-border/50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <CreditCard className="h-5 w-5 text-primary" />
+                        <div className="text-left">
+                          <div className="font-medium">Payment</div>
+                          <div className="text-sm text-muted-foreground">Netpopia Integration</div>
+                        </div>
+                      </div>
+                      <ChevronDown className={`h-4 w-4 transition-transform ${openCollapsibles.payment ? 'rotate-180' : ''}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2 space-y-4 p-4 border rounded-lg bg-muted/30">
+                    <div className="space-y-2">
+                      <Label htmlFor="mobile-payment-provider">Payment Processor</Label>
+                      <Select
+                        value={integrations.payment}
+                        onValueChange={(value) => setIntegrations({ ...integrations, payment: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select payment processor" />
+                        </SelectTrigger>
+                        <SelectContent className="z-50 bg-background border border-border/50">
+                          <SelectItem value="netpopia">Netpopia Payments</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-sm text-muted-foreground">
+                        Processes online payments from your customers
+                      </p>
+                    </div>
+                    
+                    {integrations.payment === 'netpopia' && (
+                      <div className="space-y-4">
+                        <h4 className="font-medium">Netpopia Configuration</h4>
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="mobile-netpopia-api-key">API Key</Label>
+                            <Input
+                              id="mobile-netpopia-api-key"
+                              type="password"
+                              value={providerConfigs.netpopia.api_key}
+                              onChange={(e) => updateProviderConfig('netpopia', 'api_key', e.target.value)}
+                              placeholder="Enter your Netpopia API key"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="mobile-netpopia-name">Company Name</Label>
+                            <Input
+                              id="mobile-netpopia-name"
+                              value={providerConfigs.netpopia.name}
+                              onChange={(e) => updateProviderConfig('netpopia', 'name', e.target.value)}
+                              placeholder="Enter your company name"
+                            />
+                          </div>
+                           <div className="space-y-2">
+                             <Label htmlFor="mobile-netpopia-email">Email Address</Label>
+                             <Input
+                               id="mobile-netpopia-email"
+                               type="email"
+                               value={providerConfigs.netpopia.email}
+                               onChange={(e) => updateProviderConfig('netpopia', 'email', e.target.value)}
+                               placeholder="Enter your email address"
+                             />
+                           </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="mobile-netpopia-signature">POS Signature *</Label>
+                              <Input
+                                id="mobile-netpopia-signature"
+                                type="password"
+                                value={providerConfigs.netpopia.signature}
+                                onChange={(e) => updateProviderConfig('netpopia', 'signature', e.target.value)}
+                                placeholder="Enter your POS signature"
+                                required
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Required for payment processing. Found in your Netpopia admin panel.
+                              </p>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="mobile-netpopia-sandbox">Environment</Label>
+                             <Select
+                               value={providerConfigs.netpopia.sandbox ? 'sandbox' : 'live'}
+                               onValueChange={(value) => updateProviderConfig('netpopia', 'sandbox', value === 'sandbox')}
+                             >
+                               <SelectTrigger>
+                                 <SelectValue />
+                               </SelectTrigger>
+                               <SelectContent className="z-50 bg-background border border-border/50">
+                                 <SelectItem value="sandbox">Sandbox (Testing)</SelectItem>
+                                 <SelectItem value="live">Live (Production)</SelectItem>
+                               </SelectContent>
+                             </Select>
+                             <p className="text-xs text-muted-foreground">
+                               Use sandbox for testing, live for production
+                             </p>
+                           </div>
+                         </div>
+                       </div>
+                     )}
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Delivery Section */}
+                <Collapsible
+                  open={openCollapsibles.delivery}
+                  onOpenChange={(isOpen) => setOpenCollapsibles(prev => ({ ...prev, delivery: isOpen }))}
+                >
+                  <CollapsibleTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-between h-auto p-4 bg-background/95 backdrop-blur-xl border border-border/50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Truck className="h-5 w-5 text-primary" />
+                        <div className="text-left">
+                          <div className="font-medium">Delivery</div>
+                          <div className="text-sm text-muted-foreground">Sameday Integration</div>
+                        </div>
+                      </div>
+                      <ChevronDown className={`h-4 w-4 transition-transform ${openCollapsibles.delivery ? 'rotate-180' : ''}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2 space-y-4 p-4 border rounded-lg bg-muted/30">
+                    <div className="space-y-2">
+                      <Label htmlFor="mobile-shipping-provider">Shipping Provider</Label>
+                      <Select
+                        value={integrations.shipping}
+                        onValueChange={(value) => setIntegrations({ ...integrations, shipping: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select shipping provider" />
+                        </SelectTrigger>
+                        <SelectContent className="z-50 bg-background border border-border/50">
+                          <SelectItem value="sameday">Sameday</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-sm text-muted-foreground">
+                        Manages shipping and delivery for your orders
+                      </p>
+                    </div>
+                    
+                    {integrations.shipping === 'sameday' && (
+                      <div className="space-y-4">
+                        <h4 className="font-medium">Sameday Configuration</h4>
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="mobile-sameday-api-key">API Key</Label>
+                            <Input
+                              id="mobile-sameday-api-key"
+                              type="password"
+                              value={providerConfigs.sameday.api_key}
+                              onChange={(e) => updateProviderConfig('sameday', 'api_key', e.target.value)}
+                              placeholder="Enter your Sameday API key"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="mobile-sameday-name">Company Name</Label>
+                            <Input
+                              id="mobile-sameday-name"
+                              value={providerConfigs.sameday.name}
+                              onChange={(e) => updateProviderConfig('sameday', 'name', e.target.value)}
+                              placeholder="Enter your company name"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="mobile-sameday-email">Email Address</Label>
+                            <Input
+                              id="mobile-sameday-email"
+                              type="email"
+                              value={providerConfigs.sameday.email}
+                              onChange={(e) => updateProviderConfig('sameday', 'email', e.target.value)}
+                              placeholder="Enter your email address"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
 
               <Button onClick={updateIntegrations} className="w-full">
