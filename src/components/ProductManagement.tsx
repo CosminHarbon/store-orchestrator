@@ -280,21 +280,41 @@ const ProductManagement = () => {
       </TabsList>
       
       <TabsContent value="products" className="space-y-6">
-        {/* Header with Search and Controls */}
-        <div className="space-y-6">
-          {/* Centered Header */}
-          <div className="text-center space-y-4">
-            <div className="space-y-2">
-              <h2 className="text-3xl font-bold">Products</h2>
-              <p className="text-muted-foreground text-lg">Manage your store inventory</p>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          {/* Left section - Title */}
+          <div className="flex items-center space-x-4">
+            <div>
+              <h2 className="text-2xl font-bold">Products</h2>
+              <p className="text-muted-foreground">Manage your store inventory</p>
             </div>
+          </div>
+
+          {/* Right section - Controls */}
+          <div className="flex items-center space-x-4">
+            {/* Search Icon */}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => {
+                const searchInput = document.getElementById('hidden-search-input') as HTMLInputElement;
+                if (searchInput) {
+                  searchInput.focus();
+                }
+              }}
+              className="h-10 w-10 rounded-full border-border/50 hover:bg-muted/50"
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+
+            {/* Add Product Button */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button 
                   onClick={() => resetForm()} 
-                  className="bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0 px-8 py-3 text-lg rounded-full"
+                  className="bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0 px-6 py-2 rounded-full"
                 >
-                  <Plus className="h-5 w-5 mr-2" />
+                  <Plus className="h-4 w-4 mr-2" />
                   Add Product
                 </Button>
               </DialogTrigger>
@@ -401,61 +421,58 @@ const ProductManagement = () => {
               </DialogContent>
             </Dialog>
           </div>
+        </div>
 
-          {/* Search and View Controls */}
-          <div className="flex flex-col items-center gap-6">
-            <div className="relative w-full max-w-lg">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                placeholder="Search products..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 pr-4 py-3 text-lg border-border/50 focus:border-primary bg-gradient-subtle rounded-full"
+        {/* Hidden search input */}
+        <Input
+          id="hidden-search-input"
+          placeholder="Search products..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="border-border/50 focus:border-primary"
+        />
+
+        {/* View Mode Controls */}
+        <div className="w-full flex justify-end">
+          <div className="flex flex-col items-end space-y-2">
+            <Label className="text-sm font-medium text-foreground">View Mode</Label>
+            <div className="relative bg-muted/50 rounded-full p-1 w-40 h-12 flex">
+              {/* Sliding Background */}
+              <div 
+                className={`absolute top-1 h-10 w-[calc(50%-4px)] bg-gradient-primary rounded-full shadow-elegant transition-transform duration-300 ease-in-out ${
+                  viewMode === 'list' ? 'translate-x-[calc(100%+8px)]' : 'translate-x-1'
+                }`}
               />
-            </div>
-            
-            <div className="w-full flex justify-end">
-              <div className="flex flex-col items-end space-y-2">
-                <Label className="text-sm font-medium text-foreground">View Mode</Label>
-                <div className="relative bg-muted/50 rounded-full p-1 w-40 h-12 flex">
-                  {/* Sliding Background */}
-                  <div 
-                    className={`absolute top-1 h-10 w-[calc(50%-4px)] bg-gradient-primary rounded-full shadow-elegant transition-transform duration-300 ease-in-out ${
-                      viewMode === 'list' ? 'translate-x-[calc(100%+8px)]' : 'translate-x-1'
-                    }`}
-                  />
-                  
-                  {/* Grid Option */}
-                  <button
-                    onClick={() => setViewMode('grid')}
-                    className={`relative z-10 flex items-center justify-center w-1/2 h-10 rounded-full transition-colors duration-300 ${
-                      viewMode === 'grid' ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    <Grid className="h-4 w-4" />
-                  </button>
-                  
-                  {/* List Option */}
-                  <button
-                    onClick={() => setViewMode('list')}
-                    className={`relative z-10 flex items-center justify-center w-1/2 h-10 rounded-full transition-colors duration-300 ${
-                      viewMode === 'list' ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    <List className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
+              
+              {/* Grid Option */}
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`relative z-10 flex items-center justify-center w-1/2 h-10 rounded-full transition-colors duration-300 ${
+                  viewMode === 'grid' ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Grid className="h-4 w-4" />
+              </button>
+              
+              {/* List Option */}
+              <button
+                onClick={() => setViewMode('list')}
+                className={`relative z-10 flex items-center justify-center w-1/2 h-10 rounded-full transition-colors duration-300 ${
+                  viewMode === 'list' ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <List className="h-4 w-4" />
+              </button>
             </div>
           </div>
-
-          {/* Results count */}
-          {searchQuery && (
-            <div className="text-sm text-muted-foreground">
-              Found {filteredProducts?.length || 0} products matching "{searchQuery}"
-            </div>
-          )}
         </div>
+
+        {/* Results count */}
+        {searchQuery && (
+          <div className="text-sm text-muted-foreground">
+            Found {filteredProducts?.length || 0} products matching "{searchQuery}"
+          </div>
+        )}
 
         {/* Products View */}
         {filteredProducts && filteredProducts.length > 0 ? (
