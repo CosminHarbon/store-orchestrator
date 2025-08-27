@@ -280,199 +280,210 @@ const ProductManagement = () => {
       </TabsList>
       
       <TabsContent value="products" className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          {/* Left section - Title */}
-          <div className="flex items-center space-x-4">
-            <div>
-              <h2 className="text-2xl font-bold">Products</h2>
-              <p className="text-muted-foreground">Manage your store inventory</p>
+        {/* Modern Header Layout */}
+        <div className="space-y-8">
+          {/* Top Section - Title and Main Actions */}
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <h1 className="text-4xl font-bold tracking-tight">Products</h1>
+              <p className="text-muted-foreground text-lg">Manage your store inventory</p>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              {/* Search Toggle */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  const searchContainer = document.getElementById('search-container') as HTMLDivElement;
+                  const searchInput = document.getElementById('search-input') as HTMLInputElement;
+                  if (searchContainer && searchInput) {
+                    searchContainer.classList.toggle('hidden');
+                    if (!searchContainer.classList.contains('hidden')) {
+                      searchInput.focus();
+                    }
+                  }
+                }}
+                className="h-11 w-11 rounded-xl hover:bg-muted/80 transition-colors"
+              >
+                <Search className="h-5 w-5" />
+              </Button>
+
+              {/* Add Product */}
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button 
+                    onClick={() => resetForm()} 
+                    size="lg"
+                    className="bg-gradient-primary hover:shadow-elegant transition-all duration-300 border-0 px-8 py-3 rounded-xl font-medium"
+                  >
+                    <Plus className="h-5 w-5 mr-2" />
+                    Add Product
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md bg-background/95 backdrop-blur-xl border border-border/50 rounded-2xl">
+                  <DialogHeader>
+                    <DialogTitle className="text-xl font-semibold">
+                      {editingProduct ? 'Edit Product' : 'Add New Product'}
+                    </DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="title" className="text-sm font-medium">Product Name</Label>
+                      <Input
+                        id="title"
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        className="border-border/50 focus:border-primary rounded-xl"
+                        placeholder="Enter product name"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="description" className="text-sm font-medium">Description</Label>
+                      <Textarea
+                        id="description"
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        className="border-border/50 focus:border-primary resize-none rounded-xl"
+                        placeholder="Product description..."
+                        rows={3}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="price" className="text-sm font-medium">Price ($)</Label>
+                        <Input
+                          id="price"
+                          type="number"
+                          step="0.01"
+                          value={formData.price}
+                          onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                          className="border-border/50 focus:border-primary rounded-xl"
+                          placeholder="0.00"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="stock" className="text-sm font-medium">Stock</Label>
+                        <Input
+                          id="stock"
+                          type="number"
+                          value={formData.stock}
+                          onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                          className="border-border/50 focus:border-primary rounded-xl"
+                          placeholder="0"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="low_stock_threshold" className="text-sm font-medium">Low Stock Alert Threshold</Label>
+                      <Input
+                        id="low_stock_threshold"
+                        type="number"
+                        value={formData.low_stock_threshold}
+                        onChange={(e) => setFormData({ ...formData, low_stock_threshold: e.target.value })}
+                        className="border-border/50 focus:border-primary rounded-xl"
+                        placeholder="5"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="category" className="text-sm font-medium">Category</Label>
+                      <Input
+                        id="category"
+                        value={formData.category}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        className="border-border/50 focus:border-primary rounded-xl"
+                        placeholder="e.g. Electronics, Clothing"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="sku" className="text-sm font-medium">SKU</Label>
+                      <Input
+                        id="sku"
+                        value={formData.sku}
+                        onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                        className="border-border/50 focus:border-primary rounded-xl"
+                        placeholder="Product SKU"
+                      />
+                    </div>
+                    <div className="flex gap-3 pt-4">
+                      <Button 
+                        type="submit" 
+                        disabled={createProductMutation.isPending || updateProductMutation.isPending}
+                        className="flex-1 bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0 rounded-xl"
+                      >
+                        {editingProduct ? 'Update' : 'Create'} Product
+                      </Button>
+                      <Button type="button" variant="outline" onClick={resetForm} className="border-border/50 rounded-xl">
+                        Cancel
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
 
-          {/* Right section - Controls */}
-          <div className="flex items-center space-x-4">
-            {/* Search Icon */}
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => {
-                const searchInput = document.getElementById('hidden-search-input') as HTMLInputElement;
-                if (searchInput) {
-                  searchInput.focus();
-                }
-              }}
-              className="h-10 w-10 rounded-full border-border/50 hover:bg-muted/50"
-            >
-              <Search className="h-4 w-4" />
-            </Button>
+          {/* Search Bar - Initially Hidden */}
+          <div className="hidden" id="search-container">
+            <Input
+              id="search-input"
+              placeholder="Search products..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="max-w-md border-border/50 focus:border-primary rounded-xl h-12 text-base"
+            />
+          </div>
 
-            {/* Add Product Button */}
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button 
-                  onClick={() => resetForm()} 
-                  className="bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0 px-6 py-2 rounded-full"
+          {/* Controls Bar */}
+          <div className="flex items-center justify-between py-4 border-b border-border/20">
+            {/* Search Results Count */}
+            <div className="flex items-center space-x-4">
+              {searchQuery ? (
+                <div className="text-sm text-muted-foreground font-medium">
+                  {filteredProducts?.length || 0} products found
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground font-medium">
+                  {products?.length || 0} total products
+                </div>
+              )}
+            </div>
+
+            {/* View Mode Toggle */}
+            <div className="flex items-center space-x-3">
+              <span className="text-sm font-medium text-muted-foreground">View</span>
+              <div className="flex items-center bg-muted/50 rounded-xl p-1">
+                <Button
+                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('grid')}
+                  className={`h-8 px-3 rounded-lg transition-all duration-200 ${
+                    viewMode === 'grid' 
+                      ? 'bg-background shadow-sm' 
+                      : 'hover:bg-background/50'
+                  }`}
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Product
+                  <Grid className="h-4 w-4" />
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md bg-background/95 backdrop-blur-xl border border-border/50">
-                <DialogHeader>
-                  <DialogTitle className="text-xl font-semibold">
-                    {editingProduct ? 'Edit Product' : 'Add New Product'}
-                  </DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="title" className="text-sm font-medium">Product Name</Label>
-                    <Input
-                      id="title"
-                      value={formData.title}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      className="border-border/50 focus:border-primary"
-                      placeholder="Enter product name"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="description" className="text-sm font-medium">Description</Label>
-                    <Textarea
-                      id="description"
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      className="border-border/50 focus:border-primary resize-none"
-                      placeholder="Product description..."
-                      rows={3}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="price" className="text-sm font-medium">Price ($)</Label>
-                      <Input
-                        id="price"
-                        type="number"
-                        step="0.01"
-                        value={formData.price}
-                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                        className="border-border/50 focus:border-primary"
-                        placeholder="0.00"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="stock" className="text-sm font-medium">Stock</Label>
-                      <Input
-                        id="stock"
-                        type="number"
-                        value={formData.stock}
-                        onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                        className="border-border/50 focus:border-primary"
-                        placeholder="0"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="low_stock_threshold" className="text-sm font-medium">Low Stock Alert Threshold</Label>
-                    <Input
-                      id="low_stock_threshold"
-                      type="number"
-                      value={formData.low_stock_threshold}
-                      onChange={(e) => setFormData({ ...formData, low_stock_threshold: e.target.value })}
-                      className="border-border/50 focus:border-primary"
-                      placeholder="5"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="category" className="text-sm font-medium">Category</Label>
-                    <Input
-                      id="category"
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className="border-border/50 focus:border-primary"
-                      placeholder="e.g. Electronics, Clothing"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sku" className="text-sm font-medium">SKU</Label>
-                    <Input
-                      id="sku"
-                      value={formData.sku}
-                      onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                      className="border-border/50 focus:border-primary"
-                      placeholder="Product SKU"
-                    />
-                  </div>
-                  <div className="flex gap-3 pt-4">
-                    <Button 
-                      type="submit" 
-                      disabled={createProductMutation.isPending || updateProductMutation.isPending}
-                      className="flex-1 bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0"
-                    >
-                      {editingProduct ? 'Update' : 'Create'} Product
-                    </Button>
-                    <Button type="button" variant="outline" onClick={resetForm} className="border-border/50">
-                      Cancel
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
-
-        {/* Hidden search input */}
-        <Input
-          id="hidden-search-input"
-          placeholder="Search products..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="border-border/50 focus:border-primary"
-        />
-
-        {/* View Mode Controls */}
-        <div className="w-full flex justify-end">
-          <div className="flex flex-col items-end space-y-2">
-            <Label className="text-sm font-medium text-foreground">View Mode</Label>
-            <div className="relative bg-muted/50 rounded-full p-1 w-40 h-12 flex">
-              {/* Sliding Background */}
-              <div 
-                className={`absolute top-1 h-10 w-[calc(50%-4px)] bg-gradient-primary rounded-full shadow-elegant transition-transform duration-300 ease-in-out ${
-                  viewMode === 'list' ? 'translate-x-[calc(100%+8px)]' : 'translate-x-1'
-                }`}
-              />
-              
-              {/* Grid Option */}
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`relative z-10 flex items-center justify-center w-1/2 h-10 rounded-full transition-colors duration-300 ${
-                  viewMode === 'grid' ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Grid className="h-4 w-4" />
-              </button>
-              
-              {/* List Option */}
-              <button
-                onClick={() => setViewMode('list')}
-                className={`relative z-10 flex items-center justify-center w-1/2 h-10 rounded-full transition-colors duration-300 ${
-                  viewMode === 'list' ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <List className="h-4 w-4" />
-              </button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className={`h-8 px-3 rounded-lg transition-all duration-200 ${
+                    viewMode === 'list' 
+                      ? 'bg-background shadow-sm' 
+                      : 'hover:bg-background/50'
+                  }`}
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
-
-        {/* Results count */}
-        {searchQuery && (
-          <div className="text-sm text-muted-foreground">
-            Found {filteredProducts?.length || 0} products matching "{searchQuery}"
-          </div>
-        )}
 
         {/* Products View */}
         {filteredProducts && filteredProducts.length > 0 ? (
