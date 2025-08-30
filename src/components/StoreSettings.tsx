@@ -52,7 +52,8 @@ const StoreSettings = () => {
   const [providerConfigs, setProviderConfigs] = useState({
     oblio: { api_key: '', name: '', email: '', series_name: '', first_number: '' },
     sameday: { api_key: '', name: '', email: '' },
-    netpopia: { api_key: '', name: '', email: '', signature: '', sandbox: true }
+    netpopia: { api_key: '', name: '', email: '', signature: '', sandbox: true },
+    woot: { api_key: '', name: '', email: '' }
   });
   const [testOrderData, setTestOrderData] = useState({
     name: 'John Doe',
@@ -103,6 +104,11 @@ const StoreSettings = () => {
           email: profile.netpopia_email || '',
           signature: profile.netpopia_signature || '',
           sandbox: profile.netpopia_sandbox ?? true
+        },
+        woot: {
+          api_key: profile.woot_api_key || '',
+          name: profile.woot_name || '',
+          email: profile.woot_email || ''
         }
       });
       
@@ -757,48 +763,89 @@ class StoreAPI {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="sameday">Sameday</SelectItem>
+                        <SelectItem value="woot">Woot.ro</SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-sm text-muted-foreground">
                       Manages shipping and delivery for your orders
                     </p>
                     
-                    {integrations.shipping === 'sameday' && (
-                      <div className="mt-4 p-4 border rounded-lg space-y-4">
-                        <h4 className="font-medium">Sameday Configuration</h4>
-                        <div className="grid gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="sameday-api-key">API Key</Label>
-                            <Input
-                              id="sameday-api-key"
-                              type="password"
-                              value={providerConfigs.sameday.api_key}
-                              onChange={(e) => updateProviderConfig('sameday', 'api_key', e.target.value)}
-                              placeholder="Enter your Sameday API key"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="sameday-name">Company Name</Label>
-                            <Input
-                              id="sameday-name"
-                              value={providerConfigs.sameday.name}
-                              onChange={(e) => updateProviderConfig('sameday', 'name', e.target.value)}
-                              placeholder="Enter your company name"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="sameday-email">Email Address</Label>
-                            <Input
-                              id="sameday-email"
-                              type="email"
-                              value={providerConfigs.sameday.email}
-                              onChange={(e) => updateProviderConfig('sameday', 'email', e.target.value)}
-                              placeholder="Enter your email address"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                     {integrations.shipping === 'sameday' && (
+                       <div className="mt-4 p-4 border rounded-lg space-y-4">
+                         <h4 className="font-medium">Sameday Configuration</h4>
+                         <div className="grid gap-4">
+                           <div className="space-y-2">
+                             <Label htmlFor="sameday-api-key">API Key</Label>
+                             <Input
+                               id="sameday-api-key"
+                               type="password"
+                               value={providerConfigs.sameday.api_key}
+                               onChange={(e) => updateProviderConfig('sameday', 'api_key', e.target.value)}
+                               placeholder="Enter your Sameday API key"
+                             />
+                           </div>
+                           <div className="space-y-2">
+                             <Label htmlFor="sameday-name">Company Name</Label>
+                             <Input
+                               id="sameday-name"
+                               value={providerConfigs.sameday.name}
+                               onChange={(e) => updateProviderConfig('sameday', 'name', e.target.value)}
+                               placeholder="Enter your company name"
+                             />
+                           </div>
+                           <div className="space-y-2">
+                             <Label htmlFor="sameday-email">Email Address</Label>
+                             <Input
+                               id="sameday-email"
+                               type="email"
+                               value={providerConfigs.sameday.email}
+                               onChange={(e) => updateProviderConfig('sameday', 'email', e.target.value)}
+                               placeholder="Enter your email address"
+                             />
+                           </div>
+                         </div>
+                       </div>
+                     )}
+
+                     {integrations.shipping === 'woot' && (
+                       <div className="mt-4 p-4 border rounded-lg space-y-4">
+                         <h4 className="font-medium">Woot.ro Configuration</h4>
+                         <div className="grid gap-4">
+                           <div className="space-y-2">
+                             <Label htmlFor="woot-api-key">API Key</Label>
+                             <Input
+                               id="woot-api-key"
+                               type="password"
+                               value={providerConfigs.woot?.api_key || ''}
+                               onChange={(e) => updateProviderConfig('woot', 'api_key', e.target.value)}
+                               placeholder="Enter your Woot.ro API key"
+                             />
+                             <p className="text-xs text-muted-foreground">
+                               Your Woot.ro API authentication key
+                             </p>
+                           </div>
+                           <div className="space-y-2">
+                             <Label htmlFor="woot-name">Company Name</Label>
+                             <Input
+                               id="woot-name"
+                               value={providerConfigs.woot?.name || ''}
+                               onChange={(e) => updateProviderConfig('woot', 'name', e.target.value)}
+                               placeholder="Enter your company name"
+                             />
+                           </div>
+                           <div className="space-y-2">
+                             <Label htmlFor="woot-email">Email Address</Label>
+                             <Input
+                               id="woot-email"
+                               type="email"
+                               value={providerConfigs.woot?.email || ''}
+                               onChange={(e) => updateProviderConfig('woot', 'email', e.target.value)}
+                               placeholder="Enter your email address"
+                             />
+                           </div>
+                         </div>
+                       </div>
+                     )}
                   </div>
 
                   <div className="space-y-2">
