@@ -34,6 +34,9 @@ interface Profile {
   netpopia_email?: string;
   netpopia_signature?: string;
   netpopia_sandbox?: boolean;
+  woot_api_key?: string;
+  woot_name?: string;
+  woot_email?: string;
 }
 
 const StoreSettings = () => {
@@ -168,11 +171,14 @@ const StoreSettings = () => {
       netpopia_name: providerConfigs.netpopia.name,
       netpopia_email: providerConfigs.netpopia.email,
       netpopia_signature: providerConfigs.netpopia.signature,
-      netpopia_sandbox: providerConfigs.netpopia.sandbox
+      netpopia_sandbox: providerConfigs.netpopia.sandbox,
+      woot_api_key: providerConfigs.woot.api_key,
+      woot_name: providerConfigs.woot.name,
+      woot_email: providerConfigs.woot.email
     });
   };
 
-  const updateProviderConfig = (provider: 'oblio' | 'sameday' | 'netpopia', field: 'api_key' | 'name' | 'email' | 'series_name' | 'first_number' | 'signature' | 'sandbox', value: string | boolean) => {
+  const updateProviderConfig = (provider: 'oblio' | 'sameday' | 'netpopia' | 'woot', field: 'api_key' | 'name' | 'email' | 'series_name' | 'first_number' | 'signature' | 'sandbox', value: string | boolean) => {
     setProviderConfigs(prev => ({
       ...prev,
       [provider]: {
@@ -1189,6 +1195,7 @@ class StoreAPI {
                         </SelectTrigger>
                         <SelectContent className="z-50 bg-background border border-border/50">
                           <SelectItem value="sameday">Sameday</SelectItem>
+                          <SelectItem value="woot">Woot.ro</SelectItem>
                         </SelectContent>
                       </Select>
                       <p className="text-sm text-muted-foreground">
@@ -1196,42 +1203,82 @@ class StoreAPI {
                       </p>
                     </div>
                     
-                    {integrations.shipping === 'sameday' && (
-                      <div className="space-y-4">
-                        <h4 className="font-medium">Sameday Configuration</h4>
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="mobile-sameday-api-key">API Key</Label>
-                            <Input
-                              id="mobile-sameday-api-key"
-                              type="password"
-                              value={providerConfigs.sameday.api_key}
-                              onChange={(e) => updateProviderConfig('sameday', 'api_key', e.target.value)}
-                              placeholder="Enter your Sameday API key"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="mobile-sameday-name">Company Name</Label>
-                            <Input
-                              id="mobile-sameday-name"
-                              value={providerConfigs.sameday.name}
-                              onChange={(e) => updateProviderConfig('sameday', 'name', e.target.value)}
-                              placeholder="Enter your company name"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="mobile-sameday-email">Email Address</Label>
-                            <Input
-                              id="mobile-sameday-email"
-                              type="email"
-                              value={providerConfigs.sameday.email}
-                              onChange={(e) => updateProviderConfig('sameday', 'email', e.target.value)}
-                              placeholder="Enter your email address"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                     {integrations.shipping === 'sameday' && (
+                       <div className="space-y-4">
+                         <h4 className="font-medium">Sameday Configuration</h4>
+                         <div className="space-y-4">
+                           <div className="space-y-2">
+                             <Label htmlFor="mobile-sameday-api-key">API Key</Label>
+                             <Input
+                               id="mobile-sameday-api-key"
+                               type="password"
+                               value={providerConfigs.sameday.api_key}
+                               onChange={(e) => updateProviderConfig('sameday', 'api_key', e.target.value)}
+                               placeholder="Enter your Sameday API key"
+                             />
+                           </div>
+                           <div className="space-y-2">
+                             <Label htmlFor="mobile-sameday-name">Company Name</Label>
+                             <Input
+                               id="mobile-sameday-name"
+                               value={providerConfigs.sameday.name}
+                               onChange={(e) => updateProviderConfig('sameday', 'name', e.target.value)}
+                               placeholder="Enter your company name"
+                             />
+                           </div>
+                           <div className="space-y-2">
+                             <Label htmlFor="mobile-sameday-email">Email Address</Label>
+                             <Input
+                               id="mobile-sameday-email"
+                               type="email"
+                               value={providerConfigs.sameday.email}
+                               onChange={(e) => updateProviderConfig('sameday', 'email', e.target.value)}
+                               placeholder="Enter your email address"
+                             />
+                           </div>
+                         </div>
+                       </div>
+                     )}
+
+                     {integrations.shipping === 'woot' && (
+                       <div className="space-y-4">
+                         <h4 className="font-medium">Woot.ro Configuration</h4>
+                         <div className="space-y-4">
+                           <div className="space-y-2">
+                             <Label htmlFor="mobile-woot-api-key">API Key</Label>
+                             <Input
+                               id="mobile-woot-api-key"
+                               type="password"
+                               value={providerConfigs.woot?.api_key || ''}
+                               onChange={(e) => updateProviderConfig('woot', 'api_key', e.target.value)}
+                               placeholder="Enter your Woot.ro API key"
+                             />
+                             <p className="text-xs text-muted-foreground">
+                               Your Woot.ro API authentication key
+                             </p>
+                           </div>
+                           <div className="space-y-2">
+                             <Label htmlFor="mobile-woot-name">Company Name</Label>
+                             <Input
+                               id="mobile-woot-name"
+                               value={providerConfigs.woot?.name || ''}
+                               onChange={(e) => updateProviderConfig('woot', 'name', e.target.value)}
+                               placeholder="Enter your company name"
+                             />
+                           </div>
+                           <div className="space-y-2">
+                             <Label htmlFor="mobile-woot-email">Email Address</Label>
+                             <Input
+                               id="mobile-woot-email"
+                               type="email"
+                               value={providerConfigs.woot?.email || ''}
+                               onChange={(e) => updateProviderConfig('woot', 'email', e.target.value)}
+                               placeholder="Enter your email address"
+                             />
+                           </div>
+                         </div>
+                       </div>
+                     )}
                   </CollapsibleContent>
                 </Collapsible>
               </div>

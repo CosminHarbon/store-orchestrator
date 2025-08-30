@@ -387,6 +387,9 @@ export type Database = {
           store_name: string | null
           updated_at: string
           user_id: string
+          woot_api_key: string | null
+          woot_email: string | null
+          woot_name: string | null
         }
         Insert: {
           created_at?: string
@@ -413,6 +416,9 @@ export type Database = {
           store_name?: string | null
           updated_at?: string
           user_id: string
+          woot_api_key?: string | null
+          woot_email?: string | null
+          woot_name?: string | null
         }
         Update: {
           created_at?: string
@@ -439,6 +445,9 @@ export type Database = {
           store_name?: string | null
           updated_at?: string
           user_id?: string
+          woot_api_key?: string | null
+          woot_email?: string | null
+          woot_name?: string | null
         }
         Relationships: []
       }
