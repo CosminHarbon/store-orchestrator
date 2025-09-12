@@ -89,15 +89,15 @@ const PaymentStatistics = () => {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <Card key={i}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="h-4 w-20 bg-muted animate-pulse rounded"></div>
-                <div className="h-4 w-4 bg-muted animate-pulse rounded"></div>
+            <Card key={i} className="bg-gradient-card shadow-card border border-border/50">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 lg:pb-3">
+                <div className="h-3 lg:h-4 w-16 lg:w-20 bg-muted animate-pulse rounded"></div>
+                <div className="h-3 w-3 lg:h-4 lg:w-4 bg-muted animate-pulse rounded flex-shrink-0"></div>
               </CardHeader>
-              <CardContent>
-                <div className="h-8 w-16 bg-muted animate-pulse rounded"></div>
+              <CardContent className="pb-2 lg:pb-4">
+                <div className="h-6 lg:h-8 w-12 lg:w-16 bg-muted animate-pulse rounded"></div>
               </CardContent>
             </Card>
           ))}
@@ -109,58 +109,58 @@ const PaymentStatistics = () => {
   return (
     <div className="space-y-6">
       {/* Payment Statistics Overview */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <Card className="bg-gradient-card shadow-card border border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 lg:pb-3">
+            <CardTitle className="text-xs lg:text-sm font-medium truncate">Total Revenue</CardTitle>
+            <TrendingUp className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+          <CardContent className="pb-2 lg:pb-4">
+            <div className="text-lg lg:text-2xl font-bold truncate">
               {stats.completedAmount.toFixed(2)} RON
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground truncate">
               From {stats.completedTransactions} completed payments
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Revenue</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+        <Card className="bg-gradient-card shadow-card border border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 lg:pb-3">
+            <CardTitle className="text-xs lg:text-sm font-medium truncate">Pending Revenue</CardTitle>
+            <Clock className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+          <CardContent className="pb-2 lg:pb-4">
+            <div className="text-lg lg:text-2xl font-bold truncate">
               {stats.pendingAmount.toFixed(2)} RON
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground truncate">
               From {stats.pendingTransactions} pending payments
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
+        <Card className="bg-gradient-card shadow-card border border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 lg:pb-3">
+            <CardTitle className="text-xs lg:text-sm font-medium truncate">Total Transactions</CardTitle>
+            <CreditCard className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalTransactions}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardContent className="pb-2 lg:pb-4">
+            <div className="text-lg lg:text-2xl font-bold truncate">{stats.totalTransactions}</div>
+            <p className="text-xs text-muted-foreground truncate">
               All payment attempts
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Failed Payments</CardTitle>
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+        <Card className="bg-gradient-card shadow-card border border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 lg:pb-3">
+            <CardTitle className="text-xs lg:text-sm font-medium truncate">Failed Payments</CardTitle>
+            <AlertCircle className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.failedTransactions}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardContent className="pb-2 lg:pb-4">
+            <div className="text-lg lg:text-2xl font-bold text-red-600 truncate">{stats.failedTransactions}</div>
+            <p className="text-xs text-muted-foreground truncate">
               Failed or cancelled
             </p>
           </CardContent>
