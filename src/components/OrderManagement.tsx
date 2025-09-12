@@ -225,17 +225,25 @@ const OrderManagement = () => {
 
   const handleManualComplete = async (orderId: string) => {
     try {
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+
       const { data, error } = await supabase.functions.invoke('netopia-payment', {
         body: {
           action: 'manual_update',
-          order_id: orderId
+          order_id: orderId,
+          // Provide user_id as a fallback for edge function auth
+          user_id: userId,
         }
       });
 
       if (error) throw error;
       
+      // Optimistically update the open dialog order, if any
+      setSelectedOrder((prev) => (prev && prev.id === orderId ? { ...prev, payment_status: 'paid' } : prev));
+      
       queryClient.invalidateQueries({ queryKey: ['orders'] });
-      toast.success("Payment status updated to completed");
+      toast.success("Payment status updated to paid");
     } catch (error) {
       console.error('Error marking payment as completed:', error);
       toast.error("Failed to update payment status");

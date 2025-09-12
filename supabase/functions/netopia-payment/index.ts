@@ -503,9 +503,31 @@ async function manualUpdatePayment(supabase: any, userId: string, orderId: strin
       .single();
     
     if (error || !transaction) {
+      // Fallback: if no transaction exists, still allow marking the order as paid
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('id', orderId)
+        .eq('user_id', userId)
+        .single();
+
+      if (orderError || !order) {
+        return new Response(
+          JSON.stringify({ error: 'Transaction not found and order not accessible' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      await supabase
+        .from('orders')
+        .update({ payment_status: 'paid' })
+        .eq('id', orderId);
+
+      console.log('No transaction found; order status marked as paid directly:', orderId);
+
       return new Response(
-        JSON.stringify({ error: 'Transaction not found for this order' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: true, message: 'Order marked as paid' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
