@@ -659,7 +659,7 @@ const ProductManagement = () => {
                       : 'bg-gradient-card shadow-card border border-border/50 hover:shadow-elegant'
                     }`}
                   >
-                    <div className={`aspect-[4/3] relative overflow-hidden ${isMobile ? 'rounded-t-3xl' : 'bg-muted/50'}`}>
+                    <div className={`aspect-[3/2] relative overflow-hidden ${isMobile ? 'rounded-t-3xl' : 'bg-muted/50'}`}>
                       {primaryImage?.image_url ? (
                         <img 
                           src={primaryImage.image_url} 
