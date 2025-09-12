@@ -47,7 +47,7 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
   };
 
   return (
-    <Sidebar className={`${collapsed ? "w-14" : "w-64"} ${isMobile ? "top-16" : ""}`} collapsible="icon">
+    <Sidebar className={`${collapsed ? "w-14" : "w-64"} ${isMobile ? "top-16 safe-area-top" : ""}`} collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="px-4 py-2">
