@@ -153,9 +153,15 @@ const OrderManagement = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       toast.success('Order updated successfully');
+
+      // Ensure the open View dialog reflects latest status immediately
+      if (data && data[0]) {
+        const updated = data[0] as Order;
+        setSelectedOrder((prev) => (prev && prev.id === updated.id ? { ...prev, ...updated } : prev));
+      }
     },
     onError: (error) => {
       toast.error('Failed to update order');
