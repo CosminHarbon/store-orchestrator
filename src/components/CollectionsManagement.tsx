@@ -535,43 +535,43 @@ const CollectionsManagement = () => {
                         {collection.description}
                       </p>
                     )}
-                    <div className={`flex gap-1 ${isMobile ? 'gap-3' : ''}`}>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        onClick={() => handleEdit(collection)} 
-                        className={`${isMobile 
-                          ? 'h-9 px-4 text-sm border-white/30 bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:scale-105 transition-all duration-300 rounded-2xl flex-1' 
-                          : 'h-7 px-2 text-xs'
-                        }`}
-                      >
-                        <Edit className={`${isMobile ? 'h-4 w-4 mr-2' : 'h-3 w-3 mr-1'}`} />
-                        Edit
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        onClick={() => handleManageProducts(collection)} 
-                        className={`${isMobile 
-                          ? 'h-9 px-4 text-sm border-white/30 bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:scale-105 transition-all duration-300 rounded-2xl flex-1' 
-                          : 'h-7 px-2 text-xs'
-                        }`}
-                      >
-                        <Folder className={`${isMobile ? 'h-4 w-4 mr-2' : 'h-3 w-3 mr-1'}`} />
-                        Products
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="destructive" 
-                        onClick={() => handleDelete(collection)} 
-                        className={`${isMobile 
-                          ? 'h-9 px-4 bg-red-500/20 border-red-300/30 text-red-400 hover:bg-red-500/30 hover:scale-105 transition-all duration-300 rounded-2xl' 
-                          : 'h-7 px-2'
-                        }`}
-                      >
-                        <Trash2 className={`${isMobile ? 'h-4 w-4' : 'h-3 w-3'}`} />
-                      </Button>
-                    </div>
+                     <div className={`flex gap-1 ${isMobile ? 'gap-2' : ''}`}>
+                       <Button 
+                         size="sm" 
+                         variant="outline" 
+                         onClick={() => handleEdit(collection)} 
+                         className={`${isMobile 
+                           ? 'h-9 px-4 text-sm border-white/30 bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:scale-105 transition-all duration-300 rounded-2xl flex-1' 
+                           : 'h-7 px-2 text-xs'
+                         }`}
+                       >
+                         <Edit className={`${isMobile ? 'h-4 w-4 mr-2' : 'h-3 w-3 mr-1'}`} />
+                         Edit
+                       </Button>
+                       <Button 
+                         size="sm" 
+                         variant="outline" 
+                         onClick={() => handleManageProducts(collection)} 
+                         className={`${isMobile 
+                           ? 'h-9 px-3 text-sm border-white/30 bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:scale-105 transition-all duration-300 rounded-2xl flex-1' 
+                           : 'h-7 px-2 text-xs'
+                         }`}
+                       >
+                         <Folder className={`${isMobile ? 'h-4 w-4 mr-1' : 'h-3 w-3 mr-1'}`} />
+                         <span className={`${isMobile ? 'text-xs' : ''}`}>Products</span>
+                       </Button>
+                       <Button 
+                         size="sm" 
+                         variant="destructive" 
+                         onClick={() => handleDelete(collection)} 
+                         className={`${isMobile 
+                           ? 'h-9 w-12 bg-red-500/20 border-red-300/30 text-red-400 hover:bg-red-500/30 hover:scale-105 transition-all duration-300 rounded-2xl p-0' 
+                           : 'h-7 px-2'
+                         }`}
+                       >
+                         <Trash2 className={`${isMobile ? 'h-4 w-4' : 'h-3 w-3'}`} />
+                       </Button>
+                     </div>
                   </CardContent>
                 </Card>
               ))}
