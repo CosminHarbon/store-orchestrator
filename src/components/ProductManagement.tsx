@@ -354,7 +354,7 @@ const ProductManagement = () => {
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="price" className="text-sm font-medium">Price ($)</Label>
+                          <Label htmlFor="price" className="text-sm font-medium">Price (RON)</Label>
                           <Input
                             id="price"
                             type="number"
@@ -508,7 +508,7 @@ const ProductManagement = () => {
                       )}
                       {discount && (
                         <div className="absolute top-2 right-2 bg-gradient-primary text-white px-2 py-1 rounded-full text-xs font-medium shadow-glow">
-                          -{discount.discount_type === 'percentage' ? `${discount.discount_value}%` : `$${discount.discount_value}`}
+                          -{discount.discount_type === 'percentage' ? `${discount.discount_value}%` : `${discount.discount_value} RON`}
                         </div>
                       )}
                     </div>
@@ -517,7 +517,7 @@ const ProductManagement = () => {
                         <h3 className="font-semibold text-base truncate">{product.title}</h3>
                         <div className="flex items-center justify-between">
                           <div className="space-y-1">
-                            <div className="text-lg font-bold text-primary">${product.price}</div>
+                            <div className="text-lg font-bold text-primary">{product.price.toFixed(2)} RON</div>
                             <div className={`text-xs px-2 py-1 rounded-full w-fit ${
                               product.stock > product.low_stock_threshold 
                                 ? 'bg-green-100 text-green-700' 

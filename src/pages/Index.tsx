@@ -96,10 +96,10 @@ const Index = () => {
             <div>
               <p className="text-white/80 text-sm mb-1">Your Store Value</p>
               <h1 className="text-3xl md:text-4xl font-bold">
-                ${stats?.totalRevenue?.toFixed(2) || '0.00'}
+                {stats?.totalRevenue?.toFixed(2) || '0.00'} RON
               </h1>
               <p className="text-white/80 text-sm mt-1">
-                ▲ ${((stats?.totalRevenue || 0) * 0.15).toFixed(2)} this week
+                ▲ {((stats?.totalRevenue || 0) * 0.15).toFixed(2)} RON this week
               </p>
             </div>
             <Button 
@@ -196,7 +196,7 @@ const Index = () => {
                 <p className="text-xs text-muted-foreground">Revenue generated</p>
               </div>
             </div>
-            <span className="text-sm font-semibold">${(stats?.todayRevenue || 0).toFixed(2)}</span>
+            <span className="text-sm font-semibold">{(stats?.todayRevenue || 0).toFixed(2)} RON</span>
           </div>
           
           {stats?.lowStockProducts > 0 && (

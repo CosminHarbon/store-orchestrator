@@ -345,7 +345,7 @@ const StockManagement = () => {
                                 ${stock} ${stock === 1 ? 'unit' : 'units'}
                               </span>
                             </td>
-                            <td><span class="price">$${price.toFixed(2)}</span></td>
+                            <td><span class="price">{price.toFixed(2)} RON</span></td>
                             <td><span class="category-badge">${cells[4] || 'Uncategorized'}</span></td>
                           </tr>
                         `;

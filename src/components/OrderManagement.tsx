@@ -357,7 +357,7 @@ const OrderManagement = () => {
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                   <div>
                     <p className="font-mono text-sm text-muted-foreground">Order #{selectedOrder.id.slice(-8)}</p>
-                    <p className="text-lg font-semibold">${selectedOrder.total}</p>
+                    <p className="text-lg font-semibold">{selectedOrder.total.toFixed(2)} RON</p>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <div className="space-y-1">
@@ -465,7 +465,7 @@ const OrderManagement = () => {
                   <CardContent className="space-y-2 text-sm">
                     <div><strong>Order Date:</strong> {new Date(selectedOrder.created_at).toLocaleString()}</div>
                     <div><strong>Order ID:</strong> <span className="font-mono">{selectedOrder.id}</span></div>
-                    <div><strong>Total Amount:</strong> ${selectedOrder.total}</div>
+                    <div><strong>Total Amount:</strong> {selectedOrder.total.toFixed(2)} RON</div>
                     <div><strong>Items:</strong> {orderItems.length} product(s)</div>
                   </CardContent>
                 </Card>
@@ -492,9 +492,9 @@ const OrderManagement = () => {
                         {orderItems.map((item) => (
                           <TableRow key={item.id}>
                             <TableCell className="font-medium">{item.product_title}</TableCell>
-                            <TableCell>${item.product_price}</TableCell>
+                            <TableCell>{item.product_price.toFixed(2)} RON</TableCell>
                             <TableCell>{item.quantity}</TableCell>
-                            <TableCell>${(item.product_price * item.quantity).toFixed(2)}</TableCell>
+                            <TableCell>{(item.product_price * item.quantity).toFixed(2)} RON</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -507,8 +507,8 @@ const OrderManagement = () => {
                       <div key={item.id} className="border rounded-lg p-3 space-y-2">
                         <div className="font-medium">{item.product_title}</div>
                         <div className="flex justify-between text-sm">
-                          <span>${item.product_price} × {item.quantity}</span>
-                          <span className="font-medium">${(item.product_price * item.quantity).toFixed(2)}</span>
+                           <span>{item.product_price.toFixed(2)} RON × {item.quantity}</span>
+                           <span className="font-medium">{(item.product_price * item.quantity).toFixed(2)} RON</span>
                         </div>
                       </div>
                     ))}
@@ -517,7 +517,7 @@ const OrderManagement = () => {
                   <div className="mt-4 pt-4 border-t">
                     <div className="flex justify-between items-center">
                       <span className="text-lg font-semibold">Total:</span>
-                      <span className="text-lg font-semibold">${selectedOrder.total}</span>
+                      <span className="text-lg font-semibold">{selectedOrder.total.toFixed(2)} RON</span>
                     </div>
                   </div>
                 </CardContent>

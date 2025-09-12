@@ -115,7 +115,7 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                   </div>
                 </TableCell>
                 <TableCell className="font-medium">
-                  ${order.total}
+                  {order.total.toFixed(2)} RON
                 </TableCell>
                 <TableCell>
                   {getStatusBadge(order.payment_status, 'payment')}
@@ -208,7 +208,7 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                   </p>
                 </div>
                 <div className="text-right space-y-1">
-                  <p className="text-lg font-semibold">${order.total}</p>
+                  <p className="text-lg font-semibold">{order.total.toFixed(2)} RON</p>
                   <div className="flex gap-1">
                     {getStatusBadge(order.payment_status, 'payment')}
                   </div>

@@ -167,7 +167,7 @@ export function ProductDetailModal({
             <div className="flex-1 p-6 md:p-8 overflow-y-auto space-y-6 min-h-0">
               {/* Price */}
               <div className="text-3xl md:text-4xl font-bold text-primary">
-                ${product.price.toFixed(2)}
+                {product.price.toFixed(2)} RON
               </div>
 
               {/* Product Title */}

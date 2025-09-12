@@ -209,7 +209,7 @@ const CustomerManagement: React.FC = () => {
     );
   }
 
-  const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
+  const formatCurrency = (amount: number) => `${amount.toFixed(2)} RON`;
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString();
 
   return (

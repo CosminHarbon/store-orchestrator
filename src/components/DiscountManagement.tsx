@@ -343,14 +343,14 @@ const DiscountManagement = () => {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="percentage">Percentage (%)</SelectItem>
-                        <SelectItem value="fixed_amount">Fixed Amount ($)</SelectItem>
+                        <SelectItem value="fixed_amount">Fixed Amount (RON)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   
                   <div className="space-y-2">
                     <Label htmlFor="discount_value" className="text-sm font-medium">
-                      {formData.discount_type === 'percentage' ? 'Percentage' : 'Amount ($)'}
+                      {formData.discount_type === 'percentage' ? 'Percentage' : 'Amount (RON)'}
                     </Label>
                     <Input
                       id="discount_value"
@@ -408,7 +408,7 @@ const DiscountManagement = () => {
                             <Label htmlFor={`product-${product.id}`} className="text-sm font-medium cursor-pointer">
                               {product.title}
                             </Label>
-                            <p className="text-xs text-muted-foreground">${product.price.toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground">{product.price.toFixed(2)} RON</p>
                           </div>
                         </div>
                       ))
@@ -490,8 +490,8 @@ const DiscountManagement = () => {
                       )}
                       <span className="font-medium">
                         {discount.discount_type === 'percentage' 
-                          ? `${discount.discount_value}% off` 
-                          : `$${discount.discount_value} off`}
+                           ? `${discount.discount_value}% off` 
+                           : `${discount.discount_value} RON off`}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">

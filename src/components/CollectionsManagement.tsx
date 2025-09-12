@@ -579,7 +579,7 @@ const CollectionsManagement = () => {
                       </TableCell>
                       <TableCell className="font-medium">{product.title}</TableCell>
                       <TableCell>{product.sku || '-'}</TableCell>
-                      <TableCell>${product.price}</TableCell>
+                      <TableCell>{product.price.toFixed(2)} RON</TableCell>
                       <TableCell>{product.category || '-'}</TableCell>
                     </TableRow>
                   ))}
