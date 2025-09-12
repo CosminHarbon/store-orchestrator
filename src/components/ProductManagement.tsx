@@ -280,205 +280,203 @@ const ProductManagement = () => {
       </TabsList>
       
       <TabsContent value="products" className="space-y-6">
-        {/* Modern Header Layout */}
-        <div className="space-y-8">
-          {/* Top Section - Title and Main Actions */}
-          <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <h1 className="text-4xl font-bold tracking-tight">Products</h1>
-              <p className="text-muted-foreground text-lg">Manage your store inventory</p>
-            </div>
-            
-            <div className="flex items-center space-x-3">
-              {/* Search Toggle */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  const searchContainer = document.getElementById('search-container') as HTMLDivElement;
-                  const searchInput = document.getElementById('search-input') as HTMLInputElement;
-                  if (searchContainer && searchInput) {
-                    searchContainer.classList.toggle('hidden');
-                    if (!searchContainer.classList.contains('hidden')) {
-                      searchInput.focus();
-                    }
-                  }
-                }}
-                className="h-11 w-11 rounded-xl hover:bg-muted/80 transition-colors"
-              >
-                <Search className="h-5 w-5" />
-              </Button>
-
-              {/* Add Product */}
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button 
-                    onClick={() => resetForm()} 
-                    size="lg"
-                    className="bg-gradient-primary hover:shadow-elegant transition-all duration-300 border-0 px-8 py-3 rounded-xl font-medium"
-                  >
-                    <Plus className="h-5 w-5 mr-2" />
-                    Add Product
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-md bg-background/95 backdrop-blur-xl border border-border/50 rounded-2xl">
-                  <DialogHeader>
-                    <DialogTitle className="text-xl font-semibold">
-                      {editingProduct ? 'Edit Product' : 'Add New Product'}
-                    </DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="title" className="text-sm font-medium">Product Name</Label>
-                      <Input
-                        id="title"
-                        value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        className="border-border/50 focus:border-primary rounded-xl"
-                        placeholder="Enter product name"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="description" className="text-sm font-medium">Description</Label>
-                      <Textarea
-                        id="description"
-                        value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        className="border-border/50 focus:border-primary resize-none rounded-xl"
-                        placeholder="Product description..."
-                        rows={3}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
+        {/* Hero Header Section */}
+        <div className="relative overflow-hidden bg-gradient-primary rounded-2xl p-8 text-white shadow-glow">
+          <div className="relative z-10">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
+                    <Package className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">Product Manager</h1>
+                    <p className="text-white/80 text-base lg:text-lg">Build and organize your inventory</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-6 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-white/60 rounded-full"></div>
+                    <span className="text-white/80">{products?.length || 0} Products</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-300 rounded-full"></div>
+                    <span className="text-white/80">{products?.filter(p => p.stock > p.low_stock_threshold).length || 0} In Stock</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-orange-300 rounded-full"></div>
+                    <span className="text-white/80">{products?.filter(p => p.stock <= p.low_stock_threshold && p.stock > 0).length || 0} Low Stock</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      onClick={() => resetForm()} 
+                      size="lg"
+                      className="bg-white text-primary hover:bg-white/90 transition-all duration-300 border-0 px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl"
+                    >
+                      <Plus className="h-5 w-5 mr-2" />
+                      Add Product
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md bg-background/95 backdrop-blur-xl border border-border/50 rounded-2xl">
+                    <DialogHeader>
+                      <DialogTitle className="text-xl font-semibold">
+                        {editingProduct ? 'Edit Product' : 'Add New Product'}
+                      </DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleSubmit} className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="price" className="text-sm font-medium">Price ($)</Label>
+                        <Label htmlFor="title" className="text-sm font-medium">Product Name</Label>
                         <Input
-                          id="price"
-                          type="number"
-                          step="0.01"
-                          value={formData.price}
-                          onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                          id="title"
+                          value={formData.title}
+                          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                           className="border-border/50 focus:border-primary rounded-xl"
-                          placeholder="0.00"
+                          placeholder="Enter product name"
                           required
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="stock" className="text-sm font-medium">Stock</Label>
-                        <Input
-                          id="stock"
-                          type="number"
-                          value={formData.stock}
-                          onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                          className="border-border/50 focus:border-primary rounded-xl"
-                          placeholder="0"
-                          required
+                        <Label htmlFor="description" className="text-sm font-medium">Description</Label>
+                        <Textarea
+                          id="description"
+                          value={formData.description}
+                          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                          className="border-border/50 focus:border-primary resize-none rounded-xl text-base md:text-sm"
+                          placeholder="Product description..."
+                          rows={3}
                         />
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="low_stock_threshold" className="text-sm font-medium">Low Stock Alert Threshold</Label>
-                      <Input
-                        id="low_stock_threshold"
-                        type="number"
-                        value={formData.low_stock_threshold}
-                        onChange={(e) => setFormData({ ...formData, low_stock_threshold: e.target.value })}
-                        className="border-border/50 focus:border-primary rounded-xl"
-                        placeholder="5"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="category" className="text-sm font-medium">Category</Label>
-                      <Input
-                        id="category"
-                        value={formData.category}
-                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                        className="border-border/50 focus:border-primary rounded-xl"
-                        placeholder="e.g. Electronics, Clothing"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="sku" className="text-sm font-medium">SKU</Label>
-                      <Input
-                        id="sku"
-                        value={formData.sku}
-                        onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                        className="border-border/50 focus:border-primary rounded-xl"
-                        placeholder="Product SKU"
-                      />
-                    </div>
-                    <div className="flex gap-3 pt-4">
-                      <Button 
-                        type="submit" 
-                        disabled={createProductMutation.isPending || updateProductMutation.isPending}
-                        className="flex-1 bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0 rounded-xl"
-                      >
-                        {editingProduct ? 'Update' : 'Create'} Product
-                      </Button>
-                      <Button type="button" variant="outline" onClick={resetForm} className="border-border/50 rounded-xl">
-                        Cancel
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="price" className="text-sm font-medium">Price ($)</Label>
+                          <Input
+                            id="price"
+                            type="number"
+                            step="0.01"
+                            value={formData.price}
+                            onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                            className="border-border/50 focus:border-primary rounded-xl"
+                            placeholder="0.00"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="stock" className="text-sm font-medium">Stock</Label>
+                          <Input
+                            id="stock"
+                            type="number"
+                            value={formData.stock}
+                            onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                            className="border-border/50 focus:border-primary rounded-xl"
+                            placeholder="0"
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="low_stock_threshold" className="text-sm font-medium">Low Stock Alert Threshold</Label>
+                        <Input
+                          id="low_stock_threshold"
+                          type="number"
+                          value={formData.low_stock_threshold}
+                          onChange={(e) => setFormData({ ...formData, low_stock_threshold: e.target.value })}
+                          className="border-border/50 focus:border-primary rounded-xl"
+                          placeholder="5"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="category" className="text-sm font-medium">Category</Label>
+                        <Input
+                          id="category"
+                          value={formData.category}
+                          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                          className="border-border/50 focus:border-primary rounded-xl"
+                          placeholder="e.g. Electronics, Clothing"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="sku" className="text-sm font-medium">SKU</Label>
+                        <Input
+                          id="sku"
+                          value={formData.sku}
+                          onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                          className="border-border/50 focus:border-primary rounded-xl"
+                          placeholder="Product SKU"
+                        />
+                      </div>
+                      <div className="flex gap-3 pt-4">
+                        <Button 
+                          type="submit" 
+                          disabled={createProductMutation.isPending || updateProductMutation.isPending}
+                          className="flex-1 bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0 rounded-xl"
+                        >
+                          {editingProduct ? 'Update' : 'Create'} Product
+                        </Button>
+                        <Button type="button" variant="outline" onClick={resetForm} className="border-border/50 rounded-xl">
+                          Cancel
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
           </div>
+          
+          {/* Decorative Elements */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8"></div>
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-8 -translate-x-8"></div>
+          <div className="absolute top-1/2 right-1/4 w-16 h-16 bg-white/5 rounded-full"></div>
+        </div>
 
-          {/* Search Bar - Initially Hidden */}
-          <div className="hidden" id="search-container">
-            <Input
-              id="search-input"
-              placeholder="Search products..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="max-w-md border-border/50 focus:border-primary rounded-xl h-12 text-base"
-            />
-          </div>
-
-          {/* Controls Bar */}
-          <div className="flex items-center justify-between py-4 border-b border-border/20">
-            {/* Search Results Count */}
-            <div className="flex items-center space-x-4">
-              {searchQuery ? (
-                <div className="text-sm text-muted-foreground font-medium">
+        {/* Controls Section */}
+        <div className="bg-gradient-card rounded-xl p-6 shadow-card border border-border/50">
+          <div className="flex flex-col lg:flex-row gap-6 lg:items-center lg:justify-between">
+            {/* Search Section */}
+            <div className="flex-1 max-w-md">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search products by name, category, or SKU..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-12 pr-4 h-12 border-border/50 focus:border-primary rounded-xl bg-background/50 backdrop-blur-sm"
+                />
+              </div>
+              {searchQuery && (
+                <p className="text-sm text-muted-foreground mt-2 ml-1">
                   {filteredProducts?.length || 0} products found
-                </div>
-              ) : (
-                <div className="text-sm text-muted-foreground font-medium">
-                  {products?.length || 0} total products
-                </div>
+                </p>
               )}
             </div>
 
-            {/* View Mode Toggle */}
-            <div className="flex items-center space-x-3">
-              <span className="text-sm font-medium text-muted-foreground">View</span>
-              <div className="flex items-center bg-muted/50 rounded-xl p-1">
+            {/* View Controls */}
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium text-foreground">View Mode</span>
+              <div className="flex items-center bg-muted/30 backdrop-blur-sm rounded-xl p-1 border border-border/50">
                 <Button
                   variant={viewMode === 'grid' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('grid')}
-                  className={`h-8 px-3 rounded-lg transition-all duration-200 ${
-                    viewMode === 'grid' 
-                      ? 'bg-background shadow-sm' 
-                      : 'hover:bg-background/50'
-                  }`}
+                  className="h-9 px-4 rounded-lg transition-all duration-200 font-medium"
                 >
-                  <Grid className="h-4 w-4" />
+                  <Grid className="h-4 w-4 mr-2" />
+                  Grid
                 </Button>
                 <Button
                   variant={viewMode === 'list' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('list')}
-                  className={`h-8 px-3 rounded-lg transition-all duration-200 ${
-                    viewMode === 'list' 
-                      ? 'bg-background shadow-sm' 
-                      : 'hover:bg-background/50'
-                  }`}
+                  className="h-9 px-4 rounded-lg transition-all duration-200 font-medium"
                 >
-                  <List className="h-4 w-4" />
+                  <List className="h-4 w-4 mr-2" />
+                  List
                 </Button>
               </div>
             </div>
@@ -487,98 +485,64 @@ const ProductManagement = () => {
 
         {/* Products View */}
         {filteredProducts && filteredProducts.length > 0 ? (
-          viewMode === 'grid' ? (
-            <ResponsiveProductTable
-              products={filteredProducts}
-              productImages={productImages || []}
-              discounts={discounts || []}
-              productDiscounts={productDiscounts || []}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onManageImages={setImageDialogProduct}
-              onProductClick={setSelectedProduct}
-            />
-          ) : (
-            <ProductListView
-              products={filteredProducts}
-              discounts={discounts || []}
-              productDiscounts={productDiscounts || []}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onManageImages={setImageDialogProduct}
-              onProductClick={setSelectedProduct}
-            />
-          )
+          <ProductListView
+            products={filteredProducts}
+            discounts={discounts}
+            productDiscounts={productDiscounts}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onManageImages={(product) => setImageDialogProduct(product)}
+            onProductClick={(product) => setSelectedProduct(product)}
+          />
         ) : (
-          <div className="flex flex-col items-center justify-center py-16 space-y-4">
-            <div className="w-24 h-24 bg-gradient-primary/10 rounded-full flex items-center justify-center">
-              <Package className="h-12 w-12 text-primary" />
-            </div>
-            <div className="text-center space-y-2">
-              <h3 className="text-lg font-semibold">
-                {searchQuery ? 'No matching products' : 'No products yet'}
-              </h3>
-              <p className="text-muted-foreground max-w-md">
-                {searchQuery 
-                  ? `No products found matching "${searchQuery}". Try adjusting your search.`
-                  : 'Start building your inventory by adding your first product. You can manage images, pricing, and stock levels.'
-                }
-              </p>
-            </div>
+          <div className="text-center py-12">
+            <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-muted-foreground mb-2">
+              {searchQuery ? 'No products found' : 'No products yet'}
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              {searchQuery ? 'Try adjusting your search terms' : 'Get started by adding your first product'}
+            </p>
             {!searchQuery && (
-              <Button 
-                onClick={() => setIsDialogOpen(true)} 
-                className="bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0"
-              >
+              <Button onClick={() => setIsDialogOpen(true)} className="bg-gradient-primary hover:shadow-elegant border-0 rounded-xl">
                 <Plus className="h-4 w-4 mr-2" />
-                Add Your First Product
+                Add Product
               </Button>
             )}
           </div>
         )}
-        
+
+        {/* Product Image Management Dialog */}
+        {imageDialogProduct && (
+          <Dialog open={!!imageDialogProduct} onOpenChange={() => setImageDialogProduct(null)}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Manage Images - {imageDialogProduct.title}</DialogTitle>
+              </DialogHeader>
+              <ProductImageUpload 
+                productId={imageDialogProduct.id}
+                onImagesChange={() => {
+                  queryClient.invalidateQueries({ queryKey: ['all-product-images'] });
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+        )}
+
         {/* Product Detail Modal */}
         <ProductDetailModal
           product={selectedProduct}
           isOpen={!!selectedProduct}
           onClose={() => setSelectedProduct(null)}
-          onEdit={(product) => {
-            setSelectedProduct(null);
-            handleEdit(product);
-          }}
-          onManageImages={(product) => {
-            setSelectedProduct(null);
-            setImageDialogProduct(product);
-          }}
+          onEdit={handleEdit}
+          onManageImages={setImageDialogProduct}
         />
-        
-        {/* Image Management Dialog */}
-        <Dialog open={!!imageDialogProduct || !!newProductForImages} onOpenChange={() => {
-          setImageDialogProduct(null);
-          setNewProductForImages(null);
-        }}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                Manage Images - {imageDialogProduct?.title || products?.find(p => p.id === newProductForImages)?.title}
-              </DialogTitle>
-            </DialogHeader>
-            {(imageDialogProduct || newProductForImages) && (
-              <ProductImageUpload 
-                productId={imageDialogProduct?.id || newProductForImages || ''}
-                onImagesChange={() => {
-                  queryClient.invalidateQueries({ queryKey: ['all-product-images'] });
-                }}
-              />
-            )}
-          </DialogContent>
-        </Dialog>
       </TabsContent>
-      
+
       <TabsContent value="collections">
         <CollectionsManagement />
       </TabsContent>
-      
+
       <TabsContent value="discounts">
         <DiscountManagement />
       </TabsContent>
