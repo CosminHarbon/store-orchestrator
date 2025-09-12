@@ -529,7 +529,7 @@ const ProductManagement = () => {
                             </div>
                           </div>
                         </div>
-                        <div className="flex gap-1 pt-2">
+                        <div className="flex gap-1 pt-2 justify-center">
                           <Button size="sm" variant="outline" onClick={() => handleEdit(product)} className="flex-1 text-xs">
                             <Edit className="h-3 w-3 mr-1" />
                             Edit
