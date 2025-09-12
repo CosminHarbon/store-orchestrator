@@ -281,45 +281,45 @@ const ProductManagement = () => {
       
       <TabsContent value="products" className="space-y-6">
         {/* Hero Header Section */}
-        <div className="relative overflow-hidden bg-gradient-primary rounded-2xl p-8 text-white shadow-glow">
+        <div className="relative overflow-hidden bg-gradient-primary rounded-2xl p-4 md:p-8 text-white shadow-glow">
           <div className="relative z-10">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
-                    <Package className="h-6 w-6 text-white" />
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 md:gap-6">
+              <div className="space-y-2 md:space-y-3">
+                <div className="flex items-center gap-2 md:gap-3">
+                  <div className="p-1.5 md:p-2 bg-white/20 rounded-lg md:rounded-xl backdrop-blur-sm">
+                    <Package className="h-4 w-4 md:h-6 md:w-6 text-white" />
                   </div>
                   <div>
-                    <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">Product Manager</h1>
-                    <p className="text-white/80 text-base lg:text-lg">Build and organize your inventory</p>
+                    <h1 className="text-xl md:text-3xl lg:text-4xl font-bold tracking-tight">Product Manager</h1>
+                    <p className="text-white/80 text-sm md:text-base lg:text-lg">Build and organize your inventory</p>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-6 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-white/60 rounded-full"></div>
+                <div className="flex items-center gap-3 md:gap-6 text-xs md:text-sm">
+                  <div className="flex items-center gap-1.5 md:gap-2">
+                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-white/60 rounded-full"></div>
                     <span className="text-white/80">{products?.length || 0} Products</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-300 rounded-full"></div>
+                  <div className="flex items-center gap-1.5 md:gap-2">
+                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-green-300 rounded-full"></div>
                     <span className="text-white/80">{products?.filter(p => p.stock > p.low_stock_threshold).length || 0} In Stock</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-orange-300 rounded-full"></div>
+                  <div className="flex items-center gap-1.5 md:gap-2">
+                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-orange-300 rounded-full"></div>
                     <span className="text-white/80">{products?.filter(p => p.stock <= p.low_stock_threshold && p.stock > 0).length || 0} Low Stock</span>
                   </div>
                 </div>
               </div>
               
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 md:gap-3">
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
                     <Button 
                       onClick={() => resetForm()} 
-                      size="lg"
-                      className="bg-white text-primary hover:bg-white/90 transition-all duration-300 border-0 px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl"
+                      size="sm"
+                      className="bg-white text-primary hover:bg-white/90 transition-all duration-300 border-0 px-3 py-2 md:px-6 md:py-3 rounded-lg md:rounded-xl text-sm md:text-base font-semibold shadow-lg hover:shadow-xl"
                     >
-                      <Plus className="h-5 w-5 mr-2" />
+                      <Plus className="h-4 w-4 md:h-5 md:w-5 mr-1 md:mr-2" />
                       Add Product
                     </Button>
                   </DialogTrigger>
@@ -429,54 +429,54 @@ const ProductManagement = () => {
             </div>
           </div>
           
-          {/* Decorative Elements */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8"></div>
-          <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-8 -translate-x-8"></div>
-          <div className="absolute top-1/2 right-1/4 w-16 h-16 bg-white/5 rounded-full"></div>
+          {/* Decorative Elements - Hidden on mobile */}
+          <div className="hidden md:block absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8"></div>
+          <div className="hidden md:block absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-8 -translate-x-8"></div>
+          <div className="hidden md:block absolute top-1/2 right-1/4 w-16 h-16 bg-white/5 rounded-full"></div>
         </div>
 
         {/* Controls Section */}
-        <div className="bg-gradient-card rounded-xl p-6 shadow-card border border-border/50">
-          <div className="flex flex-col lg:flex-row gap-6 lg:items-center lg:justify-between">
+        <div className="bg-gradient-card rounded-xl p-4 md:p-6 shadow-card border border-border/50">
+          <div className="flex flex-col gap-4 md:gap-6 lg:flex-row lg:items-center lg:justify-between">
             {/* Search Section */}
             <div className="flex-1 max-w-md">
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="absolute left-3 md:left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Search products by name, category, or SKU..."
+                  placeholder="Search products..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-12 pr-4 h-12 border-border/50 focus:border-primary rounded-xl bg-background/50 backdrop-blur-sm"
+                  className="pl-10 md:pl-12 pr-4 h-10 md:h-12 border-border/50 focus:border-primary rounded-xl bg-background/50 backdrop-blur-sm text-sm md:text-base"
                 />
               </div>
               {searchQuery && (
-                <p className="text-sm text-muted-foreground mt-2 ml-1">
+                <p className="text-xs md:text-sm text-muted-foreground mt-1 md:mt-2 ml-1">
                   {filteredProducts?.length || 0} products found
                 </p>
               )}
             </div>
 
             {/* View Controls */}
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-medium text-foreground">View Mode</span>
-              <div className="flex items-center bg-muted/30 backdrop-blur-sm rounded-xl p-1 border border-border/50">
+            <div className="flex items-center gap-3 md:gap-4">
+              <span className="text-xs md:text-sm font-medium text-foreground">View</span>
+              <div className="flex items-center bg-muted/30 backdrop-blur-sm rounded-lg md:rounded-xl p-0.5 md:p-1 border border-border/50">
                 <Button
                   variant={viewMode === 'grid' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('grid')}
-                  className="h-9 px-4 rounded-lg transition-all duration-200 font-medium"
+                  className="h-7 md:h-9 px-2 md:px-4 rounded-md md:rounded-lg transition-all duration-200 text-xs md:text-sm font-medium"
                 >
-                  <Grid className="h-4 w-4 mr-2" />
-                  Grid
+                  <Grid className="h-3 w-3 md:h-4 md:w-4 md:mr-2" />
+                  <span className="hidden md:inline">Grid</span>
                 </Button>
                 <Button
                   variant={viewMode === 'list' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('list')}
-                  className="h-9 px-4 rounded-lg transition-all duration-200 font-medium"
+                  className="h-7 md:h-9 px-2 md:px-4 rounded-md md:rounded-lg transition-all duration-200 text-xs md:text-sm font-medium"
                 >
-                  <List className="h-4 w-4 mr-2" />
-                  List
+                  <List className="h-3 w-3 md:h-4 md:w-4 md:mr-2" />
+                  <span className="hidden md:inline">List</span>
                 </Button>
               </div>
             </div>
@@ -485,15 +485,78 @@ const ProductManagement = () => {
 
         {/* Products View */}
         {filteredProducts && filteredProducts.length > 0 ? (
-          <ProductListView
-            products={filteredProducts}
-            discounts={discounts}
-            productDiscounts={productDiscounts}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onManageImages={(product) => setImageDialogProduct(product)}
-            onProductClick={(product) => setSelectedProduct(product)}
-          />
+          viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredProducts.map((product) => {
+                const productDiscount = productDiscounts?.find(pd => pd.product_id === product.id);
+                const discount = discounts?.find(d => d.id === productDiscount?.discount_id);
+                
+                return (
+                  <Card key={product.id} className="overflow-hidden bg-gradient-card shadow-card border border-border/50 hover:shadow-elegant transition-all duration-200">
+                    <div className="aspect-square bg-muted/50 relative overflow-hidden">
+                      {product.image ? (
+                        <img 
+                          src={product.image} 
+                          alt={product.title}
+                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Package className="h-12 w-12 text-muted-foreground" />
+                        </div>
+                      )}
+                      {discount && (
+                        <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                          -{discount.discount_type === 'percentage' ? `${discount.discount_value}%` : `$${discount.discount_value}`}
+                        </div>
+                      )}
+                    </div>
+                    <CardContent className="p-4">
+                      <div className="space-y-2">
+                        <h3 className="font-semibold text-base truncate">{product.title}</h3>
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <div className="text-lg font-bold text-primary">${product.price}</div>
+                            <div className={`text-xs px-2 py-1 rounded-full w-fit ${
+                              product.stock > product.low_stock_threshold 
+                                ? 'bg-green-100 text-green-700' 
+                                : product.stock > 0 
+                                  ? 'bg-orange-100 text-orange-700' 
+                                  : 'bg-red-100 text-red-700'
+                            }`}>
+                              {product.stock} in stock
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-1 pt-2">
+                          <Button size="sm" variant="outline" onClick={() => handleEdit(product)} className="flex-1 text-xs">
+                            <Edit className="h-3 w-3 mr-1" />
+                            Edit
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => setImageDialogProduct(product)} className="px-2">
+                            <Images className="h-3 w-3" />
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={() => handleDelete(product.id)} className="px-2">
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <ProductListView
+              products={filteredProducts}
+              discounts={discounts}
+              productDiscounts={productDiscounts}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onManageImages={(product) => setImageDialogProduct(product)}
+              onProductClick={(product) => setSelectedProduct(product)}
+            />
+          )
         ) : (
           <div className="text-center py-12">
             <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
