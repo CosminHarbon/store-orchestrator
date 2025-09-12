@@ -29,10 +29,11 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
               variant="ghost"
               size="sm"
               className={cn(
-                "flex flex-col gap-1 h-12 px-1 rounded-xl transition-all duration-200 relative",
+                "flex flex-col gap-1 h-12 px-1 rounded-xl transition-all duration-200 relative touch-manipulation",
+                "focus:outline-none focus-visible:ring-0 active:scale-95",
                 isActive 
-                  ? "text-primary" 
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  ? "text-primary bg-transparent" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50 active:bg-muted/30"
               )}
               onClick={() => onTabChange(item.id)}
             >
