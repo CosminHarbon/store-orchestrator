@@ -328,6 +328,7 @@ const CollectionsManagement = () => {
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Enter collection description"
+                  className="text-base md:text-sm"
                 />
               </div>
               <div>
@@ -380,6 +381,7 @@ const CollectionsManagement = () => {
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Enter collection description"
+                  className="text-base md:text-sm"
                 />
               </div>
               <div>
