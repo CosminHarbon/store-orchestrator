@@ -402,47 +402,31 @@ const CollectionsManagement = () => {
             </div>
             
             {/* Mobile List View */}
-            <div className="sm:hidden space-y-3">
+            <div className="sm:hidden space-y-2">
               {filteredCollections?.map((collection) => (
-                <Card key={collection.id}>
-                  <CardContent className="p-4">
-                    <div className="flex gap-3">
-                      <div className="w-16 h-16 rounded-md overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
-                        {collection.image_url ? (
-                          <img
-                            src={collection.image_url}
-                            alt={collection.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                        )}
-                      </div>
+                <Card key={collection.id} className="bg-gradient-card shadow-card border border-border/50">
+                  <CardContent className="p-3">
+                    <div className="flex items-start justify-between mb-2">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between mb-1">
-                          <h3 className="font-semibold truncate">{collection.name}</h3>
-                          <Badge variant="secondary" className="ml-2 flex-shrink-0">{collection.product_count}</Badge>
-                        </div>
-                        {collection.description && (
-                          <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{collection.description}</p>
-                        )}
-                        <p className="text-xs text-muted-foreground mb-3">
-                          Created {new Date(collection.created_at).toLocaleDateString()}
-                        </p>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline" onClick={() => handleEdit(collection)}>
-                            <Edit className="h-3 w-3 mr-1" />
-                            Edit
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => handleManageProducts(collection)}>
-                            <Folder className="h-3 w-3 mr-1" />
-                            Products
-                          </Button>
-                          <Button size="sm" variant="destructive" onClick={() => handleDelete(collection)}>
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
+                        <h3 className="font-semibold text-sm truncate">{collection.name}</h3>
+                        <Badge variant="secondary" className="text-xs mt-1">{collection.product_count} products</Badge>
                       </div>
+                    </div>
+                    {collection.description && (
+                      <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{collection.description}</p>
+                    )}
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="outline" onClick={() => handleEdit(collection)} className="h-7 px-2 text-xs">
+                        <Edit className="h-3 w-3 mr-1" />
+                        Edit
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleManageProducts(collection)} className="h-7 px-2 text-xs">
+                        <Folder className="h-3 w-3 mr-1" />
+                        Products
+                      </Button>
+                      <Button size="sm" variant="destructive" onClick={() => handleDelete(collection)} className="h-7 px-2">
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
