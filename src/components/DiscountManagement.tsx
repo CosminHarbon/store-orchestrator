@@ -311,7 +311,7 @@ const DiscountManagement = () => {
             <Button 
               onClick={() => resetForm()} 
               className={`${isMobile 
-                ? 'fixed bottom-6 right-6 z-50 w-16 h-16 rounded-full p-0 bg-gradient-to-br from-primary via-primary-glow to-accent shadow-2xl border-0 hover:scale-110 hover:shadow-glow transition-all duration-300 animate-bounce' 
+                ? 'fixed bottom-20 right-6 z-50 w-14 h-14 rounded-full p-0 bg-gradient-to-br from-primary via-primary-glow to-accent shadow-2xl border-0 hover:scale-110 hover:shadow-glow transition-all duration-300 hover:animate-pulse' 
                 : 'bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0 px-8 py-3 text-lg rounded-full'
               }`}
             >
@@ -471,10 +471,10 @@ const DiscountManagement = () => {
                 }`}
               >
                 <CardHeader className={`${isMobile ? 'pb-3 pt-6 px-6' : 'pb-4'}`}>
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-3">
-                        <CardTitle className={`${isMobile ? 'text-xl font-bold text-gradient bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent' : 'text-lg'}`}>
+                  <div className={`flex justify-between items-start ${isMobile ? 'gap-4' : ''}`}>
+                    <div className={`space-y-2 ${isMobile ? 'flex-1' : ''}`}>
+                      <div className={`flex items-center gap-3 ${isMobile ? 'flex-wrap' : ''}`}>
+                        <CardTitle className={`${isMobile ? 'text-xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent' : 'text-lg'}`}>
                           {discount.name}
                         </CardTitle>
                         <Badge 
@@ -498,18 +498,18 @@ const DiscountManagement = () => {
                         </Badge>
                       </div>
                       {discount.description && (
-                        <CardDescription className={`${isMobile ? 'text-sm text-muted-foreground/80' : 'text-sm'}`}>
+                        <CardDescription className={`${isMobile ? 'text-sm text-muted-foreground/80 leading-relaxed' : 'text-sm'}`}>
                           {discount.description}
                         </CardDescription>
                       )}
                     </div>
-                    <div className={`flex gap-2 ${isMobile ? 'flex-col' : ''}`}>
+                    <div className={`flex gap-2 ${isMobile ? 'flex-col shrink-0' : ''}`}>
                       <Button 
                         size="sm" 
                         variant="outline" 
                         onClick={() => handleEdit(discount)}
                         className={`${isMobile 
-                          ? 'border-white/30 bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:scale-110 transition-all duration-300 rounded-full w-10 h-10 p-0' 
+                          ? 'border-white/30 bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:scale-105 transition-all duration-300 rounded-full w-10 h-10 p-0' 
                           : 'border-border/50'
                         }`}
                       >
@@ -520,7 +520,7 @@ const DiscountManagement = () => {
                         variant="outline" 
                         onClick={() => handleDelete(discount.id)}
                         className={`${isMobile 
-                          ? 'border-red-300/30 bg-red-500/10 backdrop-blur-sm hover:bg-red-500/20 hover:scale-110 transition-all duration-300 rounded-full w-10 h-10 p-0 text-red-400 hover:text-red-300' 
+                          ? 'border-red-300/30 bg-red-500/10 backdrop-blur-sm hover:bg-red-500/20 hover:scale-105 transition-all duration-300 rounded-full w-10 h-10 p-0 text-red-400 hover:text-red-300' 
                           : 'border-border/50 text-destructive hover:text-destructive'
                         }`}
                       >
@@ -530,30 +530,30 @@ const DiscountManagement = () => {
                   </div>
                 </CardHeader>
                 <CardContent className={`space-y-4 ${isMobile ? 'px-6 pb-6' : ''}`}>
-                  <div className={`flex items-center gap-6 text-sm ${isMobile ? 'flex-col items-start gap-4' : ''}`}>
-                    <div className={`flex items-center gap-2 ${isMobile ? 'bg-gradient-to-r from-primary/10 to-accent/10 backdrop-blur-sm rounded-full px-4 py-2 border border-primary/20' : ''}`}>
+                  <div className={`flex items-center gap-6 text-sm ${isMobile ? 'flex-col items-stretch gap-3' : ''}`}>
+                    <div className={`flex items-center gap-2 ${isMobile ? 'bg-gradient-to-r from-primary/10 to-accent/10 backdrop-blur-sm rounded-2xl px-4 py-3 border border-primary/20 justify-center' : ''}`}>
                       {discount.discount_type === 'percentage' ? (
-                        <Percent className={`h-4 w-4 ${isMobile ? 'text-primary animate-pulse' : 'text-primary'}`} />
+                        <Percent className={`h-4 w-4 ${isMobile ? 'text-primary' : 'text-primary'}`} />
                       ) : (
-                        <DollarSign className={`h-4 w-4 ${isMobile ? 'text-primary animate-pulse' : 'text-primary'}`} />
+                        <DollarSign className={`h-4 w-4 ${isMobile ? 'text-primary' : 'text-primary'}`} />
                       )}
-                      <span className={`font-medium ${isMobile ? 'text-primary font-bold' : ''}`}>
+                      <span className={`font-medium ${isMobile ? 'text-primary font-bold text-base' : ''}`}>
                         {discount.discount_type === 'percentage' 
                            ? `${discount.discount_value}% off` 
                            : `${discount.discount_value} RON off`}
                       </span>
                     </div>
-                    <div className={`flex items-center gap-2 ${isMobile ? 'bg-gradient-to-r from-muted/20 to-muted/10 backdrop-blur-sm rounded-full px-4 py-2 border border-muted/30' : ''}`}>
+                    <div className={`flex items-center gap-2 ${isMobile ? 'bg-gradient-to-r from-muted/20 to-muted/10 backdrop-blur-sm rounded-2xl px-4 py-3 border border-muted/30 justify-center' : ''}`}>
                       <Calendar className={`h-4 w-4 ${isMobile ? 'text-accent' : 'text-muted-foreground'}`} />
-                      <span className={`${isMobile ? 'text-accent font-medium' : 'text-muted-foreground'}`}>
+                      <span className={`${isMobile ? 'text-accent font-medium text-sm text-center' : 'text-muted-foreground'}`}>
                         {format(new Date(discount.start_date), 'MMM d, yyyy')}
                         {discount.end_date && ` - ${format(new Date(discount.end_date), 'MMM d, yyyy')}`}
                       </span>
                     </div>
-                    <div className={`flex items-center gap-2 ${isMobile ? 'bg-gradient-to-r from-accent/10 to-primary/10 backdrop-blur-sm rounded-full px-4 py-2 border border-accent/20' : ''}`}>
+                    <div className={`flex items-center gap-2 ${isMobile ? 'bg-gradient-to-r from-accent/10 to-primary/10 backdrop-blur-sm rounded-2xl px-4 py-3 border border-accent/20 justify-center' : ''}`}>
                       <Package className={`h-4 w-4 ${isMobile ? 'text-accent' : 'text-muted-foreground'}`} />
                       <span className={`${isMobile ? 'text-accent font-medium' : 'text-muted-foreground'}`}>
-                        {discountProducts.length} products
+                        {discountProducts.length} product{discountProducts.length !== 1 ? 's' : ''}
                       </span>
                     </div>
                   </div>
