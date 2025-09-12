@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Folder, Plus, Upload, Edit, Trash2, Save, X, Image as ImageIcon } from 'lucide-react';
+import { Folder, Plus, Upload, Edit, Trash2, Save, X, Image as ImageIcon, Search, Grid3X3, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -39,6 +39,8 @@ const CollectionsManagement = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isProductsDialogOpen, setIsProductsDialogOpen] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -110,6 +112,17 @@ const CollectionsManagement = () => {
     },
     enabled: !!selectedCollection && !!products
   });
+
+  // Filter collections based on search query
+  const filteredCollections = useMemo(() => {
+    if (!collections || !searchQuery.trim()) return collections;
+    
+    const query = searchQuery.toLowerCase();
+    return collections.filter(collection => 
+      collection.name.toLowerCase().includes(query) ||
+      (collection.description && collection.description.toLowerCase().includes(query))
+    );
+  }, [collections, searchQuery]);
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -243,62 +256,204 @@ const CollectionsManagement = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex justify-between items-center mb-6">
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Collection
-          </Button>
-        </div>
+        {/* Search and View Controls */}
+        <div className="flex flex-col gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row gap-4 justify-between">
+            {/* Search Bar */}
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search collections..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
 
-        {/* Collections Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {collections?.map((collection) => (
-            <Card key={collection.id} className="overflow-hidden">
-              <div className="aspect-video relative overflow-hidden bg-muted">
-                {collection.image_url ? (
-                  <img
-                    src={collection.image_url}
-                    alt={collection.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-muted/50">
-                    <div className="text-center">
-                      <ImageIcon className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-                      <p className="text-sm text-muted-foreground">No image</p>
-                    </div>
-                  </div>
-                )}
+            {/* View Toggle and Create Button */}
+            <div className="flex gap-2">
+              <div className="flex rounded-lg border border-border p-1">
+                <Button
+                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('grid')}
+                  className="h-8 px-3"
+                >
+                  <Grid3X3 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className="h-8 px-3"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
               </div>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-semibold">{collection.name}</h3>
-                  <Badge variant="secondary">{collection.product_count} products</Badge>
-                </div>
-                {collection.description && (
-                  <p className="text-sm text-muted-foreground mb-3">{collection.description}</p>
-                )}
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => handleEdit(collection)}>
-                    <Edit className="h-3 w-3 mr-1" />
-                    Edit
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => handleManageProducts(collection)}>
-                    <Folder className="h-3 w-3 mr-1" />
-                    Products
-                  </Button>
-                  <Button size="sm" variant="destructive" onClick={() => handleDelete(collection)}>
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+              <Button onClick={() => setIsCreateDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Collection
+              </Button>
+            </div>
+          </div>
         </div>
 
-        {collections?.length === 0 && !isLoading && (
+        {/* Collections Display */}
+        {viewMode === 'grid' ? (
+          // Grid View
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredCollections?.map((collection) => (
+              <Card key={collection.id} className="overflow-hidden">
+                <div className="aspect-video relative overflow-hidden bg-muted">
+                  {collection.image_url ? (
+                    <img
+                      src={collection.image_url}
+                      alt={collection.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-muted/50">
+                      <div className="text-center">
+                        <ImageIcon className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                        <p className="text-sm text-muted-foreground">No image</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-semibold">{collection.name}</h3>
+                    <Badge variant="secondary">{collection.product_count} products</Badge>
+                  </div>
+                  {collection.description && (
+                    <p className="text-sm text-muted-foreground mb-3">{collection.description}</p>
+                  )}
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => handleEdit(collection)}>
+                      <Edit className="h-3 w-3 mr-1" />
+                      Edit
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => handleManageProducts(collection)}>
+                      <Folder className="h-3 w-3 mr-1" />
+                      Products
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => handleDelete(collection)}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          // List View
+          <>
+            <div className="hidden sm:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-16">Image</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Products</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="w-32">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCollections?.map((collection) => (
+                    <TableRow key={collection.id}>
+                      <TableCell>
+                        <div className="w-12 h-12 rounded-md overflow-hidden bg-muted flex items-center justify-center">
+                          {collection.image_url ? (
+                            <img
+                              src={collection.image_url}
+                              alt={collection.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium">{collection.name}</TableCell>
+                      <TableCell className="max-w-xs truncate">{collection.description || '-'}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{collection.product_count}</Badge>
+                      </TableCell>
+                      <TableCell>{new Date(collection.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="outline" onClick={() => handleEdit(collection)}>
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => handleManageProducts(collection)}>
+                            <Folder className="h-3 w-3" />
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={() => handleDelete(collection)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            
+            {/* Mobile List View */}
+            <div className="sm:hidden space-y-3">
+              {filteredCollections?.map((collection) => (
+                <Card key={collection.id}>
+                  <CardContent className="p-4">
+                    <div className="flex gap-3">
+                      <div className="w-16 h-16 rounded-md overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
+                        {collection.image_url ? (
+                          <img
+                            src={collection.image_url}
+                            alt={collection.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between mb-1">
+                          <h3 className="font-semibold truncate">{collection.name}</h3>
+                          <Badge variant="secondary" className="ml-2 flex-shrink-0">{collection.product_count}</Badge>
+                        </div>
+                        {collection.description && (
+                          <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{collection.description}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground mb-3">
+                          Created {new Date(collection.created_at).toLocaleDateString()}
+                        </p>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" onClick={() => handleEdit(collection)}>
+                            <Edit className="h-3 w-3 mr-1" />
+                            Edit
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => handleManageProducts(collection)}>
+                            <Folder className="h-3 w-3 mr-1" />
+                            Products
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={() => handleDelete(collection)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </>
+        )}
+
+        {filteredCollections?.length === 0 && !isLoading && (
           <div className="text-center text-gray-500 py-8">
-            No collections found. Create your first collection to get started.
+            {searchQuery ? 'No collections match your search.' : 'No collections found. Create your first collection to get started.'}
           </div>
         )}
 
