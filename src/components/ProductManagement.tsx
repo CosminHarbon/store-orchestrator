@@ -490,13 +490,14 @@ const ProductManagement = () => {
               {filteredProducts.map((product) => {
                 const productDiscount = productDiscounts?.find(pd => pd.product_id === product.id);
                 const discount = discounts?.find(d => d.id === productDiscount?.discount_id);
+                const primaryImage = productImages?.find(img => img.product_id === product.id);
                 
                 return (
                   <Card key={product.id} className="overflow-hidden bg-gradient-card shadow-card border border-border/50 hover:shadow-elegant transition-all duration-200">
                     <div className="aspect-square bg-muted/50 relative overflow-hidden">
-                      {product.image ? (
+                      {primaryImage?.image_url ? (
                         <img 
-                          src={product.image} 
+                          src={primaryImage.image_url} 
                           alt={product.title}
                           className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                         />
