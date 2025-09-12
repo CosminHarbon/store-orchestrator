@@ -88,7 +88,7 @@ const Index = () => {
   }
 
   const renderDashboard = () => (
-    <div className="space-y-4 p-3 md:p-6 pb-20 safe-area-bottom">
+    <div className="space-y-4 p-3 md:p-6 pb-24 safe-area-bottom">
       {/* Hero Value Card */}
       <div className="bg-gradient-primary rounded-2xl p-6 md:p-8 text-white shadow-glow relative overflow-hidden">
         <div className="relative z-10">
@@ -282,37 +282,37 @@ const Index = () => {
         return renderDashboard();
       case 'products':
         return (
-          <div className="p-3 md:p-6 pb-20 md:pb-6">
+          <div className="p-3 md:p-6 pb-24 md:pb-6 safe-area-bottom">
             <ProductManagement />
           </div>
         );
       case 'stock':
         return (
-          <div className="p-3 md:p-6 pb-20 md:pb-6">
+          <div className="p-3 md:p-6 pb-24 md:pb-6 safe-area-bottom">
             <StockManagement />
           </div>
         );
       case 'orders':
         return (
-          <div className="p-3 md:p-6 pb-20 md:pb-6">
+          <div className="p-3 md:p-6 pb-24 md:pb-6 safe-area-bottom">
             <OrderManagement />
           </div>
         );
       case 'customers':
         return (
-          <div className="p-3 md:p-6 pb-20 md:pb-6">
+          <div className="p-3 md:p-6 pb-24 md:pb-6 safe-area-bottom">
             <CustomerManagement />
           </div>
         );
       case 'payments':
         return (
-          <div className="p-3 md:p-6 pb-20 md:pb-6">
+          <div className="p-3 md:p-6 pb-24 md:pb-6 safe-area-bottom">
             <PaymentStatistics />
           </div>
         );
       case 'settings':
         return (
-          <div className="p-3 md:p-6 pb-20 md:pb-6">
+          <div className="p-3 md:p-6 pb-24 md:pb-6 safe-area-bottom">
             <StoreSettings />
           </div>
         );
