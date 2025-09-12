@@ -463,10 +463,10 @@ async function processWebhook(supabase: any, webhookData: any) {
 
     // Update order status if payment completed
     if (newStatus === 'completed') {
-      console.log(`Updating order ${transaction.order_id} payment status to completed`);
+      console.log(`Updating order ${transaction.order_id} payment status to paid`);
       await supabase
         .from('orders')
-        .update({ payment_status: 'completed' })
+        .update({ payment_status: 'paid' })
         .eq('id', transaction.order_id);
         
       console.log('Order payment status updated successfully');
@@ -520,10 +520,10 @@ async function manualUpdatePayment(supabase: any, userId: string, orderId: strin
       })
       .eq('id', transaction.id);
     
-    // Update order payment status
+    // Update order payment status to 'paid' (matches UI expectations)
     await supabase
       .from('orders')
-      .update({ payment_status: 'completed' })
+      .update({ payment_status: 'paid' })
       .eq('id', orderId);
     
     console.log('Manual update completed for order:', orderId);
