@@ -53,7 +53,7 @@ const CollectionsManagement = () => {
       const { data, error } = await supabase
         .from('collections')
         .select('*')
-        .order('name');
+        .order('created_at', { ascending: false });
       
       if (error) throw error;
       
