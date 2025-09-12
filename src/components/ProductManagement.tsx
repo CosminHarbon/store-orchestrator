@@ -507,7 +507,7 @@ const ProductManagement = () => {
                         </div>
                       )}
                       {discount && (
-                        <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                        <div className="absolute top-2 right-2 bg-gradient-primary text-white px-2 py-1 rounded-full text-xs font-medium shadow-glow">
                           -{discount.discount_type === 'percentage' ? `${discount.discount_value}%` : `$${discount.discount_value}`}
                         </div>
                       )}
