@@ -402,7 +402,7 @@ const OrderManagement = () => {
                 {/* Invoice Actions */}
                 <div className="flex flex-col sm:flex-row gap-2 mt-4">
                   <Button
-                    onClick={() => setIsEditingOrder(true)}
+                    onClick={() => handleEditOrder(selectedOrder)}
                     variant="outline"
                     size="sm"
                     className="flex-1"

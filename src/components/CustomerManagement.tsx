@@ -294,8 +294,8 @@ const CustomerManagement: React.FC = () => {
               </TableHeader>
               <TableBody>
                 {filteredCustomers?.map((customer) => (
-                  <React.Fragment key={customer.customer_email}>
-                    <TableRow className="cursor-pointer hover:bg-muted/50">
+                  <>
+                    <TableRow key={customer.customer_email} className="cursor-pointer hover:bg-muted/50">
                       <TableCell>
                         <Button
                           variant="ghost"
@@ -484,7 +484,7 @@ const CustomerManagement: React.FC = () => {
                         </TableCell>
                       </TableRow>
                     )}
-                  </React.Fragment>
+                  </>
                 ))}
               </TableBody>
             </Table>
