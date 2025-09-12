@@ -267,7 +267,7 @@ const ProductManagement = () => {
   return (
     <div className={`w-full ${isMobile ? 'mobile-futuristic-container' : ''}`}>
       <Tabs defaultValue="products" className="w-full">
-        <TabsList className={`grid w-full grid-cols-3 ${isMobile ? 'h-14 bg-gradient-to-r from-card/80 to-card/40 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl mx-4 mb-6' : ''}`}>
+        <TabsList className={`grid w-full grid-cols-3 ${isMobile ? 'h-14 bg-gradient-to-r from-card/80 to-card/40 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl mx-4 mb-6 max-w-md mx-auto' : ''}`}>
           <TabsTrigger 
             value="products" 
             className={`flex items-center gap-2 ${isMobile ? 'rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-accent data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300' : ''}`}
@@ -608,7 +608,7 @@ const ProductManagement = () => {
 
             {/* View Controls */}
             <div className={`flex items-center gap-3 md:gap-4 ${isMobile ? 'justify-center' : ''}`}>
-              <span className={`text-xs md:text-sm font-medium ${isMobile ? 'text-primary' : 'text-foreground'}`}>View</span>
+              {!isMobile && <span className="text-xs md:text-sm font-medium text-foreground">View</span>}
               <div className={`flex items-center p-0.5 md:p-1 border ${isMobile 
                 ? 'bg-gradient-to-r from-card/80 to-card/40 backdrop-blur-xl border-white/20 rounded-2xl shadow-2xl' 
                 : 'bg-muted/30 backdrop-blur-sm rounded-lg md:rounded-xl border-border/50'
@@ -623,7 +623,7 @@ const ProductManagement = () => {
                   }`}
                 >
                   <Grid className="h-3 w-3 md:h-4 md:w-4 md:mr-2" />
-                  <span className="hidden md:inline">Grid</span>
+                  <span className={`${isMobile ? '' : 'hidden md:inline'}`}>Grid</span>
                 </Button>
                 <Button
                   variant={viewMode === 'list' ? 'default' : 'ghost'}
@@ -635,7 +635,7 @@ const ProductManagement = () => {
                   }`}
                 >
                   <List className="h-3 w-3 md:h-4 md:w-4 md:mr-2" />
-                  <span className="hidden md:inline">List</span>
+                  <span className={`${isMobile ? '' : 'hidden md:inline'}`}>List</span>
                 </Button>
               </div>
             </div>
@@ -659,7 +659,7 @@ const ProductManagement = () => {
                       : 'bg-gradient-card shadow-card border border-border/50 hover:shadow-elegant'
                     }`}
                   >
-                    <div className={`aspect-square relative overflow-hidden ${isMobile ? 'rounded-t-3xl' : 'bg-muted/50'}`}>
+                    <div className={`aspect-[4/3] relative overflow-hidden ${isMobile ? 'rounded-t-3xl' : 'bg-muted/50'}`}>
                       {primaryImage?.image_url ? (
                         <img 
                           src={primaryImage.image_url} 
@@ -680,7 +680,7 @@ const ProductManagement = () => {
                         </div>
                       )}
                     </div>
-                    <CardContent className={`${isMobile ? 'p-6' : 'p-4'}`}>
+                    <CardContent className={`${isMobile ? 'p-4' : 'p-3'}`}>
                       <div className="space-y-2">
                         <h3 className={`font-semibold text-base truncate ${isMobile ? 'text-lg bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent' : ''}`}>
                           {product.title}
