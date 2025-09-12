@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Users, ShoppingBag, DollarSign, TrendingUp, ChevronDown, ChevronRight, Package, ChevronLeft } from "lucide-react";
+import { Users, ShoppingBag, DollarSign, TrendingUp, ChevronDown, ChevronRight, Package, ChevronLeft, Search } from "lucide-react";
 
 interface CustomerOrder {
   id: string;
@@ -39,6 +40,7 @@ interface CustomerDetails {
 const CustomerManagement: React.FC = () => {
   const [expandedCustomers, setExpandedCustomers] = useState<Set<string>>(new Set());
   const [customerPages, setCustomerPages] = useState<Map<string, number>>(new Map());
+  const [searchQuery, setSearchQuery] = useState("");
   
   const ORDERS_PER_PAGE = 5;
 
@@ -152,10 +154,22 @@ const CustomerManagement: React.FC = () => {
     return Math.ceil(customer.orders.length / ORDERS_PER_PAGE);
   };
 
-  const totalCustomers = customers?.length || 0;
-  const totalRevenue = customers?.reduce((sum, customer) => sum + customer.total_spent, 0) || 0;
+  // Filter customers based on search query
+  const filteredCustomers = useMemo(() => {
+    if (!customers || !searchQuery.trim()) return customers;
+    
+    const query = searchQuery.toLowerCase();
+    return customers.filter(customer => 
+      customer.customer_email.toLowerCase().includes(query) ||
+      customer.unique_names.some(name => name.toLowerCase().includes(query)) ||
+      customer.unique_addresses.some(address => address.toLowerCase().includes(query))
+    );
+  }, [customers, searchQuery]);
+
+  const totalCustomers = filteredCustomers?.length || 0;
+  const totalRevenue = filteredCustomers?.reduce((sum, customer) => sum + customer.total_spent, 0) || 0;
   const averageCustomerValue = totalCustomers > 0 ? totalRevenue / totalCustomers : 0;
-  const repeatCustomers = customers?.filter(customer => customer.total_orders > 1).length || 0;
+  const repeatCustomers = filteredCustomers?.filter(customer => customer.total_orders > 1).length || 0;
 
   if (isLoading) {
     return (
@@ -200,47 +214,58 @@ const CustomerManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Search Bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search customers by email, name, or address..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-xs sm:text-sm font-medium truncate">Total Customers</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <Card className="bg-gradient-card shadow-card border border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 lg:pb-3">
+            <CardTitle className="text-xs lg:text-sm font-medium truncate">Customers</CardTitle>
+            <Users className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
-          <CardContent className="pb-4">
-            <div className="text-xl sm:text-2xl font-bold truncate">{totalCustomers}</div>
+          <CardContent className="pb-2 lg:pb-4">
+            <div className="text-lg lg:text-2xl font-bold truncate">{totalCustomers}</div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-xs sm:text-sm font-medium truncate">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        <Card className="bg-gradient-card shadow-card border border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 lg:pb-3">
+            <CardTitle className="text-xs lg:text-sm font-medium truncate">Revenue</CardTitle>
+            <DollarSign className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
-          <CardContent className="pb-4">
-            <div className="text-xl sm:text-2xl font-bold truncate">{formatCurrency(totalRevenue)}</div>
+          <CardContent className="pb-2 lg:pb-4">
+            <div className="text-lg lg:text-2xl font-bold truncate">{formatCurrency(totalRevenue)}</div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-xs sm:text-sm font-medium truncate">Avg Customer Value</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        <Card className="bg-gradient-card shadow-card border border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 lg:pb-3">
+            <CardTitle className="text-xs lg:text-sm font-medium truncate">Avg Value</CardTitle>
+            <TrendingUp className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
-          <CardContent className="pb-4">
-            <div className="text-xl sm:text-2xl font-bold truncate">{formatCurrency(averageCustomerValue)}</div>
+          <CardContent className="pb-2 lg:pb-4">
+            <div className="text-lg lg:text-2xl font-bold truncate">{formatCurrency(averageCustomerValue)}</div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-xs sm:text-sm font-medium truncate">Repeat Customers</CardTitle>
-            <ShoppingBag className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        <Card className="bg-gradient-card shadow-card border border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 lg:pb-3">
+            <CardTitle className="text-xs lg:text-sm font-medium truncate">Repeat</CardTitle>
+            <ShoppingBag className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
-          <CardContent className="pb-4">
-            <div className="text-xl sm:text-2xl font-bold truncate">{repeatCustomers}</div>
+          <CardContent className="pb-2 lg:pb-4">
+            <div className="text-lg lg:text-2xl font-bold truncate">{repeatCustomers}</div>
             <p className="text-xs text-muted-foreground truncate">
-              {totalCustomers > 0 ? Math.round((repeatCustomers / totalCustomers) * 100) : 0}% retention
+              {totalCustomers > 0 ? Math.round((repeatCustomers / totalCustomers) * 100) : 0}%
             </p>
           </CardContent>
         </Card>
@@ -268,7 +293,7 @@ const CustomerManagement: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {customers?.map((customer) => (
+                {filteredCustomers?.map((customer) => (
                   <React.Fragment key={customer.customer_email}>
                     <TableRow className="cursor-pointer hover:bg-muted/50">
                       <TableCell>
@@ -467,7 +492,7 @@ const CustomerManagement: React.FC = () => {
           
           {/* Mobile Card View */}
           <div className="lg:hidden space-y-4">
-            {customers?.map((customer) => (
+            {filteredCustomers?.map((customer) => (
               <Card key={customer.customer_email} className="overflow-hidden">
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start">
