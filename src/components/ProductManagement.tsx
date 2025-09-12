@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit, Trash2, Images, Folder, Package, Search, Grid, List, Percent } from 'lucide-react';
+import { Plus, Edit, Trash2, Images, Folder, Package, Search, Grid, List, Percent, Sparkles, Zap } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -40,6 +41,7 @@ interface ProductImage {
 }
 
 const ProductManagement = () => {
+  const isMobile = useIsMobile();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [imageDialogProduct, setImageDialogProduct] = useState<Product | null>(null);
@@ -263,208 +265,362 @@ const ProductManagement = () => {
   }
 
   return (
-    <Tabs defaultValue="products" className="w-full">
-      <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="products" className="flex items-center gap-2">
-          <Package className="h-4 w-4" />
-          Products
-        </TabsTrigger>
-        <TabsTrigger value="collections" className="flex items-center gap-2">
-          <Folder className="h-4 w-4" />
-          Collections
-        </TabsTrigger>
-        <TabsTrigger value="discounts" className="flex items-center gap-2">
-          <Percent className="h-4 w-4" />
-          Discounts
-        </TabsTrigger>
-      </TabsList>
+    <div className={`w-full ${isMobile ? 'mobile-futuristic-container' : ''}`}>
+      <Tabs defaultValue="products" className="w-full">
+        <TabsList className={`grid w-full grid-cols-3 ${isMobile ? 'h-14 bg-gradient-to-r from-card/80 to-card/40 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl mx-4 mb-6' : ''}`}>
+          <TabsTrigger 
+            value="products" 
+            className={`flex items-center gap-2 ${isMobile ? 'rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-accent data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300' : ''}`}
+          >
+            <Package className="h-4 w-4" />
+            {isMobile ? 'Products' : 'Products'}
+          </TabsTrigger>
+          <TabsTrigger 
+            value="collections" 
+            className={`flex items-center gap-2 ${isMobile ? 'rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-accent data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300' : ''}`}
+          >
+            <Folder className="h-4 w-4" />
+            {isMobile ? 'Collections' : 'Collections'}
+          </TabsTrigger>
+          <TabsTrigger 
+            value="discounts" 
+            className={`flex items-center gap-2 ${isMobile ? 'rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-accent data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300' : ''}`}
+          >
+            <Percent className="h-4 w-4" />
+            {isMobile ? 'Discounts' : 'Discounts'}
+          </TabsTrigger>
+        </TabsList>
       
-      <TabsContent value="products" className="space-y-6">
+      <TabsContent value="products" className={`space-y-6 ${isMobile ? 'relative z-10' : ''}`}>
         {/* Hero Header Section */}
-        <div className="relative overflow-hidden bg-gradient-primary rounded-2xl p-4 md:p-8 text-white shadow-glow">
+        <div className={`relative overflow-hidden rounded-2xl p-4 md:p-8 text-white ${isMobile 
+          ? 'bg-gradient-to-br from-primary via-primary-glow to-accent shadow-2xl animate-fade-in' 
+          : 'bg-gradient-primary shadow-glow'
+        }`}>
           <div className="relative z-10">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 md:gap-6">
               <div className="space-y-2 md:space-y-3">
-                <div className="flex items-center gap-2 md:gap-3">
-                  <div className="p-1.5 md:p-2 bg-white/20 rounded-lg md:rounded-xl backdrop-blur-sm">
-                    <Package className="h-4 w-4 md:h-6 md:w-6 text-white" />
+                <div className={`flex items-center gap-2 md:gap-3 ${isMobile ? 'animate-fade-in delay-200' : ''}`}>
+                  <div className={`p-1.5 md:p-2 bg-white/20 backdrop-blur-sm ${isMobile ? 'rounded-2xl animate-pulse' : 'rounded-lg md:rounded-xl'}`}>
+                    <Package className={`h-4 w-4 md:h-6 md:w-6 text-white ${isMobile ? 'animate-bounce' : ''}`} />
                   </div>
                   <div>
-                    <h1 className="text-xl md:text-3xl lg:text-4xl font-bold tracking-tight">Product Manager</h1>
-                    <p className="text-white/80 text-sm md:text-base lg:text-lg">Build and organize your inventory</p>
+                    <h1 className={`text-xl md:text-3xl lg:text-4xl font-bold tracking-tight ${isMobile ? 'text-gradient bg-gradient-to-r from-white via-white to-primary-glow bg-clip-text text-transparent' : ''}`}>
+                      {isMobile ? (
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-6 w-6 text-white animate-pulse" />
+                          Product Manager
+                          <Zap className="h-6 w-6 text-white animate-pulse" />
+                        </div>
+                      ) : (
+                        'Product Manager'
+                      )}
+                    </h1>
+                    <p className={`text-white/80 text-sm md:text-base lg:text-lg ${isMobile ? 'animate-fade-in delay-300' : ''}`}>
+                      {isMobile ? '🚀 Build and organize your inventory with futuristic style' : 'Build and organize your inventory'}
+                    </p>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-3 md:gap-6 text-xs md:text-sm">
-                  <div className="flex items-center gap-1.5 md:gap-2">
-                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-white/60 rounded-full"></div>
+                <div className={`flex items-center gap-3 md:gap-6 text-xs md:text-sm ${isMobile ? 'animate-fade-in delay-400' : ''}`}>
+                  <div className={`flex items-center gap-1.5 md:gap-2 ${isMobile ? 'bg-white/10 backdrop-blur-sm rounded-full px-3 py-1.5 border border-white/20' : ''}`}>
+                    <div className={`w-1.5 h-1.5 md:w-2 md:h-2 bg-white/60 rounded-full ${isMobile ? 'animate-pulse' : ''}`}></div>
                     <span className="text-white/80">{products?.length || 0} Products</span>
                   </div>
-                  <div className="flex items-center gap-1.5 md:gap-2">
-                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-green-300 rounded-full"></div>
+                  <div className={`flex items-center gap-1.5 md:gap-2 ${isMobile ? 'bg-green-500/20 backdrop-blur-sm rounded-full px-3 py-1.5 border border-green-400/30' : ''}`}>
+                    <div className={`w-1.5 h-1.5 md:w-2 md:h-2 bg-green-300 rounded-full ${isMobile ? 'animate-pulse' : ''}`}></div>
                     <span className="text-white/80">{products?.filter(p => p.stock > p.low_stock_threshold).length || 0} In Stock</span>
                   </div>
-                  <div className="flex items-center gap-1.5 md:gap-2">
-                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-orange-300 rounded-full"></div>
+                  <div className={`flex items-center gap-1.5 md:gap-2 ${isMobile ? 'bg-orange-500/20 backdrop-blur-sm rounded-full px-3 py-1.5 border border-orange-400/30' : ''}`}>
+                    <div className={`w-1.5 h-1.5 md:w-2 md:h-2 bg-orange-300 rounded-full ${isMobile ? 'animate-pulse' : ''}`}></div>
                     <span className="text-white/80">{products?.filter(p => p.stock <= p.low_stock_threshold && p.stock > 0).length || 0} Low Stock</span>
                   </div>
                 </div>
               </div>
               
               <div className="flex items-center gap-2 md:gap-3">
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button 
-                      onClick={() => resetForm()} 
-                      size="sm"
-                      className="bg-white text-primary hover:bg-white/90 transition-all duration-300 border-0 px-3 py-2 md:px-6 md:py-3 rounded-lg md:rounded-xl text-sm md:text-base font-semibold shadow-lg hover:shadow-xl"
-                    >
-                      <Plus className="h-4 w-4 md:h-5 md:w-5 mr-1 md:mr-2" />
-                      Add Product
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-md bg-background/95 backdrop-blur-xl border border-border/50 rounded-2xl">
-                    <DialogHeader>
-                      <DialogTitle className="text-xl font-semibold">
-                        {editingProduct ? 'Edit Product' : 'Add New Product'}
-                      </DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="title" className="text-sm font-medium">Product Name</Label>
-                        <Input
-                          id="title"
-                          value={formData.title}
-                          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                          className="border-border/50 focus:border-primary rounded-xl"
-                          placeholder="Enter product name"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="description" className="text-sm font-medium">Description</Label>
-                        <Textarea
-                          id="description"
-                          value={formData.description}
-                          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                          className="border-border/50 focus:border-primary resize-none rounded-xl text-base md:text-sm"
-                          placeholder="Product description..."
-                          rows={3}
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
+                {!isMobile && (
+                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button 
+                        onClick={() => resetForm()} 
+                        size="sm"
+                        className="bg-white text-primary hover:bg-white/90 transition-all duration-300 border-0 px-3 py-2 md:px-6 md:py-3 rounded-lg md:rounded-xl text-sm md:text-base font-semibold shadow-lg hover:shadow-xl"
+                      >
+                        <Plus className="h-4 w-4 md:h-5 md:w-5 mr-1 md:mr-2" />
+                        Add Product
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md bg-background/95 backdrop-blur-xl border border-border/50 rounded-2xl">
+                      <DialogHeader>
+                        <DialogTitle className="text-xl font-semibold">
+                          {editingProduct ? 'Edit Product' : 'Add New Product'}
+                        </DialogTitle>
+                      </DialogHeader>
+                      <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-2">
-                          <Label htmlFor="price" className="text-sm font-medium">Price (RON)</Label>
+                          <Label htmlFor="title" className="text-sm font-medium">Product Name</Label>
                           <Input
-                            id="price"
-                            type="number"
-                            step="0.01"
-                            value={formData.price}
-                            onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                            id="title"
+                            value={formData.title}
+                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                             className="border-border/50 focus:border-primary rounded-xl"
-                            placeholder="0.00"
+                            placeholder="Enter product name"
                             required
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="stock" className="text-sm font-medium">Stock</Label>
-                          <Input
-                            id="stock"
-                            type="number"
-                            value={formData.stock}
-                            onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                            className="border-border/50 focus:border-primary rounded-xl"
-                            placeholder="0"
-                            required
+                          <Label htmlFor="description" className="text-sm font-medium">Description</Label>
+                          <Textarea
+                            id="description"
+                            value={formData.description}
+                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            className="border-border/50 focus:border-primary resize-none rounded-xl text-base md:text-sm"
+                            placeholder="Product description..."
+                            rows={3}
                           />
                         </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="low_stock_threshold" className="text-sm font-medium">Low Stock Alert Threshold</Label>
-                        <Input
-                          id="low_stock_threshold"
-                          type="number"
-                          value={formData.low_stock_threshold}
-                          onChange={(e) => setFormData({ ...formData, low_stock_threshold: e.target.value })}
-                          className="border-border/50 focus:border-primary rounded-xl"
-                          placeholder="5"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="category" className="text-sm font-medium">Category</Label>
-                        <Input
-                          id="category"
-                          value={formData.category}
-                          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                          className="border-border/50 focus:border-primary rounded-xl"
-                          placeholder="e.g. Electronics, Clothing"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="sku" className="text-sm font-medium">SKU</Label>
-                        <Input
-                          id="sku"
-                          value={formData.sku}
-                          onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                          className="border-border/50 focus:border-primary rounded-xl"
-                          placeholder="Product SKU"
-                        />
-                      </div>
-                      <div className="flex gap-3 pt-4">
-                        <Button 
-                          type="submit" 
-                          disabled={createProductMutation.isPending || updateProductMutation.isPending}
-                          className="flex-1 bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0 rounded-xl"
-                        >
-                          {editingProduct ? 'Update' : 'Create'} Product
-                        </Button>
-                        <Button type="button" variant="outline" onClick={resetForm} className="border-border/50 rounded-xl">
-                          Cancel
-                        </Button>
-                      </div>
-                    </form>
-                  </DialogContent>
-                </Dialog>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="price" className="text-sm font-medium">Price (RON)</Label>
+                            <Input
+                              id="price"
+                              type="number"
+                              step="0.01"
+                              value={formData.price}
+                              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                              className="border-border/50 focus:border-primary rounded-xl"
+                              placeholder="0.00"
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="stock" className="text-sm font-medium">Stock</Label>
+                            <Input
+                              id="stock"
+                              type="number"
+                              value={formData.stock}
+                              onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                              className="border-border/50 focus:border-primary rounded-xl"
+                              placeholder="0"
+                              required
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="low_stock_threshold" className="text-sm font-medium">Low Stock Alert Threshold</Label>
+                          <Input
+                            id="low_stock_threshold"
+                            type="number"
+                            value={formData.low_stock_threshold}
+                            onChange={(e) => setFormData({ ...formData, low_stock_threshold: e.target.value })}
+                            className="border-border/50 focus:border-primary rounded-xl"
+                            placeholder="5"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="category" className="text-sm font-medium">Category</Label>
+                          <Input
+                            id="category"
+                            value={formData.category}
+                            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                            className="border-border/50 focus:border-primary rounded-xl"
+                            placeholder="e.g. Electronics, Clothing"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="sku" className="text-sm font-medium">SKU</Label>
+                          <Input
+                            id="sku"
+                            value={formData.sku}
+                            onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                            className="border-border/50 focus:border-primary rounded-xl"
+                            placeholder="Product SKU"
+                          />
+                        </div>
+                        <div className="flex gap-3 pt-4">
+                          <Button 
+                            type="submit" 
+                            disabled={createProductMutation.isPending || updateProductMutation.isPending}
+                            className="flex-1 bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0 rounded-xl"
+                          >
+                            {editingProduct ? 'Update' : 'Create'} Product
+                          </Button>
+                          <Button type="button" variant="outline" onClick={resetForm} className="border-border/50 rounded-xl">
+                            Cancel
+                          </Button>
+                        </div>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                )}
               </div>
             </div>
           </div>
           
-          {/* Decorative Elements - Hidden on mobile */}
-          <div className="hidden md:block absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8"></div>
-          <div className="hidden md:block absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-8 -translate-x-8"></div>
-          <div className="hidden md:block absolute top-1/2 right-1/4 w-16 h-16 bg-white/5 rounded-full"></div>
+          {/* Decorative Elements - Enhanced for mobile */}
+          <div className={`${isMobile ? 'block' : 'hidden md:block'} absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8 ${isMobile ? 'animate-pulse' : ''}`}></div>
+          <div className={`${isMobile ? 'block' : 'hidden md:block'} absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-8 -translate-x-8 ${isMobile ? 'animate-pulse delay-300' : ''}`}></div>
+          <div className={`${isMobile ? 'block' : 'hidden md:block'} absolute top-1/2 right-1/4 w-16 h-16 bg-white/5 rounded-full ${isMobile ? 'animate-pulse delay-500' : ''}`}></div>
         </div>
 
+        {/* Floating Action Button for Mobile */}
+        {isMobile && (
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                onClick={() => resetForm()} 
+                className="fixed bottom-20 right-6 z-50 w-14 h-14 rounded-full p-0 bg-gradient-to-br from-primary via-primary-glow to-accent shadow-2xl border-0 hover:scale-110 hover:shadow-glow transition-all duration-300 hover:animate-pulse"
+              >
+                <Plus className="h-8 w-8" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-[95vw] bg-background/95 backdrop-blur-xl border border-border/50 rounded-3xl shadow-2xl">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-semibold">
+                  {editingProduct ? 'Edit Product' : 'Add New Product'}
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title" className="text-sm font-medium">Product Name</Label>
+                  <Input
+                    id="title"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    className="border-border/50 focus:border-primary rounded-xl"
+                    placeholder="Enter product name"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description" className="text-sm font-medium">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="border-border/50 focus:border-primary resize-none rounded-xl text-base md:text-sm"
+                    placeholder="Product description..."
+                    rows={3}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="price" className="text-sm font-medium">Price (RON)</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      step="0.01"
+                      value={formData.price}
+                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                      className="border-border/50 focus:border-primary rounded-xl"
+                      placeholder="0.00"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="stock" className="text-sm font-medium">Stock</Label>
+                    <Input
+                      id="stock"
+                      type="number"
+                      value={formData.stock}
+                      onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                      className="border-border/50 focus:border-primary rounded-xl"
+                      placeholder="0"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="low_stock_threshold" className="text-sm font-medium">Low Stock Alert Threshold</Label>
+                  <Input
+                    id="low_stock_threshold"
+                    type="number"
+                    value={formData.low_stock_threshold}
+                    onChange={(e) => setFormData({ ...formData, low_stock_threshold: e.target.value })}
+                    className="border-border/50 focus:border-primary rounded-xl"
+                    placeholder="5"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="category" className="text-sm font-medium">Category</Label>
+                  <Input
+                    id="category"
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    className="border-border/50 focus:border-primary rounded-xl"
+                    placeholder="e.g. Electronics, Clothing"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sku" className="text-sm font-medium">SKU</Label>
+                  <Input
+                    id="sku"
+                    value={formData.sku}
+                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                    className="border-border/50 focus:border-primary rounded-xl"
+                    placeholder="Product SKU"
+                  />
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <Button 
+                    type="submit" 
+                    disabled={createProductMutation.isPending || updateProductMutation.isPending}
+                    className="flex-1 bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0 rounded-xl"
+                  >
+                    {editingProduct ? 'Update' : 'Create'} Product
+                  </Button>
+                  <Button type="button" variant="outline" onClick={resetForm} className="border-border/50 rounded-xl">
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
+
         {/* Controls Section */}
-        <div className="bg-gradient-card rounded-xl p-4 md:p-6 shadow-card border border-border/50">
+        <div className={`rounded-xl p-4 md:p-6 shadow-card border ${isMobile 
+          ? 'bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-xl border-white/20 mx-4' 
+          : 'bg-gradient-card border-border/50'
+        }`}>
           <div className="flex flex-col gap-4 md:gap-6 lg:flex-row lg:items-center lg:justify-between">
             {/* Search Section */}
             <div className="flex-1 max-w-md">
               <div className="relative">
-                <Search className="absolute left-3 md:left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className={`absolute left-3 md:left-4 top-1/2 h-4 w-4 -translate-y-1/2 ${isMobile ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />
                 <Input
-                  placeholder="Search products..."
+                  placeholder={isMobile ? "🔍 Search your products..." : "Search products..."}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 md:pl-12 pr-4 h-10 md:h-12 border-border/50 focus:border-primary rounded-xl bg-background/50 backdrop-blur-sm text-sm md:text-base"
+                  className={`${isMobile 
+                    ? 'pl-12 pr-4 h-12 bg-gradient-to-r from-background/80 to-background/60 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl text-foreground placeholder:text-muted-foreground/70 focus:border-primary/50 focus:shadow-glow' 
+                    : 'pl-10 md:pl-12 pr-4 h-10 md:h-12 border-border/50 focus:border-primary rounded-xl bg-background/50 backdrop-blur-sm text-sm md:text-base'
+                  }`}
                 />
               </div>
               {searchQuery && (
-                <p className="text-xs md:text-sm text-muted-foreground mt-1 md:mt-2 ml-1">
+                <p className={`text-xs md:text-sm text-muted-foreground mt-1 md:mt-2 ml-1 ${isMobile ? 'text-primary/80 font-medium' : ''}`}>
                   {filteredProducts?.length || 0} products found
                 </p>
               )}
             </div>
 
             {/* View Controls */}
-            <div className="flex items-center gap-3 md:gap-4">
-              <span className="text-xs md:text-sm font-medium text-foreground">View</span>
-              <div className="flex items-center bg-muted/30 backdrop-blur-sm rounded-lg md:rounded-xl p-0.5 md:p-1 border border-border/50">
+            <div className={`flex items-center gap-3 md:gap-4 ${isMobile ? 'justify-center' : ''}`}>
+              <span className={`text-xs md:text-sm font-medium ${isMobile ? 'text-primary' : 'text-foreground'}`}>View</span>
+              <div className={`flex items-center p-0.5 md:p-1 border ${isMobile 
+                ? 'bg-gradient-to-r from-card/80 to-card/40 backdrop-blur-xl border-white/20 rounded-2xl shadow-2xl' 
+                : 'bg-muted/30 backdrop-blur-sm rounded-lg md:rounded-xl border-border/50'
+              }`}>
                 <Button
                   variant={viewMode === 'grid' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('grid')}
-                  className="h-7 md:h-9 px-2 md:px-4 rounded-md md:rounded-lg transition-all duration-200 text-xs md:text-sm font-medium"
+                  className={`h-7 md:h-9 px-2 md:px-4 transition-all duration-200 text-xs md:text-sm font-medium ${isMobile 
+                    ? `rounded-xl ${viewMode === 'grid' ? 'bg-gradient-to-r from-primary to-accent text-white shadow-lg' : 'text-muted-foreground hover:text-foreground'}`
+                    : 'rounded-md md:rounded-lg'
+                  }`}
                 >
                   <Grid className="h-3 w-3 md:h-4 md:w-4 md:mr-2" />
                   <span className="hidden md:inline">Grid</span>
@@ -473,7 +629,10 @@ const ProductManagement = () => {
                   variant={viewMode === 'list' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('list')}
-                  className="h-7 md:h-9 px-2 md:px-4 rounded-md md:rounded-lg transition-all duration-200 text-xs md:text-sm font-medium"
+                  className={`h-7 md:h-9 px-2 md:px-4 transition-all duration-200 text-xs md:text-sm font-medium ${isMobile 
+                    ? `rounded-xl ${viewMode === 'list' ? 'bg-gradient-to-r from-primary to-accent text-white shadow-lg' : 'text-muted-foreground hover:text-foreground'}`
+                    : 'rounded-md md:rounded-lg'
+                  }`}
                 >
                   <List className="h-3 w-3 md:h-4 md:w-4 md:mr-2" />
                   <span className="hidden md:inline">List</span>
@@ -486,59 +645,96 @@ const ProductManagement = () => {
         {/* Products View */}
         {filteredProducts && filteredProducts.length > 0 ? (
           viewMode === 'grid' ? (
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className={`grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 ${isMobile ? 'gap-6 px-4' : ''}`}>
               {filteredProducts.map((product) => {
                 const productDiscount = productDiscounts?.find(pd => pd.product_id === product.id);
                 const discount = discounts?.find(d => d.id === productDiscount?.discount_id);
                 const primaryImage = productImages?.find(img => img.product_id === product.id);
                 
                 return (
-                  <Card key={product.id} className="overflow-hidden bg-gradient-card shadow-card border border-border/50 hover:shadow-elegant transition-all duration-200">
-                    <div className="aspect-square bg-muted/50 relative overflow-hidden">
+                  <Card 
+                    key={product.id} 
+                    className={`overflow-hidden transition-all duration-200 ${isMobile 
+                      ? 'bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl hover:shadow-glow hover:scale-[1.02] hover:bg-gradient-to-br hover:from-card/90 hover:to-card/50' 
+                      : 'bg-gradient-card shadow-card border border-border/50 hover:shadow-elegant'
+                    }`}
+                  >
+                    <div className={`aspect-square relative overflow-hidden ${isMobile ? 'rounded-t-3xl' : 'bg-muted/50'}`}>
                       {primaryImage?.image_url ? (
                         <img 
                           src={primaryImage.image_url} 
                           alt={product.title}
-                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                          className={`w-full h-full object-cover transition-transform duration-300 ${isMobile ? 'hover:scale-105' : 'hover:scale-105'}`}
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Package className="h-12 w-12 text-muted-foreground" />
+                        <div className={`w-full h-full flex items-center justify-center ${isMobile ? 'bg-gradient-to-br from-primary/10 to-accent/10 backdrop-blur-sm' : ''}`}>
+                          <Package className={`h-12 w-12 ${isMobile ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />
                         </div>
                       )}
                       {discount && (
-                        <div className="absolute top-2 right-2 bg-gradient-primary text-white px-2 py-1 rounded-full text-xs font-medium shadow-glow">
+                        <div className={`absolute top-2 right-2 text-white px-2 py-1 rounded-full text-xs font-medium shadow-glow ${isMobile 
+                          ? 'bg-gradient-to-r from-red-500 to-pink-500 animate-pulse' 
+                          : 'bg-gradient-primary'
+                        }`}>
                           -{discount.discount_type === 'percentage' ? `${discount.discount_value}%` : `${discount.discount_value} RON`}
                         </div>
                       )}
                     </div>
-                    <CardContent className="p-4">
+                    <CardContent className={`${isMobile ? 'p-6' : 'p-4'}`}>
                       <div className="space-y-2">
-                        <h3 className="font-semibold text-base truncate">{product.title}</h3>
+                        <h3 className={`font-semibold text-base truncate ${isMobile ? 'text-lg bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent' : ''}`}>
+                          {product.title}
+                        </h3>
                         <div className="flex items-center justify-between">
                           <div className="space-y-1">
-                            <div className="text-lg font-bold text-primary">{product.price.toFixed(2)} RON</div>
+                            <div className={`text-lg font-bold text-primary ${isMobile ? 'text-xl' : ''}`}>
+                              {product.price.toFixed(2)} RON
+                            </div>
                             <div className={`text-xs px-2 py-1 rounded-full w-fit ${
                               product.stock > product.low_stock_threshold 
-                                ? 'bg-green-100 text-green-700' 
+                                ? isMobile ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-400 border border-green-400/30' : 'bg-green-100 text-green-700'
                                 : product.stock > 0 
-                                  ? 'bg-orange-100 text-orange-700' 
-                                  : 'bg-red-100 text-red-700'
-                            }`}>
+                                  ? isMobile ? 'bg-gradient-to-r from-orange-500/20 to-yellow-500/20 text-orange-400 border border-orange-400/30' : 'bg-orange-100 text-orange-700'
+                                  : isMobile ? 'bg-gradient-to-r from-red-500/20 to-pink-500/20 text-red-400 border border-red-400/30' : 'bg-red-100 text-red-700'
+                            } ${isMobile ? 'animate-pulse font-medium' : ''}`}>
                               {product.stock} in stock
                             </div>
                           </div>
                         </div>
-                        <div className="flex gap-1 pt-2 justify-center">
-                          <Button size="sm" variant="outline" onClick={() => handleEdit(product)} className="flex-1 text-xs">
-                            <Edit className="h-3 w-3 mr-1" />
+                        <div className={`flex gap-1 pt-2 justify-center ${isMobile ? 'gap-2 pt-4' : ''}`}>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => handleEdit(product)} 
+                            className={`flex-1 text-xs ${isMobile 
+                              ? 'border-white/30 bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:scale-105 transition-all duration-300 rounded-2xl h-9' 
+                              : ''
+                            }`}
+                          >
+                            <Edit className={`${isMobile ? 'h-4 w-4 mr-2' : 'h-3 w-3 mr-1'}`} />
                             Edit
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => setImageDialogProduct(product)} className="px-2">
-                            <Images className="h-3 w-3" />
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => setImageDialogProduct(product)} 
+                            className={`${isMobile 
+                              ? 'border-white/30 bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:scale-105 transition-all duration-300 rounded-2xl w-12 h-9 p-0' 
+                              : 'px-2'
+                            }`}
+                          >
+                            <Images className={`${isMobile ? 'h-4 w-4' : 'h-3 w-3'}`} />
                           </Button>
-                          <Button size="sm" variant="destructive" onClick={() => handleDelete(product.id)} className="px-2">
-                            <Trash2 className="h-3 w-3" />
+                          <Button 
+                            size="sm" 
+                            variant="destructive" 
+                            onClick={() => handleDelete(product.id)} 
+                            className={`${isMobile 
+                              ? 'bg-red-500/20 border-red-300/30 text-red-400 hover:bg-red-500/30 hover:scale-105 transition-all duration-300 rounded-2xl w-12 h-9 p-0' 
+                              : 'px-2'
+                            }`}
+                          >
+                            <Trash2 className={`${isMobile ? 'h-4 w-4' : 'h-3 w-3'}`} />
                           </Button>
                         </div>
                       </div>
@@ -611,6 +807,7 @@ const ProductManagement = () => {
         <DiscountManagement />
       </TabsContent>
     </Tabs>
+    </div>
   );
 };
 
