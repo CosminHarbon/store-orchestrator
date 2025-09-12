@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit, Trash2, Percent, DollarSign, Calendar, Package } from 'lucide-react';
+import { Plus, Edit, Trash2, Percent, DollarSign, Calendar, Package, Sparkles, Zap } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -38,6 +39,7 @@ interface ProductDiscount {
 }
 
 const DiscountManagement = () => {
+  const isMobile = useIsMobile();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingDiscount, setEditingDiscount] = useState<Discount | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
@@ -285,21 +287,36 @@ const DiscountManagement = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${isMobile ? 'mobile-futuristic-container' : ''}`}>
       {/* Header */}
-      <div className="text-center space-y-4">
-        <div className="space-y-2">
-          <h2 className="text-3xl font-bold">Discounts</h2>
-          <p className="text-muted-foreground text-lg">Create and manage product discounts</p>
+      <div className={`text-center space-y-4 ${isMobile ? 'relative z-10' : ''}`}>
+        <div className={`space-y-2 ${isMobile ? 'animate-fade-in' : ''}`}>
+          <h2 className={`text-3xl font-bold ${isMobile ? 'text-gradient bg-gradient-to-r from-primary via-primary-glow to-accent bg-clip-text text-transparent' : ''}`}>
+            {isMobile ? (
+              <div className="flex items-center justify-center gap-2">
+                <Sparkles className="h-8 w-8 text-primary animate-pulse" />
+                Discounts
+                <Zap className="h-8 w-8 text-accent animate-pulse" />
+              </div>
+            ) : (
+              'Discounts'
+            )}
+          </h2>
+          <p className={`text-muted-foreground text-lg ${isMobile ? 'animate-fade-in delay-200' : ''}`}>
+            Create and manage product discounts
+          </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button 
               onClick={() => resetForm()} 
-              className="bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0 px-8 py-3 text-lg rounded-full"
+              className={`${isMobile 
+                ? 'fixed bottom-6 right-6 z-50 w-16 h-16 rounded-full p-0 bg-gradient-to-br from-primary via-primary-glow to-accent shadow-2xl border-0 hover:scale-110 hover:shadow-glow transition-all duration-300 animate-bounce' 
+                : 'bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0 px-8 py-3 text-lg rounded-full'
+              }`}
             >
-              <Plus className="h-5 w-5 mr-2" />
-              Create Discount
+              <Plus className={`${isMobile ? 'h-8 w-8' : 'h-5 w-5 mr-2'}`} />
+              {!isMobile && 'Create Discount'}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl bg-background/95 backdrop-blur-xl border border-border/50 max-h-[90vh] overflow-y-auto">
@@ -438,7 +455,7 @@ const DiscountManagement = () => {
 
       {/* Discounts List */}
       {discounts && discounts.length > 0 ? (
-        <div className="grid gap-4">
+        <div className={`grid gap-4 ${isMobile ? 'gap-6 px-4' : ''}`}>
           {discounts.map((discount) => {
             const discountProducts = getDiscountProducts(discount.id);
             const isActive = discount.is_active && 
@@ -446,26 +463,55 @@ const DiscountManagement = () => {
               (!discount.end_date || new Date(discount.end_date) >= new Date());
 
             return (
-              <Card key={discount.id} className="bg-gradient-subtle border-border/50">
-                <CardHeader className="pb-4">
+              <Card 
+                key={discount.id} 
+                className={`${isMobile 
+                  ? 'bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl hover:shadow-glow transition-all duration-500 hover:scale-[1.02] hover:bg-gradient-to-br hover:from-card/90 hover:to-card/50' 
+                  : 'bg-gradient-subtle border-border/50'
+                }`}
+              >
+                <CardHeader className={`${isMobile ? 'pb-3 pt-6 px-6' : 'pb-4'}`}>
                   <div className="flex justify-between items-start">
                     <div className="space-y-2">
                       <div className="flex items-center gap-3">
-                        <CardTitle className="text-lg">{discount.name}</CardTitle>
-                        <Badge variant={isActive ? "default" : "secondary"} className="text-xs">
-                          {isActive ? 'Active' : 'Inactive'}
+                        <CardTitle className={`${isMobile ? 'text-xl font-bold text-gradient bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent' : 'text-lg'}`}>
+                          {discount.name}
+                        </CardTitle>
+                        <Badge 
+                          variant={isActive ? "default" : "secondary"} 
+                          className={`${isMobile 
+                            ? `text-xs px-3 py-1 rounded-full ${isActive 
+                              ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg animate-pulse' 
+                              : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white'
+                            }` 
+                            : 'text-xs'
+                          }`}
+                        >
+                          {isActive ? (
+                            isMobile ? (
+                              <div className="flex items-center gap-1">
+                                <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                                Live
+                              </div>
+                            ) : 'Active'
+                          ) : 'Inactive'}
                         </Badge>
                       </div>
                       {discount.description && (
-                        <CardDescription className="text-sm">{discount.description}</CardDescription>
+                        <CardDescription className={`${isMobile ? 'text-sm text-muted-foreground/80' : 'text-sm'}`}>
+                          {discount.description}
+                        </CardDescription>
                       )}
                     </div>
-                    <div className="flex gap-2">
+                    <div className={`flex gap-2 ${isMobile ? 'flex-col' : ''}`}>
                       <Button 
                         size="sm" 
                         variant="outline" 
                         onClick={() => handleEdit(discount)}
-                        className="border-border/50"
+                        className={`${isMobile 
+                          ? 'border-white/30 bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:scale-110 transition-all duration-300 rounded-full w-10 h-10 p-0' 
+                          : 'border-border/50'
+                        }`}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -473,51 +519,71 @@ const DiscountManagement = () => {
                         size="sm" 
                         variant="outline" 
                         onClick={() => handleDelete(discount.id)}
-                        className="border-border/50 text-destructive hover:text-destructive"
+                        className={`${isMobile 
+                          ? 'border-red-300/30 bg-red-500/10 backdrop-blur-sm hover:bg-red-500/20 hover:scale-110 transition-all duration-300 rounded-full w-10 h-10 p-0 text-red-400 hover:text-red-300' 
+                          : 'border-border/50 text-destructive hover:text-destructive'
+                        }`}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center gap-6 text-sm">
-                    <div className="flex items-center gap-2">
+                <CardContent className={`space-y-4 ${isMobile ? 'px-6 pb-6' : ''}`}>
+                  <div className={`flex items-center gap-6 text-sm ${isMobile ? 'flex-col items-start gap-4' : ''}`}>
+                    <div className={`flex items-center gap-2 ${isMobile ? 'bg-gradient-to-r from-primary/10 to-accent/10 backdrop-blur-sm rounded-full px-4 py-2 border border-primary/20' : ''}`}>
                       {discount.discount_type === 'percentage' ? (
-                        <Percent className="h-4 w-4 text-primary" />
+                        <Percent className={`h-4 w-4 ${isMobile ? 'text-primary animate-pulse' : 'text-primary'}`} />
                       ) : (
-                        <DollarSign className="h-4 w-4 text-primary" />
+                        <DollarSign className={`h-4 w-4 ${isMobile ? 'text-primary animate-pulse' : 'text-primary'}`} />
                       )}
-                      <span className="font-medium">
+                      <span className={`font-medium ${isMobile ? 'text-primary font-bold' : ''}`}>
                         {discount.discount_type === 'percentage' 
                            ? `${discount.discount_value}% off` 
                            : `${discount.discount_value} RON off`}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">
+                    <div className={`flex items-center gap-2 ${isMobile ? 'bg-gradient-to-r from-muted/20 to-muted/10 backdrop-blur-sm rounded-full px-4 py-2 border border-muted/30' : ''}`}>
+                      <Calendar className={`h-4 w-4 ${isMobile ? 'text-accent' : 'text-muted-foreground'}`} />
+                      <span className={`${isMobile ? 'text-accent font-medium' : 'text-muted-foreground'}`}>
                         {format(new Date(discount.start_date), 'MMM d, yyyy')}
                         {discount.end_date && ` - ${format(new Date(discount.end_date), 'MMM d, yyyy')}`}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Package className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">{discountProducts.length} products</span>
+                    <div className={`flex items-center gap-2 ${isMobile ? 'bg-gradient-to-r from-accent/10 to-primary/10 backdrop-blur-sm rounded-full px-4 py-2 border border-accent/20' : ''}`}>
+                      <Package className={`h-4 w-4 ${isMobile ? 'text-accent' : 'text-muted-foreground'}`} />
+                      <span className={`${isMobile ? 'text-accent font-medium' : 'text-muted-foreground'}`}>
+                        {discountProducts.length} products
+                      </span>
                     </div>
                   </div>
                   
                   {discountProducts.length > 0 && (
-                    <div className="border-t border-border/50 pt-3">
-                      <p className="text-sm text-muted-foreground mb-2">Applied to:</p>
+                    <div className={`border-t pt-3 ${isMobile ? 'border-white/20' : 'border-border/50'}`}>
+                      <p className={`text-sm mb-2 ${isMobile ? 'text-muted-foreground/80 font-medium' : 'text-muted-foreground'}`}>
+                        Applied to:
+                      </p>
                       <div className="flex flex-wrap gap-2">
                         {discountProducts.slice(0, 3).map((product) => (
-                          <Badge key={product.id} variant="secondary" className="text-xs">
+                          <Badge 
+                            key={product.id} 
+                            variant="secondary" 
+                            className={`${isMobile 
+                              ? 'text-xs bg-gradient-to-r from-secondary/80 to-secondary/60 backdrop-blur-sm border border-white/20 rounded-full px-3 py-1' 
+                              : 'text-xs'
+                            }`}
+                          >
                             {product.title}
                           </Badge>
                         ))}
                         {discountProducts.length > 3 && (
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge 
+                            variant="secondary" 
+                            className={`${isMobile 
+                              ? 'text-xs bg-gradient-to-r from-primary/20 to-accent/20 backdrop-blur-sm border border-primary/30 rounded-full px-3 py-1 text-primary' 
+                              : 'text-xs'
+                            }`}
+                          >
                             +{discountProducts.length - 3} more
                           </Badge>
                         )}
@@ -530,23 +596,33 @@ const DiscountManagement = () => {
           })}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-16 space-y-4">
-          <div className="w-24 h-24 bg-gradient-primary/10 rounded-full flex items-center justify-center">
-            <Percent className="h-12 w-12 text-primary" />
+        <div className={`flex flex-col items-center justify-center py-16 space-y-4 ${isMobile ? 'px-6 py-24' : ''}`}>
+          <div className={`${isMobile 
+            ? 'w-32 h-32 bg-gradient-to-br from-primary/20 via-accent/20 to-primary-glow/20 rounded-full flex items-center justify-center backdrop-blur-xl border border-white/20 shadow-2xl animate-pulse' 
+            : 'w-24 h-24 bg-gradient-primary/10 rounded-full flex items-center justify-center'
+          }`}>
+            <Percent className={`${isMobile ? 'h-16 w-16 text-primary animate-bounce' : 'h-12 w-12 text-primary'}`} />
           </div>
-          <div className="text-center space-y-2">
-            <h3 className="text-lg font-semibold">No discounts yet</h3>
-            <p className="text-muted-foreground max-w-md">
-              Create your first discount to start offering special prices to your customers.
+          <div className={`text-center space-y-2 ${isMobile ? 'animate-fade-in delay-300' : ''}`}>
+            <h3 className={`text-lg font-semibold ${isMobile ? 'text-2xl font-bold text-gradient bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent' : ''}`}>
+              {isMobile ? '✨ No discounts yet ✨' : 'No discounts yet'}
+            </h3>
+            <p className={`text-muted-foreground max-w-md ${isMobile ? 'text-base leading-relaxed' : ''}`}>
+              {isMobile 
+                ? '🚀 Create your first futuristic discount to start offering special prices to your customers.'
+                : 'Create your first discount to start offering special prices to your customers.'
+              }
             </p>
           </div>
-          <Button 
-            onClick={() => setIsDialogOpen(true)} 
-            className="bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Create Your First Discount
-          </Button>
+          {!isMobile && (
+            <Button 
+              onClick={() => setIsDialogOpen(true)} 
+              className="bg-gradient-primary hover:shadow-elegant transition-all duration-200 border-0"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create Your First Discount
+            </Button>
+          )}
         </div>
       )}
     </div>

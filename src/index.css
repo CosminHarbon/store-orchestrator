@@ -156,6 +156,54 @@ All colors MUST be HSL.
     background-clip: text;
   }
 
+  /* Mobile futuristic container */
+  .mobile-futuristic-container {
+    position: relative;
+    background: linear-gradient(135deg, 
+      hsl(var(--background)) 0%, 
+      hsl(var(--background)/0.95) 25%, 
+      hsl(var(--background)/0.9) 50%, 
+      hsl(var(--background)/0.95) 75%, 
+      hsl(var(--background)) 100%);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .mobile-futuristic-container::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(circle at 20% 20%, hsl(var(--primary)/0.05) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, hsl(var(--accent)/0.05) 0%, transparent 50%),
+      radial-gradient(circle at 40% 60%, hsl(var(--primary-glow)/0.03) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .mobile-futuristic-container::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      linear-gradient(45deg, transparent 30%, hsl(var(--primary)/0.02) 50%, transparent 70%),
+      linear-gradient(-45deg, transparent 30%, hsl(var(--accent)/0.02) 50%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+    animation: floating-gradient 10s ease-in-out infinite alternate;
+  }
+
+  @keyframes floating-gradient {
+    0% { transform: translateY(0px) rotate(0deg); }
+    100% { transform: translateY(-10px) rotate(1deg); }
+  }
+
   /* Hide scrollbar for clean mobile experience */
   .hide-scrollbar {
     -ms-overflow-style: none;  /* IE and Edge */
