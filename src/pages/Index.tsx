@@ -93,64 +93,60 @@ const Index = () => {
     <div className={`space-y-4 p-3 md:p-6 pb-24 safe-area-bottom ${isMobile ? 'mobile-futuristic-container' : ''}`}>
       {/* Hero Value Card */}
       <div className={`rounded-2xl p-6 md:p-8 text-white shadow-glow relative overflow-hidden ${isMobile 
-        ? 'bg-gradient-to-br from-primary via-primary-glow to-accent shadow-2xl animate-fade-in' 
+        ? 'bg-gradient-to-br from-card/90 to-card/70 backdrop-blur-xl border border-white/10 shadow-xl' 
         : 'bg-gradient-primary'
       }`}>
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-6">
-            <div className={`${isMobile ? 'animate-fade-in delay-200' : ''}`}>
+            <div className={`${isMobile ? '' : ''}`}>
               {isMobile && (
-                <div className="flex items-center gap-2 mb-2 animate-fade-in delay-100">
-                  <Sparkles className="h-6 w-6 text-white animate-pulse" />
-                  <span className="text-white/90 font-medium">Your Store</span>
-                  <Star className="h-6 w-6 text-white animate-pulse" />
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="h-5 w-5 text-primary/70" />
+                  <span className="text-foreground/80 font-medium">Your Store</span>
                 </div>
               )}
-              <p className={`text-white/80 text-sm mb-1 ${isMobile ? 'text-base' : ''}`}>
-                {isMobile ? '🚀 Total Value' : 'Your Store Value'}
+              <p className={`text-sm mb-1 ${isMobile ? 'text-muted-foreground' : 'text-white/80'}`}>
+                {isMobile ? 'Total Value' : 'Your Store Value'}
               </p>
-              <h1 className={`text-3xl md:text-4xl font-bold ${isMobile ? 'text-4xl text-gradient bg-gradient-to-r from-white via-white to-primary-glow bg-clip-text text-transparent' : ''}`}>
+              <h1 className={`text-3xl md:text-4xl font-bold ${isMobile ? 'text-foreground' : ''}`}>
                 {stats?.totalRevenue?.toFixed(2) || '0.00'} RON
               </h1>
-              <p className={`text-white/80 text-sm mt-1 ${isMobile ? 'text-base animate-fade-in delay-400' : ''}`}>
-                {isMobile ? '📈 ▲ ' : '▲ '}{((stats?.totalRevenue || 0) * 0.15).toFixed(2)} RON this week
+              <p className={`text-sm mt-1 ${isMobile ? 'text-muted-foreground' : 'text-white/80'}`}>
+                ▲ {((stats?.totalRevenue || 0) * 0.15).toFixed(2)} RON this week
               </p>
             </div>
             <Button 
               variant="secondary" 
               size="sm" 
               className={`rounded-full px-4 ${isMobile 
-                ? 'bg-white/20 border-white/30 text-white hover:bg-white/30 animate-pulse' 
+                ? 'bg-primary/10 border-primary/20 text-primary hover:bg-primary/20' 
                 : 'bg-white/20 border-white/30 text-white hover:bg-white/30'
               }`}
               onClick={() => setActiveTab('payments')}
             >
-              {isMobile ? '💫 Analytics' : '+ View Analytics'}
+              {isMobile ? 'Analytics' : '+ View Analytics'}
             </Button>
           </div>
         </div>
         
-        {/* Decorative gradient overlay - Enhanced for mobile */}
-        <div className={`absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8 ${isMobile ? 'animate-pulse' : ''}`}></div>
-        <div className={`absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-8 -translate-x-8 ${isMobile ? 'animate-pulse delay-300' : ''}`}></div>
-        {isMobile && (
-          <div className="absolute top-1/2 right-1/4 w-16 h-16 bg-white/5 rounded-full animate-pulse delay-500"></div>
-        )}
+        {/* Subtle decorative elements */}
+        <div className={`absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-8 translate-x-8`}></div>
+        <div className={`absolute bottom-0 left-0 w-24 h-24 bg-white/3 rounded-full translate-y-8 -translate-x-8`}></div>
       </div>
 
       {/* Quick Stats Grid */}
-      <div className={`grid grid-cols-2 gap-3 md:gap-4 ${isMobile ? 'gap-4 animate-fade-in delay-300' : ''}`}>
+      <div className={`grid grid-cols-2 gap-3 md:gap-4`}>
         <div className={`rounded-xl p-4 shadow-card border ${isMobile 
-          ? 'bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-xl border-white/20 shadow-2xl hover:shadow-glow transition-all duration-500 hover:scale-[1.02]' 
+          ? 'bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-sm border-border/30 hover:from-card/70 hover:to-card/50 transition-all duration-300' 
           : 'bg-gradient-card border-border/50'
         }`}>
           <div className="flex items-center gap-3 mb-2">
-            <div className={`p-2 rounded-lg ${isMobile ? 'bg-blue-500/20 backdrop-blur-sm animate-pulse' : 'bg-blue-50'}`}>
-              <Package className={`h-4 w-4 ${isMobile ? 'text-blue-400' : 'text-blue-600'}`} />
+            <div className={`p-2 rounded-lg ${isMobile ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50'}`}>
+              <Package className={`h-4 w-4 ${isMobile ? 'text-blue-500/80' : 'text-blue-600'}`} />
             </div>
             <div>
-              <p className={`text-xs ${isMobile ? 'text-blue-400/80 font-medium' : 'text-muted-foreground'}`}>Products</p>
-              <p className={`text-lg font-semibold ${isMobile ? 'text-xl bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent' : ''}`}>
+              <p className={`text-xs ${isMobile ? 'text-muted-foreground' : 'text-muted-foreground'}`}>Products</p>
+              <p className={`text-lg font-semibold ${isMobile ? 'text-foreground' : ''}`}>
                 {stats?.totalProducts || 0}
               </p>
             </div>
@@ -158,16 +154,16 @@ const Index = () => {
         </div>
 
         <div className={`rounded-xl p-4 shadow-card border ${isMobile 
-          ? 'bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-xl border-white/20 shadow-2xl hover:shadow-glow transition-all duration-500 hover:scale-[1.02]' 
+          ? 'bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-sm border-border/30 hover:from-card/70 hover:to-card/50 transition-all duration-300' 
           : 'bg-gradient-card border-border/50'
         }`}>
           <div className="flex items-center gap-3 mb-2">
-            <div className={`p-2 rounded-lg ${isMobile ? 'bg-green-500/20 backdrop-blur-sm animate-pulse' : 'bg-green-50'}`}>
-              <ShoppingCart className={`h-4 w-4 ${isMobile ? 'text-green-400' : 'text-green-600'}`} />
+            <div className={`p-2 rounded-lg ${isMobile ? 'bg-green-500/10 border border-green-500/20' : 'bg-green-50'}`}>
+              <ShoppingCart className={`h-4 w-4 ${isMobile ? 'text-green-500/80' : 'text-green-600'}`} />
             </div>
             <div>
-              <p className={`text-xs ${isMobile ? 'text-green-400/80 font-medium' : 'text-muted-foreground'}`}>Orders</p>
-              <p className={`text-lg font-semibold ${isMobile ? 'text-xl bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent' : ''}`}>
+              <p className={`text-xs ${isMobile ? 'text-muted-foreground' : 'text-muted-foreground'}`}>Orders</p>
+              <p className={`text-lg font-semibold ${isMobile ? 'text-foreground' : ''}`}>
                 {stats?.totalOrders || 0}
               </p>
             </div>
@@ -175,16 +171,16 @@ const Index = () => {
         </div>
 
         <div className={`rounded-xl p-4 shadow-card border ${isMobile 
-          ? 'bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-xl border-white/20 shadow-2xl hover:shadow-glow transition-all duration-500 hover:scale-[1.02]' 
+          ? 'bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-sm border-border/30 hover:from-card/70 hover:to-card/50 transition-all duration-300' 
           : 'bg-gradient-card border-border/50'
         }`}>
           <div className="flex items-center gap-3 mb-2">
-            <div className={`p-2 rounded-lg ${isMobile ? 'bg-orange-500/20 backdrop-blur-sm animate-pulse' : 'bg-orange-50'}`}>
-              <Clock className={`h-4 w-4 ${isMobile ? 'text-orange-400' : 'text-orange-600'}`} />
+            <div className={`p-2 rounded-lg ${isMobile ? 'bg-orange-500/10 border border-orange-500/20' : 'bg-orange-50'}`}>
+              <Clock className={`h-4 w-4 ${isMobile ? 'text-orange-500/80' : 'text-orange-600'}`} />
             </div>
             <div>
-              <p className={`text-xs ${isMobile ? 'text-orange-400/80 font-medium' : 'text-muted-foreground'}`}>Pending</p>
-              <p className={`text-lg font-semibold ${isMobile ? 'text-xl bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent' : ''}`}>
+              <p className={`text-xs ${isMobile ? 'text-muted-foreground' : 'text-muted-foreground'}`}>Pending</p>
+              <p className={`text-lg font-semibold ${isMobile ? 'text-foreground' : ''}`}>
                 {stats?.pendingOrders || 0}
               </p>
             </div>
@@ -192,16 +188,16 @@ const Index = () => {
         </div>
 
         <div className={`rounded-xl p-4 shadow-card border ${isMobile 
-          ? 'bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-xl border-white/20 shadow-2xl hover:shadow-glow transition-all duration-500 hover:scale-[1.02]' 
+          ? 'bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-sm border-border/30 hover:from-card/70 hover:to-card/50 transition-all duration-300' 
           : 'bg-gradient-card border-border/50'
         }`}>
           <div className="flex items-center gap-3 mb-2">
-            <div className={`p-2 rounded-lg ${isMobile ? 'bg-red-500/20 backdrop-blur-sm animate-pulse' : 'bg-red-50'}`}>
-              <TrendingUp className={`h-4 w-4 ${isMobile ? 'text-red-400' : 'text-red-600'}`} />
+            <div className={`p-2 rounded-lg ${isMobile ? 'bg-red-500/10 border border-red-500/20' : 'bg-red-50'}`}>
+              <TrendingUp className={`h-4 w-4 ${isMobile ? 'text-red-500/80' : 'text-red-600'}`} />
             </div>
             <div>
-              <p className={`text-xs ${isMobile ? 'text-red-400/80 font-medium' : 'text-muted-foreground'}`}>Low Stock</p>
-              <p className={`text-lg font-semibold ${isMobile ? 'text-xl bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent' : ''}`}>
+              <p className={`text-xs ${isMobile ? 'text-muted-foreground' : 'text-muted-foreground'}`}>Low Stock</p>
+              <p className={`text-lg font-semibold ${isMobile ? 'text-foreground' : ''}`}>
                 {stats?.lowStockProducts || 0}
               </p>
             </div>
@@ -211,62 +207,61 @@ const Index = () => {
 
       {/* Today's Overview */}
       <div className={`rounded-xl p-4 shadow-card border ${isMobile 
-        ? 'bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-xl border-white/20 shadow-2xl animate-fade-in delay-500' 
+        ? 'bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-sm border-border/30' 
         : 'bg-gradient-card border-border/50'
       }`}>
-        <h3 className={`font-semibold text-lg mb-3 ${isMobile ? 'text-xl bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent flex items-center gap-2' : ''}`}>
-          {isMobile && <Zap className="h-5 w-5 text-primary animate-pulse" />}
+        <h3 className={`font-semibold text-lg mb-3 ${isMobile ? 'text-foreground flex items-center gap-2' : ''}`}>
+          {isMobile && <Zap className="h-5 w-5 text-primary/60" />}
           Today's Overview
-          {isMobile && <Sparkles className="h-5 w-5 text-accent animate-pulse" />}
         </h3>
         <div className="space-y-3">
-          <div className={`flex items-center justify-between py-2 border-b ${isMobile ? 'border-white/20' : 'border-border/20'}`}>
+          <div className={`flex items-center justify-between py-2 border-b ${isMobile ? 'border-border/20' : 'border-border/20'}`}>
             <div className="flex items-center gap-3">
-              <div className={`p-1.5 rounded-lg ${isMobile ? 'bg-green-500/20 backdrop-blur-sm' : 'bg-green-50'}`}>
-                <ShoppingCart className={`h-4 w-4 ${isMobile ? 'text-green-400' : 'text-green-600'}`} />
+              <div className={`p-1.5 rounded-lg ${isMobile ? 'bg-green-500/10 border border-green-500/20' : 'bg-green-50'}`}>
+                <ShoppingCart className={`h-4 w-4 ${isMobile ? 'text-green-500/80' : 'text-green-600'}`} />
               </div>
               <div>
-                <p className={`text-sm font-medium ${isMobile ? 'text-green-400' : ''}`}>New Orders</p>
-                <p className={`text-xs ${isMobile ? 'text-green-400/70' : 'text-muted-foreground'}`}>Last 24 hours</p>
+                <p className={`text-sm font-medium`}>New Orders</p>
+                <p className={`text-xs text-muted-foreground`}>Last 24 hours</p>
               </div>
             </div>
-            <span className={`text-sm font-semibold ${isMobile ? 'text-green-400 text-base' : ''}`}>{stats?.todayOrders || 0}</span>
+            <span className={`text-sm font-semibold`}>{stats?.todayOrders || 0}</span>
           </div>
           
-          <div className={`flex items-center justify-between py-2 border-b ${isMobile ? 'border-white/20' : 'border-border/20'}`}>
+          <div className={`flex items-center justify-between py-2 border-b ${isMobile ? 'border-border/20' : 'border-border/20'}`}>
             <div className="flex items-center gap-3">
-              <div className={`p-1.5 rounded-lg ${isMobile ? 'bg-blue-500/20 backdrop-blur-sm' : 'bg-blue-50'}`}>
-                <DollarSign className={`h-4 w-4 ${isMobile ? 'text-blue-400' : 'text-blue-600'}`} />
+              <div className={`p-1.5 rounded-lg ${isMobile ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50'}`}>
+                <DollarSign className={`h-4 w-4 ${isMobile ? 'text-blue-500/80' : 'text-blue-600'}`} />
               </div>
               <div>
-                <p className={`text-sm font-medium ${isMobile ? 'text-blue-400' : ''}`}>Today's Sales</p>
-                <p className={`text-xs ${isMobile ? 'text-blue-400/70' : 'text-muted-foreground'}`}>Revenue generated</p>
+                <p className={`text-sm font-medium`}>Today's Sales</p>
+                <p className={`text-xs text-muted-foreground`}>Revenue generated</p>
               </div>
             </div>
-            <span className={`text-sm font-semibold ${isMobile ? 'text-blue-400 text-base' : ''}`}>{(stats?.todayRevenue || 0).toFixed(2)} RON</span>
+            <span className={`text-sm font-semibold`}>{(stats?.todayRevenue || 0).toFixed(2)} RON</span>
           </div>
           
           {stats?.lowStockProducts > 0 && (
             <div className="flex items-center justify-between py-2">
               <div className="flex items-center gap-3">
-                <div className={`p-1.5 rounded-lg ${isMobile ? 'bg-orange-500/20 backdrop-blur-sm' : 'bg-orange-50'}`}>
-                  <Package className={`h-4 w-4 ${isMobile ? 'text-orange-400' : 'text-orange-600'}`} />
+                <div className={`p-1.5 rounded-lg ${isMobile ? 'bg-orange-500/10 border border-orange-500/20' : 'bg-orange-50'}`}>
+                  <Package className={`h-4 w-4 ${isMobile ? 'text-orange-500/80' : 'text-orange-600'}`} />
                 </div>
                 <div>
-                  <p className={`text-sm font-medium ${isMobile ? 'text-orange-400' : 'text-orange-600'}`}>Low Stock Alert</p>
-                  <p className={`text-xs ${isMobile ? 'text-orange-400/70' : 'text-muted-foreground'}`}>Products need restocking</p>
+                  <p className={`text-sm font-medium ${isMobile ? 'text-orange-500/80' : 'text-orange-600'}`}>Low Stock Alert</p>
+                  <p className={`text-xs text-muted-foreground`}>Products need restocking</p>
                 </div>
               </div>
-              <span className={`text-sm font-semibold ${isMobile ? 'text-orange-400 text-base' : 'text-orange-600'}`}>{stats?.lowStockProducts}</span>
+              <span className={`text-sm font-semibold ${isMobile ? 'text-orange-500/80' : 'text-orange-600'}`}>{stats?.lowStockProducts}</span>
             </div>
           )}
         </div>
       </div>
 
       {/* Quick Actions */}
-      <div className={`space-y-3 ${isMobile ? 'animate-fade-in delay-700' : ''}`}>
-        <h3 className={`font-semibold text-lg px-1 ${isMobile ? 'text-xl bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent flex items-center gap-2' : ''}`}>
-          {isMobile && <Star className="h-5 w-5 text-primary animate-pulse" />}
+      <div className={`space-y-3`}>
+        <h3 className={`font-semibold text-lg px-1 ${isMobile ? 'text-foreground flex items-center gap-2' : ''}`}>
+          {isMobile && <Star className="h-5 w-5 text-primary/60" />}
           Quick Actions
         </h3>
         
@@ -274,21 +269,21 @@ const Index = () => {
           <Button 
             variant="ghost" 
             className={`w-full justify-start h-14 rounded-xl transition-all duration-200 text-foreground ${isMobile 
-              ? 'bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-xl border border-white/20 shadow-2xl hover:shadow-glow hover:scale-[1.02] hover:from-card/90 hover:to-card/50 hover:text-primary' 
+              ? 'bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-sm border border-border/30 hover:from-card/70 hover:to-card/50 hover:text-primary' 
               : 'bg-gradient-card shadow-card border border-border/50 hover:bg-muted/80 hover:shadow-elegant hover:text-purple-600'
             }`}
             onClick={() => setActiveTab('products')}
           >
             <div className="flex items-center gap-4">
-              <div className={`p-2 rounded-lg ${isMobile ? 'bg-primary/20 backdrop-blur-sm animate-pulse' : 'bg-primary/10'}`}>
-                <Package className={`h-5 w-5 ${isMobile ? 'text-primary animate-bounce' : 'text-primary'}`} />
+              <div className={`p-2 rounded-lg ${isMobile ? 'bg-primary/10 border border-primary/20' : 'bg-primary/10'}`}>
+                <Package className={`h-5 w-5 ${isMobile ? 'text-primary/80' : 'text-primary'}`} />
               </div>
               <div className="text-left">
-                <p className={`font-medium ${isMobile ? 'text-primary' : ''}`}>
-                  {isMobile ? '📦 Manage Products' : 'Manage Products'}
+                <p className={`font-medium`}>
+                  Manage Products
                 </p>
-                <p className={`text-xs ${isMobile ? 'text-primary/70' : 'text-muted-foreground'}`}>
-                  {isMobile ? '✨ Add, edit, and organize your inventory' : 'Add, edit, and organize your inventory'}
+                <p className={`text-xs text-muted-foreground`}>
+                  Add, edit, and organize your inventory
                 </p>
               </div>
             </div>
@@ -297,21 +292,21 @@ const Index = () => {
           <Button 
             variant="ghost" 
             className={`w-full justify-start h-14 rounded-xl transition-all duration-200 text-foreground ${isMobile 
-              ? 'bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-xl border border-white/20 shadow-2xl hover:shadow-glow hover:scale-[1.02] hover:from-card/90 hover:to-card/50 hover:text-green-400' 
+              ? 'bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-sm border border-border/30 hover:from-card/70 hover:to-card/50 hover:text-green-600' 
               : 'bg-gradient-card shadow-card border border-border/50 hover:bg-muted/80 hover:shadow-elegant hover:text-purple-600'
             }`}
             onClick={() => setActiveTab('orders')}
           >
             <div className="flex items-center gap-4">
-              <div className={`p-2 rounded-lg ${isMobile ? 'bg-green-500/20 backdrop-blur-sm animate-pulse' : 'bg-green-50'}`}>
-                <ShoppingCart className={`h-5 w-5 ${isMobile ? 'text-green-400 animate-bounce' : 'text-green-600'}`} />
+              <div className={`p-2 rounded-lg ${isMobile ? 'bg-green-500/10 border border-green-500/20' : 'bg-green-50'}`}>
+                <ShoppingCart className={`h-5 w-5 ${isMobile ? 'text-green-500/80' : 'text-green-600'}`} />
               </div>
               <div className="text-left">
-                <p className={`font-medium ${isMobile ? 'text-green-400' : ''}`}>
-                  {isMobile ? '🛒 View Orders' : 'View Orders'}
+                <p className={`font-medium`}>
+                  View Orders
                 </p>
-                <p className={`text-xs ${isMobile ? 'text-green-400/70' : 'text-muted-foreground'}`}>
-                  {isMobile ? '⚡ Process and track customer orders' : 'Process and track customer orders'}
+                <p className={`text-xs text-muted-foreground`}>
+                  Process and track customer orders
                 </p>
               </div>
             </div>
@@ -320,21 +315,21 @@ const Index = () => {
           <Button 
             variant="ghost" 
             className={`w-full justify-start h-14 rounded-xl transition-all duration-200 text-foreground ${isMobile 
-              ? 'bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-xl border border-white/20 shadow-2xl hover:shadow-glow hover:scale-[1.02] hover:from-card/90 hover:to-card/50 hover:text-blue-400' 
+              ? 'bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-sm border border-border/30 hover:from-card/70 hover:to-card/50 hover:text-blue-600' 
               : 'bg-gradient-card shadow-card border border-border/50 hover:bg-muted/80 hover:shadow-elegant hover:text-purple-600'
             }`}
             onClick={() => setActiveTab('customers')}
           >
             <div className="flex items-center gap-4">
-              <div className={`p-2 rounded-lg ${isMobile ? 'bg-blue-500/20 backdrop-blur-sm animate-pulse' : 'bg-blue-50'}`}>
-                <Users className={`h-5 w-5 ${isMobile ? 'text-blue-400 animate-bounce' : 'text-blue-600'}`} />
+              <div className={`p-2 rounded-lg ${isMobile ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50'}`}>
+                <Users className={`h-5 w-5 ${isMobile ? 'text-blue-500/80' : 'text-blue-600'}`} />
               </div>
               <div className="text-left">
-                <p className={`font-medium ${isMobile ? 'text-blue-400' : ''}`}>
-                  {isMobile ? '👥 Customers' : 'Customers'}
+                <p className={`font-medium`}>
+                  Customers
                 </p>
-                <p className={`text-xs ${isMobile ? 'text-blue-400/70' : 'text-muted-foreground'}`}>
-                  {isMobile ? '🤝 Manage customer relationships' : 'Manage customer relationships'}
+                <p className={`text-xs text-muted-foreground`}>
+                  Manage customer relationships
                 </p>
               </div>
             </div>
