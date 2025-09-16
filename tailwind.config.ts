@@ -27,7 +27,9 @@ export default {
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
 					foreground: 'hsl(var(--primary-foreground))',
-					glow: 'hsl(var(--primary-glow))'
+					glow: 'hsl(var(--primary-glow))',
+					dark: 'hsl(var(--primary-dark))',
+					apple: 'hsl(var(--primary-apple))'
 				},
 				secondary: {
 					DEFAULT: 'hsl(var(--secondary))',
@@ -66,6 +68,7 @@ export default {
 			},
 			backgroundImage: {
 				'gradient-primary': 'var(--gradient-primary)',
+				'gradient-apple': 'var(--gradient-apple)',
 				'gradient-card': 'var(--gradient-card)',
 				'gradient-subtle': 'var(--gradient-subtle)'
 			},
