@@ -20,6 +20,8 @@ All colors MUST be HSL.
     --primary: 262 83% 58%;
     --primary-foreground: 0 0% 100%;
     --primary-glow: 272 87% 68%;
+    --primary-dark: 252 71% 35%;
+    --primary-apple: 250 65% 45%;
 
     --secondary: 240 5% 96%;
     --secondary-foreground: 222.2 84% 4.9%;
@@ -41,6 +43,7 @@ All colors MUST be HSL.
     
     /* Modern gradients */
     --gradient-primary: linear-gradient(135deg, hsl(262 83% 58%), hsl(272 87% 68%));
+    --gradient-apple: linear-gradient(135deg, hsl(var(--primary-dark)), hsl(var(--primary-apple)));
     --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(240 5% 98%));
     --gradient-subtle: linear-gradient(180deg, hsl(0 0% 100%), hsl(240 5% 99%));
     
@@ -79,6 +82,8 @@ All colors MUST be HSL.
     --primary: 262 83% 58%;
     --primary-foreground: 0 0% 100%;
     --primary-glow: 272 87% 68%;
+    --primary-dark: 252 71% 35%;
+    --primary-apple: 250 65% 45%;
 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -98,6 +103,7 @@ All colors MUST be HSL.
     
     /* Dark mode gradients */
     --gradient-primary: linear-gradient(135deg, hsl(262 83% 58%), hsl(272 87% 68%));
+    --gradient-apple: linear-gradient(135deg, hsl(var(--primary-dark)), hsl(var(--primary-apple)));
     --gradient-card: linear-gradient(145deg, hsl(220 13% 8%), hsl(220 13% 10%));
     --gradient-subtle: linear-gradient(180deg, hsl(220 13% 8%), hsl(220 13% 9%));
     
