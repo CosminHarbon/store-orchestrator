@@ -35,8 +35,15 @@ serve(async (req) => {
 
     const { action, orderId, packageDetails, selectedCarrier, trackingNumber } = await req.json();
 
+    // Create a Supabase client with the user's auth for RLS-aware queries
+    const sb = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
     // Get user profile for eAWB configuration
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await sb
       .from('profiles')
       .select('eawb_api_key, eawb_name, eawb_email, eawb_phone, eawb_address')
       .eq('user_id', user.id)
@@ -55,7 +62,7 @@ serve(async (req) => {
 
     if (action === 'calculate_prices') {
       // Get order details
-      const { data: order, error: orderError } = await supabase
+      const { data: order, error: orderError } = await sb
         .from('orders')
         .select('*')
         .eq('id', orderId)
@@ -145,7 +152,7 @@ serve(async (req) => {
 
     } else if (action === 'create_order') {
       // Get order details
-      const { data: order, error: orderError } = await supabase
+      const { data: order, error: orderError } = await sb
         .from('orders')
         .select(`
           *,
@@ -229,7 +236,7 @@ serve(async (req) => {
       // Update order with AWB number and shipping info
       const awbNumber = eawbResult.awb || eawbResult.tracking_number || eawbResult.order_id;
       if (awbNumber) {
-        const { error: updateError } = await supabase
+        const { error: updateError } = await sb
           .from('orders')
           .update({ 
             shipping_status: 'processing',
