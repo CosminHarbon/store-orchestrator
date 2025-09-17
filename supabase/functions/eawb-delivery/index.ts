@@ -57,7 +57,7 @@ serve(async (req) => {
     }
 
     if (!profile || !profile.eawb_api_key) {
-      throw new Error('eAWB configuration not found. Please configure eAWB in your settings.');
+      return new Response(JSON.stringify({ success: false, error: 'eAWB configuration not found. Please configure eAWB in your settings.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (action === 'calculate_prices') {
@@ -70,25 +70,25 @@ serve(async (req) => {
         .single();
 
       if (orderError || !order) {
-        throw new Error('Order not found');
+        return new Response(JSON.stringify({ success: false, error: 'Order not found' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       // Parse addresses properly
       const senderAddress = {
         country_code: "RO",
-        county: profile.eawb_address?.includes(',') 
+        county_name: profile.eawb_address?.includes(',') 
           ? profile.eawb_address.split(',')[1]?.trim() || "Prahova"
           : "Prahova", 
-        locality: profile.eawb_address?.split(',')[0]?.trim() || "Ploiesti",
+        locality_name: profile.eawb_address?.split(',')[0]?.trim() || "Ploiesti",
         address: profile.eawb_address || "Ploiesti, Prahova"
       };
 
       const recipientAddress = {
         country_code: "RO",
-        county: order.customer_address.includes(',') 
+        county_name: order.customer_address.includes(',') 
           ? order.customer_address.split(',').slice(-2)[0]?.trim() || "Bucuresti"
           : "Bucuresti",
-        locality: order.customer_address.includes(',') 
+        locality_name: order.customer_address.includes(',') 
           ? order.customer_address.split(',').slice(-1)[0]?.trim() || "Bucuresti"
           : order.customer_address.split(' ')[0] || "Bucuresti",
         address: order.customer_address
@@ -128,7 +128,7 @@ serve(async (req) => {
       console.log('eAWB Price API response:', JSON.stringify(priceResult, null, 2));
 
       if (!priceResponse.ok) {
-        throw new Error(`eAWB Price API error: ${JSON.stringify(priceResult)}`);
+        return new Response(JSON.stringify({ success: false, error: priceResult?.message || 'Price calculation failed', details: priceResult }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       // Transform the response to a consistent format
@@ -167,7 +167,7 @@ serve(async (req) => {
         .single();
 
       if (orderError || !order) {
-        throw new Error('Order not found');
+        return new Response(JSON.stringify({ success: false, error: 'Order not found' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       // Create eAWB order using the selected carrier
@@ -230,7 +230,7 @@ serve(async (req) => {
       console.log('eAWB Create Order API response:', JSON.stringify(eawbResult, null, 2));
 
       if (!eawbResponse.ok) {
-        throw new Error(`eAWB Create Order API error: ${JSON.stringify(eawbResult)}`);
+        return new Response(JSON.stringify({ success: false, error: eawbResult?.message || 'Create order failed', details: eawbResult }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       // Update order with AWB number and shipping info
