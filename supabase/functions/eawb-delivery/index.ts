@@ -238,9 +238,6 @@ serve(async (req) => {
 
       // Calculate shipping prices with proper eAWB API structure
       const priceRequest = {
-        billing_to: {
-          billing_address_id: null, // We'll use address details instead
-        },
         address_from: {
           country_code: senderLoc.country_code,
           county_name: senderLoc.county_name,
@@ -267,7 +264,14 @@ serve(async (req) => {
           parcels_count: 1,
           pallets_count: 0,
           envelopes_count: 0,
-          total_weight: packageDetails.weight
+          total_weight: packageDetails.weight,
+          parcels: [{
+            weight: packageDetails.weight,
+            length: packageDetails.length,
+            width: packageDetails.width,
+            height: packageDetails.height,
+            declared_value: packageDetails.declared_value
+          }]
         },
         extra: {
           parcel_content: packageDetails.contents || 'Merchandise'
