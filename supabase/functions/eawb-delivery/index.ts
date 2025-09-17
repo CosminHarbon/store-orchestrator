@@ -155,7 +155,7 @@ serve(async (req) => {
     // Get user profile for eAWB configuration
     const { data: profile, error: profileError } = await sb
       .from('profiles')
-      .select('eawb_api_key, eawb_name, eawb_email, eawb_phone, eawb_address')
+      .select('eawb_api_key, eawb_name, eawb_email, eawb_phone, eawb_address, eawb_billing_address_id, eawb_default_carrier_id, eawb_default_service_id')
       .eq('user_id', user.id)
       .maybeSingle();
 
@@ -239,7 +239,7 @@ serve(async (req) => {
       // Calculate shipping prices with proper eAWB API structure
       const priceRequest = {
         billing_to: {
-          billing_address_id: 1 // Default billing address ID - user's registered address
+          billing_address_id: profile.eawb_billing_address_id || 1 // Use configured billing address or default
         },
         address_from: {
           country_code: senderLoc.country_code,
@@ -287,7 +287,9 @@ serve(async (req) => {
           saturday_delivery: false,
           sunday_delivery: false,
           morning_delivery: false
-        }
+        },
+        carrier_id: profile.eawb_default_carrier_id || null,
+        service_id: profile.eawb_default_service_id || null
       };
 
       console.log('Calculating prices with request:', JSON.stringify(priceRequest, null, 2));
@@ -372,7 +374,7 @@ serve(async (req) => {
 
       const eawbOrderData = {
         billing_to: {
-          billing_address_id: 1 // Use default billing address
+          billing_address_id: profile.eawb_billing_address_id || 1 // Use configured billing address or default
         },
         address_from: {
           country_code: senderLoc2.country_code,

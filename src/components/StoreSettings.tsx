@@ -42,6 +42,9 @@ interface Profile {
   eawb_email?: string;
   eawb_phone?: string;
   eawb_address?: string;
+  eawb_billing_address_id?: number;
+  eawb_default_carrier_id?: number;
+  eawb_default_service_id?: number;
 }
 
 const StoreSettings = () => {
@@ -62,7 +65,7 @@ const StoreSettings = () => {
     sameday: { api_key: '', name: '', email: '' },
     netpopia: { api_key: '', name: '', email: '', signature: '', sandbox: true },
     woot: { api_key: '', name: '', email: '' },
-    eawb: { api_key: '', name: '', email: '', phone: '', address: '' }
+    eawb: { api_key: '', name: '', email: '', phone: '', address: '', billing_address_id: '', default_carrier_id: '', default_service_id: '' }
   });
   const [testOrderData, setTestOrderData] = useState({
     name: 'John Doe',
@@ -124,7 +127,10 @@ const StoreSettings = () => {
           name: profile.eawb_name || '',
           email: profile.eawb_email || '',
           phone: profile.eawb_phone || '',
-          address: profile.eawb_address || ''
+          address: profile.eawb_address || '',
+          billing_address_id: profile.eawb_billing_address_id?.toString() || '',
+          default_carrier_id: profile.eawb_default_carrier_id?.toString() || '',
+          default_service_id: profile.eawb_default_service_id?.toString() || ''
         }
       });
       
@@ -192,11 +198,14 @@ const StoreSettings = () => {
       eawb_name: providerConfigs.eawb.name,
       eawb_email: providerConfigs.eawb.email,
       eawb_phone: providerConfigs.eawb.phone,
-      eawb_address: providerConfigs.eawb.address
+      eawb_address: providerConfigs.eawb.address,
+      eawb_billing_address_id: providerConfigs.eawb.billing_address_id ? parseInt(providerConfigs.eawb.billing_address_id) : null,
+      eawb_default_carrier_id: providerConfigs.eawb.default_carrier_id ? parseInt(providerConfigs.eawb.default_carrier_id) : null,
+      eawb_default_service_id: providerConfigs.eawb.default_service_id ? parseInt(providerConfigs.eawb.default_service_id) : null
     });
   };
 
-  const updateProviderConfig = (provider: 'oblio' | 'sameday' | 'netpopia' | 'woot' | 'eawb', field: 'api_key' | 'name' | 'email' | 'series_name' | 'first_number' | 'signature' | 'sandbox' | 'phone' | 'address', value: string | boolean) => {
+  const updateProviderConfig = (provider: 'oblio' | 'sameday' | 'netpopia' | 'woot' | 'eawb', field: 'api_key' | 'name' | 'email' | 'series_name' | 'first_number' | 'signature' | 'sandbox' | 'phone' | 'address' | 'billing_address_id' | 'default_carrier_id' | 'default_service_id', value: string | boolean) => {
     setProviderConfigs(prev => ({
       ...prev,
       [provider]: {
@@ -926,13 +935,51 @@ class StoreAPI {
                                 onChange={(e) => updateProviderConfig('eawb', 'address', e.target.value)}
                                 placeholder="Enter your pickup address"
                               />
-                              <p className="text-xs text-muted-foreground">
-                                Default address for package pickup
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                               <p className="text-xs text-muted-foreground">
+                                 Default address for package pickup
+                               </p>
+                             </div>
+                             <div className="space-y-2">
+                               <Label htmlFor="eawb-billing-address-id">Billing Address ID</Label>
+                               <Input
+                                 id="eawb-billing-address-id"
+                                 value={providerConfigs.eawb?.billing_address_id || ''}
+                                 onChange={(e) => updateProviderConfig('eawb', 'billing_address_id', e.target.value)}
+                                 placeholder="1"
+                               />
+                               <p className="text-xs text-muted-foreground">
+                                 Your registered billing address ID (default: 1)
+                               </p>
+                             </div>
+                             <div className="grid grid-cols-2 gap-4">
+                               <div className="space-y-2">
+                                 <Label htmlFor="eawb-default-carrier">Default Carrier ID</Label>
+                                 <Input
+                                   id="eawb-default-carrier"
+                                   value={providerConfigs.eawb?.default_carrier_id || ''}
+                                   onChange={(e) => updateProviderConfig('eawb', 'default_carrier_id', e.target.value)}
+                                   placeholder="Optional"
+                                 />
+                                 <p className="text-xs text-muted-foreground">
+                                   Default carrier ID for pricing (optional)
+                                 </p>
+                               </div>
+                               <div className="space-y-2">
+                                 <Label htmlFor="eawb-default-service">Default Service ID</Label>
+                                 <Input
+                                   id="eawb-default-service"
+                                   value={providerConfigs.eawb?.default_service_id || ''}
+                                   onChange={(e) => updateProviderConfig('eawb', 'default_service_id', e.target.value)}
+                                   placeholder="Optional"
+                                 />
+                                 <p className="text-xs text-muted-foreground">
+                                   Default service ID for pricing (optional)
+                                 </p>
+                               </div>
+                             </div>
+                           </div>
+                         </div>
+                       )}
                    </div>
 
                   <div className="space-y-2">
