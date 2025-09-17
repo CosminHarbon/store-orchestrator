@@ -110,8 +110,20 @@ serve(async (req) => {
 
       // Calculate shipping prices with eAWB API
       const priceRequest = {
-        from: senderAddress,
-        to: recipientAddress,
+        from: {
+          country_code: senderAddress.country_code,
+          county_name: senderAddress.county_name,
+          locality_name: senderAddress.locality_name,
+          locality_id: senderAddress.locality_id,
+          address: senderAddress.address,
+        },
+        to: {
+          country_code: recipientAddress.country_code,
+          county_name: recipientAddress.county_name,
+          locality_name: recipientAddress.locality_name,
+          locality_id: recipientAddress.locality_id,
+          address: recipientAddress.address,
+        },
         parcels: [{
           weight: packageDetails.weight,
           length: packageDetails.length,
@@ -119,7 +131,7 @@ serve(async (req) => {
           height: packageDetails.height,
           declared_value: packageDetails.declared_value
         }],
-        cod_amount: packageDetails.cod_amount,
+        cod_amount: packageDetails.cod_amount > 0 ? packageDetails.cod_amount : null,
         options: {
           saturday_delivery: false,
           sunday_delivery: false,
