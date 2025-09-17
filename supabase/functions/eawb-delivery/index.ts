@@ -238,6 +238,9 @@ serve(async (req) => {
 
       // Calculate shipping prices with proper eAWB API structure
       const priceRequest = {
+        billing_to: {
+          billing_address_id: 1 // Default billing address ID - user's registered address
+        },
         address_from: {
           country_code: senderLoc.country_code,
           county_name: senderLoc.county_name,
@@ -266,10 +269,13 @@ serve(async (req) => {
           envelopes_count: 0,
           total_weight: packageDetails.weight,
           parcels: [{
+            sequence_no: 1,
             weight: packageDetails.weight,
-            length: packageDetails.length,
-            width: packageDetails.width,
-            height: packageDetails.height,
+            size: {
+              length: packageDetails.length,
+              width: packageDetails.width,
+              height: packageDetails.height
+            },
             declared_value: packageDetails.declared_value
           }]
         },
@@ -366,7 +372,7 @@ serve(async (req) => {
 
       const eawbOrderData = {
         billing_to: {
-          billing_address_id: null // Use address details below
+          billing_address_id: 1 // Use default billing address
         },
         address_from: {
           country_code: senderLoc2.country_code,
@@ -394,7 +400,17 @@ serve(async (req) => {
           parcels_count: 1,
           pallets_count: 0,
           envelopes_count: 0,
-          total_weight: packageDetails.weight
+          total_weight: packageDetails.weight,
+          parcels: [{
+            sequence_no: 1,
+            weight: packageDetails.weight,
+            size: {
+              length: packageDetails.length,
+              width: packageDetails.width,
+              height: packageDetails.height
+            },
+            declared_value: packageDetails.declared_value
+          }]
         },
         extra: {
           parcel_content: packageDetails.contents || 'Merchandise'
