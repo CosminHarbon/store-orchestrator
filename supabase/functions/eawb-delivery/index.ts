@@ -14,13 +14,64 @@ const supabase = createClient(
 
 async function resolveLocality(apiKey: string, countryCode: string, addressText: string) {
   try {
-    const query = encodeURIComponent((addressText || '').split(',')[0] || addressText || '');
+    if (!addressText || addressText.trim() === '') {
+      console.error('Empty address text provided');
+      return null;
+    }
+
+    // Extract city name from address - try different patterns
+    let cityName = '';
+    const address = addressText.trim();
+    
+    // Pattern 1: "City, County" or "City County"  
+    // Pattern 2: "Street..., City, County"
+    // Pattern 3: "Street..., City"
+    const parts = address.split(/[,\s]+/);
+    
+    // Look for Romanian city names (common patterns)
+    const romanianCities = ['bucuresti', 'bucharest', 'cluj', 'timisoara', 'iasi', 'constanta', 'craiova', 'brasov', 'galati', 'ploiesti', 'oradea', 'braila', 'arad', 'pitesti', 'sibiu', 'bacau', 'targu-mures', 'baia-mare', 'buzau', 'botosani', 'satu-mare', 'ramnicu-valcea', 'drobeta-turnu-severin', 'piatra-neamt', 'targoviste', 'focsani', 'tulcea', 'resita', 'alba-iulia', 'bistrita'];
+    
+    // Try to find a Romanian city in the address parts
+    for (const part of parts) {
+      const cleanPart = part.toLowerCase().replace(/[^\w-]/g, '');
+      if (romanianCities.some(city => cleanPart.includes(city) || city.includes(cleanPart))) {
+        cityName = part;
+        break;
+      }
+    }
+    
+    // If no match found, take the last meaningful part (likely city)
+    if (!cityName) {
+      // Skip common words and take the last significant part
+      const skipWords = ['str', 'strada', 'nr', 'ap', 'bl', 'et', 'sc', 'romania'];
+      for (let i = parts.length - 1; i >= 0; i--) {
+        const part = parts[i].toLowerCase();
+        if (part.length > 2 && !skipWords.includes(part) && isNaN(Number(part))) {
+          cityName = parts[i];
+          break;
+        }
+      }
+    }
+    
+    // Fallback to first part if nothing found
+    if (!cityName) {
+      cityName = parts[0] || address;
+    }
+
+    console.log(`Attempting to resolve locality for address: "${addressText}" -> extracted city: "${cityName}"`);
+    
+    const query = encodeURIComponent(cityName.trim());
     const url = `https://api.europarcel.com/api/public/search/localities/${countryCode}?search=${query}`;
     const res = await fetch(url, { headers: { 'X-API-Key': apiKey } });
     const data = await res.json();
-    console.log('Locality search result for', addressText, ':', JSON.stringify(data, null, 2));
+    console.log('Locality search result for', cityName, ':', JSON.stringify(data, null, 2));
+    
     const item = data?.data?.[0] || data?.[0];
-    if (!res.ok || !item) return null;
+    if (!res.ok || !item) {
+      console.error(`Failed to resolve locality for "${cityName}" from address "${addressText}"`);
+      return null;
+    }
+    
     return {
       locality_id: item.id || item.locality_id,
       locality_name: item.locality_name || item.name,
@@ -28,7 +79,7 @@ async function resolveLocality(apiKey: string, countryCode: string, addressText:
       country_code: countryCode,
     };
   } catch (e) {
-    console.error('resolveLocality error:', e);
+    console.error('resolveLocality error for address:', addressText, 'Error:', e);
     return null;
   }
 }
