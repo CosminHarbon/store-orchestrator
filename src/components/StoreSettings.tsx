@@ -785,11 +785,11 @@ class StoreAPI {
                       <SelectTrigger>
                         <SelectValue placeholder="Select shipping provider" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="sameday">Sameday</SelectItem>
-                        <SelectItem value="woot">Woot.ro</SelectItem>
-                        <SelectItem value="eawb">eAWB.ro</SelectItem>
-                      </SelectContent>
+                       <SelectContent>
+                         <SelectItem value="sameday">Sameday</SelectItem>
+                         <SelectItem value="woot">Woot.ro</SelectItem>
+                         <SelectItem value="eawb">eAWB.ro</SelectItem>
+                       </SelectContent>
                     </Select>
                     <p className="text-sm text-muted-foreground">
                       Manages shipping and delivery for your orders
