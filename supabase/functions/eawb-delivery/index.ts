@@ -84,6 +84,44 @@ async function resolveLocality(apiKey: string, countryCode: string, addressText:
   }
 }
 
+function extractStreetInfo(address: string) {
+  const parts = address.split(/[,\s]+/);
+  let streetName = '';
+  let streetNumber = '';
+  
+  // Look for street patterns
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i].toLowerCase();
+    if (part.includes('str') || part.includes('strada') || part.includes('bd') || part.includes('bulevardul')) {
+      streetName = parts.slice(i, i + 2).join(' ');
+      // Look for number in next parts
+      for (let j = i + 1; j < parts.length; j++) {
+        if (/\d+/.test(parts[j])) {
+          streetNumber = parts[j].replace(/[^\d]/g, '');
+          break;
+        }
+      }
+      break;
+    }
+  }
+  
+  // Fallback: take first part as street, look for numbers
+  if (!streetName) {
+    streetName = parts[0] || 'Adresa';
+    for (const part of parts) {
+      if (/\d+/.test(part)) {
+        streetNumber = part.replace(/[^\d]/g, '');
+        break;
+      }
+    }
+  }
+  
+  return {
+    street_name: streetName || 'Strada',
+    street_number: streetNumber || '1'
+  };
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -156,33 +194,85 @@ serve(async (req) => {
         );
       }
 
-      const senderAddress = { ...senderLoc, address: profile.eawb_address || '' };
-      const recipientAddress = { ...recipientLoc, address: order.customer_address };
+      // Extract street details from addresses
+      const extractStreetInfo = (address: string) => {
+        const parts = address.split(/[,\s]+/);
+        let streetName = '';
+        let streetNumber = '';
+        
+        // Look for street patterns
+        for (let i = 0; i < parts.length; i++) {
+          const part = parts[i].toLowerCase();
+          if (part.includes('str') || part.includes('strada') || part.includes('bd') || part.includes('bulevardul')) {
+            streetName = parts.slice(i, i + 2).join(' ');
+            // Look for number in next parts
+            for (let j = i + 1; j < parts.length; j++) {
+              if (/\d+/.test(parts[j])) {
+                streetNumber = parts[j].replace(/[^\d]/g, '');
+                break;
+              }
+            }
+            break;
+          }
+        }
+        
+        // Fallback: take first part as street, look for numbers
+        if (!streetName) {
+          streetName = parts[0] || 'Adresa';
+          for (const part of parts) {
+            if (/\d+/.test(part)) {
+              streetNumber = part.replace(/[^\d]/g, '');
+              break;
+            }
+          }
+        }
+        
+        return {
+          street_name: streetName || 'Strada',
+          street_number: streetNumber || '1'
+        };
+      };
 
-      // Calculate shipping prices with eAWB API
+      const senderStreet = extractStreetInfo(profile.eawb_address || '');
+      const recipientStreet = extractStreetInfo(order.customer_address || '');
+
+      // Calculate shipping prices with proper eAWB API structure
       const priceRequest = {
-        from: {
-          country_code: senderAddress.country_code,
-          county_name: senderAddress.county_name,
-          locality_name: senderAddress.locality_name,
-          locality_id: senderAddress.locality_id,
-          address: senderAddress.address,
+        billing_to: {
+          billing_address_id: null, // We'll use address details instead
         },
-        to: {
-          country_code: recipientAddress.country_code,
-          county_name: recipientAddress.county_name,
-          locality_name: recipientAddress.locality_name,
-          locality_id: recipientAddress.locality_id,
-          address: recipientAddress.address,
+        address_from: {
+          country_code: senderLoc.country_code,
+          county_name: senderLoc.county_name,
+          locality_name: senderLoc.locality_name,
+          locality_id: senderLoc.locality_id,
+          contact: profile.eawb_name || 'Sender',
+          street_name: senderStreet.street_name,
+          street_number: senderStreet.street_number,
+          phone: profile.eawb_phone || '0700000000',
+          email: profile.eawb_email || 'sender@example.com'
         },
-        parcels: [{
-          weight: packageDetails.weight,
-          length: packageDetails.length,
-          width: packageDetails.width,
-          height: packageDetails.height,
-          declared_value: packageDetails.declared_value
-        }],
-        cod_amount: packageDetails.cod_amount > 0 ? packageDetails.cod_amount : undefined,
+        address_to: {
+          country_code: recipientLoc.country_code,
+          county_name: recipientLoc.county_name,
+          locality_name: recipientLoc.locality_name,
+          locality_id: recipientLoc.locality_id,
+          contact: order.customer_name,
+          street_name: recipientStreet.street_name,
+          street_number: recipientStreet.street_number,
+          phone: order.customer_phone || '0700000001',
+          email: order.customer_email
+        },
+        content: {
+          parcels_count: 1,
+          pallets_count: 0,
+          envelopes_count: 0,
+          total_weight: packageDetails.weight
+        },
+        extra: {
+          parcel_content: packageDetails.contents || 'Merchandise'
+        },
+        cod_amount: packageDetails.cod_amount > 0 ? packageDetails.cod_amount : null,
         options: {
           saturday_delivery: false,
           sunday_delivery: false,
@@ -266,40 +356,50 @@ serve(async (req) => {
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      const senderStreet2 = extractStreetInfo(profile.eawb_address || '');
+      const recipientStreet2 = extractStreetInfo(order.customer_address || '');
+
       const eawbOrderData = {
-        from: {
-          name: profile.eawb_name || "Your Company",
-          phone: profile.eawb_phone || "",
-          email: profile.eawb_email || "",
+        billing_to: {
+          billing_address_id: null // Use address details below
+        },
+        address_from: {
           country_code: senderLoc2.country_code,
           county_name: senderLoc2.county_name,
-          locality_id: senderLoc2.locality_id,
           locality_name: senderLoc2.locality_name,
-          address: profile.eawb_address || ""
+          locality_id: senderLoc2.locality_id,
+          contact: profile.eawb_name || 'Your Company',
+          street_name: senderStreet2.street_name,
+          street_number: senderStreet2.street_number,
+          phone: profile.eawb_phone || '0700000000',
+          email: profile.eawb_email || 'sender@example.com'
         },
-        to: {
-          name: order.customer_name,
-          phone: order.customer_phone || "",
-          email: order.customer_email,
+        address_to: {
           country_code: recipientLoc2.country_code,
           county_name: recipientLoc2.county_name,
-          locality_id: recipientLoc2.locality_id,
           locality_name: recipientLoc2.locality_name,
-          address: order.customer_address
+          locality_id: recipientLoc2.locality_id,
+          contact: order.customer_name,
+          street_name: recipientStreet2.street_name,
+          street_number: recipientStreet2.street_number,
+          phone: order.customer_phone || '0700000001',
+          email: order.customer_email
         },
-        parcels: [{
-          weight: packageDetails.weight,
-          length: packageDetails.length,
-          width: packageDetails.width,
-          height: packageDetails.height,
-          declared_value: packageDetails.declared_value,
-          contents: packageDetails.contents
-        }],
+        content: {
+          parcels_count: 1,
+          pallets_count: 0,
+          envelopes_count: 0,
+          total_weight: packageDetails.weight
+        },
+        extra: {
+          parcel_content: packageDetails.contents || 'Merchandise'
+        },
         service: {
           carrier_id: selectedCarrier.carrier_id,
           service_id: selectedCarrier.service_id
         },
-        cod_amount: packageDetails.cod_amount > 0 ? packageDetails.cod_amount : undefined,
+        cod_amount: packageDetails.cod_amount > 0 ? packageDetails.cod_amount : null,
         observations: `Order #${order.id.slice(-8)} - ${packageDetails.contents}`,
         reference: order.id,
         pickup_date: new Date().toISOString().split('T')[0], // Today's date
