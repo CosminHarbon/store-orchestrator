@@ -154,7 +154,17 @@ serve(async (req) => {
       console.log('eAWB Price API response:', JSON.stringify(priceResult, null, 2));
 
       if (!priceResponse.ok) {
-        return new Response(JSON.stringify({ success: false, error: priceResult?.message || 'Price calculation failed', details: priceResult }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        console.error('eAWB Price API failed:', priceResponse.status, priceResult);
+        const errorDetails = priceResult?.errors || priceResult?.details || priceResult?.message || priceResult;
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: `Price API failed (${priceResponse.status})`,
+          message: priceResult?.message || 'Price calculation failed',
+          details: errorDetails,
+          api_response: priceResult
+        }), { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
       }
 
       // Transform the response to a consistent format

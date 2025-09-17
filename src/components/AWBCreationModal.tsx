@@ -83,11 +83,22 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
         setStep('pricing');
       } else {
         console.error('Price calc failed:', data);
-        const details = data?.details?.details || data?.details?.errors || data?.details;
-        const detailsText = Array.isArray(details)
-          ? details.map((d: any) => d.message || JSON.stringify(d)).join('; ')
-          : typeof details === 'string' ? details : JSON.stringify(details);
-        toast.error(`Validation failed: ${data?.error || data?.message || detailsText || 'Unknown error'}`);
+        const apiResponse = data?.api_response || data?.details;
+        const errors = apiResponse?.errors || apiResponse?.details || [];
+        
+        let errorMessage = data?.error || data?.message || 'Unknown error';
+        if (Array.isArray(errors) && errors.length > 0) {
+          const errorDetails = errors.map((e: any) => {
+            if (typeof e === 'string') return e;
+            return e.message || e.error || JSON.stringify(e);
+          }).join('; ');
+          errorMessage = `${errorMessage}: ${errorDetails}`;
+        } else if (typeof errors === 'object' && errors !== null) {
+          errorMessage = `${errorMessage}: ${JSON.stringify(errors)}`;
+        }
+        
+        console.log('Full API response:', JSON.stringify(data, null, 2));
+        toast.error(`Validation failed: ${errorMessage}`);
         return;
       }
     } catch (error: any) {
@@ -137,7 +148,22 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
         setSelectedOption(null);
       } else {
         console.error('Create order failed:', data);
-        toast.error(`Validation failed: ${data?.error || 'Unknown error'}`);
+        const apiResponse = data?.api_response || data?.details;
+        const errors = apiResponse?.errors || apiResponse?.details || [];
+        
+        let errorMessage = data?.error || data?.message || 'Unknown error';
+        if (Array.isArray(errors) && errors.length > 0) {
+          const errorDetails = errors.map((e: any) => {
+            if (typeof e === 'string') return e;
+            return e.message || e.error || JSON.stringify(e);
+          }).join('; ');
+          errorMessage = `${errorMessage}: ${errorDetails}`;
+        } else if (typeof errors === 'object' && errors !== null) {
+          errorMessage = `${errorMessage}: ${JSON.stringify(errors)}`;
+        }
+        
+        console.log('Full API response:', JSON.stringify(data, null, 2));
+        toast.error(`AWB creation failed: ${errorMessage}`);
         setStep('pricing');
         return;
       }
