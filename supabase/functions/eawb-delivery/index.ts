@@ -40,9 +40,16 @@ serve(async (req) => {
       .from('profiles')
       .select('eawb_api_key, eawb_name, eawb_email, eawb_phone, eawb_address')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (profileError || !profile?.eawb_api_key) {
+    console.log('Profile data:', JSON.stringify(profile, null, 2));
+
+    if (profileError) {
+      console.error('Profile error:', profileError);
+      throw new Error(`Profile error: ${profileError.message}`);
+    }
+
+    if (!profile || !profile.eawb_api_key) {
       throw new Error('eAWB configuration not found. Please configure eAWB in your settings.');
     }
 
@@ -59,18 +66,31 @@ serve(async (req) => {
         throw new Error('Order not found');
       }
 
+      // Parse addresses properly
+      const senderAddress = {
+        country_code: "RO",
+        county: profile.eawb_address?.includes(',') 
+          ? profile.eawb_address.split(',')[1]?.trim() || "Prahova"
+          : "Prahova", 
+        locality: profile.eawb_address?.split(',')[0]?.trim() || "Ploiesti",
+        address: profile.eawb_address || "Ploiesti, Prahova"
+      };
+
+      const recipientAddress = {
+        country_code: "RO",
+        county: order.customer_address.includes(',') 
+          ? order.customer_address.split(',').slice(-2)[0]?.trim() || "Bucuresti"
+          : "Bucuresti",
+        locality: order.customer_address.includes(',') 
+          ? order.customer_address.split(',').slice(-1)[0]?.trim() || "Bucuresti"
+          : order.customer_address.split(' ')[0] || "Bucuresti",
+        address: order.customer_address
+      };
+
       // Calculate shipping prices with eAWB API
       const priceRequest = {
-        from: {
-          country_code: "RO", // Default to Romania - could be configurable
-          locality_name: profile.eawb_address?.split(',')[0] || "Bucharest",
-          address: profile.eawb_address || ""
-        },
-        to: {
-          country_code: "RO", 
-          locality_name: order.customer_address.split(',')[0] || "",
-          address: order.customer_address
-        },
+        from: senderAddress,
+        to: recipientAddress,
         parcels: [{
           weight: packageDetails.weight,
           length: packageDetails.length,
@@ -146,18 +166,28 @@ serve(async (req) => {
       // Create eAWB order using the selected carrier
       const eawbOrderData = {
         from: {
-          name: profile.eawb_name,
-          phone: profile.eawb_phone,
-          email: profile.eawb_email,
-          address: profile.eawb_address,
-          country_code: "RO"
+          name: profile.eawb_name || "Your Company",
+          phone: profile.eawb_phone || "",
+          email: profile.eawb_email || "",
+          country_code: "RO",
+          county: profile.eawb_address?.includes(',') 
+            ? profile.eawb_address.split(',')[1]?.trim() || "Prahova"
+            : "Prahova",
+          locality: profile.eawb_address?.split(',')[0]?.trim() || "Ploiesti", 
+          address: profile.eawb_address || "Ploiesti, Prahova"
         },
         to: {
           name: order.customer_name,
-          phone: order.customer_phone,
+          phone: order.customer_phone || "",
           email: order.customer_email,
-          address: order.customer_address,
-          country_code: "RO"
+          country_code: "RO",
+          county: order.customer_address.includes(',') 
+            ? order.customer_address.split(',').slice(-2)[0]?.trim() || "Bucuresti"
+            : "Bucuresti",
+          locality: order.customer_address.includes(',') 
+            ? order.customer_address.split(',').slice(-1)[0]?.trim() || "Bucuresti"
+            : order.customer_address.split(' ')[0] || "Bucuresti",
+          address: order.customer_address
         },
         parcels: [{
           weight: packageDetails.weight,
@@ -173,7 +203,9 @@ serve(async (req) => {
         },
         cod_amount: packageDetails.cod_amount,
         observations: `Order #${order.id.slice(-8)} - ${packageDetails.contents}`,
-        reference: order.id
+        reference: order.id,
+        pickup_date: new Date().toISOString().split('T')[0], // Today's date
+        delivery_date: new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0] // Tomorrow
       };
 
       console.log('Creating eAWB order with data:', JSON.stringify(eawbOrderData, null, 2));
