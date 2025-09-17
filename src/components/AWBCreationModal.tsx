@@ -83,7 +83,11 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
         setStep('pricing');
       } else {
         console.error('Price calc failed:', data);
-        toast.error(`Validation failed: ${data?.error || 'Unknown error'}`);
+        const details = data?.details?.details || data?.details?.errors || data?.details;
+        const detailsText = Array.isArray(details)
+          ? details.map((d: any) => d.message || JSON.stringify(d)).join('; ')
+          : typeof details === 'string' ? details : JSON.stringify(details);
+        toast.error(`Validation failed: ${data?.error || data?.message || detailsText || 'Unknown error'}`);
         return;
       }
     } catch (error: any) {

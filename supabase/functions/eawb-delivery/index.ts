@@ -131,7 +131,7 @@ serve(async (req) => {
           height: packageDetails.height,
           declared_value: packageDetails.declared_value
         }],
-        cod_amount: packageDetails.cod_amount > 0 ? packageDetails.cod_amount : null,
+        cod_amount: packageDetails.cod_amount > 0 ? packageDetails.cod_amount : undefined,
         options: {
           saturday_delivery: false,
           sunday_delivery: false,
@@ -238,7 +238,7 @@ serve(async (req) => {
           carrier_id: selectedCarrier.carrier_id,
           service_id: selectedCarrier.service_id
         },
-        cod_amount: packageDetails.cod_amount,
+        cod_amount: packageDetails.cod_amount > 0 ? packageDetails.cod_amount : undefined,
         observations: `Order #${order.id.slice(-8)} - ${packageDetails.contents}`,
         reference: order.id,
         pickup_date: new Date().toISOString().split('T')[0], // Today's date
