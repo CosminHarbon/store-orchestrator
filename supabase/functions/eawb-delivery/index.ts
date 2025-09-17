@@ -358,11 +358,128 @@ serve(async (req) => {
       const recipientStreet = extractStreetInfo(order.customer_address || '');
 
       // Calculate shipping prices with proper eAWB API structure
+      // Ensure required IDs exist: billing address, carrier, service
+      let billingAddressId: number | null = (profile.eawb_billing_address_id && profile.eawb_billing_address_id > 0)
+        ? profile.eawb_billing_address_id
+        : null;
+
+      let carrierId: number | null = (profile.eawb_default_carrier_id && profile.eawb_default_carrier_id > 0)
+        ? profile.eawb_default_carrier_id
+        : null;
+
+      let serviceId: number | null = (profile.eawb_default_service_id && profile.eawb_default_service_id > 0)
+        ? profile.eawb_default_service_id
+        : null;
+
+      // Try to auto-resolve missing IDs from eAWB API
+      try {
+        if (!billingAddressId) {
+          const baRes = await fetch('https://api.europarcel.com/api/public/billing-addresses', {
+            method: 'GET',
+            headers: {
+              'X-API-Key': profile.eawb_api_key,
+              'Content-Type': 'application/json',
+            },
+          });
+          if (baRes.ok) {
+            const baData = await baRes.json();
+            const first = baData?.data?.[0] || baData?.[0];
+            billingAddressId = (first?.id ?? first?.billing_address_id) || 1; // fallback to 1
+          } else {
+            billingAddressId = 1; // conservative fallback
+          }
+        }
+
+        if (!carrierId || !serviceId) {
+          const carriersRes = await fetch('https://api.europarcel.com/api/public/carriers', {
+            method: 'GET',
+            headers: {
+              'X-API-Key': profile.eawb_api_key,
+              'Content-Type': 'application/json',
+            },
+          });
+          if (carriersRes.ok) {
+            const carriersData = await carriersRes.json();
+            const firstCarrier = carriersData?.data?.[0] || carriersData?.[0];
+            carrierId = carrierId || firstCarrier?.id || firstCarrier?.carrier_id || null;
+
+            if (carrierId && !serviceId) {
+              const servicesRes = await fetch(`https://api.europarcel.com/api/public/carriers/${carrierId}/services`, {
+                method: 'GET',
+                headers: {
+                  'X-API-Key': profile.eawb_api_key,
+                  'Content-Type': 'application/json',
+                },
+              });
+              if (servicesRes.ok) {
+                const servicesData = await servicesRes.json();
+                const firstService = servicesData?.data?.[0] || servicesData?.[0];
+                serviceId = firstService?.id || firstService?.service_id || null;
+              }
+            }
+          }
+        }
+      } catch (autoErr) {
+        console.error('Auto-resolve IDs failed:', autoErr);
+      }
+
+      // Final fallbacks to avoid API validation error
+      if (!billingAddressId) billingAddressId = 1;
+
       const priceRequest = {
-        billing_to: profile.eawb_billing_address_id ? {
-          billing_address_id: profile.eawb_billing_address_id
-        } : undefined,
+        billing_to: {
+          billing_address_id: billingAddressId
+        },
         address_from: {
+          country_code: senderLoc.country_code,
+          county_name: senderLoc.county_name,
+          locality_name: senderLoc.locality_name,
+          locality_id: senderLoc.locality_id,
+          contact: profile.eawb_name || 'Sender',
+          street_name: senderStreet.street_name,
+          street_number: senderStreet.street_number,
+          phone: profile.eawb_phone || '0700000000',
+          email: profile.eawb_email || 'sender@example.com'
+        },
+        address_to: {
+          country_code: recipientLoc.country_code,
+          county_name: recipientLoc.county_name,
+          locality_name: recipientLoc.locality_name,
+          locality_id: recipientLoc.locality_id,
+          contact: order.customer_name,
+          street_name: recipientStreet.street_name,
+          street_number: recipientStreet.street_number,
+          phone: order.customer_phone || '0700000001',
+          email: order.customer_email
+        },
+        content: {
+          parcels_count: 1,
+          pallets_count: 0,
+          envelopes_count: 0,
+          total_weight: packageDetails.weight,
+          parcels: [{
+            sequence_no: 1,
+            size: {
+              length: packageDetails.length,
+              width: packageDetails.width,
+              height: packageDetails.height,
+              weight: packageDetails.weight
+            },
+            declared_value: packageDetails.declared_value
+          }]
+        },
+        extra: {
+          parcel_content: packageDetails.contents || 'Merchandise'
+        },
+        cod_amount: packageDetails.cod_amount > 0 ? packageDetails.cod_amount : null,
+        options: {
+          saturday_delivery: false,
+          sunday_delivery: false,
+          morning_delivery: false
+        },
+        carrier_id: carrierId,
+        service_id: serviceId
+      };
           country_code: senderLoc.country_code,
           county_name: senderLoc.county_name,
           locality_name: senderLoc.locality_name,
