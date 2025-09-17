@@ -238,9 +238,9 @@ serve(async (req) => {
 
       // Calculate shipping prices with proper eAWB API structure
       const priceRequest = {
-        billing_to: {
-          billing_address_id: profile.eawb_billing_address_id || 1 // Use configured billing address or default
-        },
+        billing_to: profile.eawb_billing_address_id ? {
+          billing_address_id: profile.eawb_billing_address_id
+        } : undefined,
         address_from: {
           country_code: senderLoc.country_code,
           county_name: senderLoc.county_name,
@@ -270,11 +270,11 @@ serve(async (req) => {
           total_weight: packageDetails.weight,
           parcels: [{
             sequence_no: 1,
-            weight: packageDetails.weight,
             size: {
               length: packageDetails.length,
               width: packageDetails.width,
-              height: packageDetails.height
+              height: packageDetails.height,
+              weight: packageDetails.weight
             },
             declared_value: packageDetails.declared_value
           }]
@@ -373,9 +373,9 @@ serve(async (req) => {
       const recipientStreet2 = extractStreetInfo(order.customer_address || '');
 
       const eawbOrderData = {
-        billing_to: {
-          billing_address_id: profile.eawb_billing_address_id || 1 // Use configured billing address or default
-        },
+        billing_to: profile.eawb_billing_address_id ? {
+          billing_address_id: profile.eawb_billing_address_id
+        } : undefined,
         address_from: {
           country_code: senderLoc2.country_code,
           county_name: senderLoc2.county_name,
@@ -405,11 +405,11 @@ serve(async (req) => {
           total_weight: packageDetails.weight,
           parcels: [{
             sequence_no: 1,
-            weight: packageDetails.weight,
             size: {
               length: packageDetails.length,
               width: packageDetails.width,
-              height: packageDetails.height
+              height: packageDetails.height,
+              weight: packageDetails.weight
             },
             declared_value: packageDetails.declared_value
           }]
