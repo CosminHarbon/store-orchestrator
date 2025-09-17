@@ -82,7 +82,9 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
         setCarrierOptions(data.carrier_options);
         setStep('pricing');
       } else {
-        throw new Error(data.error || 'Failed to calculate prices');
+        console.error('Price calc failed:', data);
+        toast.error(`Validation failed: ${data?.error || 'Unknown error'}`);
+        return;
       }
     } catch (error: any) {
       console.error('Error calculating prices:', error);
@@ -130,7 +132,10 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
         setCarrierOptions([]);
         setSelectedOption(null);
       } else {
-        throw new Error(data.error || 'Failed to create AWB');
+        console.error('Create order failed:', data);
+        toast.error(`Validation failed: ${data?.error || 'Unknown error'}`);
+        setStep('pricing');
+        return;
       }
     } catch (error: any) {
       console.error('Error creating AWB:', error);

@@ -12,6 +12,27 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_ANON_KEY') ?? '',
 );
 
+async function resolveLocality(apiKey: string, countryCode: string, addressText: string) {
+  try {
+    const query = encodeURIComponent((addressText || '').split(',')[0] || addressText || '');
+    const url = `https://api.europarcel.com/api/public/search/localities/${countryCode}?search=${query}`;
+    const res = await fetch(url, { headers: { 'X-API-Key': apiKey } });
+    const data = await res.json();
+    console.log('Locality search result for', addressText, ':', JSON.stringify(data, null, 2));
+    const item = data?.data?.[0] || data?.[0];
+    if (!res.ok || !item) return null;
+    return {
+      locality_id: item.id || item.locality_id,
+      locality_name: item.locality_name || item.name,
+      county_name: item.county_name || item.county,
+      country_code: countryCode,
+    };
+  } catch (e) {
+    console.error('resolveLocality error:', e);
+    return null;
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -73,26 +94,19 @@ serve(async (req) => {
         return new Response(JSON.stringify({ success: false, error: 'Order not found' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
-      // Parse addresses properly
-      const senderAddress = {
-        country_code: "RO",
-        county_name: profile.eawb_address?.includes(',') 
-          ? profile.eawb_address.split(',')[1]?.trim() || "Prahova"
-          : "Prahova", 
-        locality_name: profile.eawb_address?.split(',')[0]?.trim() || "Ploiesti",
-        address: profile.eawb_address || "Ploiesti, Prahova"
-      };
+      // Resolve localities from free-text addresses
+      const senderLoc = await resolveLocality(profile.eawb_api_key, 'RO', profile.eawb_address || '');
+      const recipientLoc = await resolveLocality(profile.eawb_api_key, 'RO', order.customer_address || '');
 
-      const recipientAddress = {
-        country_code: "RO",
-        county_name: order.customer_address.includes(',') 
-          ? order.customer_address.split(',').slice(-2)[0]?.trim() || "Bucuresti"
-          : "Bucuresti",
-        locality_name: order.customer_address.includes(',') 
-          ? order.customer_address.split(',').slice(-1)[0]?.trim() || "Bucuresti"
-          : order.customer_address.split(' ')[0] || "Bucuresti",
-        address: order.customer_address
-      };
+      if (!senderLoc || !recipientLoc) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'ADDRESS_VALIDATION_FAILED', details: { senderLoc, recipientLoc } }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const senderAddress = { ...senderLoc, address: profile.eawb_address || '' };
+      const recipientAddress = { ...recipientLoc, address: order.customer_address };
 
       // Calculate shipping prices with eAWB API
       const priceRequest = {
@@ -171,29 +185,33 @@ serve(async (req) => {
       }
 
       // Create eAWB order using the selected carrier
+      const senderLoc2 = await resolveLocality(profile.eawb_api_key, 'RO', profile.eawb_address || '');
+      const recipientLoc2 = await resolveLocality(profile.eawb_api_key, 'RO', order.customer_address || '');
+      if (!senderLoc2 || !recipientLoc2) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'ADDRESS_VALIDATION_FAILED', details: { senderLoc: senderLoc2, recipientLoc: recipientLoc2 } }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       const eawbOrderData = {
         from: {
           name: profile.eawb_name || "Your Company",
           phone: profile.eawb_phone || "",
           email: profile.eawb_email || "",
-          country_code: "RO",
-          county: profile.eawb_address?.includes(',') 
-            ? profile.eawb_address.split(',')[1]?.trim() || "Prahova"
-            : "Prahova",
-          locality: profile.eawb_address?.split(',')[0]?.trim() || "Ploiesti", 
-          address: profile.eawb_address || "Ploiesti, Prahova"
+          country_code: senderLoc2.country_code,
+          county_name: senderLoc2.county_name,
+          locality_id: senderLoc2.locality_id,
+          locality_name: senderLoc2.locality_name,
+          address: profile.eawb_address || ""
         },
         to: {
           name: order.customer_name,
           phone: order.customer_phone || "",
           email: order.customer_email,
-          country_code: "RO",
-          county: order.customer_address.includes(',') 
-            ? order.customer_address.split(',').slice(-2)[0]?.trim() || "Bucuresti"
-            : "Bucuresti",
-          locality: order.customer_address.includes(',') 
-            ? order.customer_address.split(',').slice(-1)[0]?.trim() || "Bucuresti"
-            : order.customer_address.split(' ')[0] || "Bucuresti",
+          country_code: recipientLoc2.country_code,
+          county_name: recipientLoc2.county_name,
+          locality_id: recipientLoc2.locality_id,
+          locality_name: recipientLoc2.locality_name,
           address: order.customer_address
         },
         parcels: [{
