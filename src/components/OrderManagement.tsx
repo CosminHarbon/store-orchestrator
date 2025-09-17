@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ResponsiveOrderTable } from './ResponsiveOrderTable';
+import { AWBCreationModal } from './AWBCreationModal';
 
 interface Order {
   id: string;
@@ -48,6 +49,7 @@ const OrderManagement = () => {
   });
   const [refreshingPayments, setRefreshingPayments] = useState<Set<string>>(new Set());
   const [creatingAWB, setCreatingAWB] = useState<Set<string>>(new Set());
+  const [isAWBModalOpen, setIsAWBModalOpen] = useState(false);
   
   const queryClient = useQueryClient();
 
@@ -252,41 +254,13 @@ const OrderManagement = () => {
   };
 
   const handleCreateAWB = async (orderId: string) => {
-    setCreatingAWB(prev => new Set(prev).add(orderId));
-    try {
-      const { data, error } = await supabase.functions.invoke('eawb-delivery', {
-        body: {
-          action: 'create_order',
-          orderId: orderId
-        }
-      });
-
-      if (error) throw error;
-
-      if (data.success) {
-        toast.success(`AWB created successfully! Tracking: ${data.awb_number}`);
-        queryClient.invalidateQueries({ queryKey: ['orders'] });
-        
-        // Update the selected order if it's the same order
-        if (selectedOrder && selectedOrder.id === orderId) {
-          setSelectedOrder({
-            ...selectedOrder,
-            shipping_status: 'processing'
-          });
-        }
-      } else {
-        throw new Error(data.error || 'Failed to create AWB');
-      }
-    } catch (error: any) {
-      console.error('Error creating AWB:', error);
-      toast.error(error.message || 'Failed to create AWB. Please check your eAWB configuration.');
-    } finally {
-      setCreatingAWB(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(orderId);
-        return newSet;
-      });
+    const order = orders?.find(o => o.id === orderId);
+    if (!order) {
+      toast.error('Order not found');
+      return;
     }
+    setSelectedOrder(order);
+    setIsAWBModalOpen(true);
   };
 
   const handleViewOrder = async (order: Order) => {
@@ -398,6 +372,19 @@ const OrderManagement = () => {
         )}
       </CardContent>
 
+      {selectedOrder && (
+        <AWBCreationModal
+          isOpen={isAWBModalOpen}
+          onClose={() => setIsAWBModalOpen(false)}
+          order={selectedOrder}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['orders'] });
+            // Update selected order status
+            setSelectedOrder(prev => prev ? { ...prev, shipping_status: 'processing' } : null);
+          }}
+        />
+      )}
+
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -478,7 +465,7 @@ const OrderManagement = () => {
                     variant="outline"
                     size="sm"
                     className="flex-1"
-                    disabled={selectedOrder.shipping_status === 'delivered' || selectedOrder.shipping_status === 'cancelled' || creatingAWB.has(selectedOrder.id)}
+                    disabled={selectedOrder.shipping_status === 'delivered' || selectedOrder.shipping_status === 'cancelled'}
                   >
                     <Truck className="h-4 w-4 mr-2" />
                     Create AWB

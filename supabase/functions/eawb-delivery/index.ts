@@ -33,7 +33,7 @@ serve(async (req) => {
       throw new Error('Authentication failed');
     }
 
-    const { action, orderId, trackingNumber } = await req.json();
+    const { action, orderId, packageDetails, selectedCarrier, trackingNumber } = await req.json();
 
     // Get user profile for eAWB configuration
     const { data: profile, error: profileError } = await supabase
@@ -46,7 +46,84 @@ serve(async (req) => {
       throw new Error('eAWB configuration not found. Please configure eAWB in your settings.');
     }
 
-    if (action === 'create_order') {
+    if (action === 'calculate_prices') {
+      // Get order details
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('id', orderId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (orderError || !order) {
+        throw new Error('Order not found');
+      }
+
+      // Calculate shipping prices with eAWB API
+      const priceRequest = {
+        from: {
+          country_code: "RO", // Default to Romania - could be configurable
+          locality_name: profile.eawb_address?.split(',')[0] || "Bucharest",
+          address: profile.eawb_address || ""
+        },
+        to: {
+          country_code: "RO", 
+          locality_name: order.customer_address.split(',')[0] || "",
+          address: order.customer_address
+        },
+        parcels: [{
+          weight: packageDetails.weight,
+          length: packageDetails.length,
+          width: packageDetails.width,
+          height: packageDetails.height,
+          declared_value: packageDetails.declared_value
+        }],
+        cod_amount: packageDetails.cod_amount,
+        options: {
+          saturday_delivery: false,
+          sunday_delivery: false,
+          morning_delivery: false
+        }
+      };
+
+      console.log('Calculating prices with request:', JSON.stringify(priceRequest, null, 2));
+
+      const priceResponse = await fetch('https://api.europarcel.com/api/public/orders/prices', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': profile.eawb_api_key,
+        },
+        body: JSON.stringify(priceRequest),
+      });
+
+      const priceResult = await priceResponse.json();
+      console.log('eAWB Price API response:', JSON.stringify(priceResult, null, 2));
+
+      if (!priceResponse.ok) {
+        throw new Error(`eAWB Price API error: ${JSON.stringify(priceResult)}`);
+      }
+
+      // Transform the response to a consistent format
+      const carrierOptions = priceResult.prices?.map((price: any) => ({
+        carrier_id: price.carrier_id,
+        carrier_name: price.carrier_name,
+        service_id: price.service_id,
+        service_name: price.service_name,
+        price: price.total_price,
+        currency: price.currency,
+        delivery_time: price.delivery_time || 'Standard',
+        cod_available: price.cod_available || false
+      })) || [];
+
+      return new Response(JSON.stringify({ 
+        success: true, 
+        carrier_options: carrierOptions
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+
+    } else if (action === 'create_order') {
       // Get order details
       const { data: order, error: orderError } = await supabase
         .from('orders')
@@ -66,35 +143,37 @@ serve(async (req) => {
         throw new Error('Order not found');
       }
 
-      // Create eAWB order
+      // Create eAWB order using the selected carrier
       const eawbOrderData = {
-        recipient: {
-          name: order.customer_name,
-          phone: order.customer_phone,
-          email: order.customer_email,
-          address: order.customer_address
-        },
-        sender: {
+        from: {
           name: profile.eawb_name,
           phone: profile.eawb_phone,
           email: profile.eawb_email,
-          address: profile.eawb_address
+          address: profile.eawb_address,
+          country_code: "RO"
         },
-        parcel: {
-          weight: 1, // Default weight - could be made configurable
-          dimensions: {
-            length: 30,
-            width: 20,
-            height: 10
-          },
-          declared_value: order.total,
-          contents: order.order_items?.map((item: any) => 
-            `${item.product_title} x${item.quantity}`
-          ).join(', ') || 'Order contents',
-          cash_on_delivery: order.payment_status === 'pending' ? order.total : 0
+        to: {
+          name: order.customer_name,
+          phone: order.customer_phone,
+          email: order.customer_email,
+          address: order.customer_address,
+          country_code: "RO"
         },
-        service: "standard", // Could be made configurable
-        observations: `Order #${order.id.slice(-8)}`
+        parcels: [{
+          weight: packageDetails.weight,
+          length: packageDetails.length,
+          width: packageDetails.width,
+          height: packageDetails.height,
+          declared_value: packageDetails.declared_value,
+          contents: packageDetails.contents
+        }],
+        service: {
+          carrier_id: selectedCarrier.carrier_id,
+          service_id: selectedCarrier.service_id
+        },
+        cod_amount: packageDetails.cod_amount,
+        observations: `Order #${order.id.slice(-8)} - ${packageDetails.contents}`,
+        reference: order.id
       };
 
       console.log('Creating eAWB order with data:', JSON.stringify(eawbOrderData, null, 2));
@@ -103,26 +182,26 @@ serve(async (req) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${profile.eawb_api_key}`,
+          'X-API-Key': profile.eawb_api_key,
         },
         body: JSON.stringify(eawbOrderData),
       });
 
       const eawbResult = await eawbResponse.json();
-      console.log('eAWB API response:', JSON.stringify(eawbResult, null, 2));
+      console.log('eAWB Create Order API response:', JSON.stringify(eawbResult, null, 2));
 
       if (!eawbResponse.ok) {
-        throw new Error(`eAWB API error: ${JSON.stringify(eawbResult)}`);
+        throw new Error(`eAWB Create Order API error: ${JSON.stringify(eawbResult)}`);
       }
 
-      // Update order with AWB number
-      const awbNumber = eawbResult.awb || eawbResult.tracking_number || eawbResult.id;
+      // Update order with AWB number and shipping info
+      const awbNumber = eawbResult.awb || eawbResult.tracking_number || eawbResult.order_id;
       if (awbNumber) {
         const { error: updateError } = await supabase
           .from('orders')
           .update({ 
             shipping_status: 'processing',
-            // Store AWB data in a custom field - you might want to add this column
+            // You might want to add an awb_number column to the orders table
             customer_phone: order.customer_phone ? `${order.customer_phone} | AWB: ${awbNumber}` : `AWB: ${awbNumber}`
           })
           .eq('id', orderId)
@@ -136,6 +215,9 @@ serve(async (req) => {
       return new Response(JSON.stringify({ 
         success: true, 
         awb_number: awbNumber,
+        carrier_name: selectedCarrier.carrier_name,
+        service_name: selectedCarrier.service_name,
+        tracking_url: eawbResult.tracking_url,
         eawb_response: eawbResult 
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -146,11 +228,15 @@ serve(async (req) => {
         throw new Error('Tracking number is required');
       }
 
-      const trackingResponse = await fetch(`https://api.europarcel.com/api/public/track/${trackingNumber}`, {
-        method: 'GET',
+      const trackingResponse = await fetch(`https://api.europarcel.com/api/public/orders/track-by-awb`, {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${profile.eawb_api_key}`,
+          'Content-Type': 'application/json',
+          'X-API-Key': profile.eawb_api_key,
         },
+        body: JSON.stringify({
+          awbs: [{ awb: trackingNumber }]
+        }),
       });
 
       const trackingResult = await trackingResponse.json();
@@ -167,7 +253,7 @@ serve(async (req) => {
       });
 
     } else {
-      throw new Error('Invalid action. Use "create_order" or "track_order"');
+      throw new Error('Invalid action. Use "calculate_prices", "create_order" or "track_order"');
     }
 
   } catch (error) {
