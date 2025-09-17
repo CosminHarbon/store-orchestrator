@@ -37,6 +37,11 @@ interface Profile {
   woot_api_key?: string;
   woot_name?: string;
   woot_email?: string;
+  eawb_api_key?: string;
+  eawb_name?: string;
+  eawb_email?: string;
+  eawb_phone?: string;
+  eawb_address?: string;
 }
 
 const StoreSettings = () => {
@@ -56,7 +61,8 @@ const StoreSettings = () => {
     oblio: { api_key: '', name: '', email: '', series_name: '', first_number: '' },
     sameday: { api_key: '', name: '', email: '' },
     netpopia: { api_key: '', name: '', email: '', signature: '', sandbox: true },
-    woot: { api_key: '', name: '', email: '' }
+    woot: { api_key: '', name: '', email: '' },
+    eawb: { api_key: '', name: '', email: '', phone: '', address: '' }
   });
   const [testOrderData, setTestOrderData] = useState({
     name: 'John Doe',
@@ -112,6 +118,13 @@ const StoreSettings = () => {
           api_key: profile.woot_api_key || '',
           name: profile.woot_name || '',
           email: profile.woot_email || ''
+        },
+        eawb: {
+          api_key: profile.eawb_api_key || '',
+          name: profile.eawb_name || '',
+          email: profile.eawb_email || '',
+          phone: profile.eawb_phone || '',
+          address: profile.eawb_address || ''
         }
       });
       
@@ -174,11 +187,16 @@ const StoreSettings = () => {
       netpopia_sandbox: providerConfigs.netpopia.sandbox,
       woot_api_key: providerConfigs.woot.api_key,
       woot_name: providerConfigs.woot.name,
-      woot_email: providerConfigs.woot.email
+      woot_email: providerConfigs.woot.email,
+      eawb_api_key: providerConfigs.eawb.api_key,
+      eawb_name: providerConfigs.eawb.name,
+      eawb_email: providerConfigs.eawb.email,
+      eawb_phone: providerConfigs.eawb.phone,
+      eawb_address: providerConfigs.eawb.address
     });
   };
 
-  const updateProviderConfig = (provider: 'oblio' | 'sameday' | 'netpopia' | 'woot', field: 'api_key' | 'name' | 'email' | 'series_name' | 'first_number' | 'signature' | 'sandbox', value: string | boolean) => {
+  const updateProviderConfig = (provider: 'oblio' | 'sameday' | 'netpopia' | 'woot' | 'eawb', field: 'api_key' | 'name' | 'email' | 'series_name' | 'first_number' | 'signature' | 'sandbox' | 'phone' | 'address', value: string | boolean) => {
     setProviderConfigs(prev => ({
       ...prev,
       [provider]: {
@@ -770,6 +788,7 @@ class StoreAPI {
                       <SelectContent>
                         <SelectItem value="sameday">Sameday</SelectItem>
                         <SelectItem value="woot">Woot.ro</SelectItem>
+                        <SelectItem value="eawb">eAWB.ro</SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-sm text-muted-foreground">
@@ -850,9 +869,71 @@ class StoreAPI {
                              />
                            </div>
                          </div>
-                       </div>
-                     )}
-                  </div>
+                        </div>
+                      )}
+
+                      {integrations.shipping === 'eawb' && (
+                        <div className="mt-4 p-4 border rounded-lg space-y-4">
+                          <h4 className="font-medium">eAWB.ro Configuration</h4>
+                          <div className="grid gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="eawb-api-key">API Key</Label>
+                              <Input
+                                id="eawb-api-key"
+                                type="password"
+                                value={providerConfigs.eawb?.api_key || ''}
+                                onChange={(e) => updateProviderConfig('eawb', 'api_key', e.target.value)}
+                                placeholder="Enter your eAWB.ro API key"
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Your eAWB.ro API authentication key from europarcel.com
+                              </p>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="eawb-name">Company Name</Label>
+                              <Input
+                                id="eawb-name"
+                                value={providerConfigs.eawb?.name || ''}
+                                onChange={(e) => updateProviderConfig('eawb', 'name', e.target.value)}
+                                placeholder="Enter your company name"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="eawb-email">Email Address</Label>
+                              <Input
+                                id="eawb-email"
+                                type="email"
+                                value={providerConfigs.eawb?.email || ''}
+                                onChange={(e) => updateProviderConfig('eawb', 'email', e.target.value)}
+                                placeholder="Enter your email address"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="eawb-phone">Phone Number</Label>
+                              <Input
+                                id="eawb-phone"
+                                type="tel"
+                                value={providerConfigs.eawb?.phone || ''}
+                                onChange={(e) => updateProviderConfig('eawb', 'phone', e.target.value)}
+                                placeholder="Enter your phone number"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="eawb-address">Pickup Address</Label>
+                              <Input
+                                id="eawb-address"
+                                value={providerConfigs.eawb?.address || ''}
+                                onChange={(e) => updateProviderConfig('eawb', 'address', e.target.value)}
+                                placeholder="Enter your pickup address"
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Default address for package pickup
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="payment-provider">Payment Processor</Label>

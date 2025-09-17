@@ -47,6 +47,7 @@ const OrderManagement = () => {
     customer_address: ''
   });
   const [refreshingPayments, setRefreshingPayments] = useState<Set<string>>(new Set());
+  const [creatingAWB, setCreatingAWB] = useState<Set<string>>(new Set());
   
   const queryClient = useQueryClient();
 
@@ -250,6 +251,44 @@ const OrderManagement = () => {
     }
   };
 
+  const handleCreateAWB = async (orderId: string) => {
+    setCreatingAWB(prev => new Set(prev).add(orderId));
+    try {
+      const { data, error } = await supabase.functions.invoke('eawb-delivery', {
+        body: {
+          action: 'create_order',
+          orderId: orderId
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast.success(`AWB created successfully! Tracking: ${data.awb_number}`);
+        queryClient.invalidateQueries({ queryKey: ['orders'] });
+        
+        // Update the selected order if it's the same order
+        if (selectedOrder && selectedOrder.id === orderId) {
+          setSelectedOrder({
+            ...selectedOrder,
+            shipping_status: 'processing'
+          });
+        }
+      } else {
+        throw new Error(data.error || 'Failed to create AWB');
+      }
+    } catch (error: any) {
+      console.error('Error creating AWB:', error);
+      toast.error(error.message || 'Failed to create AWB. Please check your eAWB configuration.');
+    } finally {
+      setCreatingAWB(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(orderId);
+        return newSet;
+      });
+    }
+  };
+
   const handleViewOrder = async (order: Order) => {
     setSelectedOrder(order);
     
@@ -435,14 +474,14 @@ const OrderManagement = () => {
                     Generate & Send Invoice
                   </Button>
                   <Button
-                    onClick={() => toast.info("Shipping integration coming soon!")}
+                    onClick={() => handleCreateAWB(selectedOrder.id)}
                     variant="outline"
                     size="sm"
                     className="flex-1"
-                    disabled={selectedOrder.shipping_status === 'delivered' || selectedOrder.shipping_status === 'cancelled'}
+                    disabled={selectedOrder.shipping_status === 'delivered' || selectedOrder.shipping_status === 'cancelled' || creatingAWB.has(selectedOrder.id)}
                   >
                     <Truck className="h-4 w-4 mr-2" />
-                    Create Shipment
+                    Create AWB
                   </Button>
                   {selectedOrder.invoice_link && (
                     <Button

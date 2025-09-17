@@ -364,6 +364,11 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          eawb_address: string | null
+          eawb_api_key: string | null
+          eawb_email: string | null
+          eawb_name: string | null
+          eawb_phone: string | null
           id: string
           invoicing_provider: string | null
           netpopia_api_key: string | null
@@ -393,6 +398,11 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          eawb_address?: string | null
+          eawb_api_key?: string | null
+          eawb_email?: string | null
+          eawb_name?: string | null
+          eawb_phone?: string | null
           id?: string
           invoicing_provider?: string | null
           netpopia_api_key?: string | null
@@ -422,6 +432,11 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          eawb_address?: string | null
+          eawb_api_key?: string | null
+          eawb_email?: string | null
+          eawb_name?: string | null
+          eawb_phone?: string | null
           id?: string
           invoicing_provider?: string | null
           netpopia_api_key?: string | null
