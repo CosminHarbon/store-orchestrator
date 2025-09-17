@@ -143,7 +143,7 @@ serve(async (req) => {
       throw new Error('Authentication failed');
     }
 
-    const { action, orderId, packageDetails, selectedCarrier, trackingNumber } = await req.json();
+    const { action, orderId, packageDetails, selectedCarrier, trackingNumber, carrier_id } = await req.json();
 
     // Create a Supabase client with the user's auth for RLS-aware queries
     const sb = createClient(
@@ -168,6 +168,127 @@ serve(async (req) => {
 
     if (!profile || !profile.eawb_api_key) {
       return new Response(JSON.stringify({ success: false, error: 'eAWB configuration not found. Please configure eAWB in your settings.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (action === 'fetch_billing_addresses') {
+      try {
+        const response = await fetch('https://api.europarcel.com/api/public/billing-addresses', {
+          method: 'GET',
+          headers: {
+            'X-API-Key': profile.eawb_api_key,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('eAWB Billing Addresses API failed:', response.status, errorText);
+          return new Response(JSON.stringify({
+            success: false,
+            error: `Billing Addresses API failed (${response.status})`,
+            api_response: errorText
+          }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        const data = await response.json();
+        console.log('eAWB Billing Addresses response:', JSON.stringify(data, null, 2));
+
+        return new Response(JSON.stringify({
+          success: true,
+          data: data
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+      } catch (error) {
+        console.error('Error fetching billing addresses:', error);
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Failed to fetch billing addresses',
+          details: error.message
+        }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+    }
+
+    if (action === 'fetch_carriers') {
+      try {
+        const response = await fetch('https://api.europarcel.com/api/public/carriers', {
+          method: 'GET',
+          headers: {
+            'X-API-Key': profile.eawb_api_key,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('eAWB Carriers API failed:', response.status, errorText);
+          return new Response(JSON.stringify({
+            success: false,
+            error: `Carriers API failed (${response.status})`,
+            api_response: errorText
+          }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        const data = await response.json();
+        console.log('eAWB Carriers response:', JSON.stringify(data, null, 2));
+
+        return new Response(JSON.stringify({
+          success: true,
+          data: data
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+      } catch (error) {
+        console.error('Error fetching carriers:', error);
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Failed to fetch carriers',
+          details: error.message
+        }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+    }
+
+    if (action === 'fetch_services') {
+      if (!carrier_id) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Carrier ID is required'
+        }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      
+      try {
+        const response = await fetch(`https://api.europarcel.com/api/public/carriers/${carrier_id}/services`, {
+          method: 'GET',
+          headers: {
+            'X-API-Key': profile.eawb_api_key,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('eAWB Services API failed:', response.status, errorText);
+          return new Response(JSON.stringify({
+            success: false,
+            error: `Services API failed (${response.status})`,
+            api_response: errorText
+          }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        const data = await response.json();
+        console.log('eAWB Services response:', JSON.stringify(data, null, 2));
+
+        return new Response(JSON.stringify({
+          success: true,
+          data: data
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+      } catch (error) {
+        console.error('Error fetching services:', error);
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Failed to fetch services',
+          details: error.message
+        }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
     }
 
     if (action === 'calculate_prices') {

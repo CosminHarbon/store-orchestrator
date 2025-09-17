@@ -76,6 +76,19 @@ const StoreSettings = () => {
     total: '29.99'
   });
   
+  // eAWB fetch states
+  const [eawbData, setEawbData] = useState({
+    billingAddresses: [],
+    carriers: [],
+    services: [],
+  });
+  const [eawbLoading, setEawbLoading] = useState({
+    billingAddresses: false,
+    carriers: false,
+    services: false,
+  });
+  const [selectedCarrierForServices, setSelectedCarrierForServices] = useState('');
+  
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -213,6 +226,99 @@ const StoreSettings = () => {
         [field]: value
       }
     }));
+  };
+
+  // eAWB fetch functions
+  const fetchEawbBillingAddresses = async () => {
+    if (!providerConfigs.eawb?.api_key) {
+      toast.error('Please enter your eAWB API key first');
+      return;
+    }
+
+    setEawbLoading(prev => ({ ...prev, billingAddresses: true }));
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('eawb-delivery', {
+        body: { action: 'fetch_billing_addresses' }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        setEawbData(prev => ({ ...prev, billingAddresses: data.data.data || [] }));
+        toast.success('Billing addresses fetched successfully');
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      console.error('Error fetching billing addresses:', error);
+      toast.error('Failed to fetch billing addresses: ' + error.message);
+    } finally {
+      setEawbLoading(prev => ({ ...prev, billingAddresses: false }));
+    }
+  };
+
+  const fetchEawbCarriers = async () => {
+    if (!providerConfigs.eawb?.api_key) {
+      toast.error('Please enter your eAWB API key first');
+      return;
+    }
+
+    setEawbLoading(prev => ({ ...prev, carriers: true }));
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('eawb-delivery', {
+        body: { action: 'fetch_carriers' }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        setEawbData(prev => ({ ...prev, carriers: data.data.data || [] }));
+        toast.success('Carriers fetched successfully');
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      console.error('Error fetching carriers:', error);
+      toast.error('Failed to fetch carriers: ' + error.message);
+    } finally {
+      setEawbLoading(prev => ({ ...prev, carriers: false }));
+    }
+  };
+
+  const fetchEawbServices = async (carrierId: string) => {
+    if (!providerConfigs.eawb?.api_key) {
+      toast.error('Please enter your eAWB API key first');
+      return;
+    }
+    
+    if (!carrierId) {
+      toast.error('Please select a carrier first');
+      return;
+    }
+
+    setEawbLoading(prev => ({ ...prev, services: true }));
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('eawb-delivery', {
+        body: { action: 'fetch_services', carrier_id: carrierId }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        setEawbData(prev => ({ ...prev, services: data.data.data || [] }));
+        toast.success('Services fetched successfully');
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      console.error('Error fetching services:', error);
+      toast.error('Failed to fetch services: ' + error.message);
+    } finally {
+      setEawbLoading(prev => ({ ...prev, services: false }));
+    }
   };
 
   const copyToClipboard = (text: string) => {
@@ -976,11 +1082,116 @@ class StoreAPI {
                                    Default service ID for pricing (optional)
                                  </p>
                                </div>
-                             </div>
-                           </div>
-                         </div>
-                       )}
-                   </div>
+                              </div>
+                              <div className="space-y-4">
+                                <div className="flex items-center gap-2">
+                                  <h5 className="font-medium text-sm">Fetch Configuration from eAWB</h5>
+                                  <p className="text-xs text-muted-foreground">
+                                    Get your billing addresses, carriers, and services
+                                  </p>
+                                </div>
+                                
+                                <div className="grid gap-3">
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={fetchEawbBillingAddresses}
+                                      disabled={eawbLoading.billingAddresses || !providerConfigs.eawb?.api_key}
+                                    >
+                                      {eawbLoading.billingAddresses ? 'Fetching...' : 'Fetch Billing Addresses'}
+                                    </Button>
+                                    {eawbData.billingAddresses.length > 0 && (
+                                      <Select
+                                        value={providerConfigs.eawb?.billing_address_id || ''}
+                                        onValueChange={(value) => updateProviderConfig('eawb', 'billing_address_id', value)}
+                                      >
+                                        <SelectTrigger className="w-[200px]">
+                                          <SelectValue placeholder="Select billing address" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {eawbData.billingAddresses.map((addr: any) => (
+                                            <SelectItem key={addr.id} value={addr.id.toString()}>
+                                              {addr.name || addr.company_name || `Address ${addr.id}`}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    )}
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={fetchEawbCarriers}
+                                      disabled={eawbLoading.carriers || !providerConfigs.eawb?.api_key}
+                                    >
+                                      {eawbLoading.carriers ? 'Fetching...' : 'Fetch Carriers'}
+                                    </Button>
+                                    {eawbData.carriers.length > 0 && (
+                                      <Select
+                                        value={providerConfigs.eawb?.default_carrier_id || ''}
+                                        onValueChange={(value) => {
+                                          updateProviderConfig('eawb', 'default_carrier_id', value);
+                                          setSelectedCarrierForServices(value);
+                                          setEawbData(prev => ({ ...prev, services: [] })); // Clear services when carrier changes
+                                        }}
+                                      >
+                                        <SelectTrigger className="w-[200px]">
+                                          <SelectValue placeholder="Select default carrier" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {eawbData.carriers.map((carrier: any) => (
+                                            <SelectItem key={carrier.id} value={carrier.id.toString()}>
+                                              {carrier.name}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    )}
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => fetchEawbServices(selectedCarrierForServices || providerConfigs.eawb?.default_carrier_id)}
+                                      disabled={
+                                        eawbLoading.services || 
+                                        !providerConfigs.eawb?.api_key || 
+                                        (!selectedCarrierForServices && !providerConfigs.eawb?.default_carrier_id)
+                                      }
+                                    >
+                                      {eawbLoading.services ? 'Fetching...' : 'Fetch Services'}
+                                    </Button>
+                                    {eawbData.services.length > 0 && (
+                                      <Select
+                                        value={providerConfigs.eawb?.default_service_id || ''}
+                                        onValueChange={(value) => updateProviderConfig('eawb', 'default_service_id', value)}
+                                      >
+                                        <SelectTrigger className="w-[200px]">
+                                          <SelectValue placeholder="Select default service" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {eawbData.services.map((service: any) => (
+                                            <SelectItem key={service.id} value={service.id.toString()}>
+                                              {service.name}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                    </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="payment-provider">Payment Processor</Label>
