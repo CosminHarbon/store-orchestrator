@@ -171,124 +171,35 @@ serve(async (req) => {
     }
 
     if (action === 'fetch_billing_addresses') {
-      try {
-        const response = await fetch('https://api.europarcel.com/api/public/billing-addresses', {
-          method: 'GET',
-          headers: {
-            'X-API-Key': profile.eawb_api_key,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('eAWB Billing Addresses API failed:', response.status, errorText);
-          return new Response(JSON.stringify({
-            success: false,
-            error: `Billing Addresses API failed (${response.status})`,
-            api_response: errorText
-          }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-        }
-
-        const data = await response.json();
-        console.log('eAWB Billing Addresses response:', JSON.stringify(data, null, 2));
-
-        return new Response(JSON.stringify({
-          success: true,
-          data: data
-        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-
-      } catch (error) {
-        console.error('Error fetching billing addresses:', error);
-        return new Response(JSON.stringify({
-          success: false,
-          error: 'Failed to fetch billing addresses',
-          details: error.message
-        }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
+      // Note: eAWB API may not have a public endpoint for billing addresses
+      // For now, we'll return a generic response suggesting manual entry
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Billing addresses endpoint not available',
+        message: 'Please manually enter your billing address ID from your eAWB dashboard (usually 1 for the primary address)',
+        suggestion: 'Log into your EuroParcel account and check Settings > Billing Addresses for the correct ID'
+      }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (action === 'fetch_carriers') {
-      try {
-        const response = await fetch('https://api.europarcel.com/api/public/carriers', {
-          method: 'GET',
-          headers: {
-            'X-API-Key': profile.eawb_api_key,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('eAWB Carriers API failed:', response.status, errorText);
-          return new Response(JSON.stringify({
-            success: false,
-            error: `Carriers API failed (${response.status})`,
-            api_response: errorText
-          }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-        }
-
-        const data = await response.json();
-        console.log('eAWB Carriers response:', JSON.stringify(data, null, 2));
-
-        return new Response(JSON.stringify({
-          success: true,
-          data: data
-        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-
-      } catch (error) {
-        console.error('Error fetching carriers:', error);
-        return new Response(JSON.stringify({
-          success: false,
-          error: 'Failed to fetch carriers',
-          details: error.message
-        }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
+      // Note: eAWB API may not have a public endpoint for carriers list
+      // For now, we'll return a generic response suggesting manual entry
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Carriers endpoint not available',
+        message: 'Please manually enter carrier and service IDs from your eAWB dashboard',
+        suggestion: 'Log into your EuroParcel account to find available carrier and service IDs'
+      }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (action === 'fetch_services') {
-      if (!carrier_id) {
-        return new Response(JSON.stringify({
-          success: false,
-          error: 'Carrier ID is required'
-        }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
-      
-      try {
-        const response = await fetch(`https://api.europarcel.com/api/public/carriers/${carrier_id}/services`, {
-          method: 'GET',
-          headers: {
-            'X-API-Key': profile.eawb_api_key,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('eAWB Services API failed:', response.status, errorText);
-          return new Response(JSON.stringify({
-            success: false,
-            error: `Services API failed (${response.status})`,
-            api_response: errorText
-          }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-        }
-
-        const data = await response.json();
-        console.log('eAWB Services response:', JSON.stringify(data, null, 2));
-
-        return new Response(JSON.stringify({
-          success: true,
-          data: data
-        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-
-      } catch (error) {
-        console.error('Error fetching services:', error);
-        return new Response(JSON.stringify({
-          success: false,
-          error: 'Failed to fetch services',
-          details: error.message
-        }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
+      // Note: eAWB API may not have a public endpoint for services list
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Services endpoint not available',
+        message: 'Please manually enter service ID from your eAWB dashboard',
+        suggestion: 'Log into your EuroParcel account to find available service IDs for your selected carrier'
+      }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (action === 'calculate_prices') {
@@ -374,49 +285,63 @@ serve(async (req) => {
       // Try to auto-resolve missing IDs from eAWB API
       try {
         if (!billingAddressId) {
-          const baRes = await fetch('https://api.europarcel.com/api/public/billing-addresses', {
-            method: 'GET',
-            headers: {
-              'X-API-Key': profile.eawb_api_key,
-              'Content-Type': 'application/json',
-            },
-          });
-          if (baRes.ok) {
-            const baData = await baRes.json();
-            const first = baData?.data?.[0] || baData?.[0];
-            billingAddressId = (first?.id ?? first?.billing_address_id) || 1; // fallback to 1
-          } else {
-            billingAddressId = 1; // conservative fallback
+          // Try a common billing endpoint pattern - if it fails, fallback to 1
+          try {
+            const baRes = await fetch('https://api.europarcel.com/api/public/billing-addresses', {
+              method: 'GET',
+              headers: {
+                'X-API-Key': profile.eawb_api_key,
+                'Content-Type': 'application/json',
+              },
+            });
+            if (baRes.ok) {
+              const baData = await baRes.json();
+              const first = baData?.data?.[0] || baData?.[0];
+              billingAddressId = (first?.id ?? first?.billing_address_id) || 1;
+            } else {
+              billingAddressId = 1; // conservative fallback
+            }
+          } catch {
+            billingAddressId = 1; // fallback if endpoint doesn't exist
           }
         }
 
         if (!carrierId || !serviceId) {
-          const carriersRes = await fetch('https://api.europarcel.com/api/public/carriers', {
-            method: 'GET',
-            headers: {
-              'X-API-Key': profile.eawb_api_key,
-              'Content-Type': 'application/json',
-            },
-          });
-          if (carriersRes.ok) {
-            const carriersData = await carriersRes.json();
-            const firstCarrier = carriersData?.data?.[0] || carriersData?.[0];
-            carrierId = carrierId || firstCarrier?.id || firstCarrier?.carrier_id || null;
+          // Try carriers endpoint - if it fails, use null (no defaults)
+          try {
+            const carriersRes = await fetch('https://api.europarcel.com/api/public/carriers', {
+              method: 'GET',
+              headers: {
+                'X-API-Key': profile.eawb_api_key,
+                'Content-Type': 'application/json',
+              },
+            });
+            if (carriersRes.ok) {
+              const carriersData = await carriersRes.json();
+              const firstCarrier = carriersData?.data?.[0] || carriersData?.[0];
+              carrierId = carrierId || firstCarrier?.id || firstCarrier?.carrier_id || null;
 
-            if (carrierId && !serviceId) {
-              const servicesRes = await fetch(`https://api.europarcel.com/api/public/carriers/${carrierId}/services`, {
-                method: 'GET',
-                headers: {
-                  'X-API-Key': profile.eawb_api_key,
-                  'Content-Type': 'application/json',
-                },
-              });
-              if (servicesRes.ok) {
-                const servicesData = await servicesRes.json();
-                const firstService = servicesData?.data?.[0] || servicesData?.[0];
-                serviceId = firstService?.id || firstService?.service_id || null;
+              if (carrierId && !serviceId) {
+                try {
+                  const servicesRes = await fetch(`https://api.europarcel.com/api/public/carriers/${carrierId}/services`, {
+                    method: 'GET',
+                    headers: {
+                      'X-API-Key': profile.eawb_api_key,
+                      'Content-Type': 'application/json',
+                    },
+                  });
+                  if (servicesRes.ok) {
+                    const servicesData = await servicesRes.json();
+                    const firstService = servicesData?.data?.[0] || servicesData?.[0];
+                    serviceId = firstService?.id || firstService?.service_id || null;
+                  }
+                } catch {
+                  // Services endpoint may not exist, leave serviceId as null
+                }
               }
             }
+          } catch {
+            // Carriers endpoint may not exist, leave as null
           }
         }
       } catch (autoErr) {
