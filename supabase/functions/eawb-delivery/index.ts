@@ -172,24 +172,24 @@ serve(async (req) => {
 
     if (action === 'fetch_billing_addresses') {
       // Note: eAWB API may not have a public endpoint for billing addresses
-      // For now, we'll return a generic response suggesting manual entry
+      // For now, return an informational message as a 200 response so the UI can show it nicely
       return new Response(JSON.stringify({
         success: false,
         error: 'Billing addresses endpoint not available',
         message: 'Please manually enter your billing address ID from your eAWB dashboard (usually 1 for the primary address)',
         suggestion: 'Log into your EuroParcel account and check Settings > Billing Addresses for the correct ID'
-      }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (action === 'fetch_carriers') {
       // Note: eAWB API may not have a public endpoint for carriers list
-      // For now, we'll return a generic response suggesting manual entry
+      // Return an informational message with 200 so the UI can display it
       return new Response(JSON.stringify({
         success: false,
         error: 'Carriers endpoint not available',
         message: 'Please manually enter carrier and service IDs from your eAWB dashboard',
         suggestion: 'Log into your EuroParcel account to find available carrier and service IDs'
-      }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (action === 'fetch_services') {
@@ -199,7 +199,7 @@ serve(async (req) => {
         error: 'Services endpoint not available',
         message: 'Please manually enter service ID from your eAWB dashboard',
         suggestion: 'Log into your EuroParcel account to find available service IDs for your selected carrier'
-      }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (action === 'calculate_prices') {
@@ -348,8 +348,16 @@ serve(async (req) => {
         console.error('Auto-resolve IDs failed:', autoErr);
       }
 
-      // Final fallbacks to avoid API validation error
+      // Ensure required IDs; billing address can default to 1, but carrier/service must be set explicitly per eAWB API
       if (!billingAddressId) billingAddressId = 1;
+      if (!carrierId || !serviceId) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'MISSING_CONFIGURATION',
+          message: 'Please set default Carrier ID and Service ID in Store Settings → Delivery (eAWB.ro). These IDs are required by the eAWB API.',
+          details: { carrier_id: carrierId, service_id: serviceId, billing_address_id: billingAddressId }
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
 
       const priceRequest = {
         billing_to: {
@@ -404,55 +412,6 @@ serve(async (req) => {
         },
         carrier_id: carrierId,
         service_id: serviceId
-      };
-          country_code: senderLoc.country_code,
-          county_name: senderLoc.county_name,
-          locality_name: senderLoc.locality_name,
-          locality_id: senderLoc.locality_id,
-          contact: profile.eawb_name || 'Sender',
-          street_name: senderStreet.street_name,
-          street_number: senderStreet.street_number,
-          phone: profile.eawb_phone || '0700000000',
-          email: profile.eawb_email || 'sender@example.com'
-        },
-        address_to: {
-          country_code: recipientLoc.country_code,
-          county_name: recipientLoc.county_name,
-          locality_name: recipientLoc.locality_name,
-          locality_id: recipientLoc.locality_id,
-          contact: order.customer_name,
-          street_name: recipientStreet.street_name,
-          street_number: recipientStreet.street_number,
-          phone: order.customer_phone || '0700000001',
-          email: order.customer_email
-        },
-        content: {
-          parcels_count: 1,
-          pallets_count: 0,
-          envelopes_count: 0,
-          total_weight: packageDetails.weight,
-          parcels: [{
-            sequence_no: 1,
-            size: {
-              length: packageDetails.length,
-              width: packageDetails.width,
-              height: packageDetails.height,
-              weight: packageDetails.weight
-            },
-            declared_value: packageDetails.declared_value
-          }]
-        },
-        extra: {
-          parcel_content: packageDetails.contents || 'Merchandise'
-        },
-        cod_amount: packageDetails.cod_amount > 0 ? packageDetails.cod_amount : null,
-        options: {
-          saturday_delivery: false,
-          sunday_delivery: false,
-          morning_delivery: false
-        },
-        carrier_id: profile.eawb_default_carrier_id || null,
-        service_id: profile.eawb_default_service_id || null
       };
 
       console.log('Calculating prices with request:', JSON.stringify(priceRequest, null, 2));
