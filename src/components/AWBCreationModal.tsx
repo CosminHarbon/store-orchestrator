@@ -178,7 +178,7 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
             <Package className="h-5 w-5" />
             Create AWB - Order #{order.id.slice(-8)}
           </DialogTitle>
-          <DialogDescription>Enter package details, get quotes, then pick a courier.</DialogDescription>
+          <DialogDescription>Enter package details, get quotes from multiple carriers, then create your shipping label.</DialogDescription>
         </DialogHeader>
 
         {step === 'package' && (

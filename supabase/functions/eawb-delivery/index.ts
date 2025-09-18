@@ -430,7 +430,7 @@ serve(async (req) => {
       const senderStreetInfo = extractStreetInfo(profile.eawb_address);
       const recipientStreetInfo = extractStreetInfo(order.customer_address);
 
-      // Build address objects
+      // Build address objects using the resolved locality results
       const senderLoc = {
         country_code: 'RO',
         county_name: senderLocalityResult.county_name,
@@ -444,6 +444,33 @@ serve(async (req) => {
         locality_name: recipientLocalityResult.locality_name,
         locality_id: recipientLocalityResult.locality_id
       };
+
+      // Get billing address ID
+      let billingAddressId: number | null = (profile.eawb_billing_address_id && profile.eawb_billing_address_id > 0)
+        ? profile.eawb_billing_address_id
+        : null;
+
+      // Auto-resolve billing address if missing
+      if (!billingAddressId) {
+        try {
+          const baRes = await fetch('https://api.europarcel.com/api/public/billing-addresses', {
+            method: 'GET',
+            headers: {
+              'X-API-Key': profile.eawb_api_key,
+              'Content-Type': 'application/json',
+            },
+          });
+          if (baRes.ok) {
+            const baData = await baRes.json();
+            const first = baData?.data?.[0] || baData?.[0];
+            billingAddressId = (first?.id ?? first?.billing_address_id) || 1;
+          } else {
+            billingAddressId = 1;
+          }
+        } catch {
+          billingAddressId = 1;
+        }
+      }
 
       // Calculate prices for all carrier/service combinations
       const allQuotes = [];
@@ -506,8 +533,8 @@ serve(async (req) => {
               sunday_delivery: false,
               morning_delivery: false
             },
-            carrier_id: carrier.id,
-            service_id: parseInt(service.service_code)
+            carrier_id: profile.eawb_default_carrier_id || 2, // Use profile default or fallback to DPD
+            service_id: profile.eawb_default_service_id || parseInt(service.service_code)
           };
 
           console.log(`Calculating prices for ${carrier.name} - ${service.name}:`, priceRequest);
@@ -565,42 +592,6 @@ serve(async (req) => {
         JSON.stringify({ success: true, carrier_options: allQuotes }),
         { headers: corsHeaders }
       );
-
-      if (!priceResponse.ok) {
-        console.error('eAWB Price API failed:', priceResponse.status, priceResult);
-        const errorDetails = priceResult?.errors || priceResult?.details || priceResult?.message || priceResult;
-        return new Response(JSON.stringify({ 
-          success: false, 
-          error: `Price API failed (${priceResponse.status})`,
-          message: priceResult?.message || 'Price calculation failed',
-          details: errorDetails,
-          api_response: priceResult
-        }), { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
-      }
-
-      // Transform the response to a consistent format
-      const carrierOptions = priceResult.data?.map((option: any) => ({
-        carrier_id: option.carrier_id,
-        carrier_name: option.carrier,
-        service_id: option.service_id,
-        service_name: option.service_name,
-        price: option.price?.total || option.price?.amount || 0,
-        currency: option.price?.currency || 'RON',
-        delivery_time: `${option.estimated_pickup_date} → ${option.estimated_delivery_date}`,
-        cod_available: true, // Most eAWB services support COD
-        estimated_pickup_date: option.estimated_pickup_date,
-        estimated_delivery_date: option.estimated_delivery_date
-      })) || [];
-
-      return new Response(JSON.stringify({ 
-        success: true, 
-        carrier_options: carrierOptions,
-        validation_address: priceResult.validation_address
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
 
     } else if (action === 'create_order') {
       // Get order details
