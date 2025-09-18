@@ -143,7 +143,21 @@ serve(async (req) => {
       throw new Error('Authentication failed');
     }
 
-    const { action, orderId, packageDetails, selectedCarrier, trackingNumber, carrier_id } = await req.json();
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (parseError) {
+      console.error('Failed to parse request body:', parseError);
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'Invalid JSON in request body' 
+      }), { 
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+
+    const { action, orderId, packageDetails, selectedCarrier, trackingNumber, carrier_id } = requestBody;
 
     // Create a Supabase client with the user's auth for RLS-aware queries
     const sb = createClient(
