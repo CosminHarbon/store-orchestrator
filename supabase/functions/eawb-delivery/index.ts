@@ -137,8 +137,7 @@ serve(async (req) => {
           error: 'Missing eAWB configuration. Please configure your eAWB settings first.',
           details: { profileError, hasProfile: !!profile, hasApiKey: !!profile?.eawb_api_key }
         }), { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
       }
 
@@ -159,8 +158,7 @@ serve(async (req) => {
           error: 'Order not found',
           details: { orderError, order_id, user_id: user.id }
         }), { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
       }
 
@@ -198,8 +196,7 @@ serve(async (req) => {
           success: false, 
           error: 'Failed to resolve sender address' 
         }), { 
-          status: 400, 
-          headers: corsHeaders 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
       }
 
@@ -210,8 +207,7 @@ serve(async (req) => {
           success: false, 
           error: 'Failed to resolve recipient address' 
         }), { 
-          status: 400, 
-          headers: corsHeaders 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
       }
 
