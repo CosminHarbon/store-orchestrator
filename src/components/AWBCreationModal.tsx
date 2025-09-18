@@ -64,8 +64,8 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
       const { data, error } = await supabase.functions.invoke('eawb-delivery', {
         body: {
           action: 'calculate_prices',
-          orderId: order.id,
-          packageDetails: packageDetails
+          order_id: order.id,
+          package_details: packageDetails
         }
       });
 
@@ -115,9 +115,10 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
       const { data, error } = await supabase.functions.invoke('eawb-delivery', {
         body: {
           action: 'create_order',
-          orderId: order.id,
-          packageDetails: packageDetails,
-          selectedCarrier: selectedCarrierOption
+          order_id: order.id,
+          package_details: packageDetails,
+          selected_carrier: selectedCarrierOption?.carrier_id || selectedCarrierOption,
+          selected_service: selectedCarrierOption?.service_id || 1
         }
       });
 
