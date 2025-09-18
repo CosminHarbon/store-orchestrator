@@ -550,10 +550,8 @@ serve(async (req) => {
         extra: {
           parcel_content: packageDetails.contents || 'Merchandise'
         },
-        service: {
-          carrier_id: selectedCarrier.carrier_id,
-          service_id: selectedCarrier.service_id
-        },
+        carrier_id: selectedCarrier.carrier_id,
+        service_id: selectedCarrier.service_id,
         cod_amount: packageDetails.cod_amount > 0 ? packageDetails.cod_amount : null,
         observations: `Order #${order.id.slice(-8)} - ${packageDetails.contents}`,
         reference: order.id,
