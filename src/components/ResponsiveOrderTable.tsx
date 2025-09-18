@@ -1,4 +1,4 @@
-import { Eye, Package, User, Mail, Phone, MapPin, Calendar, CreditCard, Truck, Receipt, Send, ExternalLink, Edit } from 'lucide-react';
+import { Eye, Package, User, Mail, Phone, MapPin, Calendar, CreditCard, Truck, Receipt, Send, ExternalLink, Edit, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,9 @@ interface Order {
   shipping_status: string;
   created_at: string;
   invoice_link?: string;
+  awb_number?: string;
+  carrier_name?: string;
+  tracking_url?: string;
 }
 
 interface ResponsiveOrderTableProps {
@@ -26,9 +29,11 @@ interface ResponsiveOrderTableProps {
   onRefreshPayment: (orderId: string) => void;
   refreshingPayments: Set<string>;
   onManualComplete: (orderId: string) => void;
+  onCancelAWB?: (orderId: string) => void;
+  creatingAWB?: Set<string>;
 }
 
-export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoice, onEditOrder, onRefreshPayment, refreshingPayments, onManualComplete }: ResponsiveOrderTableProps) {
+export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoice, onEditOrder, onRefreshPayment, refreshingPayments, onManualComplete, onCancelAWB, creatingAWB }: ResponsiveOrderTableProps) {
   
   const handleManualComplete = (orderId: string) => {
     onManualComplete(orderId);
@@ -185,6 +190,18 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                         <ExternalLink className="h-4 w-4" />
                       </Button>
                     )}
+                    {order.awb_number && onCancelAWB && order.shipping_status !== 'delivered' && order.shipping_status !== 'cancelled' && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onCancelAWB(order.id)}
+                        title="Cancel AWB"
+                        disabled={creatingAWB?.has(order.id)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
@@ -303,17 +320,29 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                      )}
                   </div>
                   
-                  {order.invoice_link && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => window.open(order.invoice_link, '_blank')}
-                      className="w-full"
-                    >
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      View Invoice
-                    </Button>
-                  )}
+                   {order.invoice_link && (
+                     <Button
+                       size="sm"
+                       variant="outline"
+                       onClick={() => window.open(order.invoice_link, '_blank')}
+                       className="w-full"
+                     >
+                       <ExternalLink className="h-4 w-4 mr-2" />
+                       View Invoice
+                     </Button>
+                   )}
+                   {order.awb_number && onCancelAWB && order.shipping_status !== 'delivered' && order.shipping_status !== 'cancelled' && (
+                     <Button
+                       size="sm"
+                       variant="outline"
+                       onClick={() => onCancelAWB(order.id)}
+                       disabled={creatingAWB?.has(order.id)}
+                       className="w-full text-destructive hover:text-destructive"
+                     >
+                       <X className="h-4 w-4 mr-2" />
+                       Cancel AWB
+                     </Button>
+                   )}
                 </div>
               </div>
             </CardContent>

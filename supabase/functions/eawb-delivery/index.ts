@@ -643,8 +643,83 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
 
+    } else if (action === 'cancel_order') {
+      // Get order details to get AWB number
+      const { data: order, error: orderError } = await sb
+        .from('orders')
+        .select('awb_number, shipping_status')
+        .eq('id', orderId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (orderError || !order) {
+        return new Response(JSON.stringify({ success: false, error: 'Order not found' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      if (!order.awb_number) {
+        return new Response(JSON.stringify({ success: false, error: 'No AWB number found for this order' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      if (order.shipping_status === 'delivered' || order.shipping_status === 'cancelled') {
+        return new Response(JSON.stringify({ success: false, error: 'Cannot cancel order that is already delivered or cancelled' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      console.log('Cancelling eAWB order with AWB:', order.awb_number);
+
+      // Call eAWB cancel API
+      const cancelResponse = await fetch(`https://api.europarcel.com/api/public/orders/cancel`, {
+        method: 'POST', 
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': profile.eawb_api_key,
+        },
+        body: JSON.stringify({
+          awb: order.awb_number
+        }),
+      });
+
+      const cancelResult = await cancelResponse.json();
+      console.log('eAWB Cancel API response:', JSON.stringify(cancelResult, null, 2));
+
+      if (!cancelResponse.ok) {
+        console.error('eAWB Cancel API failed:', cancelResponse.status, cancelResult);
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: `Cancel API failed (${cancelResponse.status})`,
+          message: cancelResult?.message || 'Failed to cancel AWB',
+          details: cancelResult 
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      // Update order shipping status to cancelled
+      const { error: updateError } = await sb
+        .from('orders')
+        .update({
+          shipping_status: 'cancelled'
+        })
+        .eq('id', orderId)
+        .eq('user_id', user.id);
+
+      if (updateError) {
+        console.error('Error updating order status after AWB cancellation:', updateError);
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: 'AWB cancelled but failed to update order status',
+          details: updateError 
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'AWB cancelled successfully',
+        awb_number: order.awb_number,
+        cancel_response: cancelResult 
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+
     } else {
-      throw new Error('Invalid action. Use "calculate_prices", "create_order" or "track_order"');
+      throw new Error('Invalid action. Use "calculate_prices", "create_order", "track_order", or "cancel_order"');
     }
 
   } catch (error) {

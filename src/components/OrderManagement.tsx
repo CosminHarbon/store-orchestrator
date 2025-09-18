@@ -267,6 +267,57 @@ const OrderManagement = () => {
     setIsAWBModalOpen(true);
   };
 
+  const handleCancelAWB = async (orderId: string) => {
+    const order = orders?.find(o => o.id === orderId);
+    if (!order) {
+      toast.error('Order not found');
+      return;
+    }
+
+    if (!order.awb_number) {
+      toast.error('No AWB number found for this order');
+      return;
+    }
+
+    setCreatingAWB(prev => new Set(prev).add(orderId));
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('eawb-delivery', {
+        body: {
+          action: 'cancel_order',
+          orderId: orderId
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to cancel AWB');
+      }
+
+      toast.success('AWB cancelled successfully');
+      
+      // Update selected order status if it's the same order
+      setSelectedOrder(prev => prev && prev.id === orderId 
+        ? { ...prev, shipping_status: 'cancelled' } 
+        : prev
+      );
+      
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    } catch (error: any) {
+      console.error('Error cancelling AWB:', error);
+      toast.error(error.message || 'Failed to cancel AWB');
+    } finally {
+      setCreatingAWB(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(orderId);
+        return newSet;
+      });
+    }
+  };
+
   const handleViewOrder = async (order: Order) => {
     setSelectedOrder(order);
     
@@ -357,6 +408,8 @@ const OrderManagement = () => {
           onRefreshPayment={handleRefreshPayment}
           refreshingPayments={refreshingPayments}
           onManualComplete={handleManualComplete}
+          onCancelAWB={handleCancelAWB}
+          creatingAWB={creatingAWB}
         />
         {filteredOrders.length === 0 && !searchQuery && (
           <div className="text-center py-8 text-muted-foreground">
@@ -465,15 +518,29 @@ const OrderManagement = () => {
                     Generate & Send Invoice
                   </Button>
                   {selectedOrder.awb_number ? (
-                    <Button
-                      onClick={() => window.open(selectedOrder.tracking_url, '_blank')}
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                    >
-                      <Truck className="h-4 w-4 mr-2" />
-                      Track Package
-                    </Button>
+                    <div className="flex gap-2 flex-1">
+                      <Button
+                        onClick={() => window.open(selectedOrder.tracking_url, '_blank')}
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                      >
+                        <Truck className="h-4 w-4 mr-2" />
+                        Track Package
+                      </Button>
+                      {selectedOrder.shipping_status !== 'delivered' && selectedOrder.shipping_status !== 'cancelled' && (
+                        <Button
+                          onClick={() => handleCancelAWB(selectedOrder.id)}
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive hover:text-destructive-foreground"
+                          disabled={creatingAWB.has(selectedOrder.id)}
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Cancel AWB
+                        </Button>
+                      )}
+                    </div>
                   ) : (
                     <Button
                       onClick={() => handleCreateAWB(selectedOrder.id)}
