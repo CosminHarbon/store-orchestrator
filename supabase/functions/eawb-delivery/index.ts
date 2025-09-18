@@ -348,14 +348,18 @@ serve(async (req) => {
         console.error('Auto-resolve IDs failed:', autoErr);
       }
 
-      // Ensure required IDs; billing address can default to 1, but carrier/service must be set explicitly per eAWB API
-      if (!billingAddressId) billingAddressId = 1;
-      if (!carrierId || !serviceId) {
+      // All required IDs must be set explicitly per eAWB API - no defaults
+      if (!billingAddressId || !carrierId || !serviceId) {
         return new Response(JSON.stringify({
           success: false,
           error: 'MISSING_CONFIGURATION',
-          message: 'Please set default Carrier ID and Service ID in Store Settings → Delivery (eAWB.ro). These IDs are required by the eAWB API.',
-          details: { carrier_id: carrierId, service_id: serviceId, billing_address_id: billingAddressId }
+          message: 'Please set Billing Address ID, Default Carrier ID, and Service ID in Store Settings → Delivery (eAWB.ro). Log into your EuroParcel dashboard to find the correct IDs that exist in your account.',
+          details: { 
+            carrier_id: carrierId, 
+            service_id: serviceId, 
+            billing_address_id: billingAddressId,
+            help: 'Go to your EuroParcel account → Settings to find: 1) Billing Addresses (get the ID), 2) Available carriers and their services'
+          }
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
