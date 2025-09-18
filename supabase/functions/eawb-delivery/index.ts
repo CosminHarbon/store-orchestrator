@@ -275,8 +275,8 @@ serve(async (req) => {
       const allQuotes = []
       
       for (const carrier of carriers) {
-        // Only calculate for DPD currently (others need different API endpoints)
-        if (carrier.code !== 'dpd') {
+        // Calculate prices for all active carriers that have services
+        if (!carrier.carrier_services || carrier.carrier_services.length === 0) {
           continue
         }
 
