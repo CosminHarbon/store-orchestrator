@@ -34,9 +34,9 @@ serve(async (req) => {
       });
     }
 
-    const { action, order_id, package_details, selected_carrier, selected_service } = requestBody;
+    const { action, order_id, package_details, selected_carrier, selected_service, address_override } = requestBody;
     console.log('Action received:', action)
-    console.log('Request body:', { action, order_id, package_details, selected_carrier, selected_service })
+    console.log('Request body:', { action, order_id, package_details, selected_carrier, selected_service, address_override })
 
     // Get authenticated user
     const { data: { user } } = await supabaseClient.auth.getUser()
@@ -285,6 +285,11 @@ serve(async (req) => {
         sector: parsed.sector || null
       };
     };
+    // Extract Romanian postal code (6 digits)
+    const extractPostalCode = (address: string): string | null => {
+      const match = address.match(/\b\d{6}\b/);
+      return match ? match[0] : null;
+    };
 
     const buildParcels = (pkg: any) => {
       const count = Math.max(1, Number(pkg?.parcels || 1));
@@ -388,12 +393,19 @@ serve(async (req) => {
 
       // Graceful fallback: some carriers (like GLS) work without strict locality_id
       const canUseWithoutLocalityId = (carrierCode: string) => {
-        const flexibleCarriers = ['GLS', 'DPD', 'EXPRESS'];
+        const flexibleCarriers = ['GLS', 'DPD', 'EXPRESS', 'SAMEDAY', 'CARGUS'];
         return flexibleCarriers.includes(carrierCode.toUpperCase());
       };
 
       const senderStreetInfo = extractStreetInfo(profile.eawb_address || '')
       const recipientStreetInfo = extractStreetInfo(order.customer_address || '')
+
+      const senderPostal = extractPostalCode(profile.eawb_address || '') || undefined;
+      let recipientPostal = extractPostalCode(order.customer_address || '') || undefined;
+      const overrideCity = address_override?.city?.trim();
+      const overrideCounty = address_override?.county?.trim();
+      const overridePostal = address_override?.postal_code?.trim();
+      if (overridePostal) recipientPostal = overridePostal;
 
       // Build address objects with fallback support
       const senderAddress = {
@@ -401,6 +413,7 @@ serve(async (req) => {
         county_name: senderLocalityResult?.county_name || senderParsed.county || '',
         locality_name: senderLocalityResult?.locality_name || senderParsed.city || '',
         locality_id: senderLocalityResult?.locality_id || null, // null instead of failing
+        postal_code: senderPostal,
         contact: profile.eawb_name || 'Sender',
         street_name: senderStreetInfo.street_name,
         street_number: senderStreetInfo.street_number,
@@ -410,9 +423,10 @@ serve(async (req) => {
 
       const recipientAddress = {
         country_code: 'RO', 
-        county_name: recipientLocalityResult?.county_name || recipientParsed.county || '',
-        locality_name: recipientLocalityResult?.locality_name || recipientParsed.city || '',
-        locality_id: recipientLocalityResult?.locality_id || null, // null instead of failing
+        county_name: overrideCounty || recipientLocalityResult?.county_name || recipientParsed.county || '',
+        locality_name: overrideCity || recipientLocalityResult?.locality_name || recipientParsed.city || '',
+        locality_id: recipientLocalityResult?.locality_id || null, // may be null when overridden
+        postal_code: recipientPostal,
         contact: order.customer_name,
         street_name: recipientStreetInfo.street_name,
         street_number: recipientStreetInfo.street_number,
@@ -651,11 +665,19 @@ serve(async (req) => {
       const senderStreet = extractStreetInfo(profile.eawb_address || '')
       const recipientStreet = extractStreetInfo(order.customer_address || '')
 
+      const senderPostal = extractPostalCode(profile.eawb_address || '') || undefined;
+      let recipientPostal = extractPostalCode(order.customer_address || '') || undefined;
+      const overrideCity = address_override?.city?.trim();
+      const overrideCounty = address_override?.county?.trim();
+      const overridePostal = address_override?.postal_code?.trim();
+      if (overridePostal) recipientPostal = overridePostal;
+
       const senderAddress = {
         country_code: 'RO',
         county_name: senderLoc?.county_name || senderParsed.county || '',
         locality_name: senderLoc?.locality_name || senderParsed.city || '',
         locality_id: senderLoc?.locality_id || null,
+        postal_code: senderPostal,
         contact: profile.eawb_name || 'Your Company',
         street_name: senderStreet.street_name,
         street_number: senderStreet.street_number,
@@ -665,9 +687,10 @@ serve(async (req) => {
 
       const recipientAddress = {
         country_code: 'RO',
-        county_name: recipientLoc?.county_name || recipientParsed.county || '',
-        locality_name: recipientLoc?.locality_name || recipientParsed.city || '',
+        county_name: overrideCounty || recipientLoc?.county_name || recipientParsed.county || '',
+        locality_name: overrideCity || recipientLoc?.locality_name || recipientParsed.city || '',
         locality_id: recipientLoc?.locality_id || null,
+        postal_code: recipientPostal,
         contact: order.customer_name,
         street_name: recipientStreet.street_name,
         street_number: recipientStreet.street_number,
