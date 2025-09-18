@@ -120,6 +120,27 @@ serve(async (req) => {
       };
     };
 
+    const extractCityCounty = (address: string) => {
+      const parts = address.split(',').map(p => p.trim());
+      // Expect formats like: street, City, County, Country
+      const city = parts[1] || parts[0] || '';
+      const county = parts[2] || '';
+      return { city, county };
+    };
+
+    const buildParcels = (pkg: any) => {
+      const count = Math.max(1, Number(pkg?.parcels || 1));
+      const parcel = {
+        weight: Number(pkg?.weight || 1),
+        length: Number(pkg?.length || 30),
+        width: Number(pkg?.width || 20),
+        height: Number(pkg?.height || 10),
+        contents: String(pkg?.contents || 'Goods'),
+        declared_value: Number(pkg?.declared_value || 0),
+        cod_amount: pkg?.cod_amount ? Number(pkg.cod_amount) : undefined
+      };
+      return Array.from({ length: count }, () => parcel);
+    };
     if (action === 'calculate_prices') {
       // Get user profile
       const { data: profile, error: profileError } = await supabaseClient
@@ -188,27 +209,33 @@ serve(async (req) => {
         })
       }
 
-      // Resolve sender and recipient localities
+      // Resolve sender and recipient localities with robust fallbacks
       console.log(`Resolving sender locality for: "${profile.eawb_address}"`)
-      const senderLocalityResult = await resolveLocality(profile.eawb_api_key, 'RO', profile.eawb_address || '')
+      const { city: senderCity, county: senderCounty } = extractCityCounty(profile.eawb_address || '')
+      let senderLocalityResult = await resolveLocality(profile.eawb_api_key, 'RO', profile.eawb_address || '')
+      if (!senderLocalityResult && senderCity) {
+        senderLocalityResult = await resolveLocality(profile.eawb_api_key, 'RO', `${senderCity} ${senderCounty}`.trim())
+      }
+      if (!senderLocalityResult && senderCity) {
+        senderLocalityResult = await resolveLocality(profile.eawb_api_key, 'RO', senderCity)
+      }
+
       if (!senderLocalityResult) {
-        return new Response(JSON.stringify({ 
-          success: false, 
-          error: 'Failed to resolve sender address' 
-        }), { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        })
+        console.warn('Locality not resolved for sender, falling back to city/county only')
       }
 
       console.log(`Resolving recipient locality for: "${order.customer_address}"`)
-      const recipientLocalityResult = await resolveLocality(profile.eawb_api_key, 'RO', order.customer_address || '')
+      const { city: recipientCity, county: recipientCounty } = extractCityCounty(order.customer_address || '')
+      let recipientLocalityResult = await resolveLocality(profile.eawb_api_key, 'RO', order.customer_address || '')
+      if (!recipientLocalityResult && recipientCity) {
+        recipientLocalityResult = await resolveLocality(profile.eawb_api_key, 'RO', `${recipientCity} ${recipientCounty}`.trim())
+      }
+      if (!recipientLocalityResult && recipientCity) {
+        recipientLocalityResult = await resolveLocality(profile.eawb_api_key, 'RO', recipientCity)
+      }
+
       if (!recipientLocalityResult) {
-        return new Response(JSON.stringify({ 
-          success: false, 
-          error: 'Failed to resolve recipient address' 
-        }), { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        })
+        console.warn('Locality not resolved for recipient, falling back to city/county only')
       }
 
       // Extract street info
@@ -218,9 +245,9 @@ serve(async (req) => {
       // Build address objects
       const senderAddress = {
         country_code: 'RO',
-        county_name: senderLocalityResult.county_name,
-        locality_name: senderLocalityResult.locality_name,
-        locality_id: senderLocalityResult.locality_id,
+        county_name: senderLocalityResult?.county_name || senderCounty || '',
+        locality_name: senderLocalityResult?.locality_name || senderCity || '',
+        locality_id: senderLocalityResult?.locality_id,
         contact: profile.eawb_name || 'Sender',
         street_name: senderStreetInfo.street_name,
         street_number: senderStreetInfo.street_number,
@@ -230,9 +257,9 @@ serve(async (req) => {
 
       const recipientAddress = {
         country_code: 'RO', 
-        county_name: recipientLocalityResult.county_name,
-        locality_name: recipientLocalityResult.locality_name,
-        locality_id: recipientLocalityResult.locality_id,
+        county_name: recipientLocalityResult?.county_name || recipientCounty || '',
+        locality_name: recipientLocalityResult?.locality_name || recipientCity || '',
+        locality_id: recipientLocalityResult?.locality_id,
         contact: order.customer_name,
         street_name: recipientStreetInfo.street_name,
         street_number: recipientStreetInfo.street_number,
@@ -283,7 +310,7 @@ serve(async (req) => {
             },
             address_from: senderAddress,
             address_to: recipientAddress,
-            parcels: package_details.parcels,
+            parcels: buildParcels(package_details),
             service: {
               currency: 'RON',
               payment_type: '1',
