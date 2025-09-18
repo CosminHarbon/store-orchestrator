@@ -348,19 +348,23 @@ serve(async (req) => {
         console.error('Auto-resolve IDs failed:', autoErr);
       }
 
-      // All required IDs must be set explicitly per eAWB API - no defaults
-      if (!billingAddressId || !carrierId || !serviceId) {
+      // Check billing address ID first
+      if (!billingAddressId) {
         return new Response(JSON.stringify({
           success: false,
-          error: 'MISSING_CONFIGURATION',
-          message: 'Please set Billing Address ID, Default Carrier ID, and Service ID in Store Settings → Delivery (eAWB.ro). Log into your EuroParcel dashboard to find the correct IDs that exist in your account.',
+          error: 'MISSING_BILLING_ADDRESS',
+          message: 'Please set your Billing Address ID in Store Settings → Delivery (eAWB.ro). Contact eAWB support or check browser DevTools in your EuroParcel account to find this ID.',
           details: { 
-            carrier_id: carrierId, 
-            service_id: serviceId, 
             billing_address_id: billingAddressId,
-            help: 'Go to your EuroParcel account → Settings to find: 1) Billing Addresses (get the ID), 2) Available carriers and their services'
+            help: 'This is a numeric ID from your EuroParcel account that identifies your billing address'
           }
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      // For calculate_prices, try to get all available options if carrier/service not set
+      if (!carrierId || !serviceId) {
+        console.log('Carrier/Service IDs not set, will try to get all available options from eAWB API');
+        // Don't return error here - let the API call proceed to get available options
       }
 
       const priceRequest = {
@@ -414,8 +418,8 @@ serve(async (req) => {
           sunday_delivery: false,
           morning_delivery: false
         },
-        carrier_id: carrierId,
-        service_id: serviceId
+        ...(carrierId && { carrier_id: carrierId }),
+        ...(serviceId && { service_id: serviceId })
       };
 
       console.log('Calculating prices with request:', JSON.stringify(priceRequest, null, 2));
@@ -447,20 +451,23 @@ serve(async (req) => {
       }
 
       // Transform the response to a consistent format
-      const carrierOptions = priceResult.prices?.map((price: any) => ({
-        carrier_id: price.carrier_id,
-        carrier_name: price.carrier_name,
-        service_id: price.service_id,
-        service_name: price.service_name,
-        price: price.total_price,
-        currency: price.currency,
-        delivery_time: price.delivery_time || 'Standard',
-        cod_available: price.cod_available || false
+      const carrierOptions = priceResult.data?.map((option: any) => ({
+        carrier_id: option.carrier_id,
+        carrier_name: option.carrier,
+        service_id: option.service_id,
+        service_name: option.service_name,
+        price: option.price?.total || option.price?.amount || 0,
+        currency: option.price?.currency || 'RON',
+        delivery_time: `${option.estimated_pickup_date} → ${option.estimated_delivery_date}`,
+        cod_available: true, // Most eAWB services support COD
+        estimated_pickup_date: option.estimated_pickup_date,
+        estimated_delivery_date: option.estimated_delivery_date
       })) || [];
 
       return new Response(JSON.stringify({ 
         success: true, 
-        carrier_options: carrierOptions
+        carrier_options: carrierOptions,
+        validation_address: priceResult.validation_address
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
