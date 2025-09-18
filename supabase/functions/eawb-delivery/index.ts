@@ -47,34 +47,62 @@ serve(async (req) => {
       })
     }
 
-    // Locality resolution function
+    // Locality resolution function with diacritics fallback
+    const addDiacriticsRO = (text: string) => {
+      const repl: Record<string, string> = {
+        'Bucuresti': 'București',
+        'Ploiesti': 'Ploiești',
+        'Pitesti': 'Pitești',
+        'Iasi': 'Iași',
+        'Bistrita': 'Bistrița',
+        'Buzau': 'Buzău',
+        'Brasov': 'Brașov',
+        'Piatra Neamt': 'Piatra Neamț',
+        'Targu Mures': 'Târgu Mureș',
+        'Targu Jiu': 'Târgu Jiu',
+        'Targoviste': 'Târgoviște',
+        'Timisoara': 'Timișoara',
+        'Constanta': 'Constanța',
+      };
+      let out = text;
+      for (const [k, v] of Object.entries(repl)) {
+        const re = new RegExp(k, 'gi');
+        out = out.replace(re, v);
+      }
+      return out;
+    };
+
     const resolveLocality = async (apiKey: string, countryCode: string, address: string) => {
-      try {
+      const tryOnce = async (searchText: string) => {
         const response = await fetch('https://api.europarcel.com/api/public/localities', {
           method: 'POST',
           headers: {
             'X-API-Key': apiKey,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            country_code: countryCode,
-            search_text: address
-          })
+          body: JSON.stringify({ country_code: countryCode, search_text: searchText })
         });
-
         if (!response.ok) {
           console.error('Locality API failed:', response.status, await response.text());
           return null;
         }
-
         const data = await response.json();
-        console.log('Locality API response:', data);
-        
-        if (data.success && data.data && data.data.length > 0) {
+        console.log('Locality API response for', searchText, ':', data);
+        if (data?.success && Array.isArray(data?.data) && data.data.length > 0) {
           return data.data[0];
         }
-        
         return null;
+      };
+
+      try {
+        let result = await tryOnce(address);
+        if (!result) {
+          const withDiacritics = addDiacriticsRO(address);
+          if (withDiacritics !== address) {
+            result = await tryOnce(withDiacritics);
+          }
+        }
+        return result;
       } catch (error) {
         console.error('Locality resolution error:', error);
         return null;
