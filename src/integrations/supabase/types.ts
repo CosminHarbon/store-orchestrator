@@ -14,6 +14,80 @@ export type Database = {
   }
   public: {
     Tables: {
+      carrier_services: {
+        Row: {
+          carrier_id: number
+          created_at: string
+          description: string | null
+          id: number
+          is_active: boolean
+          name: string
+          service_code: string
+          updated_at: string
+        }
+        Insert: {
+          carrier_id: number
+          created_at?: string
+          description?: string | null
+          id?: number
+          is_active?: boolean
+          name: string
+          service_code: string
+          updated_at?: string
+        }
+        Update: {
+          carrier_id?: number
+          created_at?: string
+          description?: string | null
+          id?: number
+          is_active?: boolean
+          name?: string
+          service_code?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "carrier_services_carrier_id_fkey"
+            columns: ["carrier_id"]
+            isOneToOne: false
+            referencedRelation: "carriers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      carriers: {
+        Row: {
+          api_base_url: string
+          code: string
+          created_at: string
+          id: number
+          is_active: boolean
+          logo_url: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          api_base_url: string
+          code: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          logo_url?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          api_base_url?: string
+          code?: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          logo_url?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       collections: {
         Row: {
           created_at: string

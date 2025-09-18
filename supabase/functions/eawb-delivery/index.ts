@@ -229,6 +229,32 @@ serve(async (req) => {
         return new Response(JSON.stringify({ success: false, error: 'Order not found' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
+      // Get all active carriers with their services
+      const { data: carriers, error: carriersError } = await sb
+        .from('carriers')
+        .select(`
+          id,
+          name,
+          code,
+          logo_url,
+          carrier_services(
+            id,
+            name,
+            service_code,
+            description
+          )
+        `)
+        .eq('is_active', true)
+        .eq('carrier_services.is_active', true);
+
+      if (carriersError) {
+        console.error('Error fetching carriers:', carriersError);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to fetch carriers' }),
+          { status: 500, headers: corsHeaders }
+        );
+      }
+
       // Resolve localities from free-text addresses
       const senderLoc = await resolveLocality(profile.eawb_api_key, 'RO', profile.eawb_address || '');
       const recipientLoc = await resolveLocality(profile.eawb_api_key, 'RO', order.customer_address || '');
@@ -375,80 +401,170 @@ serve(async (req) => {
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
-      // For calculate_prices, try to get all available options if carrier/service not set
-      if (!carrierId || !serviceId) {
-        console.log('Carrier/Service IDs not set, will try to get all available options from eAWB API');
-        // Don't return error here - let the API call proceed to get available options
+      console.log(`Attempting to resolve locality for address: "${profile.eawb_address}" -> extracted city: "${profile.eawb_address}"`);
+      const senderLocalityResult = await resolveLocality(profile.eawb_api_key, 'RO', profile.eawb_address);
+      if (!senderLocalityResult) {
+        console.error('Failed to resolve sender locality');
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to resolve sender address' }),
+          { status: 400, headers: corsHeaders }
+        );
       }
 
-      const priceRequest = {
-        billing_to: {
-          billing_address_id: billingAddressId
-        },
-        address_from: {
-          country_code: senderLoc.country_code,
-          county_name: senderLoc.county_name,
-          locality_name: senderLoc.locality_name,
-          locality_id: senderLoc.locality_id,
-          contact: profile.eawb_name || 'Sender',
-          street_name: senderStreet.street_name,
-          street_number: senderStreet.street_number,
-          phone: profile.eawb_phone || '0700000000',
-          email: profile.eawb_email || 'sender@example.com'
-        },
-        address_to: {
-          country_code: recipientLoc.country_code,
-          county_name: recipientLoc.county_name,
-          locality_name: recipientLoc.locality_name,
-          locality_id: recipientLoc.locality_id,
-          contact: order.customer_name,
-          street_name: recipientStreet.street_name,
-          street_number: recipientStreet.street_number,
-          phone: order.customer_phone || '0700000001',
-          email: order.customer_email
-        },
-        content: {
-          parcels_count: 1,
-          pallets_count: 0,
-          envelopes_count: 0,
-          total_weight: packageDetails.weight,
-          parcels: [{
-            sequence_no: 1,
-            size: {
-              length: packageDetails.length,
-              width: packageDetails.width,
-              height: packageDetails.height,
-              weight: packageDetails.weight
-            },
-            declared_value: packageDetails.declared_value
-          }]
-        },
-        extra: {
-          parcel_content: packageDetails.contents || 'Merchandise'
-        },
-        cod_amount: packageDetails.cod_amount > 0 ? packageDetails.cod_amount : null,
-        options: {
-          saturday_delivery: false,
-          sunday_delivery: false,
-          morning_delivery: false
-        },
-        ...(carrierId && { carrier_id: carrierId }),
-        ...(serviceId && { service_id: serviceId })
+      const extractCityFromAddress = (address: string) => {
+        const parts = address.split(/[,\s]+/);
+        return parts[parts.length - 1] || address;
       };
 
-      console.log('Calculating prices with request:', JSON.stringify(priceRequest, null, 2));
+      console.log(`Attempting to resolve locality for address: "${order.customer_address}" -> extracted city: "${extractCityFromAddress(order.customer_address)}"`);
+      const recipientLocalityResult = await resolveLocality(profile.eawb_api_key, 'RO', order.customer_address);
+      if (!recipientLocalityResult) {
+        console.error('Failed to resolve recipient locality');
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to resolve recipient address' }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
 
-      const priceResponse = await fetch('https://api.europarcel.com/api/public/orders/prices', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': profile.eawb_api_key,
-        },
-        body: JSON.stringify(priceRequest),
-      });
+      // Extract street info for both addresses
+      const senderStreetInfo = extractStreetInfo(profile.eawb_address);
+      const recipientStreetInfo = extractStreetInfo(order.customer_address);
 
-      const priceResult = await priceResponse.json();
-      console.log('eAWB Price API response:', JSON.stringify(priceResult, null, 2));
+      // Build address objects
+      const senderLoc = {
+        country_code: 'RO',
+        county_name: senderLocalityResult.county_name,
+        locality_name: senderLocalityResult.locality_name,
+        locality_id: senderLocalityResult.locality_id
+      };
+
+      const recipientLoc = {
+        country_code: 'RO', 
+        county_name: recipientLocalityResult.county_name,
+        locality_name: recipientLocalityResult.locality_name,
+        locality_id: recipientLocalityResult.locality_id
+      };
+
+      // Calculate prices for all carrier/service combinations
+      const allQuotes = [];
+      
+      for (const carrier of carriers) {
+        // Only calculate for DPD currently (others need different API endpoints)
+        if (carrier.code !== 'dpd') {
+          continue;
+        }
+        
+        for (const service of carrier.carrier_services) {
+          const priceRequest = {
+            billing_to: {
+              billing_address_id: billingAddressId
+            },
+            address_from: {
+              country_code: senderLoc.country_code,
+              county_name: senderLoc.county_name,
+              locality_name: senderLoc.locality_name,
+              locality_id: senderLoc.locality_id,
+              contact: profile.eawb_name || 'Sender',
+              street_name: senderStreetInfo.street_name,
+              street_number: senderStreetInfo.street_number,
+              phone: profile.eawb_phone || '0700000000',
+              email: profile.eawb_email || 'sender@example.com'
+            },
+            address_to: {
+              country_code: recipientLoc.country_code,
+              county_name: recipientLoc.county_name,
+              locality_name: recipientLoc.locality_name,
+              locality_id: recipientLoc.locality_id,
+              contact: order.customer_name,
+              street_name: recipientStreetInfo.street_name,
+              street_number: recipientStreetInfo.street_number,
+              phone: order.customer_phone || '0700000001',
+              email: order.customer_email
+            },
+            content: {
+              parcels_count: packageDetails.parcels || 1,
+              pallets_count: 0,
+              envelopes_count: 0,
+              total_weight: packageDetails.weight,
+              parcels: [{
+                sequence_no: 1,
+                size: {
+                  length: packageDetails.length,
+                  width: packageDetails.width,
+                  height: packageDetails.height,
+                  weight: packageDetails.weight
+                },
+                declared_value: packageDetails.declared_value
+              }]
+            },
+            extra: {
+              parcel_content: packageDetails.contents || 'Merchandise'
+            },
+            cod_amount: packageDetails.cod_amount > 0 ? packageDetails.cod_amount : null,
+            options: {
+              saturday_delivery: false,
+              sunday_delivery: false,
+              morning_delivery: false
+            },
+            carrier_id: carrier.id,
+            service_id: parseInt(service.service_code)
+          };
+
+          console.log(`Calculating prices for ${carrier.name} - ${service.name}:`, priceRequest);
+
+          try {
+            const priceResponse = await fetch('https://api.europarcel.com/api/public/quotes', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${profile.eawb_api_key}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(priceRequest)
+            });
+
+            const priceData = await priceResponse.json();
+            console.log(`eAWB Price API response for ${carrier.name}:`, priceData);
+
+            if (priceResponse.ok && priceData.data && priceData.data.length > 0) {
+              // Enhance the quote with carrier info
+              const quote = priceData.data[0];
+              allQuotes.push({
+                ...quote,
+                carrier_info: {
+                  id: carrier.id,
+                  name: carrier.name,
+                  code: carrier.code,
+                  logo_url: carrier.logo_url
+                },
+                service_info: {
+                  id: service.id,
+                  name: service.name,
+                  code: service.service_code,
+                  description: service.description
+                }
+              });
+            }
+          } catch (error) {
+            console.error(`Error calculating price for ${carrier.name} - ${service.name}:`, error);
+            // Continue with other carriers even if one fails
+          }
+        }
+      }
+
+      if (allQuotes.length === 0) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'No pricing available for any carrier' }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+
+      // Sort quotes by price (cheapest first)
+      allQuotes.sort((a, b) => a.price.total - b.price.total);
+
+      return new Response(
+        JSON.stringify({ success: true, carrier_options: allQuotes }),
+        { headers: corsHeaders }
+      );
 
       if (!priceResponse.ok) {
         console.error('eAWB Price API failed:', priceResponse.status, priceResult);

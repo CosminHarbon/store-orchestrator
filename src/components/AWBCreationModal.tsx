@@ -39,17 +39,18 @@ interface AWBCreationModalProps {
 export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreationModalProps) => {
   const [step, setStep] = useState<'package' | 'pricing' | 'creating'>('package');
   const [loading, setLoading] = useState(false);
-  const [carrierOptions, setCarrierOptions] = useState<CarrierOption[]>([]);
-  const [selectedOption, setSelectedOption] = useState<CarrierOption | null>(null);
+  const [carrierOptions, setCarrierOptions] = useState<any[]>([]);
+  const [selectedCarrierOption, setSelectedCarrierOption] = useState<any | null>(null);
   
   const [packageDetails, setPackageDetails] = useState({
-    weight: '1',
-    length: '30',
-    width: '20',
-    height: '10',
+    weight: 1,
+    parcels: 1, 
+    length: 30,
+    width: 20,
+    height: 10,
     contents: '',
-    declared_value: order.total.toString(),
-    cod_amount: '0'
+    declared_value: order.total,
+    cod_amount: null as number | null
   });
 
   const handleCalculatePrices = async () => {
@@ -64,15 +65,7 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
         body: {
           action: 'calculate_prices',
           orderId: order.id,
-          packageDetails: {
-            ...packageDetails,
-            weight: parseFloat(packageDetails.weight),
-            length: parseInt(packageDetails.length),
-            width: parseInt(packageDetails.width),
-            height: parseInt(packageDetails.height),
-            declared_value: parseFloat(packageDetails.declared_value),
-            cod_amount: parseFloat(packageDetails.cod_amount)
-          }
+          packageDetails: packageDetails
         }
       });
 
@@ -110,7 +103,7 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
   };
 
   const handleCreateOrder = async () => {
-    if (!selectedOption) {
+    if (!selectedCarrierOption) {
       toast.error('Please select a carrier option');
       return;
     }
@@ -123,16 +116,8 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
         body: {
           action: 'create_order',
           orderId: order.id,
-          packageDetails: {
-            ...packageDetails,
-            weight: parseFloat(packageDetails.weight),
-            length: parseInt(packageDetails.length),
-            width: parseInt(packageDetails.width),
-            height: parseInt(packageDetails.height),
-            declared_value: parseFloat(packageDetails.declared_value),
-            cod_amount: parseFloat(packageDetails.cod_amount)
-          },
-          selectedCarrier: selectedOption
+          packageDetails: packageDetails,
+          selectedCarrier: selectedCarrierOption
         }
       });
 
@@ -145,7 +130,7 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
         // Reset state
         setStep('package');
         setCarrierOptions([]);
-        setSelectedOption(null);
+        setSelectedCarrierOption(null);
       } else {
         console.error('Create order failed:', data);
         const apiResponse = data?.api_response || data?.details;
@@ -181,7 +166,7 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
       onClose();
       setStep('package');
       setCarrierOptions([]);
-      setSelectedOption(null);
+      setSelectedCarrierOption(null);
     }
   };
 
@@ -220,19 +205,18 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
                     step="0.1"
                     min="0.1"
                     value={packageDetails.weight}
-                    onChange={(e) => setPackageDetails(prev => ({ ...prev, weight: e.target.value }))}
+                    onChange={(e) => setPackageDetails(prev => ({ ...prev, weight: parseFloat(e.target.value) || 0 }))}
                     placeholder="1.0"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="declared_value">Declared Value (RON)</Label>
+                  <Label htmlFor="parcels">Number of Parcels</Label>
                   <Input
-                    id="declared_value"
+                    id="parcels"
                     type="number"
-                    step="0.01"
-                    min="0"
-                    value={packageDetails.declared_value}
-                    onChange={(e) => setPackageDetails(prev => ({ ...prev, declared_value: e.target.value }))}
+                    value={packageDetails.parcels}
+                    onChange={(e) => setPackageDetails(prev => ({ ...prev, parcels: parseInt(e.target.value) || 1 }))}
+                    placeholder="1"
                   />
                 </div>
               </div>
@@ -245,7 +229,7 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
                     type="number"
                     min="1"
                     value={packageDetails.length}
-                    onChange={(e) => setPackageDetails(prev => ({ ...prev, length: e.target.value }))}
+                    onChange={(e) => setPackageDetails(prev => ({ ...prev, length: parseInt(e.target.value) || 0 }))}
                   />
                 </div>
                 <div className="space-y-2">
@@ -255,7 +239,7 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
                     type="number"
                     min="1"
                     value={packageDetails.width}
-                    onChange={(e) => setPackageDetails(prev => ({ ...prev, width: e.target.value }))}
+                    onChange={(e) => setPackageDetails(prev => ({ ...prev, width: parseInt(e.target.value) || 0 }))}
                   />
                 </div>
                 <div className="space-y-2">
@@ -265,7 +249,7 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
                     type="number"
                     min="1"
                     value={packageDetails.height}
-                    onChange={(e) => setPackageDetails(prev => ({ ...prev, height: e.target.value }))}
+                    onChange={(e) => setPackageDetails(prev => ({ ...prev, height: parseInt(e.target.value) || 0 }))}
                   />
                 </div>
               </div>
@@ -288,13 +272,28 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
                   type="number"
                   step="0.01"
                   min="0"
-                  value={packageDetails.cod_amount}
-                  onChange={(e) => setPackageDetails(prev => ({ ...prev, cod_amount: e.target.value }))}
+                  value={packageDetails.cod_amount || ''}
+                  onChange={(e) => setPackageDetails(prev => ({ 
+                    ...prev, 
+                    cod_amount: e.target.value ? parseFloat(e.target.value) : null 
+                  }))}
                   placeholder="0.00"
                 />
                 <p className="text-xs text-muted-foreground">
                   Set to order total if payment is still pending
                 </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="declared_value">Declared Value (RON)</Label>
+                <Input
+                  id="declared_value"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={packageDetails.declared_value}
+                  onChange={(e) => setPackageDetails(prev => ({ ...prev, declared_value: parseFloat(e.target.value) || 0 }))}
+                />
               </div>
             </div>
 
@@ -317,45 +316,97 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
         )}
 
         {step === 'pricing' && (
-          <div className="space-y-6">
-            <div>
-              <h4 className="font-medium mb-4">Available Shipping Options</h4>
-              <div className="space-y-3">
-                {carrierOptions.map((option, index) => (
-                  <div
-                    key={index}
-                    className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                      selectedOption === option
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                    onClick={() => setSelectedOption(option)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h5 className="font-medium">{option.carrier_name}</h5>
-                        <p className="text-sm text-muted-foreground">{option.service_name}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Estimated delivery: {option.delivery_time}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold">{option.price} {option.currency}</p>
-                        {option.cod_available && packageDetails.cod_amount !== '0' && (
-                          <p className="text-xs text-green-600">COD Available</p>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Choose Delivery Option</h3>
+              <p className="text-sm text-muted-foreground">{carrierOptions.length} option(s) available</p>
+            </div>
+            
+            <div className="grid gap-3 max-h-96 overflow-y-auto">
+              {carrierOptions.map((option, index) => (
+                <div 
+                  key={index}
+                  className={`p-4 border rounded-lg cursor-pointer transition-all hover:shadow-md ${
+                    selectedCarrierOption === option 
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary/20' 
+                      : 'border-border hover:border-primary/50'
+                  }`}
+                  onClick={() => setSelectedCarrierOption(option)}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        {option.carrier_info?.logo_url && (
+                          <img 
+                            src={option.carrier_info.logo_url} 
+                            alt={option.carrier_info.name}
+                            className="h-8 w-auto object-contain"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
                         )}
+                        <div>
+                          <h4 className="font-medium text-foreground">
+                            {option.carrier_info?.name || option.carrier}
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            {option.service_info?.name || option.service_name}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {option.service_info?.description && (
+                        <p className="text-xs text-muted-foreground mb-2">
+                          {option.service_info.description}
+                        </p>
+                      )}
+                      
+                      <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
+                        <div>
+                          <span className="font-medium">Pickup:</span> {option.estimated_pickup_date}
+                        </div>
+                        <div>
+                          <span className="font-medium">Delivery:</span> {option.estimated_delivery_date}
+                        </div>
                       </div>
                     </div>
+                    
+                    <div className="text-right ml-4">
+                      <p className="font-bold text-xl text-foreground">
+                        {option.price.total.toFixed(2)} {option.price.currency}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {option.price.amount.toFixed(2)} + {option.price.vat.toFixed(2)} VAT
+                      </p>
+                    </div>
                   </div>
-                ))}
-              </div>
+                  
+                  {selectedCarrierOption === option && (
+                    <div className="mt-3 pt-3 border-t border-primary/20">
+                      <p className="text-xs text-primary font-medium">
+                        ✓ Selected for AWB creation
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
+            
+            {carrierOptions.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No delivery options available</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Please check your package details and try again
+                </p>
+              </div>
+            )}
 
             <div className="flex justify-between gap-2">
               <Button variant="outline" onClick={() => setStep('package')} disabled={loading}>
                 Back
               </Button>
-              <Button onClick={handleCreateOrder} disabled={!selectedOption || loading}>
+              <Button onClick={handleCreateOrder} disabled={!selectedCarrierOption || loading}>
                 Create AWB
               </Button>
             </div>
