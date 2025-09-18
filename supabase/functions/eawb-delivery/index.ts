@@ -78,58 +78,71 @@ serve(async (req) => {
 
     // Enhanced Romanian address parsing
     const parseRomanianAddress = (address: string) => {
+      console.log('Parsing address:', address);
+      
       // Remove apartment/floor info that causes parsing issues
       let cleanAddress = address
         .replace(/,?\s*(ap\.?\s*\d+|apart\.?\s*\d+|et\.?\s*\d+|sc\.?\s*[A-Z])/gi, '')
         .replace(/,?\s*(bl\.?\s*[A-Z0-9]+|bloc\s+[A-Z0-9]+)/gi, '')
         .trim();
 
+      console.log('Cleaned address:', cleanAddress);
+
       const parts = cleanAddress.split(',').map(p => p.trim()).filter(Boolean);
+      console.log('Address parts:', parts);
       
       // Handle Bucharest sectors specifically  
       const isBucharest = /bucure[sș]ti|sector\s*[1-6]/gi.test(address);
       if (isBucharest) {
         const sectorMatch = address.match(/sector\s*([1-6])/gi);
-        return {
+        const result = {
           city: 'București',
           county: 'București',
           sector: sectorMatch ? sectorMatch[0] : null,
           street: parts[0] || '',
           cleanAddress: `București, România`
         };
+        console.log('Bucharest result:', result);
+        return result;
       }
 
       // Standard Romanian address parsing
-      // Expected: Street, City, County OR Street, City
+      // Find the city - look for known Romanian cities or the part before "Romania"
       let street = '', city = '', county = '';
       
-      if (parts.length >= 3) {
-        street = parts[0];
-        city = parts[1];
-        county = parts[2];
-      } else if (parts.length === 2) {
-        street = parts[0];
-        city = parts[1];
-        // Try to guess county from known city-county mappings
-        const cityCountyMap: Record<string, string> = {
-          'Cluj-Napoca': 'Cluj',
-          'Timișoara': 'Timiș',
-          'Constanța': 'Constanța',
-          'Iași': 'Iași',
-          'Brașov': 'Brașov',
-          'Galați': 'Galați',
-          'Craiova': 'Dolj',
-          'Ploiești': 'Prahova',
-          'Oradea': 'Bihor'
-        };
-        county = cityCountyMap[city] || city;
+      // Look for Romania and use the part before it as city
+      const romaniaIndex = parts.findIndex(part => /romania|român[aă]/gi.test(part));
+      if (romaniaIndex > 0) {
+        city = parts[romaniaIndex - 1];
+        street = parts.slice(0, romaniaIndex - 1).join(', ');
+      } else if (parts.length >= 2) {
+        // Standard parsing: take the last meaningful part as city
+        city = parts[parts.length - 1];
+        street = parts.slice(0, -1).join(', ');
       } else {
         street = parts[0] || '';
         city = 'București'; // fallback
-        county = 'București';
       }
 
-      return { street, city, county, cleanAddress };
+      // Try to guess county from known city-county mappings
+      const cityCountyMap: Record<string, string> = {
+        'București': 'București',
+        'Bucharest': 'București',
+        'Cluj-Napoca': 'Cluj',
+        'Timișoara': 'Timiș',
+        'Constanța': 'Constanța',
+        'Iași': 'Iași',
+        'Brașov': 'Brașov',
+        'Galați': 'Galați',
+        'Craiova': 'Dolj',
+        'Ploiești': 'Prahova',
+        'Oradea': 'Bihor'
+      };
+      county = cityCountyMap[city] || city;
+
+      const result = { street, city, county, cleanAddress: `${city}, ${county}` };
+      console.log('Parsed result:', result);
+      return result;
     };
 
     // Multi-approach locality resolution with fallbacks
