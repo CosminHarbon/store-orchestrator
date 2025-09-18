@@ -308,7 +308,28 @@ const OrderManagement = () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
     } catch (error: any) {
       console.error('Error cancelling AWB:', error);
-      toast.error(error.message || 'Failed to cancel AWB');
+      const message = error?.message || 'Failed to cancel AWB';
+      toast.error(message);
+
+      // Fallback: allow user to mark as cancelled locally if carrier cancel fails
+      const confirmLocal = window.confirm(`${message}. Do you want to mark this order as Cancelled locally?`);
+      if (confirmLocal) {
+        const { error: updateErr } = await supabase
+          .from('orders')
+          .update({ shipping_status: 'cancelled' })
+          .eq('id', orderId);
+        if (updateErr) {
+          console.error('Local cancel update failed:', updateErr);
+          toast.error('Failed to update order status locally');
+        } else {
+          setSelectedOrder(prev => prev && prev.id === orderId 
+            ? { ...prev, shipping_status: 'cancelled' } 
+            : prev
+          );
+          queryClient.invalidateQueries({ queryKey: ['orders'] });
+          toast.success('Order marked as Cancelled');
+        }
+      }
     } finally {
       setCreatingAWB(prev => {
         const newSet = new Set(prev);
