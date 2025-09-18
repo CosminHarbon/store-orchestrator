@@ -18,8 +18,25 @@ serve(async (req) => {
       { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
     )
 
-    const { action, order_id, package_details, selected_carrier, selected_service } = await req.json()
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      console.log('Raw request body:', requestBody);
+    } catch (jsonError) {
+      console.error('JSON parsing error:', jsonError);
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'Invalid JSON in request body',
+        details: jsonError.message
+      }), { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400
+      });
+    }
+
+    const { action, order_id, package_details, selected_carrier, selected_service } = requestBody;
     console.log('Action received:', action)
+    console.log('Request body:', { action, order_id, package_details, selected_carrier, selected_service })
 
     // Get authenticated user
     const { data: { user } } = await supabaseClient.auth.getUser()
@@ -111,12 +128,17 @@ serve(async (req) => {
         .eq('user_id', user.id)
         .single()
 
+      console.log('Profile fetch result:', { profile: !!profile, error: profileError })
+
       if (profileError || !profile || !profile.eawb_api_key) {
+        console.error('Profile error:', profileError)
         return new Response(JSON.stringify({ 
           success: false, 
-          error: 'Missing eAWB configuration. Please configure your eAWB settings first.' 
+          error: 'Missing eAWB configuration. Please configure your eAWB settings first.',
+          details: { profileError, hasProfile: !!profile, hasApiKey: !!profile?.eawb_api_key }
         }), { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400
         })
       }
 
@@ -128,12 +150,17 @@ serve(async (req) => {
         .eq('user_id', user.id)
         .single()
 
+      console.log('Order fetch result:', { order: !!order, error: orderError, order_id })
+
       if (orderError || !order) {
+        console.error('Order error:', orderError)
         return new Response(JSON.stringify({ 
           success: false, 
-          error: 'Order not found' 
+          error: 'Order not found',
+          details: { orderError, order_id, user_id: user.id }
         }), { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400
         })
       }
 
