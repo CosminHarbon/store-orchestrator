@@ -234,11 +234,17 @@ serve(async (req) => {
         recipientLocalityResult = await resolveLocality(profile.eawb_api_key, 'RO', recipientCity)
       }
 
-      if (!recipientLocalityResult) {
-        console.warn('Locality not resolved for recipient, falling back to city/county only')
+      if (!senderLocalityResult?.locality_id || !recipientLocalityResult?.locality_id) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'ADDRESS_LOCALITY_NOT_FOUND',
+          message: 'Could not resolve locality IDs for sender or recipient',
+          details: {
+            sender: senderLocalityResult || { city: senderCity, county: senderCounty },
+            recipient: recipientLocalityResult || { city: recipientCity, county: recipientCounty }
+          }
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
-
-      // Extract street info
       const senderStreetInfo = extractStreetInfo(profile.eawb_address || '')
       const recipientStreetInfo = extractStreetInfo(order.customer_address || '')
 
@@ -296,6 +302,7 @@ serve(async (req) => {
 
       // Calculate prices for all carrier/service combinations
       const allQuotes = []
+      const attempts: any[] = []
       
       for (const carrier of carriers) {
         // Calculate prices for all active carriers that have services
@@ -341,6 +348,18 @@ serve(async (req) => {
             const result = await response.json()
             console.log(`Price response for ${carrier.name} - ${service.name}:`, result)
 
+            attempts.push({
+              carrier_id: carrier.id,
+              carrier_name: carrier.name,
+              service_id: parseInt(service.service_code),
+              service_name: service.name,
+              status: response.status,
+              success: result?.success,
+              message: result?.message,
+              errors: result?.errors,
+              data_len: Array.isArray(result?.data) ? result.data.length : null
+            })
+
             if (response.ok && result.success && result.data?.length > 0) {
               const priceData = result.data[0]
               
@@ -362,6 +381,14 @@ serve(async (req) => {
             }
           } catch (error) {
             console.error(`Price calculation error for ${carrier.name} - ${service.name}:`, error)
+            attempts.push({
+              carrier_id: carrier.id,
+              carrier_name: carrier.name,
+              service_id: parseInt(service.service_code),
+              service_name: service.name,
+              status: 'exception',
+              error: String(error)
+            })
           }
         }
       }
@@ -374,7 +401,8 @@ serve(async (req) => {
           details: {
             senderAddress,
             recipientAddress,
-            carriers: carriers.map((c:any) => ({ id: c.id, name: c.name, services: c.carrier_services?.map((s:any)=>s.service_code) }))
+            billingAddressId,
+            attempts
           }
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
