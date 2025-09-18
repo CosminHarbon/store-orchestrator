@@ -25,6 +25,10 @@ interface Order {
   shipping_status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   created_at: string;
   invoice_link?: string;
+  awb_number?: string;
+  carrier_name?: string;
+  tracking_url?: string;
+  estimated_delivery_date?: string;
 }
 
 interface OrderItem {
@@ -460,16 +464,28 @@ const OrderManagement = () => {
                     <Receipt className="h-4 w-4 mr-2" />
                     Generate & Send Invoice
                   </Button>
-                  <Button
-                    onClick={() => handleCreateAWB(selectedOrder.id)}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    disabled={selectedOrder.shipping_status === 'delivered' || selectedOrder.shipping_status === 'cancelled'}
-                  >
-                    <Truck className="h-4 w-4 mr-2" />
-                    Create AWB
-                  </Button>
+                  {selectedOrder.awb_number ? (
+                    <Button
+                      onClick={() => window.open(selectedOrder.tracking_url, '_blank')}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                    >
+                      <Truck className="h-4 w-4 mr-2" />
+                      Track Package
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => handleCreateAWB(selectedOrder.id)}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      disabled={selectedOrder.shipping_status === 'delivered' || selectedOrder.shipping_status === 'cancelled'}
+                    >
+                      <Truck className="h-4 w-4 mr-2" />
+                      Create AWB
+                    </Button>
+                  )}
                   {selectedOrder.invoice_link && (
                     <Button
                       onClick={() => window.open(selectedOrder.invoice_link, '_blank')}
@@ -483,6 +499,45 @@ const OrderManagement = () => {
                   )}
                 </div>
               </div>
+
+              {/* Shipping Information */}
+              {selectedOrder.awb_number && (
+                <div className="mb-6">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">Shipping Information</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="font-medium text-muted-foreground">AWB Number</p>
+                        <p className="font-mono">{selectedOrder.awb_number}</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-muted-foreground">Carrier</p>
+                        <p>{selectedOrder.carrier_name}</p>
+                      </div>
+                      {selectedOrder.estimated_delivery_date && (
+                        <div>
+                          <p className="font-medium text-muted-foreground">Estimated Delivery</p>
+                          <p>{new Date(selectedOrder.estimated_delivery_date).toLocaleDateString()}</p>
+                        </div>
+                      )}
+                      {selectedOrder.tracking_url && (
+                        <div>
+                          <p className="font-medium text-muted-foreground">Tracking</p>
+                          <Button
+                            variant="link"
+                            className="p-0 h-auto text-primary"
+                            onClick={() => window.open(selectedOrder.tracking_url, '_blank')}
+                          >
+                            View Tracking Details
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
 
               {/* Customer Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

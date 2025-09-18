@@ -133,11 +133,14 @@ export type Database = {
       }
       orders: {
         Row: {
+          awb_number: string | null
+          carrier_name: string | null
           created_at: string
           customer_address: string
           customer_email: string
           customer_name: string
           customer_phone: string | null
+          estimated_delivery_date: string | null
           id: string
           invoice_link: string | null
           invoice_number: string | null
@@ -145,15 +148,19 @@ export type Database = {
           payment_status: string
           shipping_status: string
           total: number
+          tracking_url: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          awb_number?: string | null
+          carrier_name?: string | null
           created_at?: string
           customer_address: string
           customer_email: string
           customer_name: string
           customer_phone?: string | null
+          estimated_delivery_date?: string | null
           id?: string
           invoice_link?: string | null
           invoice_number?: string | null
@@ -161,15 +168,19 @@ export type Database = {
           payment_status?: string
           shipping_status?: string
           total: number
+          tracking_url?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          awb_number?: string | null
+          carrier_name?: string | null
           created_at?: string
           customer_address?: string
           customer_email?: string
           customer_name?: string
           customer_phone?: string | null
+          estimated_delivery_date?: string | null
           id?: string
           invoice_link?: string | null
           invoice_number?: string | null
@@ -177,6 +188,7 @@ export type Database = {
           payment_status?: string
           shipping_status?: string
           total?: number
+          tracking_url?: string | null
           updated_at?: string
           user_id?: string
         }

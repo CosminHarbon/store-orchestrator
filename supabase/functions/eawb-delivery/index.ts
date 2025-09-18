@@ -578,29 +578,37 @@ serve(async (req) => {
       }
 
       // Update order with AWB number and shipping info
-      const awbNumber = eawbResult.awb || eawbResult.tracking_number || eawbResult.order_id;
-      if (awbNumber) {
+      if (eawbResult.data && eawbResult.data.awb_number) {
         const { error: updateError } = await sb
           .from('orders')
-          .update({ 
-            shipping_status: 'processing',
-            // You might want to add an awb_number column to the orders table
-            customer_phone: order.customer_phone ? `${order.customer_phone} | AWB: ${awbNumber}` : `AWB: ${awbNumber}`
+          .update({
+            awb_number: eawbResult.data.awb_number,
+            carrier_name: eawbResult.data.carrier,
+            tracking_url: eawbResult.data.track_url,
+            estimated_delivery_date: eawbResult.data.estimated_delivery_date ? 
+              eawbResult.data.estimated_delivery_date.split('-').reverse().join('-') : null,
+            shipping_status: 'processing'
           })
           .eq('id', orderId)
           .eq('user_id', user.id);
 
         if (updateError) {
-          console.error('Error updating order:', updateError);
+          console.error('Error updating order with AWB info:', updateError);
+        } else {
+          console.log('Successfully updated order with AWB information');
         }
       }
 
       return new Response(JSON.stringify({ 
         success: true, 
-        awb_number: awbNumber,
-        carrier_name: selectedCarrier.carrier_name,
-        service_name: selectedCarrier.service_name,
-        tracking_url: eawbResult.tracking_url,
+        awb_number: eawbResult.data?.awb_number,
+        order_id: eawbResult.data?.order_id,
+        carrier: eawbResult.data?.carrier,
+        service_name: eawbResult.data?.service_name,
+        price: eawbResult.data?.price,
+        track_url: eawbResult.data?.track_url,
+        estimated_pickup_date: eawbResult.data?.estimated_pickup_date,
+        estimated_delivery_date: eawbResult.data?.estimated_delivery_date,
         eawb_response: eawbResult 
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
