@@ -680,44 +680,77 @@ serve(async (req) => {
 
       console.log('Cancelling eAWB order with AWB:', order.awb_number);
 
-      // Call eAWB cancel API
-      const cancelResponse = await fetch(`https://api.europarcel.com/api/public/orders/cancel`, {
-        method: 'POST', 
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': profile.eawb_api_key,
+      // Try multiple cancel endpoints (API variants differ)
+      const endpoints = [
+        {
+          url: 'https://api.europarcel.com/api/public/orders/cancel-by-awb',
+          method: 'POST',
+          body: { awbs: [{ awb: order.awb_number }] }
         },
-        body: JSON.stringify({
-          awb: order.awb_number
-        }),
-      });
+        {
+          url: 'https://api.europarcel.com/api/public/orders/cancel',
+          method: 'POST',
+          body: { awb: order.awb_number }
+        },
+        {
+          url: `https://api.europarcel.com/api/public/orders/${order.awb_number}/cancel`,
+          method: 'POST',
+          body: null
+        },
+        {
+          url: `https://api.europarcel.com/api/public/orders/${order.awb_number}`,
+          method: 'DELETE',
+          body: null
+        }
+      ];
 
-      // Safely parse response (may not be JSON)
-      const contentType = cancelResponse.headers.get('content-type') || '';
+      let cancelOk = false;
+      let cancelStatus = 0;
       let cancelResult: any = null;
-      let rawText: string | null = null;
-      if (contentType.includes('application/json')) {
-        cancelResult = await cancelResponse.json();
-      } else {
-        rawText = await cancelResponse.text();
+      let lastError: any = null;
+
+      for (const ep of endpoints) {
         try {
-          cancelResult = JSON.parse(rawText);
-        } catch {
-          cancelResult = { raw: rawText };
+          console.log('Trying eAWB cancel endpoint:', ep.method, ep.url);
+          const res = await fetch(ep.url, {
+            method: ep.method,
+            headers: {
+              'X-API-Key': profile.eawb_api_key,
+              ...(ep.method !== 'DELETE' ? { 'Content-Type': 'application/json' } : {}),
+            },
+            ...(ep.body ? { body: JSON.stringify(ep.body) } : {}),
+          });
+
+          cancelStatus = res.status;
+          const contentType = res.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            cancelResult = await res.json();
+          } else {
+            const text = await res.text();
+            try { cancelResult = JSON.parse(text); } catch { cancelResult = { raw: text }; }
+          }
+
+          console.log('Cancel attempt response:', cancelStatus, JSON.stringify(cancelResult));
+
+          if (res.ok) {
+            cancelOk = true;
+            break;
+          }
+          lastError = { status: cancelStatus, body: cancelResult };
+        } catch (e) {
+          lastError = { message: String(e) };
         }
       }
-      console.log('eAWB Cancel API response:', JSON.stringify(cancelResult, null, 2));
 
-      if (!cancelResponse.ok) {
-        console.error('eAWB Cancel API failed:', cancelResponse.status, cancelResult);
-        return new Response(JSON.stringify({ 
-          success: false, 
-          error: `Cancel API failed (${cancelResponse.status})`,
-          message: (cancelResult && (cancelResult.message || cancelResult.error)) || 'Failed to cancel AWB',
-          details: cancelResult 
+      if (!cancelOk) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: `Cancel API failed (${lastError?.status || 'unknown'})`,
+          details: lastError?.body || lastError
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
+      console.log('eAWB Cancel API success:', JSON.stringify(cancelResult, null, 2));
       // Update order shipping status to cancelled
       const { error: updateError } = await sb
         .from('orders')
