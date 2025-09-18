@@ -140,6 +140,7 @@ export type Database = {
           customer_email: string
           customer_name: string
           customer_phone: string | null
+          eawb_order_id: number | null
           estimated_delivery_date: string | null
           id: string
           invoice_link: string | null
@@ -160,6 +161,7 @@ export type Database = {
           customer_email: string
           customer_name: string
           customer_phone?: string | null
+          eawb_order_id?: number | null
           estimated_delivery_date?: string | null
           id?: string
           invoice_link?: string | null
@@ -180,6 +182,7 @@ export type Database = {
           customer_email?: string
           customer_name?: string
           customer_phone?: string | null
+          eawb_order_id?: number | null
           estimated_delivery_date?: string | null
           id?: string
           invoice_link?: string | null

@@ -601,7 +601,8 @@ serve(async (req) => {
             tracking_url: eawbResult.data.track_url,
             estimated_delivery_date: eawbResult.data.estimated_delivery_date ? 
               eawbResult.data.estimated_delivery_date.split('-').reverse().join('-') : null,
-            shipping_status: 'processing'
+            shipping_status: 'processing',
+            eawb_order_id: eawbResult.data.order_id
           })
           .eq('id', orderId)
           .eq('user_id', user.id);
@@ -609,7 +610,7 @@ serve(async (req) => {
         if (updateError) {
           console.error('Error updating order with AWB info:', updateError);
         } else {
-          console.log('Successfully updated order with AWB information');
+          console.log('Successfully updated order with AWB information and eAWB order ID');
         }
       }
 
@@ -658,10 +659,10 @@ serve(async (req) => {
       });
 
     } else if (action === 'cancel_order') {
-      // Get order details to get AWB number
+      // Get order details to get AWB number and eAWB order ID
       const { data: order, error: orderError } = await sb
         .from('orders')
-        .select('awb_number, shipping_status')
+        .select('awb_number, shipping_status, eawb_order_id')
         .eq('id', orderId)
         .eq('user_id', user.id)
         .single();
@@ -682,6 +683,17 @@ serve(async (req) => {
 
       // Try multiple cancel endpoints (API variants differ)
       const endpoints = [
+        // Primary: Cancel by order_id if we have it
+        ...(order.eawb_order_id ? [{
+          url: `https://api.europarcel.com/api/public/orders/${order.eawb_order_id}/cancel`,
+          method: 'POST',
+          body: null
+        }, {
+          url: `https://api.europarcel.com/api/public/orders/${order.eawb_order_id}`,
+          method: 'DELETE', 
+          body: null
+        }] : []),
+        // Fallback: Cancel by AWB
         {
           url: 'https://api.europarcel.com/api/public/orders/cancel-by-awb',
           method: 'POST',
