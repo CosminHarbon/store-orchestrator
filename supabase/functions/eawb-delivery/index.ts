@@ -743,6 +743,29 @@ serve(async (req) => {
       }
 
       if (!cancelOk) {
+        const bodyText = typeof lastError?.body === 'string' ? lastError.body : JSON.stringify(lastError?.body || {});
+        const notFound = lastError?.status === 404 || /not\s*found|nu\s*existent|inexistent/i.test(bodyText || '');
+        if (notFound) {
+          console.warn('AWB not found at carrier. Assuming already cancelled. Syncing local status to cancelled.');
+          const { error: updateErr } = await sb
+            .from('orders')
+            .update({ shipping_status: 'cancelled' })
+            .eq('id', orderId)
+            .eq('user_id', user.id);
+          if (updateErr) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'AWB appears cancelled at carrier but failed to update local status',
+              details: updateErr
+            }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          }
+          return new Response(JSON.stringify({
+            success: true,
+            message: 'AWB already cancelled at carrier. Local status synced to cancelled.',
+            awb_number: order.awb_number,
+            cancel_response: lastError
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
         return new Response(JSON.stringify({
           success: false,
           error: `Cancel API failed (${lastError?.status || 'unknown'})`,
