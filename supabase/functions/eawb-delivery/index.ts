@@ -366,6 +366,19 @@ serve(async (req) => {
         }
       }
 
+      if (allQuotes.length === 0) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'NO_QUOTES',
+          message: 'No carrier returned a price for the provided addresses and parcels',
+          details: {
+            senderAddress,
+            recipientAddress,
+            carriers: carriers.map((c:any) => ({ id: c.id, name: c.name, services: c.carrier_services?.map((s:any)=>s.service_code) }))
+          }
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
       return new Response(
         JSON.stringify({ success: true, carrier_options: allQuotes }),
         { headers: corsHeaders }

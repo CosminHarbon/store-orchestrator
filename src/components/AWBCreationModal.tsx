@@ -71,7 +71,7 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
 
       if (error) throw error;
 
-      if (data.success && data.carrier_options) {
+      if (data.success && Array.isArray(data.carrier_options) && data.carrier_options.length > 0) {
         setCarrierOptions(data.carrier_options);
         setStep('pricing');
       } else {
