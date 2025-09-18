@@ -692,7 +692,20 @@ serve(async (req) => {
         }),
       });
 
-      const cancelResult = await cancelResponse.json();
+      // Safely parse response (may not be JSON)
+      const contentType = cancelResponse.headers.get('content-type') || '';
+      let cancelResult: any = null;
+      let rawText: string | null = null;
+      if (contentType.includes('application/json')) {
+        cancelResult = await cancelResponse.json();
+      } else {
+        rawText = await cancelResponse.text();
+        try {
+          cancelResult = JSON.parse(rawText);
+        } catch {
+          cancelResult = { raw: rawText };
+        }
+      }
       console.log('eAWB Cancel API response:', JSON.stringify(cancelResult, null, 2));
 
       if (!cancelResponse.ok) {
@@ -700,7 +713,7 @@ serve(async (req) => {
         return new Response(JSON.stringify({ 
           success: false, 
           error: `Cancel API failed (${cancelResponse.status})`,
-          message: cancelResult?.message || 'Failed to cancel AWB',
+          message: (cancelResult && (cancelResult.message || cancelResult.error)) || 'Failed to cancel AWB',
           details: cancelResult 
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
