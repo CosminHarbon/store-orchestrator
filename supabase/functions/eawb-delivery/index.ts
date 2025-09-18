@@ -47,7 +47,7 @@ serve(async (req) => {
       })
     }
 
-    // Locality resolution function with diacritics fallback
+    // Romanian diacritics mapping
     const addDiacriticsRO = (text: string) => {
       const repl: Record<string, string> = {
         'Bucuresti': 'București',
@@ -63,6 +63,10 @@ serve(async (req) => {
         'Targoviste': 'Târgoviște',
         'Timisoara': 'Timișoara',
         'Constanta': 'Constanța',
+        'Craiova': 'Craiova',
+        'Galati': 'Galați',
+        'Cluj-Napoca': 'Cluj-Napoca',
+        'Oradea': 'Oradea',
       };
       let out = text;
       for (const [k, v] of Object.entries(repl)) {
@@ -72,41 +76,152 @@ serve(async (req) => {
       return out;
     };
 
+    // Enhanced Romanian address parsing
+    const parseRomanianAddress = (address: string) => {
+      // Remove apartment/floor info that causes parsing issues
+      let cleanAddress = address
+        .replace(/,?\s*(ap\.?\s*\d+|apart\.?\s*\d+|et\.?\s*\d+|sc\.?\s*[A-Z])/gi, '')
+        .replace(/,?\s*(bl\.?\s*[A-Z0-9]+|bloc\s+[A-Z0-9]+)/gi, '')
+        .trim();
+
+      const parts = cleanAddress.split(',').map(p => p.trim()).filter(Boolean);
+      
+      // Handle Bucharest sectors specifically  
+      const isBucharest = /bucure[sș]ti|sector\s*[1-6]/gi.test(address);
+      if (isBucharest) {
+        const sectorMatch = address.match(/sector\s*([1-6])/gi);
+        return {
+          city: 'București',
+          county: 'București',
+          sector: sectorMatch ? sectorMatch[0] : null,
+          street: parts[0] || '',
+          cleanAddress: `București, România`
+        };
+      }
+
+      // Standard Romanian address parsing
+      // Expected: Street, City, County OR Street, City
+      let street = '', city = '', county = '';
+      
+      if (parts.length >= 3) {
+        street = parts[0];
+        city = parts[1];
+        county = parts[2];
+      } else if (parts.length === 2) {
+        street = parts[0];
+        city = parts[1];
+        // Try to guess county from known city-county mappings
+        const cityCountyMap: Record<string, string> = {
+          'Cluj-Napoca': 'Cluj',
+          'Timișoara': 'Timiș',
+          'Constanța': 'Constanța',
+          'Iași': 'Iași',
+          'Brașov': 'Brașov',
+          'Galați': 'Galați',
+          'Craiova': 'Dolj',
+          'Ploiești': 'Prahova',
+          'Oradea': 'Bihor'
+        };
+        county = cityCountyMap[city] || city;
+      } else {
+        street = parts[0] || '';
+        city = 'București'; // fallback
+        county = 'București';
+      }
+
+      return { street, city, county, cleanAddress };
+    };
+
+    // Multi-approach locality resolution with fallbacks
     const resolveLocality = async (apiKey: string, countryCode: string, address: string) => {
-      const tryOnce = async (searchText: string) => {
-        const response = await fetch('https://api.europarcel.com/api/public/localities', {
-          method: 'POST',
-          headers: {
-            'X-API-Key': apiKey,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ country_code: countryCode, search_text: searchText })
-        });
-        if (!response.ok) {
-          console.error('Locality API failed:', response.status, await response.text());
+      const apis = [
+        'https://api.europarcel.com/api/public/localities',
+        'https://api.europarcel.com/api/v1/localities',
+        'https://api.europarcel.com/localities'
+      ];
+
+      const tryPostRequest = async (url: string, searchText: string) => {
+        try {
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'X-API-Key': apiKey,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ country_code: countryCode, search_text: searchText })
+          });
+          
+          if (!response.ok) {
+            console.log(`POST ${url} failed:`, response.status);
+            return null;
+          }
+          
+          const data = await response.json();
+          if (data?.success && Array.isArray(data?.data) && data.data.length > 0) {
+            console.log(`✓ POST ${url} succeeded for "${searchText}"`);
+            return data.data[0];
+          }
+          return null;
+        } catch (error) {
+          console.log(`POST ${url} error:`, error.message);
           return null;
         }
-        const data = await response.json();
-        console.log('Locality API response for', searchText, ':', data);
-        if (data?.success && Array.isArray(data?.data) && data.data.length > 0) {
-          return data.data[0];
-        }
-        return null;
       };
 
-      try {
-        let result = await tryOnce(address);
-        if (!result) {
-          const withDiacritics = addDiacriticsRO(address);
-          if (withDiacritics !== address) {
-            result = await tryOnce(withDiacritics);
+      const tryGetRequest = async (url: string, searchText: string) => {
+        try {
+          const response = await fetch(`${url}?country_code=${countryCode}&search_text=${encodeURIComponent(searchText)}`, {
+            method: 'GET',
+            headers: {
+              'X-API-Key': apiKey,
+              'Content-Type': 'application/json',
+            }
+          });
+          
+          if (!response.ok) {
+            console.log(`GET ${url} failed:`, response.status);
+            return null;
           }
+          
+          const data = await response.json();
+          if (data?.success && Array.isArray(data?.data) && data.data.length > 0) {
+            console.log(`✓ GET ${url} succeeded for "${searchText}"`);
+            return data.data[0];
+          }
+          return null;
+        } catch (error) {
+          console.log(`GET ${url} error:`, error.message);
+          return null;
         }
-        return result;
-      } catch (error) {
-        console.error('Locality resolution error:', error);
-        return null;
+      };
+
+      const parseResult = parseRomanianAddress(address);
+      const searchTerms = [
+        address, // original
+        parseResult.cleanAddress, // cleaned
+        addDiacriticsRO(address), // with diacritics
+        addDiacriticsRO(parseResult.cleanAddress), // clean + diacritics
+        parseResult.city, // just city
+        addDiacriticsRO(parseResult.city), // city with diacritics
+        `${parseResult.city}, ${parseResult.county}`, // city, county
+        addDiacriticsRO(`${parseResult.city}, ${parseResult.county}`) // city, county with diacritics
+      ].filter((term, index, arr) => term && arr.indexOf(term) === index); // remove duplicates
+
+      // Try all API endpoints with all search terms
+      for (const url of apis) {
+        for (const searchTerm of searchTerms) {
+          // Try POST first
+          let result = await tryPostRequest(url, searchTerm);
+          if (result) return result;
+          
+          // Try GET as fallback
+          result = await tryGetRequest(url, searchTerm);
+          if (result) return result;
+        }
       }
+
+      console.warn(`Could not resolve locality for: "${address}"`);
+      return null;
     };
 
     // Street info extraction function
@@ -149,11 +264,13 @@ serve(async (req) => {
     };
 
     const extractCityCounty = (address: string) => {
-      const parts = address.split(',').map(p => p.trim());
-      // Expect formats like: street, City, County, Country
-      const city = parts[1] || parts[0] || '';
-      const county = parts[2] || '';
-      return { city, county };
+      const parsed = parseRomanianAddress(address);
+      return { 
+        city: parsed.city, 
+        county: parsed.county,
+        street: parsed.street,
+        sector: parsed.sector || null
+      };
     };
 
     const buildParcels = (pkg: any) => {
@@ -237,51 +354,40 @@ serve(async (req) => {
         })
       }
 
-      // Resolve sender and recipient localities with robust fallbacks
-      console.log(`Resolving sender locality for: "${profile.eawb_address}"`)
-      const { city: senderCity, county: senderCounty } = extractCityCounty(profile.eawb_address || '')
-      let senderLocalityResult = await resolveLocality(profile.eawb_api_key, 'RO', profile.eawb_address || '')
-      if (!senderLocalityResult && senderCity) {
-        senderLocalityResult = await resolveLocality(profile.eawb_api_key, 'RO', `${senderCity} ${senderCounty}`.trim())
-      }
-      if (!senderLocalityResult && senderCity) {
-        senderLocalityResult = await resolveLocality(profile.eawb_api_key, 'RO', senderCity)
-      }
+      // Enhanced address parsing with detailed logging
+      console.log('=== ADDRESS PARSING DEBUG ===');
+      console.log('Raw sender address:', profile.eawb_address);
+      console.log('Raw recipient address:', order.customer_address);
+      
+      const senderParsed = extractCityCounty(profile.eawb_address || '')
+      console.log('Parsed sender:', senderParsed);
+      
+      const recipientParsed = extractCityCounty(order.customer_address || '')
+      console.log('Parsed recipient:', recipientParsed);
+      console.log('==============================');
 
-      if (!senderLocalityResult) {
-        console.warn('Locality not resolved for sender, falling back to city/county only')
-      }
+      // Resolve sender and recipient localities with enhanced robustness
+      console.log(`Resolving sender locality for: "${profile.eawb_address}"`)
+      let senderLocalityResult = await resolveLocality(profile.eawb_api_key, 'RO', profile.eawb_address || '')
 
       console.log(`Resolving recipient locality for: "${order.customer_address}"`)
-      const { city: recipientCity, county: recipientCounty } = extractCityCounty(order.customer_address || '')
       let recipientLocalityResult = await resolveLocality(profile.eawb_api_key, 'RO', order.customer_address || '')
-      if (!recipientLocalityResult && recipientCity) {
-        recipientLocalityResult = await resolveLocality(profile.eawb_api_key, 'RO', `${recipientCity} ${recipientCounty}`.trim())
-      }
-      if (!recipientLocalityResult && recipientCity) {
-        recipientLocalityResult = await resolveLocality(profile.eawb_api_key, 'RO', recipientCity)
-      }
 
-      if (!senderLocalityResult?.locality_id || !recipientLocalityResult?.locality_id) {
-        return new Response(JSON.stringify({
-          success: false,
-          error: 'ADDRESS_LOCALITY_NOT_FOUND',
-          message: 'Could not resolve locality IDs for sender or recipient',
-          details: {
-            sender: senderLocalityResult || { city: senderCity, county: senderCounty },
-            recipient: recipientLocalityResult || { city: recipientCity, county: recipientCounty }
-          }
-        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
+      // Graceful fallback: some carriers (like GLS) work without strict locality_id
+      const canUseWithoutLocalityId = (carrierCode: string) => {
+        const flexibleCarriers = ['GLS', 'DPD', 'EXPRESS'];
+        return flexibleCarriers.includes(carrierCode.toUpperCase());
+      };
+
       const senderStreetInfo = extractStreetInfo(profile.eawb_address || '')
       const recipientStreetInfo = extractStreetInfo(order.customer_address || '')
 
-      // Build address objects
+      // Build address objects with fallback support
       const senderAddress = {
         country_code: 'RO',
-        county_name: senderLocalityResult?.county_name || senderCounty || '',
-        locality_name: senderLocalityResult?.locality_name || senderCity || '',
-        locality_id: senderLocalityResult?.locality_id,
+        county_name: senderLocalityResult?.county_name || senderParsed.county || '',
+        locality_name: senderLocalityResult?.locality_name || senderParsed.city || '',
+        locality_id: senderLocalityResult?.locality_id || null, // null instead of failing
         contact: profile.eawb_name || 'Sender',
         street_name: senderStreetInfo.street_name,
         street_number: senderStreetInfo.street_number,
@@ -291,9 +397,9 @@ serve(async (req) => {
 
       const recipientAddress = {
         country_code: 'RO', 
-        county_name: recipientLocalityResult?.county_name || recipientCounty || '',
-        locality_name: recipientLocalityResult?.locality_name || recipientCity || '',
-        locality_id: recipientLocalityResult?.locality_id,
+        county_name: recipientLocalityResult?.county_name || recipientParsed.county || '',
+        locality_name: recipientLocalityResult?.locality_name || recipientParsed.city || '',
+        locality_id: recipientLocalityResult?.locality_id || null, // null instead of failing
         contact: order.customer_name,
         street_name: recipientStreetInfo.street_name,
         street_number: recipientStreetInfo.street_number,
@@ -339,12 +445,37 @@ serve(async (req) => {
         }
 
         for (const service of carrier.carrier_services) {
+          // Skip carriers that require locality_id if we don't have it
+          const needsLocalityId = !canUseWithoutLocalityId(carrier.code);
+          const hasLocalityIds = senderAddress.locality_id && recipientAddress.locality_id;
+          
+          if (needsLocalityId && !hasLocalityIds) {
+            console.log(`Skipping ${carrier.name} - ${service.name}: requires locality_id but not available`);
+            attempts.push({
+              carrier_id: carrier.id,
+              carrier_name: carrier.name,
+              service_id: parseInt(service.service_code),
+              service_name: service.name,
+              status: 'skipped',
+              message: 'Requires locality_id but addresses could not be resolved',
+              success: false
+            });
+            continue;
+          }
+
+          // Create price request with conditional locality_id
           const priceRequest = {
             billing_to: {
               billing_address_id: billingAddressId
             },
-            address_from: senderAddress,
-            address_to: recipientAddress,
+            address_from: {
+              ...senderAddress,
+              ...(senderAddress.locality_id ? {} : { locality_id: undefined })
+            },
+            address_to: {
+              ...recipientAddress,
+              ...(recipientAddress.locality_id ? {} : { locality_id: undefined })
+            },
             parcels: buildParcels(package_details),
             service: {
               currency: 'RON',
@@ -422,13 +553,28 @@ serve(async (req) => {
       }
 
       if (allQuotes.length === 0) {
+        // Provide detailed error information
+        const hasLocalityIds = senderAddress.locality_id && recipientAddress.locality_id;
+        const errorMessage = hasLocalityIds 
+          ? 'No carrier returned a price for the provided addresses and parcels. This may be due to carrier-specific restrictions or invalid package details.'
+          : 'Address locality IDs could not be resolved. Some carriers may require exact locality resolution for accurate pricing.';
+
         return new Response(JSON.stringify({
           success: false,
           error: 'NO_QUOTES',
-          message: 'No carrier returned a price for the provided addresses and parcels',
+          message: errorMessage,
+          suggestions: hasLocalityIds 
+            ? ['Check package dimensions and weight', 'Verify addresses are complete', 'Try different carriers']
+            : ['Check address format', 'Ensure city and county are correct', 'Some addresses may not be in carrier databases'],
           details: {
-            senderAddress,
-            recipientAddress,
+            senderAddress: {
+              ...senderAddress,
+              locality_resolved: !!senderAddress.locality_id
+            },
+            recipientAddress: {
+              ...recipientAddress,
+              locality_resolved: !!recipientAddress.locality_id
+            },
             billingAddressId,
             attempts
           }
@@ -474,34 +620,72 @@ serve(async (req) => {
         })
       }
 
-      // Create eAWB order using the selected carrier
+      // Create eAWB order using the selected carrier with enhanced address resolution
+      console.log('=== CREATE ORDER ADDRESS PARSING ===');
+      console.log('Raw sender address:', profile.eawb_address);
+      console.log('Raw recipient address:', order.customer_address);
+      
+      const senderParsed = extractCityCounty(profile.eawb_address || '')
+      const recipientParsed = extractCityCounty(order.customer_address || '') 
+      
       const senderLoc = await resolveLocality(profile.eawb_api_key, 'RO', profile.eawb_address || '')
       const recipientLoc = await resolveLocality(profile.eawb_api_key, 'RO', order.customer_address || '')
       
-      if (!senderLoc || !recipientLoc) {
+      console.log('Sender locality result:', senderLoc);
+      console.log('Recipient locality result:', recipientLoc);
+      
+      // Use fallback values if locality resolution failed
+      const senderStreet = extractStreetInfo(profile.eawb_address || '')
+      const recipientStreet = extractStreetInfo(order.customer_address || '')
+
+      const senderAddress = {
+        country_code: 'RO',
+        county_name: senderLoc?.county_name || senderParsed.county || '',
+        locality_name: senderLoc?.locality_name || senderParsed.city || '',
+        locality_id: senderLoc?.locality_id || null,
+        contact: profile.eawb_name || 'Your Company',
+        street_name: senderStreet.street_name,
+        street_number: senderStreet.street_number,
+        phone: profile.eawb_phone || '0700000000',
+        email: profile.eawb_email || 'sender@example.com'
+      };
+
+      const recipientAddress = {
+        country_code: 'RO',
+        county_name: recipientLoc?.county_name || recipientParsed.county || '',
+        locality_name: recipientLoc?.locality_name || recipientParsed.city || '',
+        locality_id: recipientLoc?.locality_id || null,
+        contact: order.customer_name,
+        street_name: recipientStreet.street_name,
+        street_number: recipientStreet.street_number,
+        phone: order.customer_phone || '0700000000',
+        email: order.customer_email
+      };
+
+      // Only fail if we have neither locality_id nor basic city/county info
+      if ((!senderAddress.locality_id && !senderAddress.locality_name) || 
+          (!recipientAddress.locality_id && !recipientAddress.locality_name)) {
         return new Response(
-          JSON.stringify({ success: false, error: 'ADDRESS_VALIDATION_FAILED', details: { senderLoc, recipientLoc } }),
+          JSON.stringify({ 
+            success: false, 
+            error: 'ADDRESS_VALIDATION_FAILED', 
+            message: 'Could not resolve basic address information',
+            details: { 
+              senderAddress, 
+              recipientAddress,
+              parsing: { senderParsed, recipientParsed }
+            } 
+          }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
-
-      const senderStreet = extractStreetInfo(profile.eawb_address || '')
-      const recipientStreet = extractStreetInfo(order.customer_address || '')
 
       const eawbOrderData = {
         billing_to: profile.eawb_billing_address_id ? {
           billing_address_id: profile.eawb_billing_address_id
         } : undefined,
-        address_from: {
-          country_code: senderLoc.country_code,
-          county_name: senderLoc.county_name,
-          locality_name: senderLoc.locality_name,
-          locality_id: senderLoc.locality_id,
-          contact: profile.eawb_name || 'Your Company',
-          street_name: senderStreet.street_name,
-          street_number: senderStreet.street_number,
-          phone: profile.eawb_phone || '0700000000',
-          email: profile.eawb_email || 'sender@example.com'
+        address_from: senderAddress,
+        address_to: recipientAddress,
         },
         address_to: {
           country_code: recipientLoc.country_code,
