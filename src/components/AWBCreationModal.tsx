@@ -173,7 +173,7 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto sm:max-h-none">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
@@ -197,7 +197,7 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
             <div className="space-y-4">
               <h4 className="font-medium">Package Details</h4>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="weight">Weight (kg)</Label>
                   <Input
@@ -208,6 +208,7 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
                     value={packageDetails.weight}
                     onChange={(e) => setPackageDetails(prev => ({ ...prev, weight: parseFloat(e.target.value) || 0 }))}
                     placeholder="1.0"
+                    inputMode="decimal"
                   />
                 </div>
                 <div className="space-y-2">
@@ -218,11 +219,12 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
                     value={packageDetails.parcels}
                     onChange={(e) => setPackageDetails(prev => ({ ...prev, parcels: parseInt(e.target.value) || 1 }))}
                     placeholder="1"
+                    inputMode="numeric"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="length">Length (cm)</Label>
                   <Input
@@ -231,6 +233,7 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
                     min="1"
                     value={packageDetails.length}
                     onChange={(e) => setPackageDetails(prev => ({ ...prev, length: parseInt(e.target.value) || 0 }))}
+                    inputMode="numeric"
                   />
                 </div>
                 <div className="space-y-2">
@@ -241,6 +244,7 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
                     min="1"
                     value={packageDetails.width}
                     onChange={(e) => setPackageDetails(prev => ({ ...prev, width: parseInt(e.target.value) || 0 }))}
+                    inputMode="numeric"
                   />
                 </div>
                 <div className="space-y-2">
@@ -251,6 +255,7 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
                     min="1"
                     value={packageDetails.height}
                     onChange={(e) => setPackageDetails(prev => ({ ...prev, height: parseInt(e.target.value) || 0 }))}
+                    inputMode="numeric"
                   />
                 </div>
               </div>
@@ -279,6 +284,7 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
                     cod_amount: e.target.value ? parseFloat(e.target.value) : null 
                   }))}
                   placeholder="0.00"
+                  inputMode="decimal"
                 />
                 <p className="text-xs text-muted-foreground">
                   Set to order total if payment is still pending
@@ -294,15 +300,16 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
                   min="0"
                   value={packageDetails.declared_value}
                   onChange={(e) => setPackageDetails(prev => ({ ...prev, declared_value: parseFloat(e.target.value) || 0 }))}
+                  inputMode="decimal"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={handleClose} disabled={loading}>
+            <div className="flex flex-col sm:flex-row justify-end gap-2">
+              <Button variant="outline" onClick={handleClose} disabled={loading} className="w-full sm:w-auto">
                 Cancel
               </Button>
-              <Button onClick={handleCalculatePrices} disabled={loading}>
+              <Button onClick={handleCalculatePrices} disabled={loading} className="w-full sm:w-auto">
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -403,11 +410,11 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
               </div>
             )}
 
-            <div className="flex justify-between gap-2">
-              <Button variant="outline" onClick={() => setStep('package')} disabled={loading}>
+            <div className="flex flex-col sm:flex-row justify-between gap-2">
+              <Button variant="outline" onClick={() => setStep('package')} disabled={loading} className="w-full sm:w-auto">
                 Back
               </Button>
-              <Button onClick={handleCreateOrder} disabled={!selectedCarrierOption || loading}>
+              <Button onClick={handleCreateOrder} disabled={!selectedCarrierOption || loading} className="w-full sm:w-auto">
                 Create AWB
               </Button>
             </div>
