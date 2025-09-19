@@ -154,6 +154,7 @@ serve(async (req) => {
         code,
         logo_url,
         is_active,
+        api_base_url,
         carrier_services (
           id,
           name,
@@ -207,6 +208,7 @@ serve(async (req) => {
           carrier_id: carrier.id,
           service_id: parseInt(String(service.service_code)),
           service_name: service.name,
+          request_url: '',
           success: false,
           error: null as string | null,
         };
@@ -262,11 +264,16 @@ serve(async (req) => {
             service_id: parseInt(String(service.service_code))
           };
 
-          const response = await fetch('https://api.europarcel.com/api/public/calculate-prices', {
+          const baseUrl = (carrier.api_base_url?.replace(/\/+$/, '') || 'https://www.eawb.ro/api/public');
+          const url = `${baseUrl}/calculate-prices`;
+          attemptResult.request_url = url;
+
+          const response = await fetch(url, {
             method: 'POST',
             headers: {
               'X-API-Key': profile.eawb_api_key,
               'Content-Type': 'application/json',
+              'Accept': 'application/json'
             },
             body: JSON.stringify(priceRequest)
           });
