@@ -47,7 +47,17 @@ serve(async (req) => {
     const order = orderResult.data;
     const profile = profileResult.data;
 
-    console.log('Order customer address:', order.customer_address);
+    // Check if user has eAWB API key
+    if (!profile.eawb_api_key) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'MISSING_API_KEY',
+        message: 'eAWB API key not configured. Please configure it in Store Settings.'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     // Address normalization functions
     function removeDiacritics(str: string): string {
@@ -257,8 +267,22 @@ serve(async (req) => {
             body: JSON.stringify(priceRequest)
           });
 
-          const result = await response.json();
-          console.log(`Price response for ${carrier.name} - ${service.name}:`, result);
+          const responseText = await response.text();
+          console.log(`Raw response from ${carrier.name} (${response.status}):`, responseText.substring(0, 500));
+
+          let result;
+          try {
+            result = JSON.parse(responseText);
+          } catch (parseError) {
+            throw new Error(`Invalid JSON response from ${carrier.name}: ${responseText.substring(0, 200)}`);
+          }
+
+          console.log(`Price response for ${carrier.name} - ${service.name}:`, {
+            status: response.status,
+            success: result?.success,
+            message: result?.message,
+            data_length: Array.isArray(result?.data) ? result.data.length : 0
+          });
 
           if (response.ok && result?.success && Array.isArray(result.data) && result.data.length > 0) {
             const d = result.data[0];
