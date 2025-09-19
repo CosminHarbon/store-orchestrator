@@ -722,18 +722,6 @@ serve(async (req) => {
         } : undefined,
         address_from: senderAddress,
         address_to: recipientAddress,
-        },
-        address_to: {
-          country_code: recipientLoc.country_code,
-          county_name: recipientLoc.county_name,
-          locality_name: recipientLoc.locality_name,
-          locality_id: recipientLoc.locality_id,
-          contact: order.customer_name,
-          street_name: recipientStreet.street_name,
-          street_number: recipientStreet.street_number,
-          phone: order.customer_phone || '0700000000',
-          email: order.customer_email
-        },
         parcels: package_details.parcels,
         service: {
           currency: 'RON',

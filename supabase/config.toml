@@ -71,3 +71,6 @@ verify_jwt = true
 
 [functions.netopia-payment]
 verify_jwt = false
+
+[functions.eawb-quoting]
+verify_jwt = true

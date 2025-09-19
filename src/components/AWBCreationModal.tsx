@@ -5,9 +5,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Package } from 'lucide-react';
+import { Loader2, Package, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface Order {
   id: string;
@@ -41,6 +42,12 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
   const [loading, setLoading] = useState(false);
   const [carrierOptions, setCarrierOptions] = useState<any[]>([]);
   const [selectedCarrierOption, setSelectedCarrierOption] = useState<any | null>(null);
+  const [showAddressOverride, setShowAddressOverride] = useState(false);
+  const [addressOverride, setAddressOverride] = useState({
+    city: '',
+    county: '',
+    postal_code: ''
+  });
   
   const [packageDetails, setPackageDetails] = useState({
     weight: 1,
@@ -61,12 +68,23 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('eawb-delivery', {
-        body: {
-          action: 'calculate_prices',
-          order_id: order.id,
-          package_details: packageDetails
-        }
+      // Use the new eawb-quoting function with address override if provided
+      const requestBody: any = {
+        order_id: order.id,
+        package_details: packageDetails
+      };
+      
+      // Add address override if any field is filled
+      if (addressOverride.city || addressOverride.county || addressOverride.postal_code) {
+        requestBody.address_override = {
+          city: addressOverride.city || undefined,
+          county: addressOverride.county || undefined,
+          postal_code: addressOverride.postal_code || undefined
+        };
+      }
+      
+      const { data, error } = await supabase.functions.invoke('eawb-quoting', {
+        body: requestBody
       });
 
       if (error) throw error;
@@ -168,6 +186,8 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
       setStep('package');
       setCarrierOptions([]);
       setSelectedCarrierOption(null);
+      setShowAddressOverride(false);
+      setAddressOverride({ city: '', county: '', postal_code: '' });
     }
   };
 
@@ -193,6 +213,49 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
                 <p><strong>Email:</strong> {order.customer_email}</p>
               </div>
             </div>
+
+            <Collapsible open={showAddressOverride} onOpenChange={setShowAddressOverride}>
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" size="sm" className="w-full justify-between">
+                  Address Override (Optional)
+                  {showAddressOverride ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 mt-4 p-4 border rounded-lg bg-muted/50">
+                <p className="text-sm text-muted-foreground">
+                  If address parsing fails, manually specify the delivery city, county, and postal code:
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="override_city">City</Label>
+                    <Input
+                      id="override_city"
+                      value={addressOverride.city}
+                      onChange={(e) => setAddressOverride(prev => ({ ...prev, city: e.target.value }))}
+                      placeholder="e.g. Bucuresti"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="override_county">County</Label>
+                    <Input
+                      id="override_county"
+                      value={addressOverride.county}
+                      onChange={(e) => setAddressOverride(prev => ({ ...prev, county: e.target.value }))}
+                      placeholder="e.g. Bucuresti"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="override_postal">Postal Code</Label>
+                    <Input
+                      id="override_postal"
+                      value={addressOverride.postal_code}
+                      onChange={(e) => setAddressOverride(prev => ({ ...prev, postal_code: e.target.value }))}
+                      placeholder="e.g. 010101"
+                    />
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
 
             <div className="space-y-4">
               <h4 className="font-medium">Package Details</h4>
