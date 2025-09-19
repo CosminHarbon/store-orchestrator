@@ -145,7 +145,7 @@ serve(async (req) => {
     console.log('Sender address parsed:', senderAddress);
     console.log('Recipient address parsed:', recipientAddress);
 
-    // Get active carriers (DB schema columns corrected)
+    // Get active carriers - LIMITED TO SAMEDAY AND GLS FOR TESTING
     const { data: carriers, error: carriersError } = await supabase
       .from('carriers')
       .select(`
@@ -162,13 +162,14 @@ serve(async (req) => {
           is_active
         )
       `)
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .in('name', ['Sameday', 'GLS']);
 
     if (carriersError) {
       console.log('Carriers fetch error:', carriersError);
       throw new Error('Failed to fetch carriers');
     }
-    console.log(`Found ${carriers.length} active carriers`);
+    console.log(`Found ${carriers.length} test carriers (Sameday, GLS)`);
 
     const carrierQuotes = [];
     const attemptResults = [];
@@ -197,6 +198,9 @@ serve(async (req) => {
 
       for (const service of carrier.carrier_services) {
         if (service.is_active === false) continue;
+        
+        // TESTING: Only process "Home to Home" service (door-to-door)
+        if (service.name !== 'Home to Home') continue;
 
         const attemptResult = {
           carrier_name: carrier.name,
