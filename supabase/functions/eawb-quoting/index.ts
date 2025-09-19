@@ -120,6 +120,14 @@ serve(async (req) => {
       return { city, county, postal_code };
     }
 
+    function extractStreetInfo(fullAddress: string) {
+      const firstPart = (fullAddress || '').split(',')[0] || '';
+      const match = firstPart.match(/^(.*?)(\s+(\d+[A-Za-z\/-]*))?$/);
+      const street_name = (match?.[1] || firstPart).trim();
+      const street_number = (match?.[3] || '').trim();
+      return { street_name, street_number };
+    }
+
     // Parse addresses
     const senderAddress = parseRomanianAddress(profile.address || 'Bucuresti, Romania');
     const recipientAddress = address_override || parseRomanianAddress(order.customer_address);
@@ -127,23 +135,29 @@ serve(async (req) => {
     console.log('Sender address parsed:', senderAddress);
     console.log('Recipient address parsed:', recipientAddress);
 
-    // Get active carriers
+    // Get active carriers (DB schema columns corrected)
     const { data: carriers, error: carriersError } = await supabase
       .from('carriers')
       .select(`
-        *,
+        id,
+        name,
+        code,
+        logo_url,
+        is_active,
         carrier_services (
           id,
-          service_name,
-          service_description,
-          base_price,
-          price_per_kg,
+          name,
+          service_code,
+          description,
           is_active
         )
       `)
       .eq('is_active', true);
 
-    if (carriersError) throw new Error('Failed to fetch carriers');
+    if (carriersError) {
+      console.log('Carriers fetch error:', carriersError);
+      throw new Error('Failed to fetch carriers');
+    }
     console.log(`Found ${carriers.length} active carriers`);
 
     const carrierQuotes = [];
@@ -158,79 +172,98 @@ serve(async (req) => {
       declared_value: package_details.declared_value || order.total
     };
 
-    // Try each carrier
-    for (const carrier of carriers) {
-      const attemptResult = {
-        carrier_name: carrier.name,
-        carrier_id: carrier.id,
-        success: false,
-        error: null as string | null,
-        quotes: [] as any[]
-      };
+    // Build simple street info
+    const senderStreet = extractStreetInfo(profile.address || '');
+    const recipientStreet = extractStreetInfo(order.customer_address || '');
 
-      try {
-        console.log(`Attempting carrier: ${carrier.name}`);
-        
-        const eawbPayload = {
-          action: 'calculate-prices',
-          sender: {
-            name: profile.store_name || 'My Store',
-            contact: profile.contact_person || profile.store_name || 'Store Manager',
-            phone: profile.phone || order.customer_phone || '+40700000000',
-            email: profile.email || user.email,
-            address: {
-              city: senderAddress.city,
-              county: senderAddress.county,
-              postal_code: senderAddress.postal_code,
-              address: profile.address || 'Bucuresti, Romania'
-            }
-          },
-          recipient: {
-            name: order.customer_name,
-            contact: order.customer_name,
-            phone: order.customer_phone || '+40700000000',
-            email: order.customer_email,
-            address: {
-              city: recipientAddress.city,
-              county: recipientAddress.county,
-              postal_code: recipientAddress.postal_code,
-              address: order.customer_address
-            }
-          },
-          parcel,
-          service_info: {
-            cod_amount: package_details.cod_amount || 0,
-            contents: package_details.contents || 'Various items'
-          }
+    // Use configured billing address or fallback to 1
+    const billingAddressId = (profile.eawb_billing_address_id && profile.eawb_billing_address_id > 0)
+      ? profile.eawb_billing_address_id
+      : 1;
+
+    // Try each carrier/service (no locality_id dependency)
+    for (const carrier of carriers) {
+      if (!carrier.carrier_services || carrier.carrier_services.length === 0) continue;
+
+      for (const service of carrier.carrier_services) {
+        if (service.is_active === false) continue;
+
+        const attemptResult = {
+          carrier_name: carrier.name,
+          carrier_id: carrier.id,
+          service_id: parseInt(String(service.service_code)),
+          service_name: service.name,
+          success: false,
+          error: null as string | null,
         };
 
-        console.log(`Request payload for ${carrier.name}:`, JSON.stringify(eawbPayload, null, 2));
-
-        const response = await fetch(`https://www.eawb.ro/api/v2/carriers/${carrier.external_id}/calculate-prices`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${Deno.env.get('EAWB_API_KEY')}`
-          },
-          body: JSON.stringify(eawbPayload)
-        });
-
-        const responseText = await response.text();
-        console.log(`Raw response from ${carrier.name}:`, responseText);
-
-        let responseData;
         try {
-          responseData = JSON.parse(responseText);
-        } catch (e) {
-          throw new Error(`Invalid JSON response: ${responseText.substring(0, 200)}`);
-        }
+          console.log(`Calculating prices for ${carrier.name} - ${service.name}`);
 
-        if (response.ok && responseData.success) {
-          const quotes = Array.isArray(responseData.data) ? responseData.data : [responseData.data];
-          attemptResult.success = true;
-          attemptResult.quotes = quotes;
-          
-          for (const quote of quotes) {
+          const priceRequest = {
+            billing_to: { billing_address_id: billingAddressId },
+            address_from: {
+              country_code: 'RO',
+              county_name: senderAddress.county,
+              locality_name: senderAddress.city,
+              postal_code: senderAddress.postal_code || undefined,
+              contact: profile.store_name || 'Sender',
+              street_name: senderStreet.street_name,
+              street_number: senderStreet.street_number,
+              phone: profile.phone || '0700000000',
+              email: profile.email || user.email
+            },
+            address_to: {
+              country_code: 'RO',
+              county_name: recipientAddress.county,
+              locality_name: recipientAddress.city,
+              postal_code: recipientAddress.postal_code || undefined,
+              contact: order.customer_name,
+              street_name: recipientStreet.street_name,
+              street_number: recipientStreet.street_number,
+              phone: order.customer_phone || '0700000000',
+              email: order.customer_email
+            },
+            parcels: [
+              {
+                length: parcel.length,
+                width: parcel.width,
+                height: parcel.height,
+                weight: parcel.weight,
+                declared_value: parcel.declared_value
+              }
+            ],
+            service: {
+              currency: 'RON',
+              payment_type: '1',
+              send_invoice: false,
+              allow_bank_to_open: false,
+              fragile: false,
+              pickup_available: false,
+              allow_saturday_delivery: false,
+              sunday_delivery: false,
+              morning_delivery: false
+            },
+            carrier_id: carrier.id,
+            service_id: parseInt(String(service.service_code))
+          };
+
+          const response = await fetch('https://api.europarcel.com/api/public/calculate-prices', {
+            method: 'POST',
+            headers: {
+              'X-API-Key': profile.eawb_api_key,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(priceRequest)
+          });
+
+          const result = await response.json();
+          console.log(`Price response for ${carrier.name} - ${service.name}:`, result);
+
+          if (response.ok && result?.success && Array.isArray(result.data) && result.data.length > 0) {
+            const d = result.data[0];
+            attemptResult.success = true;
+
             carrierQuotes.push({
               carrier_info: {
                 id: carrier.id,
@@ -238,35 +271,30 @@ serve(async (req) => {
                 logo_url: carrier.logo_url
               },
               service_info: {
-                id: quote.service_id || 1,
-                name: quote.service_name || 'Standard',
-                description: quote.service_description || ''
+                id: parseInt(String(service.service_code)),
+                name: service.name,
+                description: service.description || ''
               },
               price: {
-                amount: parseFloat(quote.price_amount || quote.amount || 0),
-                vat: parseFloat(quote.price_vat || quote.vat || 0),
-                total: parseFloat(quote.price_total || quote.total || 0),
-                currency: quote.currency || 'RON'
+                amount: parseFloat(d?.price?.amount ?? d?.price_amount ?? 0) || 0,
+                vat: parseFloat(d?.price?.vat ?? d?.price_vat ?? 0) || 0,
+                total: parseFloat(d?.price?.total ?? d?.price_total ?? 0) || 0,
+                currency: d?.price?.currency || d?.currency || 'RON'
               },
-              estimated_pickup_date: quote.estimated_pickup_date || 'Next business day',
-              estimated_delivery_date: quote.estimated_delivery_date || '2-3 business days',
-              carrier_id: carrier.external_id,
-              service_id: quote.service_id || 1
+              estimated_pickup_date: d?.estimated_pickup_date || 'Next business day',
+              estimated_delivery_date: d?.estimated_delivery_date || '2-3 business days',
+              carrier_id: carrier.id,
+              service_id: parseInt(String(service.service_code))
             });
+          } else {
+            attemptResult.error = result?.message || `HTTP ${response.status}`;
           }
-          
-          console.log(`Success: Got ${quotes.length} quotes from ${carrier.name}`);
-        } else {
-          const errorMsg = responseData.message || responseData.error || `HTTP ${response.status}`;
-          attemptResult.error = errorMsg;
-          console.log(`Failed for ${carrier.name}:`, errorMsg);
+        } catch (err: any) {
+          attemptResult.error = err.message;
         }
-      } catch (error: any) {
-        attemptResult.error = error.message;
-        console.log(`Exception for ${carrier.name}:`, error.message);
+
+        attemptResults.push(attemptResult);
       }
-      
-      attemptResults.push(attemptResult);
     }
 
     console.log(`=== Results: ${carrierQuotes.length} total quotes from ${attemptResults.filter(a => a.success).length} carriers ===`);
