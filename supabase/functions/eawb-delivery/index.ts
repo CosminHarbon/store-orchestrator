@@ -671,32 +671,113 @@ serve(async (req) => {
       }
 
       if (allQuotes.length === 0) {
-        // Provide detailed error information
-        const hasLocalityIds = senderAddress.locality_id && recipientAddress.locality_id;
-        const errorMessage = hasLocalityIds 
-          ? 'No carrier returned a price for the provided addresses and parcels. This may be due to carrier-specific restrictions or invalid package details.'
-          : 'Address locality IDs could not be resolved. Some carriers may require exact locality resolution for accurate pricing.';
+        // Fallback: try configured default carrier/service once
+        if (Number(profile.eawb_default_carrier_id) > 0 && Number(profile.eawb_default_service_id) > 0) {
+          try {
+            const fallbackReq = {
+              billing_to: { billing_address_id: billingAddressId },
+              address_from: {
+                ...senderAddress,
+                ...(senderAddress.locality_id ? {} : { locality_id: undefined })
+              },
+              address_to: {
+                ...recipientAddress,
+                ...(recipientAddress.locality_id ? {} : { locality_id: undefined })
+              },
+              parcels: buildParcels(package_details),
+              service: {
+                currency: 'RON',
+                payment_type: 1,
+                send_invoice: false,
+                allow_bank_to_open: false,
+                fragile: false,
+                pickup_available: false,
+                allow_saturday_delivery: false,
+                sunday_delivery: false,
+                morning_delivery: false
+              },
+              carrier_id: Number(profile.eawb_default_carrier_id),
+              service_id: Number(profile.eawb_default_service_id)
+            };
 
-        return new Response(JSON.stringify({
-          success: false,
-          error: 'NO_QUOTES',
-          message: errorMessage,
-          suggestions: hasLocalityIds 
-            ? ['Check package dimensions and weight', 'Verify addresses are complete', 'Try different carriers']
-            : ['Check address format', 'Ensure city and county are correct', 'Some addresses may not be in carrier databases'],
-          details: {
-            senderAddress: {
-              ...senderAddress,
-              locality_resolved: !!senderAddress.locality_id
-            },
-            recipientAddress: {
-              ...recipientAddress,
-              locality_resolved: !!recipientAddress.locality_id
-            },
-            billingAddressId,
-            attempts
+            const url = `${BASE_URL}/calculate-prices`;
+            console.log('Fallback pricing request (defaults):', JSON.stringify(fallbackReq));
+            const r = await fetch(url, {
+              method: 'POST',
+              headers: {
+                'X-API-Key': profile.eawb_api_key,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(fallbackReq)
+            });
+            const j = await r.json().catch(() => ({}));
+            if (r.ok && j?.success && Array.isArray(j?.data) && j.data.length > 0) {
+              const priceData = j.data[0];
+              allQuotes.push({
+                carrier_id: Number(profile.eawb_default_carrier_id),
+                carrier_name: 'Configured Carrier',
+                carrier_logo: null,
+                service_id: Number(profile.eawb_default_service_id),
+                service_name: 'Configured Service',
+                service_description: '',
+                price: priceData.price?.total || 0,
+                currency: priceData.price?.currency || 'RON',
+                delivery_time: `${priceData.estimated_pickup_date} → ${priceData.estimated_delivery_date}`,
+                estimated_pickup_date: priceData.estimated_pickup_date,
+                estimated_delivery_date: priceData.estimated_delivery_date
+              });
+            } else {
+              attempts.push({
+                carrier_id: Number(profile.eawb_default_carrier_id),
+                carrier_name: 'Configured Carrier',
+                service_id: Number(profile.eawb_default_service_id),
+                service_name: 'Configured Service',
+                status: r.status,
+                error: j?.message || 'Fallback returned no quotes',
+                success: false
+              });
+            }
+          } catch (e) {
+            attempts.push({
+              carrier_id: Number(profile.eawb_default_carrier_id),
+              carrier_name: 'Configured Carrier',
+              service_id: Number(profile.eawb_default_service_id),
+              service_name: 'Configured Service',
+              status: 'exception',
+              error: String(e),
+              success: false
+            });
           }
-        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
+
+        if (allQuotes.length === 0) {
+          // Provide detailed error information
+          const hasLocalityIds = senderAddress.locality_id && recipientAddress.locality_id;
+          const errorMessage = hasLocalityIds 
+            ? 'No carrier returned a price for the provided addresses and parcels. This may be due to carrier-specific restrictions or invalid package details.'
+            : 'Address locality IDs could not be resolved. Some carriers may require exact locality resolution for accurate pricing.';
+
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'NO_QUOTES',
+            message: errorMessage,
+            suggestions: hasLocalityIds 
+              ? ['Check package dimensions and weight', 'Verify addresses are complete', 'Try different carriers']
+              : ['Check address format', 'Ensure city and county are correct', 'Some addresses may not be in carrier databases'],
+            details: {
+              senderAddress: {
+                ...senderAddress,
+                locality_resolved: !!senderAddress.locality_id
+              },
+              recipientAddress: {
+                ...recipientAddress,
+                locality_resolved: !!recipientAddress.locality_id
+              },
+              billingAddressId,
+              attempts
+            }
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
       }
 
       return new Response(

@@ -408,6 +408,120 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     } else {
+      // Fallback: try configured default carrier/service once
+      if (Number(profile.eawb_default_carrier_id) > 0 && Number(profile.eawb_default_service_id) > 0) {
+        const attemptResult = {
+          carrier_name: 'Configured Carrier',
+          carrier_id: Number(profile.eawb_default_carrier_id),
+          service_id: Number(profile.eawb_default_service_id),
+          service_name: 'Configured Service',
+          request_url: `${BASE_URL}/calculate-prices`,
+          success: false,
+          error: null as string | null,
+        };
+        try {
+          const priceRequest = {
+            billing_to: { billing_address_id: billingAddressId },
+            address_from: {
+              country_code: 'RO',
+              county_name: senderAddress.county,
+              locality_name: senderAddress.city,
+              postal_code: senderAddress.postal_code || undefined,
+              contact: profile.eawb_name || profile.store_name || 'Sender',
+              street_name: senderStreet.street_name,
+              street_number: senderStreet.street_number,
+              phone: profile.eawb_phone || profile.phone || '0700000000',
+              email: profile.eawb_email || profile.email || user.email
+            },
+            address_to: {
+              country_code: 'RO',
+              county_name: recipientAddress.county,
+              locality_name: recipientAddress.city,
+              postal_code: recipientAddress.postal_code || undefined,
+              contact: order.customer_name,
+              street_name: recipientStreet.street_name,
+              street_number: recipientStreet.street_number,
+              phone: order.customer_phone || '0700000000',
+              email: order.customer_email
+            },
+            parcels: [
+              {
+                length: parcel.length,
+                width: parcel.width,
+                height: parcel.height,
+                weight: parcel.weight,
+                declared_value: parcel.declared_value
+              }
+            ],
+            service: {
+              currency: 'RON',
+              payment_type: 1,
+              send_invoice: false,
+              allow_bank_to_open: false,
+              fragile: false,
+              pickup_available: false,
+              allow_saturday_delivery: false,
+              sunday_delivery: false,
+              morning_delivery: false
+            },
+            carrier_id: attemptResult.carrier_id,
+            service_id: attemptResult.service_id
+          };
+
+          const response = await fetch(attemptResult.request_url, {
+            method: 'POST',
+            headers: {
+              'X-API-Key': profile.eawb_api_key,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify(priceRequest)
+          });
+          const responseText = await response.text();
+          let result: any = {};
+          try { result = JSON.parse(responseText); } catch {}
+
+          if (response.ok && result?.success && Array.isArray(result.data) && result.data.length > 0) {
+            const d = result.data[0];
+            attemptResult.success = true;
+            carrierQuotes.push({
+              carrier_info: { id: attemptResult.carrier_id, name: 'Configured Carrier', logo_url: null },
+              service_info: { id: attemptResult.service_id, name: 'Configured Service', description: '' },
+              price: {
+                amount: parseFloat(d?.price?.amount ?? d?.price_amount ?? 0) || 0,
+                vat: parseFloat(d?.price?.vat ?? d?.price_vat ?? 0) || 0,
+                total: parseFloat(d?.price?.total ?? d?.price_total ?? 0) || 0,
+                currency: d?.price?.currency || d?.currency || 'RON'
+              },
+              estimated_pickup_date: d?.estimated_pickup_date || 'Next business day',
+              estimated_delivery_date: d?.estimated_delivery_date || '2-3 business days',
+              carrier_id: attemptResult.carrier_id,
+              service_id: attemptResult.service_id
+            });
+          } else {
+            attemptResult.error = result?.message || `HTTP ${response.status}`;
+          }
+        } catch (e: any) {
+          attemptResult.error = e.message || String(e);
+        }
+        attemptResults.push(attemptResult);
+      }
+
+      if (carrierQuotes.length > 0) {
+        return new Response(JSON.stringify({
+          success: true,
+          carrier_options: carrierQuotes,
+          debug_info: {
+            sender_address: senderAddress,
+            recipient_address: recipientAddress,
+            parcel_info: parcel,
+            attempts: attemptResults
+          }
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       return new Response(JSON.stringify({
         success: false,
         error: 'NO_QUOTES',
