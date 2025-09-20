@@ -374,8 +374,21 @@ serve(async (req) => {
         })
       }
 
-      const { carriers: eawbCarriers, services: eawbServices } = await loadEawbCatalogue(profile.eawb_api_key);
-      console.log(`Loaded eAWB catalogue: carriers=${eawbCarriers?.length || 0}, services=${eawbServices?.length || 0}`);
+      const BASE_URL = 'https://api.europarcel.com/api/public';
+
+      async function loadEawbCatalogue(apiKey: string) {
+        const headers = { 'X-API-Key': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' } as const;
+        const [carRes, srvRes] = await Promise.all([
+          fetch(`${BASE_URL}/carriers`, { method: 'GET', headers }),
+          fetch(`${BASE_URL}/services`, { method: 'GET', headers })
+        ]);
+        const carriersJson = await carRes.json().catch(() => ({}));
+        const servicesJson = await srvRes.json().catch(() => ({}));
+        const carriers = carriersJson?.data || carriersJson || [];
+        const services = servicesJson?.data || servicesJson || [];
+        return { carriers, services };
+      }
+
 
       // Enhanced address parsing with detailed logging
       console.log('=== ADDRESS PARSING DEBUG ===');
@@ -466,20 +479,6 @@ serve(async (req) => {
         }
       }
 
-      const BASE_URL = 'https://api.europarcel.com/api/public';
-
-      async function loadEawbCatalogue(apiKey: string) {
-        const headers = { 'X-API-Key': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' } as const;
-        const [carRes, srvRes] = await Promise.all([
-          fetch(`${BASE_URL}/carriers`, { method: 'GET', headers }),
-          fetch(`${BASE_URL}/services`, { method: 'GET', headers })
-        ]);
-        const carriersJson = await carRes.json().catch(() => ({}));
-        const servicesJson = await srvRes.json().catch(() => ({}));
-        const carriers = carriersJson?.data || carriersJson || [];
-        const services = servicesJson?.data || servicesJson || [];
-        return { carriers, services };
-      }
 
       // Calculate prices for all carrier/service combinations
       const allQuotes = []
@@ -785,11 +784,23 @@ serve(async (req) => {
         )
       }
 
-      // Load eAWB catalogue to resolve carrier name
-      const { carriers: eawbCarriersForOrder } = await loadEawbCatalogue(profile.eawb_api_key);
+      // eAWB base and helper to resolve carrier name
+      const BASE_URL = 'https://api.europarcel.com/api/public';
+      const getCarrierName = async (apiKey: string, carrierId: number) => {
+        try {
+          const res = await fetch(`${BASE_URL}/carriers`, { headers: { 'X-API-Key': apiKey, 'Accept': 'application/json' } });
+          const data = await res.json().catch(() => ({}));
+          const list = data?.data || data || [];
+          const found = list.find((c: any) => Number(c.id) === carrierId);
+          return found?.name || 'Unknown';
+        } catch {
+          return 'Unknown';
+        }
+      };
+
       const carrierIdNum = Number(selected_carrier);
       const serviceIdNum = Number(selected_service);
-      const carrierFromEawb = (eawbCarriersForOrder || []).find((c: any) => Number(c.id) === carrierIdNum);
+      const carrierName = await getCarrierName(profile.eawb_api_key, carrierIdNum);
 
       const eawbOrderData = {
         billing_to: profile.eawb_billing_address_id ? {
@@ -840,8 +851,6 @@ serve(async (req) => {
         })
       }
 
-      // Determine carrier name from eAWB catalogue for order update
-      const carrierName = carrierFromEawb?.name || 'Unknown';
 
       // Update order with AWB details
       const { error: updateError } = await supabaseClient
