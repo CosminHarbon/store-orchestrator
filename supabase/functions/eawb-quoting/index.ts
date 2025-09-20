@@ -176,15 +176,20 @@ serve(async (req) => {
 
     async function loadEawbCatalogue(apiKey: string) {
       const headers = { 'X-API-Key': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' } as const;
-      const [carRes, srvRes] = await Promise.all([
-        fetch(`${BASE_URL}/carriers`, { method: 'GET', headers }),
-        fetch(`${BASE_URL}/services`, { method: 'GET', headers })
-      ]);
-      const carriersJson = await carRes.json().catch(() => ({}));
-      const servicesJson = await srvRes.json().catch(() => ({}));
-      const carriers = carriersJson?.data || carriersJson || [];
-      const services = servicesJson?.data || servicesJson || [];
-      return { carriers, services };
+      try {
+        const [carRes, srvRes] = await Promise.all([
+          fetch(`${BASE_URL}/carriers`, { method: 'GET', headers }),
+          fetch(`${BASE_URL}/services`, { method: 'GET', headers })
+        ]);
+        const carriersJson = await carRes.json().catch(() => ({}));
+        const servicesJson = await srvRes.json().catch(() => ({}));
+        const carriers = Array.isArray(carriersJson?.data) ? carriersJson.data : (Array.isArray(carriersJson) ? carriersJson : []);
+        const services = Array.isArray(servicesJson?.data) ? servicesJson.data : (Array.isArray(servicesJson) ? servicesJson : []);
+        return { carriers, services };
+      } catch (e) {
+        console.log('Failed to load eAWB catalogue:', e?.message || e);
+        return { carriers: [], services: [] };
+      }
     }
 
     const { carriers: eawbCarriers, services: eawbServices } = await loadEawbCatalogue(profile.eawb_api_key);
@@ -224,7 +229,8 @@ serve(async (req) => {
         // Map our DB carrier/service to eAWB integer IDs
         const carrierCode = String(carrier.code || '').toLowerCase();
         const carrierNameLc = String(carrier.name || '').toLowerCase();
-        const eawbCarrier = (eawbCarriers || []).find((c: any) => {
+        const eawbCarrierList = Array.isArray(eawbCarriers) ? eawbCarriers : [];
+        const eawbCarrier = eawbCarrierList.find((c: any) => {
           const cCode = String(c.code || '').toLowerCase();
           const cName = String(c.name || '').toLowerCase();
           return (carrierCode && cCode === carrierCode) || cName === carrierNameLc;
@@ -233,7 +239,8 @@ serve(async (req) => {
 
         let eawbServiceId = Number.parseInt(String(service.service_code));
         if (!Number.isFinite(eawbServiceId)) {
-          const svc = (eawbServices || []).find((s: any) => {
+          const eawbServiceList = Array.isArray(eawbServices) ? eawbServices : [];
+          const svc = eawbServiceList.find((s: any) => {
             const sCode = String(s.code || '').toLowerCase();
             const sName = String(s.name || '').toLowerCase();
             return (Number(s.carrier_id) === eawbCarrierId) && (
@@ -256,6 +263,14 @@ serve(async (req) => {
 
         try {
           console.log(`Calculating prices for ${carrier.name} - ${service.name}`);
+
+          // Validate mapping before requesting price
+          if (!Number.isFinite(eawbServiceId) || eawbCarrierId <= 0) {
+            attemptResult.error = 'Invalid carrier/service mapping';
+            attemptResult.success = false;
+            attemptResults.push(attemptResult);
+            continue;
+          }
 
           const priceRequest = {
             billing_to: { billing_address_id: billingAddressId },
