@@ -145,7 +145,7 @@ serve(async (req) => {
     console.log('Sender address parsed:', senderAddress);
     console.log('Recipient address parsed:', recipientAddress);
 
-    // Get active carriers - LIMITED TO SAMEDAY AND GLS FOR TESTING
+    // Get all active carriers and their services
     const { data: carriers, error: carriersError } = await supabase
       .from('carriers')
       .select(`
@@ -163,17 +163,30 @@ serve(async (req) => {
           is_active
         )
       `)
-      .eq('is_active', true)
-      .in('name', ['Sameday', 'GLS']);
+      .eq('is_active', true);
 
     if (carriersError) {
       console.log('Carriers fetch error:', carriersError);
       throw new Error('Failed to fetch carriers');
     }
-    console.log(`Found ${carriers.length} test carriers (Sameday, GLS)`);
+    console.log(`Found ${carriers.length} active carriers`);
 
     const carrierQuotes = [];
     const attemptResults = [];
+
+    // Helper function to normalize API base URL
+    const normalizeApiUrl = (carrier: any): string => {
+      if (carrier.api_base_url) {
+        const url = carrier.api_base_url.replace(/\/+$/, '');
+        // Ensure it has the /api/public path
+        if (!url.includes('/api/public')) {
+          return `${url}/api/public`;
+        }
+        return url;
+      }
+      // Default fallback
+      return 'https://www.eawb.ro/api/public';
+    };
 
     // Build parcel data
     const parcel = {
@@ -185,7 +198,7 @@ serve(async (req) => {
     };
 
     // Build simple street info
-    const senderStreet = extractStreetInfo(profile.address || '');
+    const senderStreet = extractStreetInfo(profile.eawb_address || '');
     const recipientStreet = extractStreetInfo(order.customer_address || '');
 
     // Use configured billing address or fallback to 1
@@ -193,15 +206,14 @@ serve(async (req) => {
       ? profile.eawb_billing_address_id
       : 1;
 
-    // Try each carrier/service (no locality_id dependency)
+    // Try each carrier/service combination
     for (const carrier of carriers) {
       if (!carrier.carrier_services || carrier.carrier_services.length === 0) continue;
 
+      console.log(`Processing carrier: ${carrier.name} (${carrier.code})`);
+
       for (const service of carrier.carrier_services) {
         if (service.is_active === false) continue;
-        
-        // TESTING: Only process "Home to Home" service (door-to-door)
-        if (service.name !== 'Home to Home') continue;
 
         const attemptResult = {
           carrier_name: carrier.name,
@@ -223,11 +235,11 @@ serve(async (req) => {
               county_name: senderAddress.county,
               locality_name: senderAddress.city,
               postal_code: senderAddress.postal_code || undefined,
-              contact: profile.store_name || 'Sender',
+              contact: profile.eawb_name || profile.store_name || 'Sender',
               street_name: senderStreet.street_name,
               street_number: senderStreet.street_number,
-              phone: profile.phone || '0700000000',
-              email: profile.email || user.email
+              phone: profile.eawb_phone || profile.phone || '0700000000',
+              email: profile.eawb_email || profile.email || user.email
             },
             address_to: {
               country_code: 'RO',
@@ -264,9 +276,11 @@ serve(async (req) => {
             service_id: parseInt(String(service.service_code))
           };
 
-          const baseUrl = (carrier.api_base_url?.replace(/\/+$/, '') || 'https://www.eawb.ro/api/public');
+          const baseUrl = normalizeApiUrl(carrier);
           const url = `${baseUrl}/calculate-prices`;
           attemptResult.request_url = url;
+
+          console.log(`Making request to: ${url} for ${carrier.name} - ${service.name}`);
 
           const response = await fetch(url, {
             method: 'POST',
@@ -277,6 +291,8 @@ serve(async (req) => {
             },
             body: JSON.stringify(priceRequest)
           });
+
+          console.log(`Response status: ${response.status} for ${carrier.name} - ${service.name}`);
 
           const responseText = await response.text();
           console.log(`Raw response from ${carrier.name} (${response.status}):`, responseText.substring(0, 500));

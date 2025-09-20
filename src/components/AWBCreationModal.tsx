@@ -68,29 +68,46 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
 
     setLoading(true);
     try {
-      // Use the new eawb-quoting function with address override if provided
-      const requestBody: any = {
-        order_id: order.id,
-        package_details: packageDetails
-      };
-      
-      // Add address override if any field is filled
-      if (addressOverride.city || addressOverride.county || addressOverride.postal_code) {
-        requestBody.address_override = {
-          city: addressOverride.city || undefined,
-          county: addressOverride.county || undefined,
-          postal_code: addressOverride.postal_code || undefined
-        };
-      }
-      
-      const { data, error } = await supabase.functions.invoke('eawb-quoting', {
-        body: requestBody
+      const { data, error } = await supabase.functions.invoke('eawb-delivery', {
+        body: {
+          action: 'calculate_prices',
+          order_id: order.id,
+          package_details: packageDetails,
+          address_override: (addressOverride.city || addressOverride.county || addressOverride.postal_code) ? {
+            city: addressOverride.city || undefined,
+            county: addressOverride.county || undefined,
+            postal_code: addressOverride.postal_code || undefined
+          } : undefined
+        }
       });
 
       if (error) throw error;
 
-      if (data.success && Array.isArray(data.carrier_options) && data.carrier_options.length > 0) {
-        setCarrierOptions(data.carrier_options);
+      if (data.success && Array.isArray(data.quotes) && data.quotes.length > 0) {
+        // Transform the response format to match the expected format
+        const transformedOptions = data.quotes.map((quote: any) => ({
+          carrier_info: {
+            id: quote.carrier_id,
+            name: quote.carrier_name,
+            logo_url: quote.carrier_logo
+          },
+          service_info: {
+            id: quote.service_id,
+            name: quote.service_name,
+            description: quote.service_description || ''
+          },
+          price: {
+            amount: quote.price,
+            currency: quote.currency,
+            total: quote.price
+          },
+          estimated_pickup_date: quote.estimated_pickup_date || 'Next business day',
+          estimated_delivery_date: quote.estimated_delivery_date || '2-3 business days',
+          carrier_id: quote.carrier_id,
+          service_id: quote.service_id
+        }));
+        
+        setCarrierOptions(transformedOptions);
         setStep('pricing');
       } else {
         console.error('Price calc failed:', data);
@@ -199,7 +216,9 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
             <Package className="h-5 w-5" />
             Create AWB - Order #{order.id.slice(-8)}
           </DialogTitle>
-          <DialogDescription>Enter package details, get quotes from multiple carriers, then create your shipping label.</DialogDescription>
+          <DialogDescription>
+            Enter package details, get quotes from multiple carriers, then create your shipping label.
+          </DialogDescription>
         </DialogHeader>
 
         {step === 'package' && (
