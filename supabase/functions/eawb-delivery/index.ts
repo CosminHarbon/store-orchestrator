@@ -463,18 +463,18 @@ serve(async (req) => {
         }
       }
 
-      // Helper function to normalize API base URL
-      const normalizeApiUrl = (carrier: any): string => {
-        if (carrier.api_base_url) {
-          const url = carrier.api_base_url.replace(/\/+$/, '');
-          // Ensure it has the /api/public path
-          if (!url.includes('/api/public')) {
-            return `${url}/api/public`;
-          }
-          return url;
+      // Helper function to get carrier-specific API URL
+      const getCarrierApiUrl = (carrier: any): string => {
+        // Use the carrier's specific API base URL from database
+        const baseUrl = carrier.api_base_url?.replace(/\/+$/, '') || 'https://api.europarcel.com';
+        
+        // For europarcel.com, add the /api/public path
+        if (baseUrl.includes('europarcel.com')) {
+          return `${baseUrl}/api/public`;
         }
-        // Default fallback
-        return 'https://www.eawb.ro/api/public';
+        
+        // For other carriers, use their base URL directly
+        return baseUrl;
       };
 
       // Calculate prices for all carrier/service combinations
@@ -540,10 +540,11 @@ serve(async (req) => {
             service_id: parseInt(service.service_code)
           }
 
-          const baseUrl = normalizeApiUrl(carrier);
+          const baseUrl = getCarrierApiUrl(carrier);
           const url = `${baseUrl}/calculate-prices`;
 
           console.log(`Making request to: ${url} for ${carrier.name} - ${service.name}`);
+          console.log(`Request payload:`, JSON.stringify(priceRequest, null, 2));
 
           try {
             const response = await fetch(url, {
@@ -555,8 +556,26 @@ serve(async (req) => {
               body: JSON.stringify(priceRequest)
             })
 
+            console.log(`Response status: ${response.status} ${response.statusText}`);
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.log(`Price calculation failed for ${carrier.name} - ${service.name}: ${response.status} ${response.statusText}`);
+              console.log(`Error response: ${errorText}`);
+              attempts.push({
+                carrier_id: carrier.id,
+                carrier_name: carrier.name,
+                service_id: parseInt(service.service_code),
+                service_name: service.name,
+                status: 'http_error',
+                error: `HTTP ${response.status}: ${errorText.substring(0, 200)}`,
+                success: false
+              });
+              continue;
+            }
+
             const result = await response.json()
-            console.log(`Price response for ${carrier.name} - ${service.name}:`, result)
+            console.log(`Price response for ${carrier.name} - ${service.name}:`, JSON.stringify(result, null, 2));
 
             attempts.push({
               carrier_id: carrier.id,
@@ -780,13 +799,8 @@ serve(async (req) => {
 
       console.log('Creating eAWB order:', JSON.stringify(eawbOrderData, null, 2))
 
-      // Use carrier-specific API URL or fallback
-      const baseUrl = carrierInfo.api_base_url 
-        ? (carrierInfo.api_base_url.replace(/\/+$/, '').includes('/api/public') 
-           ? carrierInfo.api_base_url.replace(/\/+$/, '') 
-           : `${carrierInfo.api_base_url.replace(/\/+$/, '')}/api/public`)
-        : 'https://www.eawb.ro/api/public';
-      
+      // Use carrier-specific API URL 
+      const baseUrl = getCarrierApiUrl(carrierInfo);
       const orderUrl = `${baseUrl}/orders`;
       console.log(`Making order creation request to: ${orderUrl}`);
 
