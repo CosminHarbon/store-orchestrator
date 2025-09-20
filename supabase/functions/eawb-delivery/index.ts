@@ -390,6 +390,8 @@ serve(async (req) => {
       }
 
 
+      const { carriers: eawbCarriers, services: eawbServices } = await loadEawbCatalogue(profile.eawb_api_key);
+
       // Enhanced address parsing with detailed logging
       console.log('=== ADDRESS PARSING DEBUG ===');
       console.log('Raw sender address:', profile.eawb_address);

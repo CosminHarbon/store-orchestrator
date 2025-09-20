@@ -173,7 +173,6 @@ serve(async (req) => {
 
     const BASE_URL = 'https://api.europarcel.com/api/public';
 
-    const BASE_URL = 'https://api.europarcel.com/api/public';
 
     async function loadEawbCatalogue(apiKey: string) {
       const headers = { 'X-API-Key': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' } as const;
@@ -194,18 +193,6 @@ serve(async (req) => {
     const carrierQuotes = [];
     const attemptResults = [];
 
-    async function loadEawbCatalogue(apiKey: string) {
-      const headers = { 'X-API-Key': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' } as const;
-      const [carRes, srvRes] = await Promise.all([
-        fetch(`${BASE_URL}/carriers`, { method: 'GET', headers }),
-        fetch(`${BASE_URL}/services`, { method: 'GET', headers })
-      ]);
-      const carriersJson = await carRes.json().catch(() => ({}));
-      const servicesJson = await srvRes.json().catch(() => ({}));
-      const carriers = carriersJson?.data || carriersJson || [];
-      const services = servicesJson?.data || servicesJson || [];
-      return { carriers, services };
-    }
 
     // Build parcel data
     const parcel = {
