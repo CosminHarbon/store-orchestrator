@@ -374,6 +374,9 @@ serve(async (req) => {
         })
       }
 
+      const { carriers: eawbCarriers, services: eawbServices } = await loadEawbCatalogue(profile.eawb_api_key);
+      console.log(`Loaded eAWB catalogue: carriers=${eawbCarriers?.length || 0}, services=${eawbServices?.length || 0}`);
+
       // Enhanced address parsing with detailed logging
       console.log('=== ADDRESS PARSING DEBUG ===');
       console.log('Raw sender address:', profile.eawb_address);
@@ -463,19 +466,20 @@ serve(async (req) => {
         }
       }
 
-      // Helper function to get carrier-specific API URL
-      const getCarrierApiUrl = (carrier: any): string => {
-        // Use the carrier's specific API base URL from database
-        const baseUrl = carrier.api_base_url?.replace(/\/+$/, '') || 'https://api.europarcel.com';
-        
-        // For europarcel.com, add the /api/public path
-        if (baseUrl.includes('europarcel.com')) {
-          return `${baseUrl}/api/public`;
-        }
-        
-        // For other carriers, use their base URL directly
-        return baseUrl;
-      };
+      const BASE_URL = 'https://api.europarcel.com/api/public';
+
+      async function loadEawbCatalogue(apiKey: string) {
+        const headers = { 'X-API-Key': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' } as const;
+        const [carRes, srvRes] = await Promise.all([
+          fetch(`${BASE_URL}/carriers`, { method: 'GET', headers }),
+          fetch(`${BASE_URL}/services`, { method: 'GET', headers })
+        ]);
+        const carriersJson = await carRes.json().catch(() => ({}));
+        const servicesJson = await srvRes.json().catch(() => ({}));
+        const carriers = carriersJson?.data || carriersJson || [];
+        const services = servicesJson?.data || servicesJson || [];
+        return { carriers, services };
+      }
 
       // Calculate prices for all carrier/service combinations
       const allQuotes = []
@@ -502,13 +506,36 @@ serve(async (req) => {
             attempts.push({
               carrier_id: carrier.id,
               carrier_name: carrier.name,
-              service_id: parseInt(service.service_code),
+              service_id: 0,
               service_name: service.name,
               status: 'skipped',
               message: 'Requires locality_id but addresses could not be resolved',
               success: false
             });
             continue;
+          }
+
+          // Map our DB carrier/service to eAWB integer IDs
+          const carrierCode = String(carrier.code || '').toLowerCase();
+          const carrierNameLc = String(carrier.name || '').toLowerCase();
+          const eawbCarrier = (eawbCarriers || []).find((c: any) => {
+            const cCode = String(c.code || '').toLowerCase();
+            const cName = String(c.name || '').toLowerCase();
+            return (carrierCode && cCode === carrierCode) || cName === carrierNameLc;
+          });
+          const eawbCarrierId = Number(eawbCarrier?.id) || Number(carrier.id) || 0;
+
+          let eawbServiceId = Number.parseInt(String(service.service_code));
+          if (!Number.isFinite(eawbServiceId)) {
+            const svc = (eawbServices || []).find((s: any) => {
+              const sCode = String(s.code || '').toLowerCase();
+              const sName = String(s.name || '').toLowerCase();
+              return (Number(s.carrier_id) === eawbCarrierId) && (
+                (service.service_code && sCode === String(service.service_code).toLowerCase()) ||
+                sName === String(service.name || '').toLowerCase()
+              );
+            });
+            eawbServiceId = Number(svc?.id);
           }
 
           // Create price request with conditional locality_id
@@ -527,7 +554,7 @@ serve(async (req) => {
             parcels: buildParcels(package_details),
             service: {
               currency: 'RON',
-              payment_type: '1',
+              payment_type: 1,
               send_invoice: false,
               allow_bank_to_open: false,
               fragile: false,
@@ -536,12 +563,11 @@ serve(async (req) => {
               sunday_delivery: false,
               morning_delivery: false
             },
-            carrier_id: carrier.id,
-            service_id: parseInt(service.service_code)
+            carrier_id: eawbCarrierId,
+            service_id: eawbServiceId
           }
 
-          const baseUrl = getCarrierApiUrl(carrier);
-          const url = `${baseUrl}/calculate-prices`;
+          const url = `${BASE_URL}/calculate-prices`;
 
           console.log(`Making request to: ${url} for ${carrier.name} - ${service.name}`);
           console.log(`Request payload:`, JSON.stringify(priceRequest, null, 2));
@@ -562,10 +588,10 @@ serve(async (req) => {
               const errorText = await response.text();
               console.log(`Price calculation failed for ${carrier.name} - ${service.name}: ${response.status} ${response.statusText}`);
               console.log(`Error response: ${errorText}`);
-              attempts.push({
-                carrier_id: carrier.id,
+            attempts.push({
+                carrier_id: eawbCarrierId,
                 carrier_name: carrier.name,
-                service_id: parseInt(service.service_code),
+                service_id: eawbServiceId,
                 service_name: service.name,
                 status: 'http_error',
                 error: `HTTP ${response.status}: ${errorText.substring(0, 200)}`,
@@ -578,9 +604,9 @@ serve(async (req) => {
             console.log(`Price response for ${carrier.name} - ${service.name}:`, JSON.stringify(result, null, 2));
 
             attempts.push({
-              carrier_id: carrier.id,
+              carrier_id: eawbCarrierId,
               carrier_name: carrier.name,
-              service_id: parseInt(service.service_code),
+              service_id: eawbServiceId,
               service_name: service.name,
               status: response.status,
               success: result?.success,
@@ -593,10 +619,10 @@ serve(async (req) => {
               const priceData = result.data[0]
               
               allQuotes.push({
-                carrier_id: carrier.id,
+                carrier_id: eawbCarrierId,
                 carrier_name: carrier.name,
                 carrier_logo: carrier.logo_url,
-                service_id: parseInt(service.service_code),
+                service_id: eawbServiceId,
                 service_name: service.name,
                 service_description: service.description,
                 price: priceData.price?.total || 0,
@@ -611,13 +637,13 @@ serve(async (req) => {
           } catch (error) {
             console.error(`Price calculation error for ${carrier.name} - ${service.name}:`, error)
             attempts.push({
-              carrier_id: carrier.id,
-              carrier_name: carrier.name,
-              service_id: parseInt(service.service_code),
-              service_name: service.name,
-              status: 'exception',
-              error: String(error)
-            })
+                carrier_id: eawbCarrierId,
+                carrier_name: carrier.name,
+                service_id: eawbServiceId,
+                service_name: service.name,
+                status: 'exception',
+                error: String(error)
+              })
           }
         }
       }
@@ -759,21 +785,11 @@ serve(async (req) => {
         )
       }
 
-      // Get carrier information for API URL
-      const { data: carrierInfo, error: carrierError } = await supabaseClient
-        .from('carriers')
-        .select('id, name, api_base_url')
-        .eq('id', selected_carrier)
-        .single()
-
-      if (carrierError || !carrierInfo) {
-        return new Response(JSON.stringify({ 
-          success: false, 
-          error: 'Carrier not found' 
-        }), { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        })
-      }
+      // Load eAWB catalogue to resolve carrier name
+      const { carriers: eawbCarriersForOrder } = await loadEawbCatalogue(profile.eawb_api_key);
+      const carrierIdNum = Number(selected_carrier);
+      const serviceIdNum = Number(selected_service);
+      const carrierFromEawb = (eawbCarriersForOrder || []).find((c: any) => Number(c.id) === carrierIdNum);
 
       const eawbOrderData = {
         billing_to: profile.eawb_billing_address_id ? {
@@ -784,7 +800,7 @@ serve(async (req) => {
         parcels: package_details.parcels,
         service: {
           currency: 'RON',
-          payment_type: '1',
+          payment_type: 1,
           send_invoice: false,
           allow_bank_to_open: false,
           fragile: false,
@@ -793,15 +809,13 @@ serve(async (req) => {
           sunday_delivery: false,
           morning_delivery: false
         },
-        carrier_id: selected_carrier,
-        service_id: selected_service
+        carrier_id: carrierIdNum,
+        service_id: serviceIdNum
       }
 
       console.log('Creating eAWB order:', JSON.stringify(eawbOrderData, null, 2))
 
-      // Use carrier-specific API URL 
-      const baseUrl = getCarrierApiUrl(carrierInfo);
-      const orderUrl = `${baseUrl}/orders`;
+      const orderUrl = `${BASE_URL}/orders`;
       console.log(`Making order creation request to: ${orderUrl}`);
 
       const response = await fetch(orderUrl, {
@@ -826,15 +840,15 @@ serve(async (req) => {
         })
       }
 
-      // Get carrier name for the order (already have it from above)
-      const carrierName = carrierInfo.name;
+      // Determine carrier name from eAWB catalogue for order update
+      const carrierName = carrierFromEawb?.name || 'Unknown';
 
       // Update order with AWB details
       const { error: updateError } = await supabaseClient
         .from('orders')
         .update({
           awb_number: result.data?.awb_number,
-          carrier_name: carrierName || 'Unknown',
+          carrier_name: carrierName,
           tracking_url: result.data?.tracking_url,
           estimated_delivery_date: result.data?.estimated_delivery_date,
           shipping_status: 'processing'

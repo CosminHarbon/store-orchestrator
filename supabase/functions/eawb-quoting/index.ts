@@ -139,7 +139,7 @@ serve(async (req) => {
     }
 
     // Parse addresses
-    const senderAddress = parseRomanianAddress(profile.address || 'Bucuresti, Romania');
+    const senderAddress = parseRomanianAddress(profile.eawb_address || 'Bucuresti, Romania');
     const recipientAddress = address_override || parseRomanianAddress(order.customer_address);
     
     console.log('Sender address parsed:', senderAddress);
@@ -171,22 +171,26 @@ serve(async (req) => {
     }
     console.log(`Found ${carriers.length} active carriers`);
 
+    const { carriers: eawbCarriers, services: eawbServices } = await loadEawbCatalogue(profile.eawb_api_key);
+    console.log(`Loaded eAWB catalogue: carriers=${eawbCarriers?.length || 0}, services=${eawbServices?.length || 0}`);
+
     const carrierQuotes = [];
     const attemptResults = [];
 
-    // Helper function to get carrier-specific API URL
-    const getCarrierApiUrl = (carrier: any): string => {
-      // Use the carrier's specific API base URL from database
-      const baseUrl = carrier.api_base_url?.replace(/\/+$/, '') || 'https://api.europarcel.com';
-      
-      // For europarcel.com, add the /api/public path
-      if (baseUrl.includes('europarcel.com')) {
-        return `${baseUrl}/api/public`;
-      }
-      
-      // For other carriers, use their base URL directly
-      return baseUrl;
-    };
+    const BASE_URL = 'https://api.europarcel.com/api/public';
+
+    async function loadEawbCatalogue(apiKey: string) {
+      const headers = { 'X-API-Key': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' } as const;
+      const [carRes, srvRes] = await Promise.all([
+        fetch(`${BASE_URL}/carriers`, { method: 'GET', headers }),
+        fetch(`${BASE_URL}/services`, { method: 'GET', headers })
+      ]);
+      const carriersJson = await carRes.json().catch(() => ({}));
+      const servicesJson = await srvRes.json().catch(() => ({}));
+      const carriers = carriersJson?.data || carriersJson || [];
+      const services = servicesJson?.data || servicesJson || [];
+      return { carriers, services };
+    }
 
     // Build parcel data
     const parcel = {
@@ -215,10 +219,33 @@ serve(async (req) => {
       for (const service of carrier.carrier_services) {
         if (service.is_active === false) continue;
 
+        // Map our DB carrier/service to eAWB integer IDs
+        const carrierCode = String(carrier.code || '').toLowerCase();
+        const carrierNameLc = String(carrier.name || '').toLowerCase();
+        const eawbCarrier = (eawbCarriers || []).find((c: any) => {
+          const cCode = String(c.code || '').toLowerCase();
+          const cName = String(c.name || '').toLowerCase();
+          return (carrierCode && cCode === carrierCode) || cName === carrierNameLc;
+        });
+        const eawbCarrierId = Number(eawbCarrier?.id) || Number(carrier.id) || 0;
+
+        let eawbServiceId = Number.parseInt(String(service.service_code));
+        if (!Number.isFinite(eawbServiceId)) {
+          const svc = (eawbServices || []).find((s: any) => {
+            const sCode = String(s.code || '').toLowerCase();
+            const sName = String(s.name || '').toLowerCase();
+            return (Number(s.carrier_id) === eawbCarrierId) && (
+              (service.service_code && sCode === String(service.service_code).toLowerCase()) ||
+              sName === String(service.name || '').toLowerCase()
+            );
+          });
+          eawbServiceId = Number(svc?.id);
+        }
+
         const attemptResult = {
           carrier_name: carrier.name,
-          carrier_id: carrier.id,
-          service_id: parseInt(String(service.service_code)),
+          carrier_id: eawbCarrierId,
+          service_id: eawbServiceId,
           service_name: service.name,
           request_url: '',
           success: false,
@@ -263,7 +290,7 @@ serve(async (req) => {
             ],
             service: {
               currency: 'RON',
-              payment_type: '1',
+              payment_type: 1,
               send_invoice: false,
               allow_bank_to_open: false,
               fragile: false,
@@ -272,12 +299,11 @@ serve(async (req) => {
               sunday_delivery: false,
               morning_delivery: false
             },
-            carrier_id: carrier.id,
-            service_id: parseInt(String(service.service_code))
+            carrier_id: attemptResult.carrier_id,
+            service_id: attemptResult.service_id
           };
 
-          const baseUrl = getCarrierApiUrl(carrier);
-          const url = `${baseUrl}/calculate-prices`;
+          const url = `${BASE_URL}/calculate-prices`;
           attemptResult.request_url = url;
 
           console.log(`Making request to: ${url} for ${carrier.name} - ${service.name}`);
@@ -317,13 +343,13 @@ serve(async (req) => {
             attemptResult.success = true;
 
             carrierQuotes.push({
-              carrier_info: {
-                id: carrier.id,
+            carrier_info: {
+                id: attemptResult.carrier_id,
                 name: carrier.name,
                 logo_url: carrier.logo_url
               },
               service_info: {
-                id: parseInt(String(service.service_code)),
+                id: attemptResult.service_id,
                 name: service.name,
                 description: service.description || ''
               },
@@ -335,8 +361,8 @@ serve(async (req) => {
               },
               estimated_pickup_date: d?.estimated_pickup_date || 'Next business day',
               estimated_delivery_date: d?.estimated_delivery_date || '2-3 business days',
-              carrier_id: carrier.id,
-              service_id: parseInt(String(service.service_code))
+              carrier_id: attemptResult.carrier_id,
+              service_id: attemptResult.service_id
             });
           } else {
             attemptResult.error = result?.message || `HTTP ${response.status}`;
