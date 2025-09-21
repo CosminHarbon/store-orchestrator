@@ -13,6 +13,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { EAWBConnectionTest } from './EAWBConnectionTest';
 
 interface Profile {
   id: string;
@@ -1186,9 +1187,14 @@ class StoreAPI {
                                       </Select>
                                     )}
                                   </div>
-                                </div>
-                              </div>
-                            </div>
+                                 </div>
+                               </div>
+                               
+                               {/* Connection Test Section */}
+                               <div className="border-t pt-4 mt-4">
+                                 <EAWBConnectionTest />
+                               </div>
+                             </div>
                           </div>
                         )}
                     </div>

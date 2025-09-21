@@ -74,3 +74,6 @@ verify_jwt = false
 
 [functions.eawb-quoting]
 verify_jwt = true
+
+[functions.test-eawb-connection]
+verify_jwt = true
