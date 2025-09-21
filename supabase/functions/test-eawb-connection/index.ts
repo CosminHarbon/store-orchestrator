@@ -210,6 +210,17 @@ serve(async (req) => {
     const quoteMatrix: any[] = [];
     let workingCombo: { baseUrl: string; headerVariant: string } | null = null;
 
+    const baseUrls = [
+      'https://api.europarcel.com/api/public',
+      'https://api.europarcel.com/api/v1', 
+      'https://eawb.ro/api/public',
+      'https://eawb.ro/api/v1',
+      'https://api.europarcel.com',
+      'https://eawb.ro/api',
+      'https://api.eawb.ro/api/public',
+      'https://api.eawb.ro/v1'
+    ];
+
     for (const baseUrl of baseUrls) {
       for (const hv of headerVariants) {
         try {
@@ -247,7 +258,8 @@ serve(async (req) => {
       connectionTests: results,
       workingEndpoint: results.find(r => r.success)?.fullUrl || null,
       workingAuthHeader: results.find(r => r.success)?.authHeader || null,
-      quoteMatrix
+      quoteMatrix,
+      workingCombo
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
