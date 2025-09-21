@@ -77,3 +77,6 @@ verify_jwt = true
 
 [functions.test-eawb-connection]
 verify_jwt = true
+
+[functions.diagnose-eawb]
+verify_jwt = true

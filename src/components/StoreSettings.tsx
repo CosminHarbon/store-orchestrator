@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { EAWBConnectionTest } from './EAWBConnectionTest';
+import { EAWBDiagnosis } from './EAWBDiagnosis';
 
 interface Profile {
   id: string;
@@ -1191,8 +1192,9 @@ class StoreAPI {
                                </div>
                                
                                {/* Connection Test Section */}
-                               <div className="border-t pt-4 mt-4">
+                               <div className="border-t pt-4 mt-4 space-y-4">
                                  <EAWBConnectionTest />
+                                 <EAWBDiagnosis />
                                </div>
                              </div>
                           </div>
