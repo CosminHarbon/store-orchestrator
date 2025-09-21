@@ -53,7 +53,7 @@ serve(async (req) => {
 
     console.log('Testing with API key:', `${apiKey.substring(0, 10)}...`);
 
-    // Try the most direct approach - just hit calculate-prices directly
+    // Test payload for calculate-prices
     const testPayload = {
       billing_to: { billing_address_id: 157122 }, // Use actual billing address ID
       address_from: {

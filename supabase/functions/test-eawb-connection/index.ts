@@ -69,16 +69,6 @@ serve(async (req) => {
       { base: 'https://api.eawb.ro', endpoint: 'carriers' },
       { base: 'https://api.eawb.ro/api', endpoint: 'carriers' },
       { base: 'https://api.eawb.ro/v1', endpoint: 'carriers' },
-      
-      // Different endpoints
-      { base: 'https://api.europarcel.com/api/public', endpoint: 'carrier' },
-      { base: 'https://api.europarcel.com/api/v1', endpoint: 'carrier' },
-      { base: 'https://eawb.ro/api/public', endpoint: 'carrier' },
-      { base: 'https://eawb.ro/api/v1', endpoint: 'carrier' },
-      
-      // Direct API endpoints
-      { base: 'https://api.europarcel.com/api/public', endpoint: 'direct/carriers' },
-      { base: 'https://eawb.ro/api/public', endpoint: 'direct/carriers' },
     ];
 
     const results = [];
@@ -163,16 +153,16 @@ serve(async (req) => {
     ];
 
     const quotePayload = {
-      billing_to: { billing_address_id: 1 },
+      billing_to: { billing_address_id: 157122 },
       address_from: {
         country_code: 'RO',
-        county_name: 'București',
-        locality_name: 'București', 
-        contact: 'Test Sender',
-        street_name: 'Strada Test',
-        street_number: '1',
-        phone: '0700000000',
-        email: user.email
+        county_name: 'Prahova',
+        locality_name: 'Ploiesti', 
+        contact: 'Midbay Holding',
+        street_name: 'Strada Republicii',
+        street_number: '15',
+        phone: '0721046211',
+        email: 'andrei.cosmin.nita@cn-caragiale.ro'
       },
       address_to: {
         country_code: 'RO',
@@ -207,9 +197,6 @@ serve(async (req) => {
       service_id: 0
     };
 
-    const quoteMatrix: any[] = [];
-    let workingCombo: { baseUrl: string; headerVariant: string } | null = null;
-
     const baseUrls = [
       'https://api.europarcel.com/api/public',
       'https://api.europarcel.com/api/v1', 
@@ -220,6 +207,9 @@ serve(async (req) => {
       'https://api.eawb.ro/api/public',
       'https://api.eawb.ro/v1'
     ];
+
+    const quoteMatrix: any[] = [];
+    let workingCombo: { baseUrl: string; headerVariant: string } | null = null;
 
     for (const baseUrl of baseUrls) {
       for (const hv of headerVariants) {
