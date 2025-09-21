@@ -116,99 +116,87 @@ serve(async (req) => {
       }
     }
 
-    // Test a simple quote request if we found a working endpoint
-    const workingBase = results.find(r => r.success);
-    let quoteTest = null;
-    
-    if (workingBase) {
-      console.log(`\n=== Testing quote with ${workingBase.baseUrl} ===`);
-      
-      const quotePayload = {
-        billing_to: { billing_address_id: 1 },
-        address_from: {
-          country_code: 'RO',
-          county_name: 'București',
-          locality_name: 'București', 
-          contact: 'Test Sender',
-          street_name: 'Strada Test',
-          street_number: '1',
-          phone: '0700000000',
-          email: user.email
-        },
-        address_to: {
-          country_code: 'RO',
-          county_name: 'București',
-          locality_name: 'București',
-          contact: 'Test Customer', 
-          street_name: 'Strada Victoriei',
-          street_number: '1',
-          phone: '0700000001',
-          email: 'test@example.com'
-        },
-        parcels: [{
-          weight: 1,
-          length: 30,
-          width: 20,
-          height: 10,
-          contents: 'Test goods',
-          declared_value: 100
-        }],
-        service: {
-          currency: 'RON',
-          payment_type: 1,
-          send_invoice: false,
-          allow_bank_to_open: false,
-          fragile: false,
-          pickup_available: false,
-          allow_saturday_delivery: false,
-          sunday_delivery: false,
-          morning_delivery: false
-        },
-        carrier_id: 0, // All carriers
-        service_id: 0  // All services  
-      };
+    // Try quote requests across all base URLs with multiple auth header variants
+    const headerVariants = [
+      { name: 'X-API-Key', build: (k: string) => ({ 'X-API-Key': k }) },
+      { name: 'X-Api-Key', build: (k: string) => ({ 'X-Api-Key': k }) },
+      { name: 'apikey', build: (k: string) => ({ 'apikey': k }) },
+      { name: 'Authorization Bearer', build: (k: string) => ({ 'Authorization': `Bearer ${k}` }) },
+      { name: 'Authorization ApiKey', build: (k: string) => ({ 'Authorization': `ApiKey ${k}` }) },
+      { name: 'X-Auth-Token', build: (k: string) => ({ 'X-Auth-Token': k }) },
+    ];
 
-      try {
-        const quoteResponse = await fetch(`${workingBase.baseUrl}/calculate-prices`, {
-          method: 'POST',
-          headers: {
-            'X-API-Key': profile.eawb_api_key,
+    const quotePayload = {
+      billing_to: { billing_address_id: 1 },
+      address_from: {
+        country_code: 'RO',
+        county_name: 'București',
+        locality_name: 'București', 
+        contact: 'Test Sender',
+        street_name: 'Strada Test',
+        street_number: '1',
+        phone: '0700000000',
+        email: user.email
+      },
+      address_to: {
+        country_code: 'RO',
+        county_name: 'București',
+        locality_name: 'București',
+        contact: 'Test Customer', 
+        street_name: 'Strada Victoriei',
+        street_number: '1',
+        phone: '0700000001',
+        email: 'test@example.com'
+      },
+      parcels: [{
+        weight: 1,
+        length: 30,
+        width: 20,
+        height: 10,
+        contents: 'Test goods',
+        declared_value: 100
+      }],
+      service: {
+        currency: 'RON',
+        payment_type: 1,
+        send_invoice: false,
+        allow_bank_to_open: false,
+        fragile: false,
+        pickup_available: false,
+        allow_saturday_delivery: false,
+        sunday_delivery: false,
+        morning_delivery: false
+      },
+      carrier_id: 0,
+      service_id: 0
+    };
+
+    const quoteMatrix: any[] = [];
+    let workingCombo: { baseUrl: string; headerVariant: string } | null = null;
+
+    for (const baseUrl of baseUrls) {
+      for (const hv of headerVariants) {
+        try {
+          const headers = {
+            ...hv.build(profile.eawb_api_key as string),
             'Content-Type': 'application/json',
             'Accept': 'application/json'
-          },
-          body: JSON.stringify(quotePayload)
-        });
-
-        console.log(`Quote endpoint status: ${quoteResponse.status}`);
-
-        let quoteData = null;
-        try {
-          quoteData = await quoteResponse.json();
-        } catch (e) {
-          console.log('Failed to parse quote response JSON');
+          };
+          const resp = await fetch(`${baseUrl}/calculate-prices`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(quotePayload)
+          });
+          let data: any = null;
+          try { data = await resp.json(); } catch {}
+          const ok = resp.ok && (data?.success === true || Array.isArray(data?.data));
+          quoteMatrix.push({ baseUrl, headerVariant: hv.name, status: resp.status, ok, error: data?.message || null });
+          if (!workingCombo && ok) {
+            workingCombo = { baseUrl, headerVariant: hv.name };
+          }
+        } catch (e: any) {
+          quoteMatrix.push({ baseUrl, headerVariant: hv.name, status: 0, ok: false, error: e.message });
         }
-
-        quoteTest = {
-          status: quoteResponse.status,
-          success: quoteResponse.ok,
-          data: quoteData,
-          error: !quoteResponse.ok ? quoteData?.message || 'HTTP Error' : null
-        };
-
-        if (quoteResponse.ok) {
-          console.log('✓ Quote request successful!');
-          console.log('Quote data preview:', JSON.stringify(quoteData).substring(0, 500));
-        } else {
-          console.log('✗ Quote request failed:', quoteData?.message || 'Unknown error');
-        }
-
-      } catch (error: any) {
-        console.log('✗ Quote request failed:', error.message);
-        quoteTest = {
-          status: 0,
-          success: false,
-          error: error.message
-        };
       }
     }
 
@@ -221,8 +209,9 @@ serve(async (req) => {
         billingAddressId: profile.eawb_billing_address_id
       },
       connectionTests: results,
-      workingEndpoint: workingBase?.baseUrl || null,
-      quoteTest
+      workingEndpoint: workingCombo?.baseUrl || null,
+      workingAuthHeader: workingCombo?.headerVariant || null,
+      quoteMatrix
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });

@@ -530,30 +530,97 @@ serve(async (req) => {
     console.log(`Built ${quoteRequests.length} quote requests`);
 
     // Concurrent quote requests with timeout; returns an array of quotes per request
-    const fetchQuote = async (request: any, timeout = 10000): Promise<any[]> => {
+    const fetchQuote = async (request: any, timeout = 12000): Promise<any[]> => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+      const baseCandidates = [
+        BASE_URL,
+        'https://api.europarcel.com/api/public',
+        'https://api.europarcel.com/api/v1',
+        'https://api.europarcel.com',
+        'https://eawb.ro/api/public',
+        'https://eawb.ro/api/v1'
+      ];
+
+      const headerVariants = [
+        (k: string) => ({ 'X-API-Key': k }),
+        (k: string) => ({ 'X-Api-Key': k }),
+        (k: string) => ({ 'apikey': k }),
+        (k: string) => ({ 'Authorization': `Bearer ${k}` }),
+        (k: string) => ({ 'Authorization': `ApiKey ${k}` }),
+        (k: string) => ({ 'X-Auth-Token': k }),
+      ];
 
       try {
         const requestLabel = `${request.mapping.carrier_name}${request.mapping.service_id ? ' - ' + request.mapping.service_id : ''}`;
         console.log(`Requesting quote(s): ${requestLabel}`);
-        
-        const response = await fetch(`${BASE_URL}/calculate-prices`, {
-          method: 'POST',
-          headers: {
-            'X-API-Key': profile.eawb_api_key,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify(request.payload),
-          signal: controller.signal
-        });
 
-        clearTimeout(timeoutId);
+        for (const base of baseCandidates) {
+          for (const hv of headerVariants) {
+            try {
+              const response = await fetch(`${base}/calculate-prices`, {
+                method: 'POST',
+                headers: {
+                  ...hv(profile.eawb_api_key),
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json'
+                },
+                body: JSON.stringify(request.payload),
+                signal: controller.signal
+              });
 
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+              if (!response.ok) {
+                console.warn(`Header attempt failed at ${base}: HTTP ${response.status}`);
+                continue;
+              }
+
+              clearTimeout(timeoutId);
+
+              const data = await response.json();
+              if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+                const quotes = data.data.map((quote: any) => ({
+                  carrier_info: {
+                    id: request.mapping.carrier_id,
+                    name: request.mapping.carrier_name,
+                    logo_url: request.mapping.logo_url
+                  },
+                  service_info: {
+                    id: quote.service_id || request.mapping.service_id,
+                    name: quote.service_name || request.mapping.service_name || 'Service',
+                    description: quote.service_description || ''
+                  },
+                  price: {
+                    amount: parseFloat(quote.price?.amount || quote.price_amount || 0),
+                    vat: parseFloat(quote.price?.vat || quote.price_vat || 0),
+                    total: parseFloat(quote.price?.total || quote.price_total || 0),
+                    currency: quote.price?.currency || quote.currency || 'RON'
+                  },
+                  estimated_pickup_date: quote.estimated_pickup_date || 'Next business day',
+                  estimated_delivery_date: quote.estimated_delivery_date || '2-3 business days',
+                  carrier_id: request.mapping.carrier_id,
+                  service_id: quote.service_id || request.mapping.service_id
+                }));
+
+                console.log(`✓ Received ${quotes.length} quote(s) from ${base}`);
+                return quotes;
+              }
+            } catch (innerErr: any) {
+              console.warn(`Attempt failed for ${base}: ${innerErr.message}`);
+              continue;
+            }
+          }
         }
+
+        // If all attempts failed
+        clearTimeout(timeoutId);
+        return [];
+      } catch (error: any) {
+        clearTimeout(timeoutId);
+        console.warn(`✗ Quote failed: ${request.mapping.carrier_name} - ${error.message}`);
+        return [];
+      }
+    };
 
         const data = await response.json();
         

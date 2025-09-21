@@ -144,44 +144,42 @@ export const EAWBConnectionTest = () => {
                 </CardContent>
               </Card>
 
-              {/* Quote Test */}
-              {results.quoteTest && (
+              {/* Quote Attempts */}
+              {results.quoteMatrix && (
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Quote Test (0,0 - All Carriers/Services)</CardTitle>
+                    <CardTitle className="text-sm">Quote Attempts (carrier_id=0, service_id=0)</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex items-center justify-between p-2 border rounded">
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(results.quoteTest.success)}
-                        <span className="text-sm">Calculate Prices Endpoint</span>
-                      </div>
-                      <Badge variant={results.quoteTest.success ? "default" : "destructive"}>
-                        {results.quoteTest.status}
-                      </Badge>
-                    </div>
-                    
-                    {results.quoteTest.success && results.quoteTest.data && (
-                      <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded">
+                    {results.workingEndpoint && (
+                      <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded">
                         <div className="text-sm text-green-800">
-                          <div>✓ Quote request successful!</div>
-                          {results.quoteTest.data.data && Array.isArray(results.quoteTest.data.data) && (
-                            <div>Found {results.quoteTest.data.data.length} quotes</div>
+                          <div>✓ Working Endpoint: {results.workingEndpoint}</div>
+                          {results.workingAuthHeader && (
+                            <div>✓ Auth Header: {results.workingAuthHeader}</div>
                           )}
                         </div>
                       </div>
                     )}
 
-                    {!results.quoteTest.success && (
-                      <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded">
-                        <div className="text-sm text-red-800">
-                          Error: {results.quoteTest.error}
+                    <div className="space-y-2">
+                      {results.quoteMatrix.map((q: any, idx: number) => (
+                        <div key={idx} className="flex items-center justify-between p-2 border rounded">
+                          <div className="flex flex-col">
+                            <div className="text-xs font-mono">{q.baseUrl}</div>
+                            <div className="text-xs text-muted-foreground">{q.headerVariant}</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(q.ok)}
+                            <Badge variant={q.ok ? 'default' : 'destructive'}>{q.status}</Badge>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      ))}
+                    </div>
                   </CardContent>
                 </Card>
               )}
+
 
               {/* Raw Data (for debugging) */}
               {results.connectionTests?.length > 0 && (
