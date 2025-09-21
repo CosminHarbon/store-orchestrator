@@ -98,8 +98,9 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
           },
           price: {
             amount: quote.price,
-            currency: quote.currency,
-            total: quote.price
+            vat: 0,
+            total: quote.price,
+            currency: quote.currency || 'RON'
           },
           estimated_pickup_date: quote.estimated_pickup_date || 'Next business day',
           estimated_delivery_date: quote.estimated_delivery_date || '2-3 business days',
@@ -110,23 +111,18 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
         setCarrierOptions(transformedOptions);
         setStep('pricing');
       } else {
-        console.error('Price calc failed:', data);
-        const apiResponse = data?.api_response || data?.details;
-        const errors = apiResponse?.errors || apiResponse?.details || [];
+        console.error('Price calculation failed:', data);
         
-        let errorMessage = data?.error || data?.message || 'Unknown error';
-        if (Array.isArray(errors) && errors.length > 0) {
-          const errorDetails = errors.map((e: any) => {
-            if (typeof e === 'string') return e;
-            return e.message || e.error || JSON.stringify(e);
-          }).join('; ');
-          errorMessage = `${errorMessage}: ${errorDetails}`;
-        } else if (typeof errors === 'object' && errors !== null) {
-          errorMessage = `${errorMessage}: ${JSON.stringify(errors)}`;
+        let errorMessage = data?.message || data?.error || 'No shipping quotes available';
+        
+        if (data?.error === 'NO_QUOTES') {
+          errorMessage = 'No shipping quotes available. Please check your eAWB configuration and try again.';
+        } else if (data?.error === 'MISSING_API_KEY') {
+          errorMessage = 'eAWB API key not configured. Please configure it in Store Settings.';
         }
         
-        console.log('Full API response:', JSON.stringify(data, null, 2));
-        toast.error(`Validation failed: ${errorMessage}`);
+        console.log('Debug info:', data?.debug_info);
+        toast.error(errorMessage);
         return;
       }
     } catch (error: any) {
@@ -152,15 +148,21 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
           action: 'create_order',
           order_id: order.id,
           package_details: packageDetails,
-          selected_carrier: selectedCarrierOption?.carrier_id || selectedCarrierOption,
-          selected_service: selectedCarrierOption?.service_id || 1
+          selected_carrier: selectedCarrierOption?.carrier_id,
+          selected_service: selectedCarrierOption?.service_id,
+          address_override: (addressOverride.city || addressOverride.county || addressOverride.postal_code) ? {
+            city: addressOverride.city || undefined,
+            county: addressOverride.county || undefined,
+            postal_code: addressOverride.postal_code || undefined
+          } : undefined
         }
       });
 
       if (error) throw error;
 
       if (data.success) {
-        toast.success(`AWB created successfully! Tracking: ${data.awb_number}`);
+        const trackingInfo = data.tracking_url ? ` - ${data.tracking_url}` : '';
+        toast.success(`AWB created successfully! Number: ${data.awb_number}${trackingInfo}`);
         onSuccess();
         onClose();
         // Reset state
@@ -168,23 +170,18 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
         setCarrierOptions([]);
         setSelectedCarrierOption(null);
       } else {
-        console.error('Create order failed:', data);
-        const apiResponse = data?.api_response || data?.details;
-        const errors = apiResponse?.errors || apiResponse?.details || [];
+        console.error('AWB creation failed:', data);
         
-        let errorMessage = data?.error || data?.message || 'Unknown error';
-        if (Array.isArray(errors) && errors.length > 0) {
-          const errorDetails = errors.map((e: any) => {
-            if (typeof e === 'string') return e;
-            return e.message || e.error || JSON.stringify(e);
-          }).join('; ');
-          errorMessage = `${errorMessage}: ${errorDetails}`;
-        } else if (typeof errors === 'object' && errors !== null) {
-          errorMessage = `${errorMessage}: ${JSON.stringify(errors)}`;
+        let errorMessage = data?.message || data?.error || 'Failed to create AWB';
+        
+        if (data?.error === 'MISSING_API_KEY') {
+          errorMessage = 'eAWB API key not configured. Please configure it in Store Settings.';
+        } else if (data?.error === 'AWB_CREATION_FAILED') {
+          errorMessage = `AWB creation failed: ${data.message || 'Unknown error'}`;
         }
         
-        console.log('Full API response:', JSON.stringify(data, null, 2));
-        toast.error(`AWB creation failed: ${errorMessage}`);
+        console.log('AWB creation response:', JSON.stringify(data, null, 2));
+        toast.error(errorMessage);
         setStep('pricing');
         return;
       }

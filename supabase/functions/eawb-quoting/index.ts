@@ -1,4 +1,3 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.53.0';
 
@@ -8,23 +7,21 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    console.log('=== eAWB Quoting Service ===');
+    
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const { order_id, package_details, address_override } = await req.json();
-    console.log('=== eAWB Quoting Request ===');
-    console.log('Order ID:', order_id);
-    console.log('Package details:', package_details);
-    console.log('Address override:', address_override);
+    console.log('Request:', { order_id, package_details, address_override });
 
-    // Get the user from auth header
+    // Get authenticated user
     const authHeader = req.headers.get('Authorization')?.replace('Bearer ', '');
     if (!authHeader) {
       throw new Error('Missing authorization header');
@@ -35,19 +32,24 @@ serve(async (req) => {
       throw new Error('Authentication failed');
     }
 
-    // Fetch order and user profile
+    // Fetch order and profile
     const [orderResult, profileResult] = await Promise.all([
       supabase.from('orders').select('*').eq('id', order_id).eq('user_id', user.id).single(),
       supabase.from('profiles').select('*').eq('user_id', user.id).single()
     ]);
 
-    if (orderResult.error) throw new Error('Order not found');
-    if (profileResult.error) throw new Error('Profile not found');
+    if (orderResult.error) {
+      console.error('Order fetch error:', orderResult.error);
+      throw new Error('Order not found');
+    }
+    if (profileResult.error) {
+      console.error('Profile fetch error:', profileResult.error);
+      throw new Error('Profile not found');
+    }
 
     const order = orderResult.data;
     const profile = profileResult.data;
 
-    // Check if user has eAWB API key
     if (!profile.eawb_api_key) {
       return new Response(JSON.stringify({
         success: false,
@@ -59,490 +61,502 @@ serve(async (req) => {
       });
     }
 
-    // Address normalization functions
-    function removeDiacritics(str: string): string {
-      return str
-        .replace(/[ăâ]/g, 'a')
-        .replace(/[ĂÂ]/g, 'A')
-        .replace(/[îi]/g, 'i')
-        .replace(/[ÎI]/g, 'I')
-        .replace(/[șş]/g, 's')
-        .replace(/[ȘŞ]/g, 'S')
-        .replace(/[țţ]/g, 't')
-        .replace(/[ȚŢ]/g, 'T');
-    }
+    console.log('User profile loaded, eAWB key present:', !!profile.eawb_api_key);
 
-    function parseRomanianAddress(address: string) {
-      const normalized = removeDiacritics(address.toLowerCase().trim());
-      console.log('Parsing address:', address, '-> normalized:', normalized);
+    // Runtime base URL detection with fallbacks
+    const detectBaseUrl = async (apiKey: string): Promise<string> => {
+      const candidates = [
+        'https://api.europarcel.com/api/public',
+        'https://api.europarcel.com/api/v1',
+        'https://api.europarcel.com',
+        'https://eawb.ro/api/public',
+        'https://eawb.ro/api/v1'
+      ];
+
+      for (const baseUrl of candidates) {
+        try {
+          console.log(`Testing base URL: ${baseUrl}`);
+          const response = await fetch(`${baseUrl}/carriers`, {
+            method: 'GET',
+            headers: {
+              'X-API-Key': apiKey,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data && (Array.isArray(data) || Array.isArray(data.data))) {
+              console.log(`✓ Base URL working: ${baseUrl}`);
+              return baseUrl;
+            }
+          }
+        } catch (error) {
+          console.log(`✗ Base URL failed: ${baseUrl} - ${error.message}`);
+        }
+      }
       
-      // Remove apartment/floor info
-      const cleanAddress = normalized
+      console.warn('No working base URL found, using default');
+      return candidates[0]; // fallback to first option
+    };
+
+    const BASE_URL = await detectBaseUrl(profile.eawb_api_key);
+    console.log('Using base URL:', BASE_URL);
+
+    // Enhanced address parsing
+    const parseAddress = (address: string) => {
+      const cleaned = address
         .replace(/,?\s*(ap\.?\s*\d+|apartament\s*\d+|etaj\s*\d+|et\.?\s*\d+)/gi, '')
-        .replace(/,+/g, ',')
-        .replace(/,\s*,/g, ',')
+        .replace(/,?\s*(bl\.?\s*[A-Z0-9]+|bloc\s+[A-Z0-9]+)/gi, '')
         .trim();
-      
-      console.log('Clean address:', cleanAddress);
-      
-      // Split by comma and filter empty parts
-      const parts = cleanAddress.split(',').map(p => p.trim()).filter(p => p.length > 0);
-      console.log('Address parts:', parts);
-      
-      let city = '';
-      let county = '';
-      let postal_code = '';
-      
-      // Extract postal code (5-6 digits)
-      const postalMatch = address.match(/\b(\d{5,6})\b/);
-      if (postalMatch) {
-        postal_code = postalMatch[1];
-        console.log('Found postal code:', postal_code);
-      }
-      
-      // Handle Bucharest special case
-      if (normalized.includes('bucuresti') || normalized.includes('bucharest')) {
-        city = 'Bucuresti';
-        county = 'Bucuresti';
-        console.log('Detected Bucharest');
-        return { city, county, postal_code };
-      }
-      
-      // For other addresses, try to extract city/county from the last parts
-      if (parts.length >= 2) {
-        // Usually: street, city, county or city, county
-        city = parts[parts.length - 2];
-        county = parts[parts.length - 1];
-      } else if (parts.length === 1) {
-        // Only one part, assume it's the city
-        city = parts[0];
-      }
-      
-      // Clean up city and county
-      city = city.replace(/^(str\.?\s*|strada\s*|bd\.?\s*|bulevardul\s*|cal\.?\s*|calea\s*)/i, '').trim();
-      county = county.replace(/^(jud\.?\s*|judetul\s*)/i, '').trim();
-      
-      // Capitalize first letter
-      city = city.charAt(0).toUpperCase() + city.slice(1);
-      county = county.charAt(0).toUpperCase() + county.slice(1);
-      
-      console.log('Parsed result:', { city, county, postal_code });
-      return { city, county, postal_code };
-    }
 
-    function extractStreetInfo(fullAddress: string) {
-      const firstPart = (fullAddress || '').split(',')[0] || '';
-      const match = firstPart.match(/^(.*?)(\s+(\d+[A-Za-z\/-]*))?$/);
-      const street_name = (match?.[1] || firstPart).trim();
-      const street_number = (match?.[3] || '').trim();
-      return { street_name, street_number };
-    }
+      const parts = cleaned.split(',').map(p => p.trim()).filter(Boolean);
+      
+      // Handle Bucharest specifically
+      if (/bucure[sș]ti|sector\s*[1-6]/gi.test(address)) {
+        return {
+          city: 'București',
+          county: 'București',
+          street: parts[0] || '',
+          postal_code: address.match(/\b\d{6}\b/)?.[0] || ''
+        };
+      }
+
+      // Standard parsing
+      let city = 'București'; // fallback
+      let county = 'București';
+      let street = parts[0] || '';
+
+      if (parts.length >= 3) {
+        street = parts[0];
+        city = parts[1];
+        county = parts[2].replace(/^(jud\.?\s*|judetul\s*)/i, '');
+      } else if (parts.length === 2) {
+        street = parts[0];
+        city = parts[1];
+        county = parts[1];
+      }
+
+      return {
+        city: city.charAt(0).toUpperCase() + city.slice(1),
+        county: county.charAt(0).toUpperCase() + county.slice(1),
+        street,
+        postal_code: address.match(/\b\d{6}\b/)?.[0] || ''
+      };
+    };
+
+    const extractStreetInfo = (address: string) => {
+      const parts = address.split(/[,\s]+/);
+      let streetName = parts[0] || 'Strada';
+      let streetNumber = '';
+
+      for (const part of parts) {
+        if (/\d+/.test(part)) {
+          streetNumber = part.replace(/[^\d]/g, '');
+          break;
+        }
+      }
+
+      return {
+        street_name: streetName || 'Strada',
+        street_number: streetNumber || '1'
+      };
+    };
 
     // Parse addresses
-    const senderAddress = parseRomanianAddress(profile.eawb_address || 'Bucuresti, Romania');
-    const recipientAddress = address_override || parseRomanianAddress(order.customer_address);
-    
-    console.log('Sender address parsed:', senderAddress);
-    console.log('Recipient address parsed:', recipientAddress);
+    const senderParsed = parseAddress(profile.eawb_address || 'București, România');
+    const recipientParsed = address_override ? {
+      city: address_override.city || parseAddress(order.customer_address).city,
+      county: address_override.county || parseAddress(order.customer_address).county,
+      street: parseAddress(order.customer_address).street,
+      postal_code: address_override.postal_code || parseAddress(order.customer_address).postal_code
+    } : parseAddress(order.customer_address);
 
-    // Get all active carriers and their services
-    const { data: carriers, error: carriersError } = await supabase
+    console.log('Addresses parsed:', { sender: senderParsed, recipient: recipientParsed });
+
+    // Load eAWB catalog with robust error handling
+    const loadCatalog = async () => {
+      const headers = {
+        'X-API-Key': profile.eawb_api_key,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      };
+
+      try {
+        const [carriersRes, servicesRes] = await Promise.all([
+          fetch(`${BASE_URL}/carriers`, { headers }),
+          fetch(`${BASE_URL}/services`, { headers })
+        ]);
+
+        const carriersData = carriersRes.ok ? await carriersRes.json() : {};
+        const servicesData = servicesRes.ok ? await servicesRes.json() : {};
+
+        const carriers = Array.isArray(carriersData?.data) ? carriersData.data : 
+                        Array.isArray(carriersData) ? carriersData : [];
+        const services = Array.isArray(servicesData?.data) ? servicesData.data :
+                        Array.isArray(servicesData) ? servicesData : [];
+
+        console.log(`Catalog loaded: ${carriers.length} carriers, ${services.length} services`);
+        return { carriers, services };
+      } catch (error) {
+        console.error('Catalog loading failed:', error);
+        return { carriers: [], services: [] };
+      }
+    };
+
+    const { carriers: eawbCarriers, services: eawbServices } = await loadCatalog();
+
+    // Get DB carriers
+    const { data: dbCarriers } = await supabase
       .from('carriers')
       .select(`
-        id,
-        name,
-        code,
-        logo_url,
-        is_active,
-        api_base_url,
-        carrier_services (
-          id,
-          name,
-          service_code,
-          description,
-          is_active
-        )
+        id, name, code, logo_url, is_active,
+        carrier_services (id, name, service_code, description, is_active)
       `)
       .eq('is_active', true);
 
-    if (carriersError) {
-      console.log('Carriers fetch error:', carriersError);
-      throw new Error('Failed to fetch carriers');
-    }
-    console.log(`Found ${carriers.length} active carriers`);
-
-    const BASE_URL = 'https://api.europarcel.com/api/public';
-
-
-    async function loadEawbCatalogue(apiKey: string) {
-      const headers = { 'X-API-Key': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' } as const;
-      try {
-        const [carRes, srvRes] = await Promise.all([
-          fetch(`${BASE_URL}/carriers`, { method: 'GET', headers }),
-          fetch(`${BASE_URL}/services`, { method: 'GET', headers })
-        ]);
-        const carriersJson = await carRes.json().catch(() => ({}));
-        const servicesJson = await srvRes.json().catch(() => ({}));
-        const carriers = Array.isArray(carriersJson?.data) ? carriersJson.data : (Array.isArray(carriersJson) ? carriersJson : []);
-        const services = Array.isArray(servicesJson?.data) ? servicesJson.data : (Array.isArray(servicesJson) ? servicesJson : []);
-        return { carriers, services };
-      } catch (e) {
-        console.log('Failed to load eAWB catalogue:', e?.message || e);
-        return { carriers: [], services: [] };
-      }
-    }
-
-    const { carriers: eawbCarriers, services: eawbServices } = await loadEawbCatalogue(profile.eawb_api_key);
-    console.log(`Loaded eAWB catalogue: carriers=${eawbCarriers?.length || 0}, services=${eawbServices?.length || 0}`);
-
-    const carrierQuotes = [];
-    const attemptResults = [];
-
-
-    // Build parcel data
-    const parcel = {
-      weight: package_details.weight || 1,
-      length: package_details.length || 30,
-      width: package_details.width || 20,
-      height: package_details.height || 10,
-      declared_value: package_details.declared_value || order.total
-    };
-
-    // Build simple street info
-    const senderStreet = extractStreetInfo(profile.eawb_address || '');
-    const recipientStreet = extractStreetInfo(order.customer_address || '');
-
-    // Use configured billing address or fallback to 1
-    const billingAddressId = (profile.eawb_billing_address_id && profile.eawb_billing_address_id > 0)
-      ? profile.eawb_billing_address_id
-      : 1;
-
-    // Try each carrier/service combination
-    for (const carrier of carriers) {
-      if (!carrier.carrier_services || carrier.carrier_services.length === 0) continue;
-
-      console.log(`Processing carrier: ${carrier.name} (${carrier.code})`);
-
-      for (const service of carrier.carrier_services) {
-        if (service.is_active === false) continue;
-
-        // Map our DB carrier/service to eAWB integer IDs
-        const carrierCode = String(carrier.code || '').toLowerCase();
-        const carrierNameLc = String(carrier.name || '').toLowerCase();
-        const eawbCarrierList = Array.isArray(eawbCarriers) ? eawbCarriers : [];
-        const eawbCarrier = eawbCarrierList.find((c: any) => {
-          const cCode = String(c.code || '').toLowerCase();
-          const cName = String(c.name || '').toLowerCase();
-          return (carrierCode && cCode === carrierCode) || cName === carrierNameLc;
-        });
-        const eawbCarrierId = Number(eawbCarrier?.id) || Number(carrier.id) || 0;
-
-        let eawbServiceId = Number.parseInt(String(service.service_code));
-        if (!Number.isFinite(eawbServiceId)) {
-          const eawbServiceList = Array.isArray(eawbServices) ? eawbServices : [];
-          const svc = eawbServiceList.find((s: any) => {
-            const sCode = String(s.code || '').toLowerCase();
-            const sName = String(s.name || '').toLowerCase();
-            return (Number(s.carrier_id) === eawbCarrierId) && (
-              (service.service_code && sCode === String(service.service_code).toLowerCase()) ||
-              sName === String(service.name || '').toLowerCase()
-            );
-          });
-          eawbServiceId = Number(svc?.id);
-        }
-
-        const attemptResult = {
-          carrier_name: carrier.name,
-          carrier_id: eawbCarrierId,
-          service_id: eawbServiceId,
-          service_name: service.name,
-          request_url: '',
-          success: false,
-          error: null as string | null,
-        };
-
-        try {
-          console.log(`Calculating prices for ${carrier.name} - ${service.name}`);
-
-          // Validate mapping before requesting price
-          if (!Number.isFinite(eawbServiceId) || eawbCarrierId <= 0) {
-            attemptResult.error = 'Invalid carrier/service mapping';
-            attemptResult.success = false;
-            attemptResults.push(attemptResult);
-            continue;
-          }
-
-          const priceRequest = {
-            billing_to: { billing_address_id: billingAddressId },
-            address_from: {
-              country_code: 'RO',
-              county_name: senderAddress.county,
-              locality_name: senderAddress.city,
-              postal_code: senderAddress.postal_code || undefined,
-              contact: profile.eawb_name || profile.store_name || 'Sender',
-              street_name: senderStreet.street_name,
-              street_number: senderStreet.street_number,
-              phone: profile.eawb_phone || profile.phone || '0700000000',
-              email: profile.eawb_email || profile.email || user.email
-            },
-            address_to: {
-              country_code: 'RO',
-              county_name: recipientAddress.county,
-              locality_name: recipientAddress.city,
-              postal_code: recipientAddress.postal_code || undefined,
-              contact: order.customer_name,
-              street_name: recipientStreet.street_name,
-              street_number: recipientStreet.street_number,
-              phone: order.customer_phone || '0700000000',
-              email: order.customer_email
-            },
-            parcels: [
-              {
-                length: parcel.length,
-                width: parcel.width,
-                height: parcel.height,
-                weight: parcel.weight,
-                declared_value: parcel.declared_value
-              }
-            ],
-            service: {
-              currency: 'RON',
-              payment_type: 1,
-              send_invoice: false,
-              allow_bank_to_open: false,
-              fragile: false,
-              pickup_available: false,
-              allow_saturday_delivery: false,
-              sunday_delivery: false,
-              morning_delivery: false
-            },
-            carrier_id: attemptResult.carrier_id,
-            service_id: attemptResult.service_id
-          };
-
-          const url = `${BASE_URL}/calculate-prices`;
-          attemptResult.request_url = url;
-
-          console.log(`Making request to: ${url} for ${carrier.name} - ${service.name}`);
-          console.log(`Request payload:`, JSON.stringify(priceRequest, null, 2));
-
-          const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-              'X-API-Key': profile.eawb_api_key,
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify(priceRequest)
-          });
-
-          console.log(`Response status: ${response.status} for ${carrier.name} - ${service.name}`);
-
-          const responseText = await response.text();
-          console.log(`Raw response from ${carrier.name} (${response.status}):`, responseText.substring(0, 500));
-
-          let result;
-          try {
-            result = JSON.parse(responseText);
-          } catch (parseError) {
-            throw new Error(`Invalid JSON response from ${carrier.name}: ${responseText.substring(0, 200)}`);
-          }
-
-          console.log(`Price response for ${carrier.name} - ${service.name}:`, {
-            status: response.status,
-            success: result?.success,
-            message: result?.message,
-            data_length: Array.isArray(result?.data) ? result.data.length : 0
-          });
-
-          if (response.ok && result?.success && Array.isArray(result.data) && result.data.length > 0) {
-            const d = result.data[0];
-            attemptResult.success = true;
-
-            carrierQuotes.push({
-            carrier_info: {
-                id: attemptResult.carrier_id,
-                name: carrier.name,
-                logo_url: carrier.logo_url
-              },
-              service_info: {
-                id: attemptResult.service_id,
-                name: service.name,
-                description: service.description || ''
-              },
-              price: {
-                amount: parseFloat(d?.price?.amount ?? d?.price_amount ?? 0) || 0,
-                vat: parseFloat(d?.price?.vat ?? d?.price_vat ?? 0) || 0,
-                total: parseFloat(d?.price?.total ?? d?.price_total ?? 0) || 0,
-                currency: d?.price?.currency || d?.currency || 'RON'
-              },
-              estimated_pickup_date: d?.estimated_pickup_date || 'Next business day',
-              estimated_delivery_date: d?.estimated_delivery_date || '2-3 business days',
-              carrier_id: attemptResult.carrier_id,
-              service_id: attemptResult.service_id
-            });
-          } else {
-            attemptResult.error = result?.message || `HTTP ${response.status}`;
-          }
-        } catch (err: any) {
-          attemptResult.error = err.message;
-        }
-
-        attemptResults.push(attemptResult);
-      }
-    }
-
-    console.log(`=== Results: ${carrierQuotes.length} total quotes from ${attemptResults.filter(a => a.success).length} carriers ===`);
-
-    if (carrierQuotes.length > 0) {
-      return new Response(JSON.stringify({
-        success: true,
-        carrier_options: carrierQuotes,
-        debug_info: {
-          sender_address: senderAddress,
-          recipient_address: recipientAddress,
-          parcel_info: parcel,
-          attempts: attemptResults
-        }
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    } else {
-      // Fallback: try configured default carrier/service once
-      if (Number(profile.eawb_default_carrier_id) > 0 && Number(profile.eawb_default_service_id) > 0) {
-        const attemptResult = {
-          carrier_name: 'Configured Carrier',
-          carrier_id: Number(profile.eawb_default_carrier_id),
-          service_id: Number(profile.eawb_default_service_id),
-          service_name: 'Configured Service',
-          request_url: `${BASE_URL}/calculate-prices`,
-          success: false,
-          error: null as string | null,
-        };
-        try {
-          const priceRequest = {
-            billing_to: { billing_address_id: billingAddressId },
-            address_from: {
-              country_code: 'RO',
-              county_name: senderAddress.county,
-              locality_name: senderAddress.city,
-              postal_code: senderAddress.postal_code || undefined,
-              contact: profile.eawb_name || profile.store_name || 'Sender',
-              street_name: senderStreet.street_name,
-              street_number: senderStreet.street_number,
-              phone: profile.eawb_phone || profile.phone || '0700000000',
-              email: profile.eawb_email || profile.email || user.email
-            },
-            address_to: {
-              country_code: 'RO',
-              county_name: recipientAddress.county,
-              locality_name: recipientAddress.city,
-              postal_code: recipientAddress.postal_code || undefined,
-              contact: order.customer_name,
-              street_name: recipientStreet.street_name,
-              street_number: recipientStreet.street_number,
-              phone: order.customer_phone || '0700000000',
-              email: order.customer_email
-            },
-            parcels: [
-              {
-                length: parcel.length,
-                width: parcel.width,
-                height: parcel.height,
-                weight: parcel.weight,
-                declared_value: parcel.declared_value
-              }
-            ],
-            service: {
-              currency: 'RON',
-              payment_type: 1,
-              send_invoice: false,
-              allow_bank_to_open: false,
-              fragile: false,
-              pickup_available: false,
-              allow_saturday_delivery: false,
-              sunday_delivery: false,
-              morning_delivery: false
-            },
-            carrier_id: attemptResult.carrier_id,
-            service_id: attemptResult.service_id
-          };
-
-          const response = await fetch(attemptResult.request_url, {
-            method: 'POST',
-            headers: {
-              'X-API-Key': profile.eawb_api_key,
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify(priceRequest)
-          });
-          const responseText = await response.text();
-          let result: any = {};
-          try { result = JSON.parse(responseText); } catch {}
-
-          if (response.ok && result?.success && Array.isArray(result.data) && result.data.length > 0) {
-            const d = result.data[0];
-            attemptResult.success = true;
-            carrierQuotes.push({
-              carrier_info: { id: attemptResult.carrier_id, name: 'Configured Carrier', logo_url: null },
-              service_info: { id: attemptResult.service_id, name: 'Configured Service', description: '' },
-              price: {
-                amount: parseFloat(d?.price?.amount ?? d?.price_amount ?? 0) || 0,
-                vat: parseFloat(d?.price?.vat ?? d?.price_vat ?? 0) || 0,
-                total: parseFloat(d?.price?.total ?? d?.price_total ?? 0) || 0,
-                currency: d?.price?.currency || d?.currency || 'RON'
-              },
-              estimated_pickup_date: d?.estimated_pickup_date || 'Next business day',
-              estimated_delivery_date: d?.estimated_delivery_date || '2-3 business days',
-              carrier_id: attemptResult.carrier_id,
-              service_id: attemptResult.service_id
-            });
-          } else {
-            attemptResult.error = result?.message || `HTTP ${response.status}`;
-          }
-        } catch (e: any) {
-          attemptResult.error = e.message || String(e);
-        }
-        attemptResults.push(attemptResult);
-      }
-
-      if (carrierQuotes.length > 0) {
-        return new Response(JSON.stringify({
-          success: true,
-          carrier_options: carrierQuotes,
-          debug_info: {
-            sender_address: senderAddress,
-            recipient_address: recipientAddress,
-            parcel_info: parcel,
-            attempts: attemptResults
-          }
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-
+    if (!dbCarriers || dbCarriers.length === 0) {
+      console.warn('No carriers found in database');
       return new Response(JSON.stringify({
         success: false,
-        error: 'NO_QUOTES',
-        message: 'No shipping quotes available',
+        error: 'NO_CARRIERS',
+        message: 'No carriers configured'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    console.log(`Found ${dbCarriers.length} DB carriers`);
+
+    // Robust carrier/service mapping
+    const mapCarrierService = (dbCarrier: any, dbService: any) => {
+      // Find eAWB carrier by code or name
+      const eawbCarrier = eawbCarriers.find((c: any) => {
+        const codeMatch = c.code?.toLowerCase() === dbCarrier.code?.toLowerCase();
+        const nameMatch = c.name?.toLowerCase().includes(dbCarrier.name?.toLowerCase()) ||
+                          dbCarrier.name?.toLowerCase().includes(c.name?.toLowerCase());
+        return codeMatch || nameMatch;
+      });
+
+      if (!eawbCarrier) {
+        console.warn(`No eAWB carrier found for: ${dbCarrier.name} (${dbCarrier.code})`);
+        return null;
+      }
+
+      // Try to parse service ID from service_code
+      let serviceId = parseInt(dbService.service_code);
+      
+      // If not a number, try to find by name
+      if (!Number.isFinite(serviceId)) {
+        const eawbService = eawbServices.find((s: any) => 
+          s.carrier_id === eawbCarrier.id && (
+            s.code?.toLowerCase() === dbService.service_code?.toLowerCase() ||
+            s.name?.toLowerCase().includes(dbService.name?.toLowerCase())
+          )
+        );
+        serviceId = eawbService?.id;
+      }
+
+      if (!Number.isFinite(serviceId)) {
+        console.warn(`No valid service ID for: ${dbService.name} (${dbService.service_code})`);
+        return null;
+      }
+
+      return {
+        carrier_id: eawbCarrier.id,
+        service_id: serviceId,
+        carrier_name: dbCarrier.name,
+        service_name: dbService.name,
+        logo_url: dbCarrier.logo_url
+      };
+    };
+
+    // Build quote requests
+    const quoteRequests = [];
+    const billingAddressId = profile.eawb_billing_address_id || 1;
+
+    const senderStreet = extractStreetInfo(profile.eawb_address || '');
+    const recipientStreet = extractStreetInfo(order.customer_address);
+
+    for (const carrier of dbCarriers) {
+      if (!carrier.carrier_services?.length) continue;
+
+      for (const service of carrier.carrier_services) {
+        if (!service.is_active) continue;
+
+        const mapping = mapCarrierService(carrier, service);
+        if (!mapping) continue;
+
+        const request = {
+          mapping,
+          payload: {
+            billing_to: { billing_address_id: billingAddressId },
+            address_from: {
+              country_code: 'RO',
+              county_name: senderParsed.county,
+              locality_name: senderParsed.city,
+              postal_code: senderParsed.postal_code || undefined,
+              contact: profile.eawb_name || profile.store_name || 'Sender',
+              street_name: senderStreet.street_name,
+              street_number: senderStreet.street_number,
+              phone: profile.eawb_phone || '0700000000',
+              email: profile.eawb_email || user.email
+            },
+            address_to: {
+              country_code: 'RO',
+              county_name: recipientParsed.county,
+              locality_name: recipientParsed.city,
+              postal_code: recipientParsed.postal_code || undefined,
+              contact: order.customer_name,
+              street_name: recipientStreet.street_name,
+              street_number: recipientStreet.street_number,
+              phone: order.customer_phone || '0700000000',
+              email: order.customer_email
+            },
+            parcels: [{
+              weight: package_details.weight || 1,
+              length: package_details.length || 30,
+              width: package_details.width || 20,
+              height: package_details.height || 10,
+              contents: package_details.contents || 'Goods',
+              declared_value: package_details.declared_value || order.total
+            }],
+            service: {
+              currency: 'RON',
+              payment_type: 1,
+              send_invoice: false,
+              allow_bank_to_open: false,
+              fragile: false,
+              pickup_available: false,
+              allow_saturday_delivery: false,
+              sunday_delivery: false,
+              morning_delivery: false
+            },
+            carrier_id: mapping.carrier_id,
+            service_id: mapping.service_id
+          }
+        };
+
+        quoteRequests.push(request);
+      }
+    }
+
+    console.log(`Built ${quoteRequests.length} quote requests`);
+
+    // Concurrent quote requests with timeout
+    const fetchQuote = async (request: any, timeout = 10000) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+      try {
+        console.log(`Requesting quote: ${request.mapping.carrier_name} - ${request.mapping.service_name}`);
+        
+        const response = await fetch(`${BASE_URL}/calculate-prices`, {
+          method: 'POST',
+          headers: {
+            'X-API-Key': profile.eawb_api_key,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(request.payload),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+          const quote = data.data[0];
+          console.log(`✓ Quote received: ${request.mapping.carrier_name} - ${quote.price?.total || 0} RON`);
+          
+          return {
+            carrier_info: {
+              id: request.mapping.carrier_id,
+              name: request.mapping.carrier_name,
+              logo_url: request.mapping.logo_url
+            },
+            service_info: {
+              id: request.mapping.service_id,
+              name: request.mapping.service_name,
+              description: ''
+            },
+            price: {
+              amount: parseFloat(quote.price?.amount || quote.price_amount || 0),
+              vat: parseFloat(quote.price?.vat || quote.price_vat || 0),
+              total: parseFloat(quote.price?.total || quote.price_total || 0),
+              currency: quote.price?.currency || quote.currency || 'RON'
+            },
+            estimated_pickup_date: quote.estimated_pickup_date || 'Next business day',
+            estimated_delivery_date: quote.estimated_delivery_date || '2-3 business days',
+            carrier_id: request.mapping.carrier_id,
+            service_id: request.mapping.service_id
+          };
+        } else {
+          throw new Error(data.message || 'Invalid response format');
+        }
+      } catch (error: any) {
+        clearTimeout(timeoutId);
+        console.warn(`✗ Quote failed: ${request.mapping.carrier_name} - ${error.message}`);
+        return null;
+      }
+    };
+
+    // Execute all requests concurrently
+    const quotePromises = quoteRequests.map(request => fetchQuote(request));
+    const results = await Promise.allSettled(quotePromises);
+    
+    const successfulQuotes = results
+      .filter((result): result is PromiseFulfilledResult<any> => 
+        result.status === 'fulfilled' && result.value !== null
+      )
+      .map(result => result.value);
+
+    console.log(`=== Results: ${successfulQuotes.length}/${quoteRequests.length} quotes successful ===`);
+
+    if (successfulQuotes.length > 0) {
+      return new Response(JSON.stringify({
+        success: true,
+        carrier_options: successfulQuotes,
         debug_info: {
-          sender_address: senderAddress,
-          recipient_address: recipientAddress,
-          parcel_info: parcel,
-          attempts: attemptResults
+          total_attempts: quoteRequests.length,
+          successful_quotes: successfulQuotes.length,
+          base_url: BASE_URL,
+          sender_address: senderParsed,
+          recipient_address: recipientParsed
         }
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
+    // Fallback with user's default settings
+    if (profile.eawb_default_carrier_id && profile.eawb_default_service_id) {
+      console.log('Trying fallback with default carrier/service');
+      
+      const fallbackRequest = {
+        billing_to: { billing_address_id: billingAddressId },
+        address_from: {
+          country_code: 'RO',
+          county_name: senderParsed.county,
+          locality_name: senderParsed.city,
+          postal_code: senderParsed.postal_code || undefined,
+          contact: profile.eawb_name || profile.store_name || 'Sender',
+          street_name: senderStreet.street_name,
+          street_number: senderStreet.street_number,
+          phone: profile.eawb_phone || '0700000000',
+          email: profile.eawb_email || user.email
+        },
+        address_to: {
+          country_code: 'RO',
+          county_name: recipientParsed.county,
+          locality_name: recipientParsed.city,
+          postal_code: recipientParsed.postal_code || undefined,
+          contact: order.customer_name,
+          street_name: recipientStreet.street_name,
+          street_number: recipientStreet.street_number,
+          phone: order.customer_phone || '0700000000',
+          email: order.customer_email
+        },
+        parcels: [{
+          weight: package_details.weight || 1,
+          length: package_details.length || 30,
+          width: package_details.width || 20,
+          height: package_details.height || 10,
+          contents: package_details.contents || 'Goods',
+          declared_value: package_details.declared_value || order.total
+        }],
+        service: {
+          currency: 'RON',
+          payment_type: 1,
+          send_invoice: false,
+          allow_bank_to_open: false,
+          fragile: false,
+          pickup_available: false,
+          allow_saturday_delivery: false,
+          sunday_delivery: false,
+          morning_delivery: false
+        },
+        carrier_id: profile.eawb_default_carrier_id,
+        service_id: profile.eawb_default_service_id
+      };
+
+      try {
+        const response = await fetch(`${BASE_URL}/calculate-prices`, {
+          method: 'POST',
+          headers: {
+            'X-API-Key': profile.eawb_api_key,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(fallbackRequest)
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+            const quote = data.data[0];
+            return new Response(JSON.stringify({
+              success: true,
+              carrier_options: [{
+                carrier_info: {
+                  id: profile.eawb_default_carrier_id,
+                  name: 'Default Carrier',
+                  logo_url: null
+                },
+                service_info: {
+                  id: profile.eawb_default_service_id,
+                  name: 'Default Service',
+                  description: 'Configured default shipping option'
+                },
+                price: {
+                  amount: parseFloat(quote.price?.amount || quote.price_amount || 0),
+                  vat: parseFloat(quote.price?.vat || quote.price_vat || 0),
+                  total: parseFloat(quote.price?.total || quote.price_total || 0),
+                  currency: quote.price?.currency || quote.currency || 'RON'
+                },
+                estimated_pickup_date: quote.estimated_pickup_date || 'Next business day',
+                estimated_delivery_date: quote.estimated_delivery_date || '2-3 business days',
+                carrier_id: profile.eawb_default_carrier_id,
+                service_id: profile.eawb_default_service_id
+              }],
+              debug_info: { fallback_used: true }
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Fallback request failed:', error);
+      }
+    }
+
+    // No quotes available
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'NO_QUOTES',
+      message: 'No shipping quotes available. Please check your configuration.',
+      debug_info: {
+        total_attempts: quoteRequests.length,
+        successful_quotes: 0,
+        base_url: BASE_URL,
+        has_fallback_config: !!(profile.eawb_default_carrier_id && profile.eawb_default_service_id)
+      }
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+
   } catch (error: any) {
-    console.error('Error in eawb-quoting:', error);
+    console.error('Quoting service error:', error);
     return new Response(JSON.stringify({
       success: false,
       error: 'INTERNAL_ERROR',
-      message: error.message
+      message: error.message || 'Internal server error'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
