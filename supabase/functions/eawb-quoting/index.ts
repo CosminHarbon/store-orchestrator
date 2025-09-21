@@ -227,14 +227,7 @@ serve(async (req) => {
       .eq('is_active', true);
 
     if (!dbCarriers || dbCarriers.length === 0) {
-      console.warn('No carriers found in database');
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'NO_CARRIERS',
-        message: 'No carriers configured'
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      console.warn('No carriers found in database; will try 0,0 (all carriers/services)');
     }
 
     console.log(`Found ${dbCarriers.length} DB carriers`);
@@ -307,6 +300,57 @@ serve(async (req) => {
 
     const senderStreet = extractStreetInfo(profile.eawb_address || '');
     const recipientStreet = extractStreetInfo(order.customer_address);
+
+    // Add catch-all request: 0,0 => all carriers/services
+    quoteRequests.push({
+      mapping: { carrier_id: 0, carrier_name: 'All Carriers', logo_url: null, service_id: 0, service_name: 'All Services' },
+      payload: {
+        billing_to: { billing_address_id: billingAddressId },
+        address_from: {
+          country_code: 'RO',
+          county_name: senderParsed.county,
+          locality_name: senderParsed.city,
+          postal_code: senderParsed.postal_code || undefined,
+          contact: profile.eawb_name || profile.store_name || 'Sender',
+          street_name: senderStreet.street_name,
+          street_number: senderStreet.street_number,
+          phone: profile.eawb_phone || '0700000000',
+          email: profile.eawb_email || user.email
+        },
+        address_to: {
+          country_code: 'RO',
+          county_name: recipientParsed.county,
+          locality_name: recipientParsed.city,
+          postal_code: recipientParsed.postal_code || undefined,
+          contact: order.customer_name,
+          street_name: recipientStreet.street_name,
+          street_number: recipientStreet.street_number,
+          phone: order.customer_phone || '0700000000',
+          email: order.customer_email
+        },
+        parcels: [{
+          weight: package_details.weight || 1,
+          length: package_details.length || 30,
+          width: package_details.width || 20,
+          height: package_details.height || 10,
+          contents: package_details.contents || 'Goods',
+          declared_value: package_details.declared_value || order.total
+        }],
+        service: {
+          currency: 'RON',
+          payment_type: 1,
+          send_invoice: false,
+          allow_bank_to_open: false,
+          fragile: false,
+          pickup_available: false,
+          allow_saturday_delivery: false,
+          sunday_delivery: false,
+          morning_delivery: false
+        },
+        carrier_id: 0,
+        service_id: 0
+      }
+    });
 
     for (const carrier of dbCarriers) {
       if (!carrier.carrier_services?.length) {
