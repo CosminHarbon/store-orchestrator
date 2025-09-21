@@ -207,6 +207,16 @@ serve(async (req) => {
 
     const { carriers: eawbCarriers, services: eawbServices } = await loadCatalog();
 
+    // Fallback mapping from docs: https://www.eawb.ro/docs/direct/tables/carriers
+    const CARRIER_CODE_TO_ID: Record<string, number> = {
+      cargus: 1,
+      dpd: 2,
+      fan_courier: 3,
+      gls: 4,
+      sameday: 6,
+      bookurier: 16,
+    };
+
     // Get DB carriers
     const { data: dbCarriers } = await supabase
       .from('carriers')
@@ -229,10 +239,10 @@ serve(async (req) => {
 
     console.log(`Found ${dbCarriers.length} DB carriers`);
 
-    // Robust carrier/service mapping
-    const mapCarrierService = (dbCarrier: any, dbService: any) => {
-      // Find eAWB carrier by code or name
-      const eawbCarrier = eawbCarriers.find((c: any) => {
+    // Robust carrier mapping helpers (with static fallback by code)
+    const mapCarrierOnly = (dbCarrier: any) => {
+      // Prefer API catalog
+      let eawbCarrier = eawbCarriers.find((c: any) => {
         const codeMatch = c.code?.toLowerCase() === dbCarrier.code?.toLowerCase();
         const nameMatch = c.name?.toLowerCase().includes(dbCarrier.name?.toLowerCase()) ||
                           dbCarrier.name?.toLowerCase().includes(c.name?.toLowerCase());
@@ -240,17 +250,36 @@ serve(async (req) => {
       });
 
       if (!eawbCarrier) {
+        const fallbackId = CARRIER_CODE_TO_ID[dbCarrier.code?.toLowerCase?.()] as number | undefined;
+        if (fallbackId) {
+          eawbCarrier = { id: fallbackId, name: dbCarrier.name, code: dbCarrier.code };
+        }
+      }
+
+      if (!eawbCarrier) {
         console.warn(`No eAWB carrier found for: ${dbCarrier.name} (${dbCarrier.code})`);
         return null;
       }
 
+      return {
+        carrier_id: eawbCarrier.id,
+        carrier_name: dbCarrier.name,
+        logo_url: dbCarrier.logo_url,
+      };
+    };
+
+    // Robust carrier+service mapping
+    const mapCarrierService = (dbCarrier: any, dbService: any) => {
+      const carrier = mapCarrierOnly(dbCarrier);
+      if (!carrier) return null;
+
       // Try to parse service ID from service_code
       let serviceId = parseInt(dbService.service_code);
-      
-      // If not a number, try to find by name
-      if (!Number.isFinite(serviceId)) {
+
+      // If not a number, try to find by name in catalog (if present)
+      if (!Number.isFinite(serviceId) && Array.isArray(eawbServices) && eawbServices.length > 0) {
         const eawbService = eawbServices.find((s: any) => 
-          s.carrier_id === eawbCarrier.id && (
+          s.carrier_id === carrier.carrier_id && (
             s.code?.toLowerCase() === dbService.service_code?.toLowerCase() ||
             s.name?.toLowerCase().includes(dbService.name?.toLowerCase())
           )
@@ -264,7 +293,7 @@ serve(async (req) => {
       }
 
       return {
-        carrier_id: eawbCarrier.id,
+        carrier_id: carrier.carrier_id,
         service_id: serviceId,
         carrier_name: dbCarrier.name,
         service_name: dbService.name,
@@ -280,7 +309,63 @@ serve(async (req) => {
     const recipientStreet = extractStreetInfo(order.customer_address);
 
     for (const carrier of dbCarriers) {
-      if (!carrier.carrier_services?.length) continue;
+      if (!carrier.carrier_services?.length) {
+        const mapped = mapCarrierOnly(carrier);
+        if (mapped) {
+          const request = {
+            mapping: mapped,
+            payload: {
+              billing_to: { billing_address_id: billingAddressId },
+              address_from: {
+                country_code: 'RO',
+                county_name: senderParsed.county,
+                locality_name: senderParsed.city,
+                postal_code: senderParsed.postal_code || undefined,
+                contact: profile.eawb_name || profile.store_name || 'Sender',
+                street_name: senderStreet.street_name,
+                street_number: senderStreet.street_number,
+                phone: profile.eawb_phone || '0700000000',
+                email: profile.eawb_email || user.email
+              },
+              address_to: {
+                country_code: 'RO',
+                county_name: recipientParsed.county,
+                locality_name: recipientParsed.city,
+                postal_code: recipientParsed.postal_code || undefined,
+                contact: order.customer_name,
+                street_name: recipientStreet.street_name,
+                street_number: recipientStreet.street_number,
+                phone: order.customer_phone || '0700000000',
+                email: order.customer_email
+              },
+              parcels: [{
+                weight: package_details.weight || 1,
+                length: package_details.length || 30,
+                width: package_details.width || 20,
+                height: package_details.height || 10,
+                contents: package_details.contents || 'Goods',
+                declared_value: package_details.declared_value || order.total
+              }],
+              service: {
+                currency: 'RON',
+                payment_type: 1,
+                send_invoice: false,
+                allow_bank_to_open: false,
+                fragile: false,
+                pickup_available: false,
+                allow_saturday_delivery: false,
+                sunday_delivery: false,
+                morning_delivery: false
+              },
+              carrier_id: mapped.carrier_id
+            }
+          };
+          quoteRequests.push(request);
+        }
+        continue;
+      }
+
+      let serviceAdded = false;
 
       for (const service of carrier.carrier_services) {
         if (!service.is_active) continue;
@@ -339,18 +424,75 @@ serve(async (req) => {
         };
 
         quoteRequests.push(request);
+        serviceAdded = true;
+      }
+
+      if (!serviceAdded) {
+        const mapped = mapCarrierOnly(carrier);
+        if (mapped) {
+          const request = {
+            mapping: mapped,
+            payload: {
+              billing_to: { billing_address_id: billingAddressId },
+              address_from: {
+                country_code: 'RO',
+                county_name: senderParsed.county,
+                locality_name: senderParsed.city,
+                postal_code: senderParsed.postal_code || undefined,
+                contact: profile.eawb_name || profile.store_name || 'Sender',
+                street_name: senderStreet.street_name,
+                street_number: senderStreet.street_number,
+                phone: profile.eawb_phone || '0700000000',
+                email: profile.eawb_email || user.email
+              },
+              address_to: {
+                country_code: 'RO',
+                county_name: recipientParsed.county,
+                locality_name: recipientParsed.city,
+                postal_code: recipientParsed.postal_code || undefined,
+                contact: order.customer_name,
+                street_name: recipientStreet.street_name,
+                street_number: recipientStreet.street_number,
+                phone: order.customer_phone || '0700000000',
+                email: order.customer_email
+              },
+              parcels: [{
+                weight: package_details.weight || 1,
+                length: package_details.length || 30,
+                width: package_details.width || 20,
+                height: package_details.height || 10,
+                contents: package_details.contents || 'Goods',
+                declared_value: package_details.declared_value || order.total
+              }],
+              service: {
+                currency: 'RON',
+                payment_type: 1,
+                send_invoice: false,
+                allow_bank_to_open: false,
+                fragile: false,
+                pickup_available: false,
+                allow_saturday_delivery: false,
+                sunday_delivery: false,
+                morning_delivery: false
+              },
+              carrier_id: mapped.carrier_id
+            }
+          };
+          quoteRequests.push(request);
+        }
       }
     }
 
     console.log(`Built ${quoteRequests.length} quote requests`);
 
-    // Concurrent quote requests with timeout
-    const fetchQuote = async (request: any, timeout = 10000) => {
+    // Concurrent quote requests with timeout; returns an array of quotes per request
+    const fetchQuote = async (request: any, timeout = 10000): Promise<any[]> => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
 
       try {
-        console.log(`Requesting quote: ${request.mapping.carrier_name} - ${request.mapping.service_name}`);
+        const requestLabel = `${request.mapping.carrier_name}${request.mapping.service_id ? ' - ' + request.mapping.service_id : ''}`;
+        console.log(`Requesting quote(s): ${requestLabel}`);
         
         const response = await fetch(`${BASE_URL}/calculate-prices`, {
           method: 'POST',
@@ -372,19 +514,16 @@ serve(async (req) => {
         const data = await response.json();
         
         if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-          const quote = data.data[0];
-          console.log(`✓ Quote received: ${request.mapping.carrier_name} - ${quote.price?.total || 0} RON`);
-          
-          return {
+          const quotes = data.data.map((quote: any) => ({
             carrier_info: {
               id: request.mapping.carrier_id,
               name: request.mapping.carrier_name,
               logo_url: request.mapping.logo_url
             },
             service_info: {
-              id: request.mapping.service_id,
-              name: request.mapping.service_name,
-              description: ''
+              id: quote.service_id || request.mapping.service_id,
+              name: quote.service_name || request.mapping.service_name || 'Service',
+              description: quote.service_description || ''
             },
             price: {
               amount: parseFloat(quote.price?.amount || quote.price_amount || 0),
@@ -395,15 +534,18 @@ serve(async (req) => {
             estimated_pickup_date: quote.estimated_pickup_date || 'Next business day',
             estimated_delivery_date: quote.estimated_delivery_date || '2-3 business days',
             carrier_id: request.mapping.carrier_id,
-            service_id: request.mapping.service_id
-          };
+            service_id: quote.service_id || request.mapping.service_id
+          }));
+
+          console.log(`✓ Received ${quotes.length} quote(s) for ${request.mapping.carrier_name}`);
+          return quotes;
         } else {
           throw new Error(data.message || 'Invalid response format');
         }
       } catch (error: any) {
         clearTimeout(timeoutId);
         console.warn(`✗ Quote failed: ${request.mapping.carrier_name} - ${error.message}`);
-        return null;
+        return [];
       }
     };
 
@@ -411,11 +553,19 @@ serve(async (req) => {
     const quotePromises = quoteRequests.map(request => fetchQuote(request));
     const results = await Promise.allSettled(quotePromises);
     
-    const successfulQuotes = results
-      .filter((result): result is PromiseFulfilledResult<any> => 
-        result.status === 'fulfilled' && result.value !== null
+    const successfulQuotesRaw: any[] = results
+      .filter((result): result is PromiseFulfilledResult<any[]> => 
+        result.status === 'fulfilled' && Array.isArray(result.value)
       )
-      .map(result => result.value);
+      .flatMap(result => result.value);
+
+    // Dedupe by carrier_id + service_id
+    const unique = new Map<string, any>();
+    for (const q of successfulQuotesRaw) {
+      const key = `${q.carrier_id}-${q.service_id}`;
+      if (!unique.has(key)) unique.set(key, q);
+    }
+    const successfulQuotes = Array.from(unique.values());
 
     console.log(`=== Results: ${successfulQuotes.length}/${quoteRequests.length} quotes successful ===`);
 
