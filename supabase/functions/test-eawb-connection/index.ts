@@ -56,18 +56,18 @@ serve(async (req) => {
 
     // Test different base URLs and endpoint patterns
     const testCombinations = [
-      // Original patterns
+      // Direct API endpoints (most likely correct based on docs)
+      { base: 'https://eawb.ro/api/direct', endpoint: 'tables/carriers' },
+      { base: 'https://eawb.ro/api/v1/direct', endpoint: 'tables/carriers' },
+      { base: 'https://api.eawb.ro/api/direct', endpoint: 'tables/carriers' },
+      { base: 'https://api.eawb.ro/direct', endpoint: 'tables/carriers' },
+      
+      // Legacy endpoints
       { base: 'https://api.europarcel.com/api/public', endpoint: 'carriers' },
       { base: 'https://api.europarcel.com/api/v1', endpoint: 'carriers' },
       { base: 'https://eawb.ro/api/public', endpoint: 'carriers' },
       { base: 'https://eawb.ro/api/v1', endpoint: 'carriers' },
-      
-      // Alternative patterns
-      { base: 'https://api.europarcel.com', endpoint: 'carriers' },
-      { base: 'https://eawb.ro/api', endpoint: 'carriers' },
-      { base: 'https://eawb.ro', endpoint: 'carriers' },
-      { base: 'https://api.eawb.ro', endpoint: 'carriers' },
-      { base: 'https://api.eawb.ro/api', endpoint: 'carriers' },
+      { base: 'https://api.eawb.ro/api/public', endpoint: 'carriers' },
       { base: 'https://api.eawb.ro/v1', endpoint: 'carriers' },
     ];
 
@@ -198,12 +198,17 @@ serve(async (req) => {
     };
 
     const baseUrls = [
+      // Direct API endpoints (most likely correct based on docs)
+      'https://eawb.ro/api/direct',
+      'https://eawb.ro/api/v1/direct',
+      'https://api.eawb.ro/api/direct',
+      'https://api.eawb.ro/direct',
+      
+      // Legacy endpoints
       'https://api.europarcel.com/api/public',
       'https://api.europarcel.com/api/v1', 
       'https://eawb.ro/api/public',
       'https://eawb.ro/api/v1',
-      'https://api.europarcel.com',
-      'https://eawb.ro/api',
       'https://api.eawb.ro/api/public',
       'https://api.eawb.ro/v1'
     ];

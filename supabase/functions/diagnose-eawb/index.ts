@@ -100,12 +100,17 @@ serve(async (req) => {
     };
 
     const testUrls = [
+      // Direct API endpoints (most likely correct based on docs)
+      'https://eawb.ro/api/direct/calculate-prices',
+      'https://eawb.ro/api/v1/direct/calculate-prices',
+      'https://api.eawb.ro/api/direct/calculate-prices',
+      'https://api.eawb.ro/direct/calculate-prices',
+      
+      // Legacy endpoints to test
       'https://api.europarcel.com/api/public/calculate-prices',
       'https://api.europarcel.com/api/v1/calculate-prices', 
       'https://eawb.ro/api/public/calculate-prices',
       'https://eawb.ro/api/v1/calculate-prices',
-      'https://api.europarcel.com/calculate-prices',
-      'https://eawb.ro/api/calculate-prices',
       'https://api.eawb.ro/api/public/calculate-prices',
       'https://api.eawb.ro/v1/calculate-prices'
     ];

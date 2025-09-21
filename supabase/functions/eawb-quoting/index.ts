@@ -66,9 +66,15 @@ serve(async (req) => {
     // Runtime base URL detection with fallbacks
     const detectBaseUrl = async (apiKey: string): Promise<string> => {
       const candidates = [
+        // Direct API endpoints (most likely correct based on docs)
+        'https://eawb.ro/api/direct',
+        'https://eawb.ro/api/v1/direct',
+        'https://api.eawb.ro/api/direct',
+        'https://api.eawb.ro/direct',
+        
+        // Legacy endpoints as fallback
         'https://api.europarcel.com/api/public',
         'https://api.europarcel.com/api/v1',
-        'https://api.europarcel.com',
         'https://eawb.ro/api/public',
         'https://eawb.ro/api/v1'
       ];
@@ -76,7 +82,7 @@ serve(async (req) => {
       for (const baseUrl of candidates) {
         try {
           console.log(`Testing base URL: ${baseUrl}`);
-          const response = await fetch(`${baseUrl}/carriers`, {
+          const response = await fetch(`${baseUrl}/${baseUrl.includes('/direct') ? 'tables/carriers' : 'carriers'}`, {
             method: 'GET',
             headers: {
               'X-API-Key': apiKey,
@@ -536,9 +542,15 @@ serve(async (req) => {
 
       const baseCandidates = [
         BASE_URL,
+        // Direct API endpoints (most likely correct based on docs)
+        'https://eawb.ro/api/direct',
+        'https://eawb.ro/api/v1/direct',
+        'https://api.eawb.ro/api/direct',
+        'https://api.eawb.ro/direct',
+        
+        // Legacy endpoints as fallback
         'https://api.europarcel.com/api/public',
         'https://api.europarcel.com/api/v1',
-        'https://api.europarcel.com',
         'https://eawb.ro/api/public',
         'https://eawb.ro/api/v1'
       ];
