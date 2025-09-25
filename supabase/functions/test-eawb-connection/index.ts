@@ -160,7 +160,7 @@ serve(async (req) => {
           pallets_count: 0,
           envelopes_count: 0,
           total_weight: 1,
-          parcels: [{ weight: 1, length: 30, width: 20, height: 10 }]
+          parcels: [{ sequence_no: 1, weight: 1, weight_kg: 1, size: 'SMALL', length: 30, width: 20, height: 10 }]
         },
         extra: {
           parcel_content: 'Test goods',
@@ -189,13 +189,13 @@ serve(async (req) => {
         test: 'orders/prices',
         url: `${EAWB_BASE_URL}/orders/prices`,
         status: quoteResponse.status,
-        success: quoteResponse.ok && quoteData?.success,
+        success: quoteResponse.ok && (quoteData?.valid === true || quoteData?.success === true),
         hasQuotes: quoteResponse.ok && Array.isArray(quoteData?.data) && quoteData.data.length > 0,
         quoteCount: quoteResponse.ok && Array.isArray(quoteData?.data) ? quoteData.data.length : 0,
-        error: !quoteResponse.ok || !quoteData?.success ? quoteData?.message || 'No quotes returned' : null
+        error: !quoteResponse.ok || !(quoteData?.valid === true || quoteData?.success === true) ? (quoteData?.message || 'No quotes returned') : null
       });
       
-      if (quoteResponse.ok && quoteData?.success) {
+      if (quoteResponse.ok && (quoteData?.valid === true || quoteData?.success === true)) {
         console.log(`✓ Quote endpoint working: ${quoteData?.data?.length || 0} quotes returned`);
       }
     } catch (error: any) {

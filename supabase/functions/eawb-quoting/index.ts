@@ -156,6 +156,22 @@ serve(async (req) => {
     const quoteRequests = [];
     const billingAddressId = profile.eawb_billing_address_id || 1;
 
+    const parcelsCount = Math.max(1, Number(package_details.parcels || 1));
+    const unitWeight = Number(package_details.weight || 1) / parcelsCount;
+    const lengthCm = Number(package_details.length || 30);
+    const widthCm = Number(package_details.width || 20);
+    const heightCm = Number(package_details.height || 10);
+    const parcelSize = unitWeight <= 1 ? 'SMALL' : unitWeight <= 5 ? 'MEDIUM' : 'LARGE';
+    const parcelsArray = Array.from({ length: parcelsCount }, (_, idx) => ({
+      sequence_no: idx + 1,
+      weight: unitWeight,
+      weight_kg: unitWeight,
+      size: parcelSize,
+      length: lengthCm,
+      width: widthCm,
+      height: heightCm
+    }));
+
     const basePayload = {
       billing_to: { billing_address_id: billingAddressId },
       address_from: {
@@ -181,16 +197,11 @@ serve(async (req) => {
         email: order.customer_email
       },
       content: {
-        parcels_count: Math.max(1, Number(package_details.parcels || 1)),
+        parcels_count: parcelsCount,
         pallets_count: 0,
         envelopes_count: 0,
         total_weight: Number(package_details.weight || 1),
-        parcels: [{
-          weight: Number(package_details.weight || 1),
-          length: Number(package_details.length || 30),
-          width: Number(package_details.width || 20),
-          height: Number(package_details.height || 10)
-        }]
+        parcels: parcelsArray
       },
       extra: {
         parcel_content: package_details.contents || 'Goods',
