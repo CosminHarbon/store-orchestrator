@@ -158,15 +158,14 @@ serve(async (req) => {
 
     const parcelsCount = Math.max(1, Number(package_details.parcels || 1));
     const totalWeightInput = Number(package_details.weight || 1);
-    const unitWeight = Number((totalWeightInput / parcelsCount).toFixed(3));
+    const unitWeight = totalWeightInput / parcelsCount;
     const lengthCm = Number(package_details.length || 30);
     const widthCm = Number(package_details.width || 20);
     const heightCm = Number(package_details.height || 10);
-    const parcelSize = unitWeight <= 1 ? 'S' : unitWeight <= 5 ? 'M' : unitWeight <= 10 ? 'L' : 'XL';
+    const parcelSize = (package_details as any).size || (package_details as any).parcel_size || (unitWeight <= 1 ? 'SMALL' : unitWeight <= 5 ? 'MEDIUM' : unitWeight <= 10 ? 'LARGE' : 'XL');
     const parcelsArray = Array.from({ length: parcelsCount }, (_, idx) => ({
       sequence_no: idx + 1,
-      weight: unitWeight,
-      weight_kg: unitWeight,
+      weight: Number(unitWeight.toFixed(2)),
       size: parcelSize,
       length: lengthCm,
       width: widthCm,

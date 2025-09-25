@@ -161,7 +161,7 @@ serve(async (req) => {
               pallets_count: 0,
               envelopes_count: 0,
               total_weight: 1,
-              parcels: [{ sequence_no: 1, weight: 1, weight_kg: 1, size: 'S', length: 10, width: 10, height: 10 }]
+              parcels: [{ sequence_no: 1, weight: 1, size: 'SMALL', length: 10, width: 10, height: 10 }]
             },
             extra: {
               parcel_content: 'Test',
