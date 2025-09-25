@@ -239,6 +239,7 @@ serve(async (req) => {
       try {
         console.log(`Requesting quote for carrier ${request.mapping.carrier_id}, service ${request.mapping.service_id}`);
         
+        console.log('Payload for', request.mapping.carrier_name, JSON.stringify(request.payload));
         const response = await fetch(`${EAWB_BASE_URL}/orders/prices`, {
           method: 'POST',
           headers: {
@@ -283,7 +284,8 @@ serve(async (req) => {
             carrier_id: request.mapping.carrier_id,
             service_id: request.mapping.service_id,
             carrier_name: request.mapping.carrier_name,
-            error: responseData.message || (responseData.errors ? JSON.stringify(responseData.errors) : 'No quotes available')
+            error: responseData.message || (responseData.errors ? 'VALIDATION_ERROR' : 'No quotes available'),
+            details: responseData.errors || null
           });
         }
       } catch (error: any) {

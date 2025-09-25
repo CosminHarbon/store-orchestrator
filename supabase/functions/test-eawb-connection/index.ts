@@ -155,24 +155,19 @@ serve(async (req) => {
           phone: '0700000001',
           email: 'test@example.com'
         },
-        parcels: [{
-          weight: 1,
-          length: 30,
-          width: 20,
-          height: 10,
-          contents: 'Test goods',
+        content: {
+          parcels_count: 1,
+          pallets_count: 0,
+          envelopes_count: 0,
+          total_weight: 1
+        },
+        extra: {
+          parcel_content: 'Test goods',
           declared_value: 100
-        }],
+        },
         service: {
           currency: 'RON',
-          payment_type: 1,
-          send_invoice: false,
-          allow_bank_to_open: false,
-          fragile: false,
-          pickup_available: false,
-          allow_saturday_delivery: false,
-          sunday_delivery: false,
-          morning_delivery: false
+          payment_type: 1
         },
         carrier_id: 1, // Cargus
         service_id: 1  // Home to Home

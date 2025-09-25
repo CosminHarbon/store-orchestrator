@@ -156,7 +156,16 @@ serve(async (req) => {
               phone: '0700000001',
               email: 'test2@test.ro'
             },
-            parcels: [{ weight: 1, length: 10, width: 10, height: 10, contents: 'Test', declared_value: 50 }],
+            content: {
+              parcels_count: 1,
+              pallets_count: 0,
+              envelopes_count: 0,
+              total_weight: 1
+            },
+            extra: {
+              parcel_content: 'Test',
+              declared_value: 50
+            },
             service: { currency: 'RON', payment_type: 1 },
             carrier_id: 1,
             service_id: 1
@@ -180,7 +189,7 @@ serve(async (req) => {
           name: endpoint.name,
           url: `${EAWB_BASE_URL}${endpoint.path}`,
           status: response.status,
-          success: response.ok,
+          success: response.ok && (data?.valid === true || data?.success === true),
           hasData: !!data,
           dataType: Array.isArray(data?.data) ? 'array' : typeof data,
           dataLength: Array.isArray(data?.data) ? data.data.length : 0,
