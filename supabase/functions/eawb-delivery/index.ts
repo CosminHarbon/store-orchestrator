@@ -16,25 +16,22 @@ serve(async (req) => {
   try {
     console.log('=== eAWB Delivery Service ===');
     
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
-    );
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     const { action, order_id, package_details, selected_carrier, selected_service, address_override } = await req.json();
     console.log('Request:', { action, order_id, selected_carrier, selected_service });
 
     // Get authenticated user
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) {
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: 'Unauthorized' 
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 401
-      });
+    const authHeader = req.headers.get('Authorization')?.replace('Bearer ', '');
+    if (!authHeader) {
+      throw new Error('Missing authorization header');
+    }
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader);
+    if (authError || !user) {
+      throw new Error('Authentication failed');
     }
 
     if (action === 'calculate_prices') {
@@ -86,8 +83,8 @@ serve(async (req) => {
     if (action === 'create_order') {
       // Get user profile and order
       const [profileResult, orderResult] = await Promise.all([
-        supabaseClient.from('profiles').select('*').eq('user_id', user.id).single(),
-        supabaseClient.from('orders').select('*').eq('id', order_id).eq('user_id', user.id).single()
+        supabase.from('profiles').select('*').eq('user_id', user.id).single(),
+        supabase.from('orders').select('*').eq('id', order_id).eq('user_id', user.id).single()
       ]);
 
       if (profileResult.error || !profileResult.data) {
@@ -277,7 +274,7 @@ serve(async (req) => {
           updateData.estimated_delivery_date = awbData.estimated_delivery_date;
         }
 
-        const { error: updateError } = await supabaseClient
+        const { error: updateError } = await supabase
           .from('orders')
           .update(updateData)
           .eq('id', order_id)
