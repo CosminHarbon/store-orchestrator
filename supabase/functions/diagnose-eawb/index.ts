@@ -120,7 +120,7 @@ serve(async (req) => {
     const endpoints = [
       { name: 'carriers', path: '/carriers' },
       { name: 'services', path: '/services' },
-      { name: 'calculate-prices', path: '/calculate-prices', method: 'POST' }
+      { name: 'orders/prices', path: '/orders/prices', method: 'POST' }
     ];
 
     for (const endpoint of endpoints) {
@@ -195,7 +195,7 @@ serve(async (req) => {
         if (response.ok && endpoint.name === 'services' && data?.data) {
           diagnosis.services = data.data.slice(0, 20); // First 20 services
         }
-        if (response.ok && endpoint.name === 'calculate-prices') {
+        if (response.ok && endpoint.name === 'orders/prices') {
           diagnosis.quoteTest = {
             success: data?.success || false,
             quotesCount: Array.isArray(data?.data) ? data.data.length : 0,
@@ -228,7 +228,7 @@ serve(async (req) => {
       apiWorking: diagnosis.endpoints.some(e => e.success),
       carriersEndpointWorking: diagnosis.endpoints.find(e => e.name === 'carriers')?.success || false,
       servicesEndpointWorking: diagnosis.endpoints.find(e => e.name === 'services')?.success || false,
-      quotingEndpointWorking: diagnosis.endpoints.find(e => e.name === 'calculate-prices')?.success || false,
+      quotingEndpointWorking: diagnosis.endpoints.find(e => e.name === 'orders/prices')?.success || false,
       databaseCarriersCount: dbCarriers?.length || 0,
       configurationComplete: !!(
         profile.eawb_api_key && 

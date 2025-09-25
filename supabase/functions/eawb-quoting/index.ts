@@ -244,7 +244,7 @@ serve(async (req) => {
       try {
         console.log(`Requesting quote for carrier ${request.mapping.carrier_id}, service ${request.mapping.service_id}`);
         
-        const response = await fetch(`${EAWB_BASE_URL}/calculate-prices`, {
+        const response = await fetch(`${EAWB_BASE_URL}/orders/prices`, {
           method: 'POST',
           headers: {
             'X-API-Key': profile.eawb_api_key,

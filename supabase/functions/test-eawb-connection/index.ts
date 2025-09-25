@@ -178,7 +178,7 @@ serve(async (req) => {
         service_id: 1  // Home to Home
       };
 
-      const quoteResponse = await fetch(`${EAWB_BASE_URL}/calculate-prices`, {
+      const quoteResponse = await fetch(`${EAWB_BASE_URL}/orders/prices`, {
         method: 'POST',
         headers: {
           'X-API-Key': apiKey,
@@ -190,8 +190,8 @@ serve(async (req) => {
 
       const quoteData = await quoteResponse.json();
       results.push({
-        test: 'calculate-prices',
-        url: `${EAWB_BASE_URL}/calculate-prices`,
+        test: 'orders/prices',
+        url: `${EAWB_BASE_URL}/orders/prices`,
         status: quoteResponse.status,
         success: quoteResponse.ok && quoteData?.success,
         hasQuotes: quoteResponse.ok && Array.isArray(quoteData?.data) && quoteData.data.length > 0,
@@ -204,8 +204,8 @@ serve(async (req) => {
       }
     } catch (error: any) {
       results.push({
-        test: 'calculate-prices',
-        url: `${EAWB_BASE_URL}/calculate-prices`,
+        test: 'orders/prices',
+        url: `${EAWB_BASE_URL}/orders/prices`,
         status: 0,
         success: false,
         error: error.message
@@ -228,7 +228,7 @@ serve(async (req) => {
       defaultServiceId: profile.eawb_default_service_id,
       carriersEndpoint: results.find(r => r.test === 'carriers')?.success || false,
       servicesEndpoint: results.find(r => r.test === 'services')?.success || false,
-      quotingEndpoint: results.find(r => r.test === 'calculate-prices')?.success || false,
+      quotingEndpoint: results.find(r => r.test === 'orders/prices')?.success || false,
       databaseCarriers: dbCarriers?.length || 0,
       overallSuccess: results.every(r => r.success)
     };
