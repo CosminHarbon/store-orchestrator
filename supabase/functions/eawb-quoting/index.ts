@@ -184,7 +184,13 @@ serve(async (req) => {
         parcels_count: Math.max(1, Number(package_details.parcels || 1)),
         pallets_count: 0,
         envelopes_count: 0,
-        total_weight: Number(package_details.weight || 1)
+        total_weight: Number(package_details.weight || 1),
+        parcels: [{
+          weight: Number(package_details.weight || 1),
+          length: Number(package_details.length || 30),
+          width: Number(package_details.width || 20),
+          height: Number(package_details.height || 10)
+        }]
       },
       extra: {
         parcel_content: package_details.contents || 'Goods',
