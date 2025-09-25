@@ -73,7 +73,9 @@ serve(async (req) => {
         return new Response(JSON.stringify({
           success: false,
           error: quotingData.error || 'NO_QUOTES',
-          message: quotingData.message || 'No shipping quotes available'
+          message: quotingData.message || 'No shipping quotes available',
+          errors: quotingData.errors || [],
+          debug_info: quotingData.debug_info || null
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
