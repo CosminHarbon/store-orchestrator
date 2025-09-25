@@ -128,7 +128,7 @@ async function createOblioInvoice(
 
   // Only add sendEmail parameter if we want to send email
   if (sendEmail) {
-    invoiceData.sendEmail = 1;
+    (invoiceData as any).sendEmail = 1;
   }
 
   console.log('Invoice data prepared:', JSON.stringify(invoiceData, null, 2));
