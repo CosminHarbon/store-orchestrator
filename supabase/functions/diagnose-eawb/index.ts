@@ -1,10 +1,12 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.53.0';
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const EAWB_BASE_URL = 'https://api.europarcel.com/api/public';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -53,127 +55,158 @@ serve(async (req) => {
 
     console.log('Testing with API key:', `${apiKey.substring(0, 10)}...`);
 
-    // Test payload for calculate-prices
-    const testPayload = {
-      billing_to: { billing_address_id: 157122 }, // Use actual billing address ID
-      address_from: {
-        country_code: 'RO',
-        county_name: 'Prahova',
-        locality_name: 'Ploiesti',
-        contact: 'Midbay Holding',
-        street_name: 'Strada Republicii',
-        street_number: '15',
-        phone: '0721046211',
-        email: 'andrei.cosmin.nita@cn-caragiale.ro'
+    // Comprehensive diagnosis
+    const diagnosis: {
+      apiKey: {
+        present: boolean;
+        length: number;
+        format: string;
+      };
+      profile: {
+        billingAddressId: number | null;
+        defaultCarrierId: number | null;
+        defaultServiceId: number | null;
+        senderInfo: {
+          name: string | null;
+          email: string | null;
+          phone: string | null;
+          address: string | null;
+        };
+      };
+      endpoints: Array<{
+        name: string;
+        url: string;
+        status: number;
+        success: boolean;
+        hasData?: boolean;
+        dataType?: string;
+        dataLength?: number;
+        message?: string | null;
+        error?: string | null;
+        hasQuotes?: boolean;
+        quoteCount?: number;
+      }>;
+      carriers: any[];
+      services: any[];
+      quoteTest: {
+        success: boolean;
+        quotesCount: number;
+        sampleQuote: any;
+      } | null;
+    } = {
+      apiKey: {
+        present: !!apiKey,
+        length: apiKey.length,
+        format: apiKey.includes('-') ? 'UUID-like' : 'token-like'
       },
-      address_to: {
-        country_code: 'RO',
-        county_name: 'București',
-        locality_name: 'București',
-        contact: 'Test Customer',
-        street_name: 'Strada Victoriei',
-        street_number: '1',
-        phone: '0700000001',
-        email: 'test@example.com'
+      profile: {
+        billingAddressId: profile.eawb_billing_address_id,
+        defaultCarrierId: profile.eawb_default_carrier_id,
+        defaultServiceId: profile.eawb_default_service_id,
+        senderInfo: {
+          name: profile.eawb_name,
+          email: profile.eawb_email,
+          phone: profile.eawb_phone,
+          address: profile.eawb_address
+        }
       },
-      parcels: [{
-        weight: 1,
-        length: 30,
-        width: 20,
-        height: 10,
-        contents: 'Test goods',
-        declared_value: 100
-      }],
-      service: {
-        currency: 'RON',
-        payment_type: 1,
-        send_invoice: false,
-        allow_bank_to_open: false,
-        fragile: false,
-        pickup_available: false,
-        allow_saturday_delivery: false,
-        sunday_delivery: false,
-        morning_delivery: false
-      },
-      carrier_id: 0, // All carriers
-      service_id: 0  // All services
+      endpoints: [],
+      carriers: [],
+      services: [],
+      quoteTest: null
     };
 
-    const testUrls = [
-      // Direct API endpoints (most likely correct based on docs)
-      'https://eawb.ro/api/direct/calculate-prices',
-      'https://eawb.ro/api/v1/direct/calculate-prices',
-      'https://api.eawb.ro/api/direct/calculate-prices',
-      'https://api.eawb.ro/direct/calculate-prices',
-      
-      // Legacy endpoints to test
-      'https://api.europarcel.com/api/public/calculate-prices',
-      'https://api.europarcel.com/api/v1/calculate-prices', 
-      'https://eawb.ro/api/public/calculate-prices',
-      'https://eawb.ro/api/v1/calculate-prices',
-      'https://api.eawb.ro/api/public/calculate-prices',
-      'https://api.eawb.ro/v1/calculate-prices'
+    // Test main endpoints
+    const endpoints = [
+      { name: 'carriers', path: '/carriers' },
+      { name: 'services', path: '/services' },
+      { name: 'calculate-prices', path: '/calculate-prices', method: 'POST' }
     ];
 
-    const testResults = [];
-    let workingConfig = null;
-
-    for (const testUrl of testUrls) {
-      console.log(`\n--- Testing: ${testUrl} ---`);
-      
+    for (const endpoint of endpoints) {
       try {
-        const response = await fetch(testUrl, {
-          method: 'POST',
-          headers: {
-            'X-API-Key': apiKey,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify(testPayload)
-        });
+        let response;
+        const headers = {
+          'X-API-Key': apiKey,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        };
 
-        const status = response.status;
-        let data = null;
-        let errorMsg = null;
-
-        try {
-          data = await response.json();
-          if (!response.ok) {
-            errorMsg = data?.message || data?.error || `HTTP ${status}`;
-          }
-        } catch (e) {
-          errorMsg = 'Invalid JSON response';
-        }
-
-        const success = response.ok && data;
-        console.log(`Result: ${status} - ${success ? 'SUCCESS' : errorMsg}`);
-
-        if (success) {
-          console.log('Response data:', JSON.stringify(data).substring(0, 300));
-        }
-
-        testResults.push({
-          url: testUrl,
-          status,
-          success,
-          error: errorMsg,
-          hasQuotes: success && Array.isArray(data?.data) && data.data.length > 0,
-          quoteCount: success && Array.isArray(data?.data) ? data.data.length : 0
-        });
-
-        if (success && !workingConfig) {
-          workingConfig = { 
-            url: testUrl,
-            baseUrl: testUrl.replace('/calculate-prices', ''),
-            authHeader: 'X-API-Key'
+        if (endpoint.method === 'POST') {
+          // Use a minimal test payload for POST requests
+          const testPayload = {
+            billing_to: { billing_address_id: profile.eawb_billing_address_id || 1 },
+            address_from: {
+              country_code: 'RO',
+              county_name: 'București',
+              locality_name: 'București',
+              contact: 'Test',
+              street_name: 'Test',
+              street_number: '1',
+              phone: '0700000000',
+              email: 'test@test.ro'
+            },
+            address_to: {
+              country_code: 'RO',
+              county_name: 'Cluj',
+              locality_name: 'Cluj-Napoca',
+              contact: 'Test',
+              street_name: 'Test',
+              street_number: '1',
+              phone: '0700000001',
+              email: 'test2@test.ro'
+            },
+            parcels: [{ weight: 1, length: 10, width: 10, height: 10, contents: 'Test', declared_value: 50 }],
+            service: { currency: 'RON', payment_type: 1 },
+            carrier_id: 1,
+            service_id: 1
           };
-          console.log('🎉 FOUND WORKING CONFIG:', workingConfig);
+          
+          response = await fetch(`${EAWB_BASE_URL}${endpoint.path}`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(testPayload)
+          });
+        } else {
+          response = await fetch(`${EAWB_BASE_URL}${endpoint.path}`, {
+            method: 'GET',
+            headers
+          });
+        }
+
+        const data = await response.json();
+        
+        diagnosis.endpoints.push({
+          name: endpoint.name,
+          url: `${EAWB_BASE_URL}${endpoint.path}`,
+          status: response.status,
+          success: response.ok,
+          hasData: !!data,
+          dataType: Array.isArray(data?.data) ? 'array' : typeof data,
+          dataLength: Array.isArray(data?.data) ? data.data.length : 0,
+          message: data?.message || null,
+          error: !response.ok ? data?.error || `HTTP ${response.status}` : null
+        });
+
+        // Store specific data for analysis
+        if (response.ok && endpoint.name === 'carriers' && data?.data) {
+          diagnosis.carriers = data.data.slice(0, 10); // First 10 carriers
+        }
+        if (response.ok && endpoint.name === 'services' && data?.data) {
+          diagnosis.services = data.data.slice(0, 20); // First 20 services
+        }
+        if (response.ok && endpoint.name === 'calculate-prices') {
+          diagnosis.quoteTest = {
+            success: data?.success || false,
+            quotesCount: Array.isArray(data?.data) ? data.data.length : 0,
+            sampleQuote: Array.isArray(data?.data) && data.data.length > 0 ? data.data[0] : null
+          };
         }
 
       } catch (error: any) {
-        console.log(`Network error: ${error.message}`);
-        testResults.push({
-          url: testUrl,
+        diagnosis.endpoints.push({
+          name: endpoint.name,
+          url: `${EAWB_BASE_URL}${endpoint.path}`,
           status: 0,
           success: false,
           error: error.message
@@ -181,34 +214,67 @@ serve(async (req) => {
       }
     }
 
-    console.log('=== DIAGNOSIS COMPLETE ===');
-    console.log(`Working config found: ${!!workingConfig}`);
-    if (workingConfig) {
-      console.log('Working config details:', JSON.stringify(workingConfig));
+    // Get database carriers and services for comparison
+    const { data: dbCarriers } = await supabase
+      .from('carriers')
+      .select(`
+        id, name, code, is_active,
+        carrier_services (id, name, service_code, description, is_active)
+      `)
+      .eq('is_active', true);
+
+    // Analysis and recommendations
+    const analysis = {
+      apiWorking: diagnosis.endpoints.some(e => e.success),
+      carriersEndpointWorking: diagnosis.endpoints.find(e => e.name === 'carriers')?.success || false,
+      servicesEndpointWorking: diagnosis.endpoints.find(e => e.name === 'services')?.success || false,
+      quotingEndpointWorking: diagnosis.endpoints.find(e => e.name === 'calculate-prices')?.success || false,
+      databaseCarriersCount: dbCarriers?.length || 0,
+      configurationComplete: !!(
+        profile.eawb_api_key && 
+        profile.eawb_billing_address_id && 
+        profile.eawb_name && 
+        profile.eawb_email
+      )
+    };
+
+    const recommendations = [];
+    
+    if (!analysis.apiWorking) {
+      recommendations.push('API key appears to be invalid or API is not accessible');
+    }
+    if (!analysis.configurationComplete) {
+      recommendations.push('Complete eAWB configuration in Store Settings (billing address, sender info)');
+    }
+    if (!analysis.quotingEndpointWorking && analysis.apiWorking) {
+      recommendations.push('Quote endpoint not working - check billing address ID and sender information');
+    }
+    if (analysis.databaseCarriersCount === 0) {
+      recommendations.push('No carriers configured in database - run carrier migration');
+    }
+
+    if (analysis.apiWorking && analysis.quotingEndpointWorking && analysis.configurationComplete) {
+      recommendations.push('✅ eAWB integration appears to be working correctly');
     }
 
     return new Response(JSON.stringify({
       success: true,
-      apiKeyPresent: !!apiKey,
-      apiKeyPrefix: apiKey.substring(0, 10) + '...',
-      profileData: {
-        billingAddressId: profile.eawb_billing_address_id,
-        defaultCarrierId: profile.eawb_default_carrier_id,
-        defaultServiceId: profile.eawb_default_service_id
-      },
-      testResults,
-      workingConfig,
-      totalAttempts: testResults.length,
-      successfulAttempts: testResults.filter(r => r.success).length
+      baseUrl: EAWB_BASE_URL,
+      diagnosis,
+      databaseCarriers: dbCarriers,
+      analysis,
+      recommendations,
+      timestamp: new Date().toISOString()
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Diagnosis error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(JSON.stringify({
       success: false,
-      error: error.message
+      error: errorMessage
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

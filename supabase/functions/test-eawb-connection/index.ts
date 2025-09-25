@@ -1,10 +1,12 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.53.0';
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const EAWB_BASE_URL = 'https://api.europarcel.com/api/public';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -41,7 +43,6 @@ serve(async (req) => {
     }
 
     console.log('Profile loaded, eAWB key present:', !!profile.eawb_api_key);
-    console.log('eAWB key length:', profile.eawb_api_key?.length || 0);
 
     if (!profile.eawb_api_key) {
       return new Response(JSON.stringify({
@@ -54,213 +55,202 @@ serve(async (req) => {
       });
     }
 
-    // Test different base URLs and endpoint patterns
-    const testCombinations = [
-      // Direct API endpoints (most likely correct based on docs)
-      { base: 'https://eawb.ro/api/direct', endpoint: 'tables/carriers' },
-      { base: 'https://eawb.ro/api/v1/direct', endpoint: 'tables/carriers' },
-      { base: 'https://api.eawb.ro/api/direct', endpoint: 'tables/carriers' },
-      { base: 'https://api.eawb.ro/direct', endpoint: 'tables/carriers' },
-      
-      // Legacy endpoints
-      { base: 'https://api.europarcel.com/api/public', endpoint: 'carriers' },
-      { base: 'https://api.europarcel.com/api/v1', endpoint: 'carriers' },
-      { base: 'https://eawb.ro/api/public', endpoint: 'carriers' },
-      { base: 'https://eawb.ro/api/v1', endpoint: 'carriers' },
-      { base: 'https://api.eawb.ro/api/public', endpoint: 'carriers' },
-      { base: 'https://api.eawb.ro/v1', endpoint: 'carriers' },
-    ];
-
+    const apiKey = profile.eawb_api_key;
     const results = [];
 
-    for (const combo of testCombinations) {
-      console.log(`\n=== Testing ${combo.base}/${combo.endpoint} ===`);
-      
-      // Test endpoint with multiple auth headers
-      const authHeaders = [
-        { name: 'X-API-Key', headers: { 'X-API-Key': profile.eawb_api_key } },
-        { name: 'X-Api-Key', headers: { 'X-Api-Key': profile.eawb_api_key } },
-        { name: 'apikey', headers: { 'apikey': profile.eawb_api_key } },
-        { name: 'Authorization Bearer', headers: { 'Authorization': `Bearer ${profile.eawb_api_key}` } },
-        { name: 'Authorization ApiKey', headers: { 'Authorization': `ApiKey ${profile.eawb_api_key}` } },
-      ];
-
-      for (const authHeader of authHeaders) {
-        try {
-          const response = await fetch(`${combo.base}/${combo.endpoint}`, {
-            method: 'GET',
-            headers: {
-              ...authHeader.headers,
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            }
-          });
-
-          console.log(`${combo.base}/${combo.endpoint} with ${authHeader.name}: ${response.status}`);
-          
-          let responseData = null;
-          try {
-            responseData = await response.json();
-          } catch (e) {
-            console.log('Failed to parse JSON response');
-          }
-
-          const result = {
-            baseUrl: combo.base,
-            endpoint: combo.endpoint,
-            authHeader: authHeader.name,
-            status: response.status,
-            success: response.ok,
-            hasData: !!responseData,
-            dataType: Array.isArray(responseData) ? 'array' : typeof responseData,
-            dataLength: Array.isArray(responseData) ? responseData.length : 
-                       Array.isArray(responseData?.data) ? responseData.data.length : 0,
-            error: !response.ok ? responseData?.message || responseData?.error || 'HTTP Error' : null,
-            fullUrl: `${combo.base}/${combo.endpoint}`
-          };
-
-          results.push(result);
-
-          if (response.ok && responseData) {
-            console.log(`✓ SUCCESS! ${combo.base}/${combo.endpoint} with ${authHeader.name}`);
-            console.log('Data preview:', JSON.stringify(responseData).substring(0, 200));
-            break; // Found working combo, move to next endpoint
-          }
-
-        } catch (error: any) {
-          console.log(`✗ Request failed: ${combo.base}/${combo.endpoint} with ${authHeader.name} - ${error.message}`);
-          results.push({
-            baseUrl: combo.base,
-            endpoint: combo.endpoint, 
-            authHeader: authHeader.name,
-            status: 0,
-            success: false,
-            error: error.message,
-            fullUrl: `${combo.base}/${combo.endpoint}`
-          });
+    // Test 1: Get carriers
+    console.log('Testing carriers endpoint...');
+    try {
+      const carriersResponse = await fetch(`${EAWB_BASE_URL}/carriers`, {
+        method: 'GET',
+        headers: {
+          'X-API-Key': apiKey,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         }
+      });
+
+      const carriersData = await carriersResponse.json();
+      results.push({
+        test: 'carriers',
+        url: `${EAWB_BASE_URL}/carriers`,
+        status: carriersResponse.status,
+        success: carriersResponse.ok,
+        dataType: Array.isArray(carriersData?.data) ? 'array' : typeof carriersData,
+        dataLength: Array.isArray(carriersData?.data) ? carriersData.data.length : 0,
+        error: !carriersResponse.ok ? carriersData?.message || 'HTTP Error' : null
+      });
+      
+      if (carriersResponse.ok) {
+        console.log(`✓ Carriers endpoint working: ${carriersData?.data?.length || 0} carriers found`);
       }
+    } catch (error: any) {
+      results.push({
+        test: 'carriers',
+        url: `${EAWB_BASE_URL}/carriers`,
+        status: 0,
+        success: false,
+        error: error.message
+      });
     }
 
-    // Try quote requests across all base URLs with multiple auth header variants
-    const headerVariants = [
-      { name: 'X-API-Key', build: (k: string) => ({ 'X-API-Key': k }) },
-      { name: 'X-Api-Key', build: (k: string) => ({ 'X-Api-Key': k }) },
-      { name: 'apikey', build: (k: string) => ({ 'apikey': k }) },
-      { name: 'Authorization Bearer', build: (k: string) => ({ 'Authorization': `Bearer ${k}` }) },
-      { name: 'Authorization ApiKey', build: (k: string) => ({ 'Authorization': `ApiKey ${k}` }) },
-      { name: 'X-Auth-Token', build: (k: string) => ({ 'X-Auth-Token': k }) },
-    ];
+    // Test 2: Get services
+    console.log('Testing services endpoint...');
+    try {
+      const servicesResponse = await fetch(`${EAWB_BASE_URL}/services`, {
+        method: 'GET',
+        headers: {
+          'X-API-Key': apiKey,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
 
-    const quotePayload = {
-      billing_to: { billing_address_id: 157122 },
-      address_from: {
-        country_code: 'RO',
-        county_name: 'Prahova',
-        locality_name: 'Ploiesti', 
-        contact: 'Midbay Holding',
-        street_name: 'Strada Republicii',
-        street_number: '15',
-        phone: '0721046211',
-        email: 'andrei.cosmin.nita@cn-caragiale.ro'
-      },
-      address_to: {
-        country_code: 'RO',
-        county_name: 'București',
-        locality_name: 'București',
-        contact: 'Test Customer', 
-        street_name: 'Strada Victoriei',
-        street_number: '1',
-        phone: '0700000001',
-        email: 'test@example.com'
-      },
-      parcels: [{
-        weight: 1,
-        length: 30,
-        width: 20,
-        height: 10,
-        contents: 'Test goods',
-        declared_value: 100
-      }],
-      service: {
-        currency: 'RON',
-        payment_type: 1,
-        send_invoice: false,
-        allow_bank_to_open: false,
-        fragile: false,
-        pickup_available: false,
-        allow_saturday_delivery: false,
-        sunday_delivery: false,
-        morning_delivery: false
-      },
-      carrier_id: 0,
-      service_id: 0
+      const servicesData = await servicesResponse.json();
+      results.push({
+        test: 'services',
+        url: `${EAWB_BASE_URL}/services`,
+        status: servicesResponse.status,
+        success: servicesResponse.ok,
+        dataType: Array.isArray(servicesData?.data) ? 'array' : typeof servicesData,
+        dataLength: Array.isArray(servicesData?.data) ? servicesData.data.length : 0,
+        error: !servicesResponse.ok ? servicesData?.message || 'HTTP Error' : null
+      });
+      
+      if (servicesResponse.ok) {
+        console.log(`✓ Services endpoint working: ${servicesData?.data?.length || 0} services found`);
+      }
+    } catch (error: any) {
+      results.push({
+        test: 'services',
+        url: `${EAWB_BASE_URL}/services`,
+        status: 0,
+        success: false,
+        error: error.message
+      });
+    }
+
+    // Test 3: Calculate prices (quote test)
+    console.log('Testing calculate-prices endpoint...');
+    try {
+      const quotePayload = {
+        billing_to: { billing_address_id: profile.eawb_billing_address_id || 1 },
+        address_from: {
+          country_code: 'RO',
+          county_name: 'Prahova',
+          locality_name: 'Ploiesti',
+          contact: profile.eawb_name || 'Test Sender',
+          street_name: 'Strada Test',
+          street_number: '1',
+          phone: profile.eawb_phone || '0700000000',
+          email: profile.eawb_email || user.email
+        },
+        address_to: {
+          country_code: 'RO',
+          county_name: 'București',
+          locality_name: 'București',
+          contact: 'Test Customer',
+          street_name: 'Strada Victoriei',
+          street_number: '1',
+          phone: '0700000001',
+          email: 'test@example.com'
+        },
+        parcels: [{
+          weight: 1,
+          length: 30,
+          width: 20,
+          height: 10,
+          contents: 'Test goods',
+          declared_value: 100
+        }],
+        service: {
+          currency: 'RON',
+          payment_type: 1,
+          send_invoice: false,
+          allow_bank_to_open: false,
+          fragile: false,
+          pickup_available: false,
+          allow_saturday_delivery: false,
+          sunday_delivery: false,
+          morning_delivery: false
+        },
+        carrier_id: 1, // Cargus
+        service_id: 1  // Home to Home
+      };
+
+      const quoteResponse = await fetch(`${EAWB_BASE_URL}/calculate-prices`, {
+        method: 'POST',
+        headers: {
+          'X-API-Key': apiKey,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(quotePayload)
+      });
+
+      const quoteData = await quoteResponse.json();
+      results.push({
+        test: 'calculate-prices',
+        url: `${EAWB_BASE_URL}/calculate-prices`,
+        status: quoteResponse.status,
+        success: quoteResponse.ok && quoteData?.success,
+        hasQuotes: quoteResponse.ok && Array.isArray(quoteData?.data) && quoteData.data.length > 0,
+        quoteCount: quoteResponse.ok && Array.isArray(quoteData?.data) ? quoteData.data.length : 0,
+        error: !quoteResponse.ok || !quoteData?.success ? quoteData?.message || 'No quotes returned' : null
+      });
+      
+      if (quoteResponse.ok && quoteData?.success) {
+        console.log(`✓ Quote endpoint working: ${quoteData?.data?.length || 0} quotes returned`);
+      }
+    } catch (error: any) {
+      results.push({
+        test: 'calculate-prices',
+        url: `${EAWB_BASE_URL}/calculate-prices`,
+        status: 0,
+        success: false,
+        error: error.message
+      });
+    }
+
+    // Get database carriers for comparison
+    const { data: dbCarriers } = await supabase
+      .from('carriers')
+      .select(`
+        id, name, code, is_active,
+        carrier_services (id, name, service_code, is_active)
+      `)
+      .eq('is_active', true);
+
+    const summary = {
+      apiConfigured: !!profile.eawb_api_key,
+      billingAddressId: profile.eawb_billing_address_id,
+      defaultCarrierId: profile.eawb_default_carrier_id,
+      defaultServiceId: profile.eawb_default_service_id,
+      carriersEndpoint: results.find(r => r.test === 'carriers')?.success || false,
+      servicesEndpoint: results.find(r => r.test === 'services')?.success || false,
+      quotingEndpoint: results.find(r => r.test === 'calculate-prices')?.success || false,
+      databaseCarriers: dbCarriers?.length || 0,
+      overallSuccess: results.every(r => r.success)
     };
-
-    const baseUrls = [
-      // Direct API endpoints (most likely correct based on docs)
-      'https://eawb.ro/api/direct',
-      'https://eawb.ro/api/v1/direct',
-      'https://api.eawb.ro/api/direct',
-      'https://api.eawb.ro/direct',
-      
-      // Legacy endpoints
-      'https://api.europarcel.com/api/public',
-      'https://api.europarcel.com/api/v1', 
-      'https://eawb.ro/api/public',
-      'https://eawb.ro/api/v1',
-      'https://api.eawb.ro/api/public',
-      'https://api.eawb.ro/v1'
-    ];
-
-    const quoteMatrix: any[] = [];
-    let workingCombo: { baseUrl: string; headerVariant: string } | null = null;
-
-    for (const baseUrl of baseUrls) {
-      for (const hv of headerVariants) {
-        try {
-          const headers = {
-            ...hv.build(profile.eawb_api_key as string),
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          };
-          const resp = await fetch(`${baseUrl}/calculate-prices`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(quotePayload)
-          });
-          let data: any = null;
-          try { data = await resp.json(); } catch {}
-          const ok = resp.ok && (data?.success === true || Array.isArray(data?.data));
-          quoteMatrix.push({ baseUrl, headerVariant: hv.name, status: resp.status, ok, error: data?.message || null });
-          if (!workingCombo && ok) {
-            workingCombo = { baseUrl, headerVariant: hv.name };
-          }
-        } catch (e: any) {
-          quoteMatrix.push({ baseUrl, headerVariant: hv.name, status: 0, ok: false, error: e.message });
-        }
-      }
-    }
 
     return new Response(JSON.stringify({
       success: true,
+      baseUrl: EAWB_BASE_URL,
       profile: {
         hasApiKey: !!profile.eawb_api_key,
-        apiKeyLength: profile.eawb_api_key?.length || 0,
-        hasDefaults: !!(profile.eawb_default_carrier_id && profile.eawb_default_service_id),
-        billingAddressId: profile.eawb_billing_address_id
+        billingAddressId: profile.eawb_billing_address_id,
+        defaultCarrierId: profile.eawb_default_carrier_id,
+        defaultServiceId: profile.eawb_default_service_id
       },
-      connectionTests: results,
-      workingEndpoint: results.find(r => r.success)?.fullUrl || null,
-      workingAuthHeader: results.find(r => r.success)?.authHeader || null,
-      quoteMatrix,
-      workingCombo
+      tests: results,
+      databaseCarriers: dbCarriers,
+      summary
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error: any) {
-    console.error('Test error:', error);
+    console.error('Connection test error:', error);
     return new Response(JSON.stringify({
       success: false,
       error: error.message

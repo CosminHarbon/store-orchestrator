@@ -1,10 +1,12 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.53.0';
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const EAWB_BASE_URL = 'https://api.europarcel.com/api/public';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -109,38 +111,8 @@ serve(async (req) => {
         });
       }
 
-      // Runtime base URL detection
-      const detectBaseUrl = async (apiKey: string): Promise<string> => {
-        const candidates = [
-          'https://api.europarcel.com/api/public',
-          'https://api.europarcel.com/api/v1',
-          'https://api.europarcel.com'
-        ];
-
-        for (const baseUrl of candidates) {
-          try {
-            const response = await fetch(`${baseUrl}/carriers`, {
-              method: 'GET',
-              headers: {
-                'X-API-Key': apiKey,
-                'Content-Type': 'application/json'
-              }
-            });
-            
-            if (response.ok) {
-              console.log(`✓ Base URL working: ${baseUrl}`);
-              return baseUrl;
-            }
-          } catch (error) {
-            console.log(`✗ Base URL failed: ${baseUrl}`);
-          }
-        }
-        
-        return candidates[0]; // fallback
-      };
-
-      const BASE_URL = await detectBaseUrl(profile.eawb_api_key);
-      console.log('Using base URL:', BASE_URL);
+      console.log('Creating AWB with API key present:', !!profile.eawb_api_key);
+      console.log('Selected carrier:', selected_carrier, 'Selected service:', selected_service);
 
       // Enhanced address parsing
       const parseAddress = (address: string) => {
@@ -270,7 +242,7 @@ serve(async (req) => {
       console.log('Creating AWB with request:', JSON.stringify(awbRequest, null, 2));
 
       // Create AWB
-      const response = await fetch(`${BASE_URL}/create-order`, {
+      const response = await fetch(`${EAWB_BASE_URL}/create-order`, {
         method: 'POST',
         headers: {
           'X-API-Key': profile.eawb_api_key,
