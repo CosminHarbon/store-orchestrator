@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const EAWB_BASE_URL = 'https://api.eawb.ro/api/public';
+const EAWB_BASE_URL = 'https://api.europarcel.com/public';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
