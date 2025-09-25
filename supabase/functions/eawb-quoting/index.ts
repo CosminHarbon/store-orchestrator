@@ -180,24 +180,19 @@ serve(async (req) => {
         phone: order.customer_phone || '0700000000',
         email: order.customer_email
       },
-      parcels: [{
-        weight: package_details.weight || 1,
-        length: package_details.length || 30,
-        width: package_details.width || 20,
-        height: package_details.height || 10,
-        contents: package_details.contents || 'Goods',
-        declared_value: package_details.declared_value || order.total
-      }],
+      content: {
+        parcels_count: Math.max(1, Number(package_details.parcels || 1)),
+        pallets_count: 0,
+        envelopes_count: 0,
+        total_weight: Number(package_details.weight || 1)
+      },
+      extra: {
+        parcel_content: package_details.contents || 'Goods',
+        declared_value: Number(package_details.declared_value || order.total)
+      },
       service: {
         currency: 'RON',
-        payment_type: 1,
-        send_invoice: false,
-        allow_bank_to_open: false,
-        fragile: false,
-        pickup_available: false,
-        allow_saturday_delivery: false,
-        sunday_delivery: false,
-        morning_delivery: false
+        payment_type: 1
       }
     };
 
@@ -257,7 +252,11 @@ serve(async (req) => {
         const responseData = await response.json();
         console.log(`Quote response for ${request.mapping.carrier_name}:`, responseData);
 
-        if (response.ok && responseData.success && responseData.data && responseData.data.length > 0) {
+        if (
+          response.ok &&
+          (responseData.valid === true || responseData.success === true) &&
+          Array.isArray(responseData.data) && responseData.data.length > 0
+        ) {
           // Process each quote option
           for (const quote of responseData.data) {
             quotes.push({
@@ -284,7 +283,7 @@ serve(async (req) => {
             carrier_id: request.mapping.carrier_id,
             service_id: request.mapping.service_id,
             carrier_name: request.mapping.carrier_name,
-            error: responseData.message || 'No quotes available'
+            error: responseData.message || (responseData.errors ? JSON.stringify(responseData.errors) : 'No quotes available')
           });
         }
       } catch (error: any) {
