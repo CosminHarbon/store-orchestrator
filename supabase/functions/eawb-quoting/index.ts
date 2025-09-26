@@ -177,15 +177,20 @@ serve(async (req) => {
     }
     
     const parcelsArray = Array.from({ length: parcelsCount }, (_, idx) => ({
+      // Provide multiple synonyms to satisfy various carrier schemas
       sequence_no: idx + 1,
+      sequence_number: idx + 1,
       weight: Number(unitWeight.toFixed(2)),
       weight_kg: Number(unitWeight.toFixed(2)),
       size: parcelSize,
+      parcel_size: parcelSize,
+      size_code: parcelSize,
       length: lengthCm,
       width: widthCm,
       height: heightCm
     }));
-    const computedTotalWeight = Number(parcelsArray.reduce((s, p) => s + (p.weight ?? 0), 0).toFixed(2));
+    // Some carriers sum weight_kg instead of weight
+    const computedTotalWeight = Number(parcelsArray.reduce((s, p) => s + (p.weight_kg ?? p.weight ?? 0), 0).toFixed(2));
 
     const basePayload = {
       billing_to: { billing_address_id: billingAddressId },
@@ -212,10 +217,11 @@ serve(async (req) => {
         email: order.customer_email
       },
       content: {
-        parcels_count: parcelsCount,
+        parcels_count: parcelsArray.length,
         pallets_count: 0,
         envelopes_count: 0,
         total_weight: computedTotalWeight,
+        total_weight_kg: computedTotalWeight,
         parcels: parcelsArray
       },
       extra: {
