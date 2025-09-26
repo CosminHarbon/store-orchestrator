@@ -162,16 +162,30 @@ serve(async (req) => {
     const lengthCm = Number(package_details.length || 30);
     const widthCm = Number(package_details.width || 20);
     const heightCm = Number(package_details.height || 10);
-    const parcelSize = (package_details as any).size || (package_details as any).parcel_size || (unitWeight <= 1 ? 'SMALL' : unitWeight <= 5 ? 'MEDIUM' : unitWeight <= 10 ? 'LARGE' : 'XL');
+    // Normalize size to API format (S, M, L, XL)
+    const inputSize = (package_details as any).size || (package_details as any).parcel_size;
+    let parcelSize = 'S'; // Default to small
+    if (inputSize) {
+      const sizeUpper = inputSize.toString().toUpperCase();
+      if (sizeUpper.includes('SMALL') || sizeUpper === 'S') parcelSize = 'S';
+      else if (sizeUpper.includes('MEDIUM') || sizeUpper === 'M') parcelSize = 'M';
+      else if (sizeUpper.includes('LARGE') || sizeUpper === 'L') parcelSize = 'L';
+      else if (sizeUpper.includes('XL') || sizeUpper === 'XL') parcelSize = 'XL';
+    } else {
+      // Auto-determine size based on weight
+      parcelSize = unitWeight <= 1 ? 'S' : unitWeight <= 5 ? 'M' : unitWeight <= 10 ? 'L' : 'XL';
+    }
+    
     const parcelsArray = Array.from({ length: parcelsCount }, (_, idx) => ({
       sequence_no: idx + 1,
       weight: Number(unitWeight.toFixed(2)),
+      weight_kg: Number(unitWeight.toFixed(2)),
       size: parcelSize,
       length: lengthCm,
       width: widthCm,
       height: heightCm
     }));
-    const computedTotalWeight = Number(parcelsArray.reduce((s, p) => s + (p.weight ?? 0), 0).toFixed(3));
+    const computedTotalWeight = Number(parcelsArray.reduce((s, p) => s + (p.weight ?? 0), 0).toFixed(2));
 
     const basePayload = {
       billing_to: { billing_address_id: billingAddressId },
