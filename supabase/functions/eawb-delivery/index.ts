@@ -266,22 +266,22 @@ serve(async (req) => {
       const responseData = await response.json();
       console.log('AWB creation response:', responseData);
 
-      if (response.ok && responseData.success) {
+      if (response.ok && responseData.data && responseData.data.awb_number) {
         const awbData = responseData.data;
         
         // Update order with AWB details
         const updateData: any = {
-          awb_number: awbData.awb_number || awbData.awb_id,
+          awb_number: awbData.awb_number,
           shipping_status: 'shipped',
-          eawb_order_id: awbData.id || awbData.order_id
+          eawb_order_id: awbData.order_id
         };
 
-        if (awbData.tracking_url || awbData.tracking_link) {
-          updateData.tracking_url = awbData.tracking_url || awbData.tracking_link;
+        if (awbData.track_url) {
+          updateData.tracking_url = awbData.track_url;
         }
 
-        if (awbData.carrier_name) {
-          updateData.carrier_name = awbData.carrier_name;
+        if (awbData.carrier) {
+          updateData.carrier_name = awbData.carrier;
         }
 
         if (awbData.estimated_delivery_date) {
@@ -301,10 +301,10 @@ serve(async (req) => {
 
         return new Response(JSON.stringify({
           success: true,
-          awb_number: awbData.awb_number || awbData.awb_id,
-          tracking_url: awbData.tracking_url || awbData.tracking_link,
+          awb_number: awbData.awb_number,
+          tracking_url: awbData.track_url,
           estimated_delivery_date: awbData.estimated_delivery_date,
-          carrier_name: awbData.carrier_name,
+          carrier_name: awbData.carrier,
           message: 'AWB created successfully'
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
