@@ -1626,7 +1626,217 @@ class StoreAPI {
                            </div>
                          </div>
                        </div>
-                     )}
+                      )}
+                      
+                      {integrations.shipping === 'eawb' && (
+                        <div className="space-y-4">
+                          <h4 className="font-medium">eAWB.ro Configuration</h4>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="mobile-eawb-api-key">API Key</Label>
+                              <Input
+                                id="mobile-eawb-api-key"
+                                type="password"
+                                value={providerConfigs.eawb?.api_key || ''}
+                                onChange={(e) => updateProviderConfig('eawb', 'api_key', e.target.value)}
+                                placeholder="Enter your eAWB.ro API key"
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Your eAWB.ro API authentication key from europarcel.com
+                              </p>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="mobile-eawb-name">Company Name</Label>
+                              <Input
+                                id="mobile-eawb-name"
+                                value={providerConfigs.eawb?.name || ''}
+                                onChange={(e) => updateProviderConfig('eawb', 'name', e.target.value)}
+                                placeholder="Enter your company name"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="mobile-eawb-email">Email Address</Label>
+                              <Input
+                                id="mobile-eawb-email"
+                                type="email"
+                                value={providerConfigs.eawb?.email || ''}
+                                onChange={(e) => updateProviderConfig('eawb', 'email', e.target.value)}
+                                placeholder="Enter your email address"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="mobile-eawb-phone">Phone Number</Label>
+                              <Input
+                                id="mobile-eawb-phone"
+                                type="tel"
+                                value={providerConfigs.eawb?.phone || ''}
+                                onChange={(e) => updateProviderConfig('eawb', 'phone', e.target.value)}
+                                placeholder="Enter your phone number"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="mobile-eawb-address">Pickup Address</Label>
+                              <Input
+                                id="mobile-eawb-address"
+                                value={providerConfigs.eawb?.address || ''}
+                                onChange={(e) => updateProviderConfig('eawb', 'address', e.target.value)}
+                                placeholder="Enter your pickup address"
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Default address for package pickup
+                              </p>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="mobile-eawb-billing-address-id">Billing Address ID</Label>
+                              <Input
+                                id="mobile-eawb-billing-address-id"
+                                value={providerConfigs.eawb?.billing_address_id || ''}
+                                onChange={(e) => updateProviderConfig('eawb', 'billing_address_id', e.target.value)}
+                                placeholder="1"
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Your registered billing address ID (default: 1)
+                              </p>
+                            </div>
+                            <div className="grid grid-cols-1 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="mobile-eawb-default-carrier">Default Carrier ID</Label>
+                                <Input
+                                  id="mobile-eawb-default-carrier"
+                                  value={providerConfigs.eawb?.default_carrier_id || ''}
+                                  onChange={(e) => updateProviderConfig('eawb', 'default_carrier_id', e.target.value)}
+                                  placeholder="Optional"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                  Default carrier ID for pricing (optional)
+                                </p>
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="mobile-eawb-default-service">Default Service ID</Label>
+                                <Input
+                                  id="mobile-eawb-default-service"
+                                  value={providerConfigs.eawb?.default_service_id || ''}
+                                  onChange={(e) => updateProviderConfig('eawb', 'default_service_id', e.target.value)}
+                                  placeholder="Optional"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                  Default service ID for pricing (optional)
+                                </p>
+                              </div>
+                            </div>
+                            <div className="space-y-4">
+                              <div className="flex items-center gap-2">
+                                <h5 className="font-medium text-sm">Fetch Configuration from eAWB</h5>
+                                <p className="text-xs text-muted-foreground">
+                                  Get your billing addresses, carriers, and services
+                                </p>
+                              </div>
+                              
+                              <div className="space-y-3">
+                                <div className="flex flex-col gap-2">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={fetchEawbBillingAddresses}
+                                    disabled={eawbLoading.billingAddresses || !providerConfigs.eawb?.api_key}
+                                  >
+                                    {eawbLoading.billingAddresses ? 'Fetching...' : 'Fetch Billing Addresses'}
+                                  </Button>
+                                  {eawbData.billingAddresses.length > 0 && (
+                                    <Select
+                                      value={providerConfigs.eawb?.billing_address_id || ''}
+                                      onValueChange={(value) => updateProviderConfig('eawb', 'billing_address_id', value)}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select billing address" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {eawbData.billingAddresses.map((addr: any) => (
+                                          <SelectItem key={addr.id} value={addr.id.toString()}>
+                                            {addr.name || addr.company_name || `Address ${addr.id}`}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  )}
+                                </div>
+                                
+                                <div className="flex flex-col gap-2">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={fetchEawbCarriers}
+                                    disabled={eawbLoading.carriers || !providerConfigs.eawb?.api_key}
+                                  >
+                                    {eawbLoading.carriers ? 'Fetching...' : 'Fetch Carriers'}
+                                  </Button>
+                                  {eawbData.carriers.length > 0 && (
+                                    <Select
+                                      value={providerConfigs.eawb?.default_carrier_id || ''}
+                                      onValueChange={(value) => {
+                                        updateProviderConfig('eawb', 'default_carrier_id', value);
+                                        setSelectedCarrierForServices(value);
+                                        setEawbData(prev => ({ ...prev, services: [] }));
+                                      }}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select default carrier" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {eawbData.carriers.map((carrier: any) => (
+                                          <SelectItem key={carrier.id} value={carrier.id.toString()}>
+                                            {carrier.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  )}
+                                </div>
+                                
+                                <div className="flex flex-col gap-2">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => fetchEawbServices(selectedCarrierForServices || providerConfigs.eawb?.default_carrier_id)}
+                                    disabled={
+                                      eawbLoading.services || 
+                                      !providerConfigs.eawb?.api_key || 
+                                      (!selectedCarrierForServices && !providerConfigs.eawb?.default_carrier_id)
+                                    }
+                                  >
+                                    {eawbLoading.services ? 'Fetching...' : 'Fetch Services'}
+                                  </Button>
+                                  {eawbData.services.length > 0 && (
+                                    <Select
+                                      value={providerConfigs.eawb?.default_service_id || ''}
+                                      onValueChange={(value) => updateProviderConfig('eawb', 'default_service_id', value)}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select default service" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {eawbData.services.map((service: any) => (
+                                          <SelectItem key={service.id} value={service.id.toString()}>
+                                            {service.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="border-t pt-4 mt-4 space-y-4">
+                              <EAWBConnectionTest />
+                              <EAWBDiagnosis />
+                            </div>
+                          </div>
+                        </div>
+                      )}
                   </CollapsibleContent>
                 </Collapsible>
               </div>
