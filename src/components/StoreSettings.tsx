@@ -1543,6 +1543,7 @@ class StoreAPI {
                         <SelectContent className="z-50 bg-background border border-border/50">
                           <SelectItem value="sameday">Sameday</SelectItem>
                           <SelectItem value="woot">Woot.ro</SelectItem>
+                          <SelectItem value="eawb">eAWB.ro</SelectItem>
                         </SelectContent>
                       </Select>
                       <p className="text-sm text-muted-foreground">
