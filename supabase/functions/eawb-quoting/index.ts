@@ -164,25 +164,29 @@ serve(async (req) => {
     const heightCm = Number(package_details.height || 10);
     // Normalize size to API format (S, M, L, XL)
     const inputSize = (package_details as any).size || (package_details as any).parcel_size;
-    let parcelSize = 'S'; // Default to small
-    if (inputSize) {
-      const sizeUpper = inputSize.toString().toUpperCase();
-      if (sizeUpper.includes('SMALL') || sizeUpper === 'S') parcelSize = 'S';
-      else if (sizeUpper.includes('MEDIUM') || sizeUpper === 'M') parcelSize = 'M';
-      else if (sizeUpper.includes('LARGE') || sizeUpper === 'L') parcelSize = 'L';
-      else if (sizeUpper.includes('XL') || sizeUpper === 'XL') parcelSize = 'XL';
-    } else {
-      // Auto-determine size based on weight
-      parcelSize = unitWeight <= 1 ? 'S' : unitWeight <= 5 ? 'M' : unitWeight <= 10 ? 'L' : 'XL';
-    }
+     let parcelSize = 'S'; // Default to small
+     if (inputSize) {
+       const sizeUpper = inputSize.toString().toUpperCase();
+       if (sizeUpper.includes('SMALL') || sizeUpper === 'S' || sizeUpper === '1') parcelSize = 'S';
+       else if (sizeUpper.includes('MEDIUM') || sizeUpper === 'M' || sizeUpper === '2') parcelSize = 'M';
+       else if (sizeUpper.includes('LARGE') || sizeUpper === 'L' || sizeUpper === '3') parcelSize = 'L';
+       else if (sizeUpper.includes('XL') || sizeUpper === 'XL' || sizeUpper === '4') parcelSize = 'XL';
+     } else {
+       // Auto-determine size based on weight
+       parcelSize = unitWeight <= 1 ? 'S' : unitWeight <= 5 ? 'M' : unitWeight <= 10 ? 'L' : 'XL';
+     }
     
+    // Map size string to numeric code expected by some carriers
+    const sizeMap: Record<string, number> = { S: 1, M: 2, L: 3, XL: 4 };
+    const sizeNum = sizeMap[parcelSize] ?? 1;
+
     const parcelsArray = Array.from({ length: parcelsCount }, (_, idx) => ({
       // Provide multiple synonyms to satisfy various carrier schemas
       sequence_no: idx + 1,
       sequence_number: idx + 1,
       weight: Number(unitWeight.toFixed(2)),
       weight_kg: Number(unitWeight.toFixed(2)),
-      size: parcelSize,
+      size: sizeNum,
       parcel_size: parcelSize,
       size_code: parcelSize,
       length: lengthCm,
