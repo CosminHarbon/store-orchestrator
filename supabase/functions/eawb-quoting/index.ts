@@ -293,7 +293,6 @@ serve(async (req) => {
 
         if (
           response.ok &&
-          (responseData.valid === true || responseData.success === true) &&
           Array.isArray(responseData.data) && responseData.data.length > 0
         ) {
           // Process each quote option
@@ -309,8 +308,8 @@ serve(async (req) => {
                 name: request.mapping.service_name
               },
               price: {
-                total: quote.price || quote.total_price || 0,
-                currency: quote.currency || 'RON'
+                total: quote.price?.total || quote.total_price || 0,
+                currency: quote.price?.currency || quote.currency || 'RON'
               },
               estimated_pickup_date: quote.estimated_pickup_date,
               estimated_delivery_date: quote.estimated_delivery_date,
