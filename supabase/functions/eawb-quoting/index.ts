@@ -181,20 +181,16 @@ serve(async (req) => {
     const sizeNum = sizeMap[parcelSize] ?? 1;
 
     const parcelsArray = Array.from({ length: parcelsCount }, (_, idx) => ({
-      // Provide multiple synonyms to satisfy various carrier schemas
       sequence_no: idx + 1,
-      sequence_number: idx + 1,
-      weight: Number(unitWeight.toFixed(2)),
-      weight_kg: Number(unitWeight.toFixed(2)),
-      size: sizeNum,
-      parcel_size: parcelSize,
-      size_code: parcelSize,
-      length: lengthCm,
-      width: widthCm,
-      height: heightCm
+      size: {
+        weight: Number(unitWeight.toFixed(2)),
+        length: lengthCm,
+        width: widthCm,
+        height: heightCm
+      }
     }));
-    // Some carriers sum weight_kg instead of weight
-    const computedTotalWeight = Number(parcelsArray.reduce((s, p) => s + (p.weight_kg ?? p.weight ?? 0), 0).toFixed(2));
+    // Calculate total weight from nested size objects
+    const computedTotalWeight = Number(parcelsArray.reduce((s, p) => s + p.size.weight, 0).toFixed(2));
 
     const basePayload = {
       billing_to: { billing_address_id: billingAddressId },
