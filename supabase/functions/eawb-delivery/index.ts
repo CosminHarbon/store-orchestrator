@@ -187,7 +187,7 @@ serve(async (req) => {
       const senderStreet = extractStreetInfo(profile.eawb_address || '');
       const recipientStreet = extractStreetInfo(order.customer_address);
 
-      // Build AWB request
+      // Build AWB request with nested content structure (matching quoting format)
       const awbRequest = {
         billing_to: { 
           billing_address_id: profile.eawb_billing_address_id || 1 
@@ -214,15 +214,27 @@ serve(async (req) => {
           phone: order.customer_phone || '0700000000',
           email: order.customer_email
         },
-        parcels: [{
-          weight: package_details.weight || 1,
-          length: package_details.length || 30,
-          width: package_details.width || 20,
-          height: package_details.height || 10,
-          contents: package_details.contents || 'Goods',
+        content: {
+          parcels_count: 1,
+          pallets_count: 0,
+          envelopes_count: 0,
+          total_weight: package_details.weight || 1,
+          total_weight_kg: package_details.weight || 1,
+          parcels: [{
+            sequence_no: 1,
+            size: {
+              weight: package_details.weight || 1,
+              length: package_details.length || 30,
+              width: package_details.width || 20,
+              height: package_details.height || 10
+            }
+          }]
+        },
+        extra: {
+          parcel_content: package_details.contents || 'Goods',
           declared_value: package_details.declared_value || order.total,
           ...(package_details.cod_amount && { cod_amount: package_details.cod_amount })
-        }],
+        },
         service: {
           currency: 'RON',
           payment_type: 1,
@@ -240,8 +252,8 @@ serve(async (req) => {
 
       console.log('Creating AWB with request:', JSON.stringify(awbRequest, null, 2));
 
-      // Create AWB
-      const response = await fetch(`${EAWB_BASE_URL}/create-order`, {
+      // Create AWB using the correct orders endpoint
+      const response = await fetch(`${EAWB_BASE_URL}/orders`, {
         method: 'POST',
         headers: {
           'X-API-Key': profile.eawb_api_key,
