@@ -113,13 +113,94 @@ serve(async (req) => {
       console.log('Creating AWB with API key present:', !!profile.eawb_api_key);
       console.log('Selected carrier:', selected_carrier, 'Selected service:', selected_service);
 
-      // Enhanced address parsing with structured field support
+      // Enhanced address parsing with Romanian locality validation
       const parseAddress = (address: string, structuredFields?: any) => {
+        // Romanian city-county validation mapping
+        const validateRomanianLocality = (city: string): string => {
+          const normalizedCity = city.toLowerCase().replace(/[șş]/g, 's').replace(/[țţ]/g, 't');
+          
+          // Major Romanian cities with correct spelling
+          const cityMappings: { [key: string]: string } = {
+            'bucuresti': 'București',
+            'bucharest': 'București',
+            'bucureşti': 'București',
+            'bucuresci': 'București',
+            'constanta': 'Constanța',
+            'constanţa': 'Constanța',
+            'cluj-napoca': 'Cluj-Napoca',
+            'timisoara': 'Timișoara',
+            'timişoara': 'Timișoara',
+            'iasi': 'Iași',
+            'iaşi': 'Iași',
+            'brasov': 'Brașov',
+            'braşov': 'Brașov',
+            'craiova': 'Craiova',
+            'galati': 'Galați',
+            'galaţi': 'Galați',
+            'ploiesti': 'Ploiești',
+            'ploieşti': 'Ploiești',
+            'oradea': 'Oradea',
+            'braila': 'Brăila',
+            'arad': 'Arad',
+            'pitesti': 'Pitești',
+            'piteşti': 'Pitești',
+            'sibiu': 'Sibiu',
+            'bacau': 'Bacău',
+            'baia mare': 'Baia Mare',
+            'buzau': 'Buzău',
+            'satu mare': 'Satu Mare',
+            'botosani': 'Botoșani',
+            'botoşani': 'Botoșani'
+          };
+
+          return cityMappings[normalizedCity] || city.charAt(0).toUpperCase() + city.slice(1);
+        };
+
+        const validateRomanianCounty = (county: string): string => {
+          const normalizedCounty = county.toLowerCase().replace(/[șş]/g, 's').replace(/[țţ]/g, 't');
+          
+          // Romanian county mappings  
+          const countyMappings: { [key: string]: string } = {
+            'bucuresti': 'București',
+            'bucharest': 'București',
+            'bucureşti': 'București', 
+            'ilfov': 'Ilfov',
+            'constanta': 'Constanța',
+            'constanţa': 'Constanța',
+            'cluj': 'Cluj',
+            'timis': 'Timiș',
+            'timiş': 'Timiș',
+            'iasi': 'Iași',
+            'iaşi': 'Iași',
+            'brasov': 'Brașov',
+            'braşov': 'Brașov',
+            'dolj': 'Dolj',
+            'galati': 'Galați',
+            'galaţi': 'Galați',
+            'prahova': 'Prahova',
+            'bihor': 'Bihor',
+            'braila': 'Brăila',
+            'arad': 'Arad',
+            'arges': 'Argeș',
+            'argeş': 'Argeș',
+            'sibiu': 'Sibiu',
+            'bacau': 'Bacău',
+            'maramures': 'Maramureș',
+            'maramureş': 'Maramureș',
+            'buzau': 'Buzău',
+            'satu mare': 'Satu Mare',
+            'botosani': 'Botoșani',
+            'botoşani': 'Botoșani'
+          };
+
+          return countyMappings[normalizedCounty] || county.charAt(0).toUpperCase() + county.slice(1);
+        };
+
         // If structured fields are available, use them directly
         if (structuredFields?.customer_city && structuredFields?.customer_street && structuredFields?.customer_street_number) {
           return {
-            city: structuredFields.customer_city,
-            county: structuredFields.customer_county || structuredFields.customer_city,
+            city: validateRomanianLocality(structuredFields.customer_city),
+            county: validateRomanianCounty(structuredFields.customer_county || structuredFields.customer_city),
             street: `${structuredFields.customer_street} ${structuredFields.customer_street_number}`,
             postal_code: address.match(/\b\d{6}\b/)?.[0] || ''
           };
@@ -152,7 +233,7 @@ serve(async (req) => {
         }
 
         // Standard parsing for other Romanian cities
-        let city = 'București'; // fallback
+        let city = 'București'; // Safe fallback
         let county = 'București';
         let street = '';
 
@@ -178,8 +259,8 @@ serve(async (req) => {
         }
 
         return {
-          city: city.charAt(0).toUpperCase() + city.slice(1),
-          county: county.charAt(0).toUpperCase() + county.slice(1),
+          city: validateRomanianLocality(city),
+          county: validateRomanianCounty(county),
           street,
           postal_code: address.match(/\b\d{6}\b/)?.[0] || ''
         };
