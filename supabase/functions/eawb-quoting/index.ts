@@ -78,38 +78,68 @@ serve(async (req) => {
 
     console.log(`Found ${dbCarriers.length} active carriers`);
 
-    // Parse addresses
-    const parseAddress = (address: string) => {
+    // Enhanced address parsing with structured field support
+    const parseAddress = (address: string, structuredFields?: any) => {
+      // If structured fields are available, use them directly
+      if (structuredFields?.customer_city && structuredFields?.customer_street && structuredFields?.customer_street_number) {
+        return {
+          city: structuredFields.customer_city,
+          county: structuredFields.customer_county || structuredFields.customer_city,
+          street: `${structuredFields.customer_street} ${structuredFields.customer_street_number}`,
+          postal_code: address.match(/\b\d{6}\b/)?.[0] || ''
+        };
+      }
+
+      // Improved Romanian address parsing
       const cleaned = address
         .replace(/,?\s*(ap\.?\s*\d+|apartament\s*\d+|etaj\s*\d+|et\.?\s*\d+)/gi, '')
         .replace(/,?\s*(bl\.?\s*[A-Z0-9]+|bloc\s+[A-Z0-9]+)/gi, '')
         .trim();
 
-      const parts = cleaned.split(',').map(p => p.trim()).filter(Boolean);
+      const parts = cleaned.split(/[,;]/).map(p => p.trim()).filter(Boolean);
       
       // Handle Bucharest specifically
       if (/bucure[sș]ti|sector\s*[1-6]/gi.test(address)) {
+        let street = '';
+        // Extract street from remaining parts after removing Bucharest
+        for (const part of parts) {
+          if (!/bucure[sș]ti|sector\s*[1-6]/gi.test(part) && part.length > 3) {
+            street = part;
+            break;
+          }
+        }
         return {
           city: 'București',
           county: 'București',
-          street: parts[0] || '',
+          street: street || parts[parts.length - 1] || 'Strada Principala',
           postal_code: address.match(/\b\d{6}\b/)?.[0] || ''
         };
       }
 
-      // Standard parsing
+      // Standard parsing for other Romanian cities
       let city = 'București'; // fallback
       let county = 'București';
-      let street = parts[0] || '';
+      let street = '';
 
       if (parts.length >= 3) {
-        street = parts[0];
-        city = parts[1];
+        city = parts[0];
+        street = parts[1];
         county = parts[2].replace(/^(jud\.?\s*|judetul\s*)/i, '');
       } else if (parts.length === 2) {
-        street = parts[0];
-        city = parts[1];
-        county = parts[1];
+        city = parts[0];
+        street = parts[1];
+        county = parts[0];
+      } else if (parts.length === 1) {
+        // Try to extract city and street from single part
+        const singlePart = parts[0];
+        const cityMatch = singlePart.match(/^([^,]+?)\s+(str\.|strada|bd\.|bulevardul|calea|piata)/i);
+        if (cityMatch) {
+          city = cityMatch[1];
+          street = singlePart.substring(cityMatch[1].length).trim();
+        } else {
+          street = singlePart;
+        }
+        county = city;
       }
 
       return {
@@ -120,16 +150,41 @@ serve(async (req) => {
       };
     };
 
-    const extractStreetInfo = (address: string) => {
-      const parts = address.split(/[,\s]+/);
-      let streetName = parts[0] || 'Strada';
-      let streetNumber = '';
+    const extractStreetInfo = (streetAddress: string, structuredFields?: any) => {
+      // If structured fields are available, use them directly
+      if (structuredFields?.customer_street && structuredFields?.customer_street_number) {
+        return {
+          street_name: structuredFields.customer_street,
+          street_number: structuredFields.customer_street_number
+        };
+      }
 
-      for (const part of parts) {
-        if (/\d+/.test(part)) {
-          streetNumber = part.replace(/[^\d]/g, '');
+      // Enhanced street parsing for Romanian addresses
+      let streetName = 'Strada';
+      let streetNumber = '1';
+      
+      // Remove common prefixes and clean the string
+      const cleaned = streetAddress.replace(/^(str\.|strada|bd\.|bulevardul|calea|piata)\s*/i, '').trim();
+      
+      // Try to extract street name and number using various patterns
+      const patterns = [
+        /^(.+?)\s+nr\.?\s*(\d+)/i,  // "Ion Maiorescu nr 15"
+        /^(.+?)\s+(\d+)$/,           // "Ion Maiorescu 15"
+        /^(.+?),?\s*(\d+)/           // "Ion Maiorescu, 15"
+      ];
+      
+      for (const pattern of patterns) {
+        const match = cleaned.match(pattern);
+        if (match) {
+          streetName = match[1].trim();
+          streetNumber = match[2];
           break;
         }
+      }
+      
+      // If no number found, use the whole string as street name
+      if (streetNumber === '1' && cleaned && !patterns.some(p => p.test(cleaned))) {
+        streetName = cleaned;
       }
 
       return {
@@ -138,19 +193,19 @@ serve(async (req) => {
       };
     };
 
-    // Parse addresses
+    // Parse addresses with structured field support
     const senderParsed = parseAddress(profile.eawb_address || 'București, România');
     const recipientParsed = address_override ? {
-      city: address_override.city || parseAddress(order.customer_address).city,
-      county: address_override.county || parseAddress(order.customer_address).county,
-      street: parseAddress(order.customer_address).street,
-      postal_code: address_override.postal_code || parseAddress(order.customer_address).postal_code
-    } : parseAddress(order.customer_address);
+      city: address_override.city || parseAddress(order.customer_address, order).city,
+      county: address_override.county || parseAddress(order.customer_address, order).county,
+      street: parseAddress(order.customer_address, order).street,
+      postal_code: address_override.postal_code || parseAddress(order.customer_address, order).postal_code
+    } : parseAddress(order.customer_address, order);
 
     console.log('Addresses parsed:', { sender: senderParsed, recipient: recipientParsed });
 
     const senderStreet = extractStreetInfo(profile.eawb_address || '');
-    const recipientStreet = extractStreetInfo(order.customer_address);
+    const recipientStreet = extractStreetInfo(order.customer_address, order);
 
     // Build quote requests for each carrier/service combination
     const quoteRequests = [];

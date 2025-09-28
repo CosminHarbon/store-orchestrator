@@ -211,9 +211,15 @@ export type Database = {
           carrier_name: string | null
           created_at: string
           customer_address: string
+          customer_apartment: string | null
+          customer_block: string | null
+          customer_city: string | null
+          customer_county: string | null
           customer_email: string
           customer_name: string
           customer_phone: string | null
+          customer_street: string | null
+          customer_street_number: string | null
           eawb_order_id: number | null
           estimated_delivery_date: string | null
           id: string
@@ -232,9 +238,15 @@ export type Database = {
           carrier_name?: string | null
           created_at?: string
           customer_address: string
+          customer_apartment?: string | null
+          customer_block?: string | null
+          customer_city?: string | null
+          customer_county?: string | null
           customer_email: string
           customer_name: string
           customer_phone?: string | null
+          customer_street?: string | null
+          customer_street_number?: string | null
           eawb_order_id?: number | null
           estimated_delivery_date?: string | null
           id?: string
@@ -253,9 +265,15 @@ export type Database = {
           carrier_name?: string | null
           created_at?: string
           customer_address?: string
+          customer_apartment?: string | null
+          customer_block?: string | null
+          customer_city?: string | null
+          customer_county?: string | null
           customer_email?: string
           customer_name?: string
           customer_phone?: string | null
+          customer_street?: string | null
+          customer_street_number?: string | null
           eawb_order_id?: number | null
           estimated_delivery_date?: string | null
           id?: string

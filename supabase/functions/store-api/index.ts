@@ -403,17 +403,39 @@ Deno.serve(async (req) => {
             customer_address, 
             customer_phone, 
             total,
-            items 
+            items,
+            // New structured address fields (optional)
+            customer_city,
+            customer_county,
+            customer_street,
+            customer_street_number,
+            customer_block,
+            customer_apartment
           } = body
 
-          if (!customer_name || !customer_email || !customer_address || !total || !items) {
+          // Either customer_address OR (customer_city + customer_street + customer_street_number) are required
+          const hasLegacyAddress = customer_address;
+          const hasStructuredAddress = customer_city && customer_street && customer_street_number;
+          
+          if (!customer_name || !customer_email || !total || !items || (!hasLegacyAddress && !hasStructuredAddress)) {
             return new Response(
-              JSON.stringify({ error: 'Missing required fields' }),
+              JSON.stringify({ 
+                error: 'Missing required fields. Either customer_address or structured address fields (customer_city, customer_street, customer_street_number) are required.' 
+              }),
               { 
                 status: 400, 
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
               }
             )
+          }
+
+          // Create composite address from structured fields if provided
+          let compositeAddress = customer_address;
+          if (hasStructuredAddress && !hasLegacyAddress) {
+            const addressParts = [customer_street, customer_street_number];
+            if (customer_block) addressParts.push(`bl. ${customer_block}`);
+            if (customer_apartment) addressParts.push(`ap. ${customer_apartment}`);
+            compositeAddress = `${customer_city}, ${addressParts.join(', ')}`;
           }
 
           // Create order
@@ -423,11 +445,18 @@ Deno.serve(async (req) => {
               user_id: userId,
               customer_name,
               customer_email,
-              customer_address,
+              customer_address: compositeAddress,
               customer_phone: customer_phone || null,
               total: parseFloat(total),
               payment_status: 'pending',
-              shipping_status: 'pending'
+              shipping_status: 'pending',
+              // Store structured address fields if provided
+              customer_city: customer_city || null,
+              customer_county: customer_county || null,
+              customer_street: customer_street || null,
+              customer_street_number: customer_street_number || null,
+              customer_block: customer_block || null,
+              customer_apartment: customer_apartment || null
             })
             .select()
             .single()
