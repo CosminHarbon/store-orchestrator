@@ -309,19 +309,29 @@ serve(async (req) => {
         };
       };
 
-      // Parse addresses with structured field support
+      // Use structured fields when available, fallback to parsing
       const senderParsed = parseAddress(profile.eawb_address || 'București, România');
+      
+      // For recipient, prioritize structured fields
       const recipientParsed = address_override ? {
-        city: address_override.city || parseAddress(order.customer_address, order).city,
-        county: address_override.county || parseAddress(order.customer_address, order).county,
-        street: parseAddress(order.customer_address, order).street,
+        city: address_override.city || (order.customer_city || parseAddress(order.customer_address, order).city),
+        county: address_override.county || (order.customer_county || parseAddress(order.customer_address, order).county),
+        street: order.customer_street ? `${order.customer_street} ${order.customer_street_number || ''}`.trim() : parseAddress(order.customer_address, order).street,
         postal_code: address_override.postal_code || parseAddress(order.customer_address, order).postal_code
-      } : parseAddress(order.customer_address, order);
+      } : {
+        city: order.customer_city || parseAddress(order.customer_address, order).city,
+        county: order.customer_county || parseAddress(order.customer_address, order).county,
+        street: order.customer_street ? `${order.customer_street} ${order.customer_street_number || ''}`.trim() : parseAddress(order.customer_address, order).street,
+        postal_code: parseAddress(order.customer_address, order).postal_code
+      };
 
       console.log('Addresses:', { sender: senderParsed, recipient: recipientParsed });
 
       const senderStreet = extractStreetInfo(profile.eawb_address || '');
-      const recipientStreet = extractStreetInfo(order.customer_address, order);
+      const recipientStreet = order.customer_street && order.customer_street_number ? {
+        street_name: order.customer_street,
+        street_number: order.customer_street_number
+      } : extractStreetInfo(order.customer_address, order);
 
       // Build AWB request with nested content structure (matching quoting format)
       const awbRequest = {
