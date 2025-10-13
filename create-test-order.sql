@@ -16,8 +16,8 @@ INSERT INTO orders (
   user_id
 ) 
 SELECT 
-  'Test Customer Ploiești',
-  'test.ploiesti@example.com',
+  'BARRY WHITE',
+  'barry.white@example.com',
   '+40712345678',
   'Strada Republicii Nr. 25, Ploiești, Prahova',
   'Ploiești',
