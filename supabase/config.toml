@@ -80,3 +80,6 @@ verify_jwt = true
 
 [functions.diagnose-eawb]
 verify_jwt = true
+
+[functions.create-test-order]
+verify_jwt = true

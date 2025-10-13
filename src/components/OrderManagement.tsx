@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ResponsiveOrderTable } from './ResponsiveOrderTable';
 import { AWBCreationModal } from './AWBCreationModal';
+import { CreateTestOrderButton } from './CreateTestOrderButton';
 
 interface Order {
   id: string;
@@ -384,9 +385,12 @@ const OrderManagement = () => {
     <Card>
       <CardHeader>
         <div className="flex flex-col gap-4">
-          <div>
-            <CardTitle>Orders</CardTitle>
-            <CardDescription>Manage customer orders and fulfillment</CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Orders</CardTitle>
+              <CardDescription>Manage customer orders and fulfillment</CardDescription>
+            </div>
+            <CreateTestOrderButton />
           </div>
           <div className="relative w-full max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
