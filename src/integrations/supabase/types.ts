@@ -474,12 +474,16 @@ export type Database = {
           eawb_address: string | null
           eawb_api_key: string | null
           eawb_billing_address_id: number | null
+          eawb_city: string | null
+          eawb_county: string | null
           eawb_customer_id: number | null
           eawb_default_carrier_id: number | null
           eawb_default_service_id: number | null
           eawb_email: string | null
           eawb_name: string | null
           eawb_phone: string | null
+          eawb_street: string | null
+          eawb_street_number: string | null
           id: string
           invoicing_provider: string | null
           netpopia_api_key: string | null
@@ -512,12 +516,16 @@ export type Database = {
           eawb_address?: string | null
           eawb_api_key?: string | null
           eawb_billing_address_id?: number | null
+          eawb_city?: string | null
+          eawb_county?: string | null
           eawb_customer_id?: number | null
           eawb_default_carrier_id?: number | null
           eawb_default_service_id?: number | null
           eawb_email?: string | null
           eawb_name?: string | null
           eawb_phone?: string | null
+          eawb_street?: string | null
+          eawb_street_number?: string | null
           id?: string
           invoicing_provider?: string | null
           netpopia_api_key?: string | null
@@ -550,12 +558,16 @@ export type Database = {
           eawb_address?: string | null
           eawb_api_key?: string | null
           eawb_billing_address_id?: number | null
+          eawb_city?: string | null
+          eawb_county?: string | null
           eawb_customer_id?: number | null
           eawb_default_carrier_id?: number | null
           eawb_default_service_id?: number | null
           eawb_email?: string | null
           eawb_name?: string | null
           eawb_phone?: string | null
+          eawb_street?: string | null
+          eawb_street_number?: string | null
           id?: string
           invoicing_provider?: string | null
           netpopia_api_key?: string | null

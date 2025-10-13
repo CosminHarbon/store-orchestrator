@@ -309,8 +309,13 @@ serve(async (req) => {
         };
       };
 
-      // Use structured fields when available, fallback to parsing
-      const senderParsed = parseAddress(profile.eawb_address || 'București, România');
+      // Use structured sender fields when available, fallback to parsing
+      const senderParsed = profile.eawb_city && profile.eawb_county ? {
+        city: profile.eawb_city,
+        county: profile.eawb_county,
+        street: profile.eawb_street || '',
+        postal_code: ''
+      } : parseAddress(profile.eawb_address || 'București, România');
       
       // For recipient, prioritize structured fields
       const recipientParsed = address_override ? {
@@ -327,7 +332,11 @@ serve(async (req) => {
 
       console.log('Addresses:', { sender: senderParsed, recipient: recipientParsed });
 
-      const senderStreet = extractStreetInfo(profile.eawb_address || '');
+      const senderStreet = profile.eawb_street && profile.eawb_street_number ? {
+        street_name: profile.eawb_street,
+        street_number: profile.eawb_street_number
+      } : extractStreetInfo(profile.eawb_address || '');
+      
       const recipientStreet = order.customer_street && order.customer_street_number ? {
         street_name: order.customer_street,
         street_number: order.customer_street_number
