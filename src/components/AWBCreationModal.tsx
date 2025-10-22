@@ -9,6 +9,8 @@ import { Loader2, Package, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Progress } from '@/components/ui/progress';
+import { useEffect } from 'react';
 
 interface Order {
   id: string;
@@ -48,6 +50,7 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
     county: '',
     postal_code: ''
   });
+  const [progress, setProgress] = useState(0);
   
   const [packageDetails, setPackageDetails] = useState({
     weight: 1,
@@ -67,6 +70,16 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
     }
 
     setLoading(true);
+    setProgress(0);
+    
+    // Animate progress while loading
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 90) return 90;
+        return prev + 10;
+      });
+    }, 300);
+    
     try {
       const { data, error } = await supabase.functions.invoke('eawb-delivery', {
         body: {
@@ -129,7 +142,12 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
       console.error('Error calculating prices:', error);
       toast.error(error.message || 'Failed to calculate shipping prices');
     } finally {
-      setLoading(false);
+      clearInterval(progressInterval);
+      setProgress(100);
+      setTimeout(() => {
+        setLoading(false);
+        setProgress(0);
+      }, 200);
     }
   };
 
@@ -218,7 +236,25 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
           </DialogDescription>
         </DialogHeader>
 
-        {step === 'package' && (
+        {step === 'package' && loading && (
+          <div className="space-y-6 py-8">
+            <div className="text-center space-y-4">
+              <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">Getting Shipping Quotes</h3>
+                <p className="text-sm text-muted-foreground">
+                  Comparing prices from multiple carriers...
+                </p>
+              </div>
+              <div className="max-w-md mx-auto space-y-2">
+                <Progress value={progress} className="h-2" />
+                <p className="text-xs text-muted-foreground">{progress}% complete</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step === 'package' && !loading && (
           <div className="space-y-6">
             <div className="bg-muted/50 p-4 rounded-lg">
               <h4 className="font-medium mb-2">Delivery Details</h4>
