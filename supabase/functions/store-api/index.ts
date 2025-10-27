@@ -400,11 +400,10 @@ Deno.serve(async (req) => {
           const { 
             customer_name, 
             customer_email, 
-            customer_address, 
             customer_phone, 
             total,
             items,
-            // New structured address fields (optional)
+            // Structured address fields (required)
             customer_city,
             customer_county,
             customer_street,
@@ -413,14 +412,12 @@ Deno.serve(async (req) => {
             customer_apartment
           } = body
 
-          // Either customer_address OR (customer_city + customer_street + customer_street_number) are required
-          const hasLegacyAddress = customer_address;
-          const hasStructuredAddress = customer_city && customer_street && customer_street_number;
-          
-          if (!customer_name || !customer_email || !total || !items || (!hasLegacyAddress && !hasStructuredAddress)) {
+          // Validate required fields including structured address
+          if (!customer_name || !customer_email || !total || !items || 
+              !customer_city || !customer_county || !customer_street || !customer_street_number) {
             return new Response(
               JSON.stringify({ 
-                error: 'Missing required fields. Either customer_address or structured address fields (customer_city, customer_street, customer_street_number) are required.' 
+                error: 'Missing required fields. All address fields are required: customer_city, customer_county, customer_street, customer_street_number' 
               }),
               { 
                 status: 400, 
@@ -429,14 +426,11 @@ Deno.serve(async (req) => {
             )
           }
 
-          // Create composite address from structured fields if provided
-          let compositeAddress = customer_address;
-          if (hasStructuredAddress && !hasLegacyAddress) {
-            const addressParts = [customer_street, customer_street_number];
-            if (customer_block) addressParts.push(`bl. ${customer_block}`);
-            if (customer_apartment) addressParts.push(`ap. ${customer_apartment}`);
-            compositeAddress = `${customer_city}, ${addressParts.join(', ')}`;
-          }
+          // Create composite address from structured fields for legacy support
+          const addressParts = [customer_street, customer_street_number];
+          if (customer_block) addressParts.push(`bl. ${customer_block}`);
+          if (customer_apartment) addressParts.push(`ap. ${customer_apartment}`);
+          const compositeAddress = `${addressParts.join(' ')}, ${customer_city}, ${customer_county}`;
 
           // Create order
           const { data: order, error: orderError } = await supabase
@@ -450,11 +444,11 @@ Deno.serve(async (req) => {
               total: parseFloat(total),
               payment_status: 'pending',
               shipping_status: 'pending',
-              // Store structured address fields if provided
-              customer_city: customer_city || null,
-              customer_county: customer_county || null,
-              customer_street: customer_street || null,
-              customer_street_number: customer_street_number || null,
+              // Store structured address fields (all required)
+              customer_city,
+              customer_county,
+              customer_street,
+              customer_street_number,
               customer_block: customer_block || null,
               customer_apartment: customer_apartment || null
             })
