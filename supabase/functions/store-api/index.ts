@@ -231,6 +231,20 @@ Deno.serve(async (req) => {
     const path = url.pathname.split('/').pop()
 
     switch (path) {
+      case 'config': {
+        // Return public configuration (no auth needed, but API key verified above)
+        const mapboxToken = Deno.env.get('MAPBOX_PUBLIC_TOKEN') || '';
+        
+        return new Response(
+          JSON.stringify({
+            mapbox_token: mapboxToken
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+
       case 'products': {
         if (req.method === 'GET') {
           // First get products

@@ -20,8 +20,8 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { action, order_id, package_details, selected_carrier, selected_service, address_override } = await req.json();
-    console.log('Request:', { action, order_id, selected_carrier, selected_service });
+    const { action, order_id, package_details, selected_carrier, selected_service, address_override, carrier_id, city, county } = await req.json();
+    console.log('Request:', { action, order_id, selected_carrier, selected_service, carrier_id, city, county });
 
     // Get authenticated user
     const authHeader = req.headers.get('Authorization')?.replace('Bearer ', '');
@@ -32,6 +32,65 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader);
     if (authError || !user) {
       throw new Error('Authentication failed');
+    }
+
+    if (action === 'fetch_lockers') {
+      // Fetch lockers for a specific carrier and location
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('eawb_api_key')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile?.eawb_api_key) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'MISSING_API_KEY',
+          message: 'eAWB API key not configured'
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Build query parameters
+      const params = new URLSearchParams({
+        carrier_id: carrier_id.toString(),
+        ...(city && { locality_name: city }),
+        ...(county && { county_name: county })
+      });
+
+      console.log('Fetching lockers:', params.toString());
+
+      const lockersResponse = await fetch(`${EAWB_BASE_URL}/lockers?${params}`, {
+        headers: {
+          'X-API-Key': profile.eawb_api_key,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!lockersResponse.ok) {
+        const errorText = await lockersResponse.text();
+        console.error('Lockers fetch failed:', errorText);
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'FETCH_FAILED',
+          message: 'Failed to fetch lockers',
+          details: errorText
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      const lockersData = await lockersResponse.json();
+      console.log('Lockers fetched:', lockersData.length || 0);
+
+      return new Response(JSON.stringify({
+        success: true,
+        lockers: lockersData || []
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     if (action === 'calculate_prices') {

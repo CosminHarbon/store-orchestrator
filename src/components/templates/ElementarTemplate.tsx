@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, Plus, Minus, X, Package, Truck, CreditCard, ArrowLeft, MapPin, Home as HomeIcon } from "lucide-react";
 import { toast } from "sonner";
 import { calculateProductPrice, formatPrice, formatDiscount } from "@/lib/discountUtils";
+import LockerMapSelector from "./LockerMapSelector";
 
 interface Product {
   id: string;
@@ -40,6 +41,15 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
   const [view, setView] = useState<"home" | "product" | "cart" | "checkout">("home");
   const [loading, setLoading] = useState(true);
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
+  const [mapboxToken, setMapboxToken] = useState<string>("");
+
+  // Carrier ID mapping
+  const carrierIdMap: { [key: string]: number } = {
+    "sameday": 3,
+    "fancourier": 1,
+    "gls": 4,
+    "dpd": 2
+  };
 
   // Checkout form state
   const [checkoutForm, setCheckoutForm] = useState({
@@ -62,6 +72,26 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
   // Get Supabase URL from environment or construct it
   const SUPABASE_URL = "https://uffmgvdtkoxkjolfrhab.supabase.co";
   const API_BASE = `${SUPABASE_URL}/functions/v1/store-api`;
+
+  // Fetch Mapbox token
+  useEffect(() => {
+    const fetchMapboxToken = async () => {
+      try {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/store-api/config`, {
+          headers: {
+            'X-API-Key': apiKey,
+          },
+        });
+        const data = await response.json();
+        if (data.mapbox_token) {
+          setMapboxToken(data.mapbox_token);
+        }
+      } catch (error) {
+        console.error('Failed to fetch Mapbox token:', error);
+      }
+    };
+    fetchMapboxToken();
+  }, [apiKey]);
 
   useEffect(() => {
     fetchData();
@@ -756,11 +786,35 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                         <option value="dpd">DPD</option>
                       </select>
                     </div>
-                    <div className="bg-muted/50 p-4 rounded-lg">
-                      <p className="text-sm text-muted-foreground">
-                        📍 Interactive locker map would appear here for the selected carrier
-                      </p>
-                    </div>
+                    
+                    {checkoutForm.selected_carrier_code && mapboxToken ? (
+                      <LockerMapSelector
+                        carrierId={carrierIdMap[checkoutForm.selected_carrier_code]}
+                        carrierName={checkoutForm.selected_carrier_code.toUpperCase()}
+                        apiKey={apiKey}
+                        mapboxToken={mapboxToken}
+                        onLockerSelect={(locker) => {
+                          setCheckoutForm({
+                            ...checkoutForm,
+                            locker_id: locker.id,
+                            locker_name: locker.name,
+                            locker_address: locker.address
+                          });
+                        }}
+                      />
+                    ) : checkoutForm.selected_carrier_code && !mapboxToken ? (
+                      <div className="bg-muted/50 p-4 rounded-lg">
+                        <p className="text-sm text-muted-foreground">
+                          Loading map...
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="bg-muted/50 p-4 rounded-lg">
+                        <p className="text-sm text-muted-foreground">
+                          Please select a carrier to view available lockers
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </Card>
