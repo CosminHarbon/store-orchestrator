@@ -16,6 +16,7 @@ import StockManagement from '@/components/StockManagement';
 import CustomerManagement from '@/components/CustomerManagement';
 import PaymentStatistics from '@/components/PaymentStatistics';
 import CollectionsManagement from '@/components/CollectionsManagement';
+import TemplatesManagement from '@/components/TemplatesManagement';
 import { Package, ShoppingCart, DollarSign, Clock, TrendingUp, Users, MessageCircle, Sparkles, Zap, Star } from 'lucide-react';
 import AIChat from '@/components/AIChat';
 import { BottomNavigation } from '@/components/BottomNavigation';
@@ -380,6 +381,12 @@ const Index = () => {
         return (
           <div className="p-3 md:p-6 pb-24 md:pb-6 safe-area-bottom">
             <StoreSettings />
+          </div>
+        );
+      case 'templates':
+        return (
+          <div className="p-3 md:p-6 pb-24 md:pb-6 safe-area-bottom">
+            <TemplatesManagement />
           </div>
         );
       default:
