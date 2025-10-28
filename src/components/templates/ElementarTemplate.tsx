@@ -59,7 +59,9 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
     locker_address: "",
   });
 
-  const API_BASE = `${window.location.origin}/api/v1`;
+  // Get Supabase URL from environment or construct it
+  const SUPABASE_URL = "https://uffmgvdtkoxkjolfrhab.supabase.co";
+  const API_BASE = `${SUPABASE_URL}/functions/v1/store-api`;
 
   useEffect(() => {
     fetchData();
