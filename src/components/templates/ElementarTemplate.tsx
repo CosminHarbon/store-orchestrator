@@ -85,21 +85,44 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
 
       if (productsRes.ok) {
         const productsData = await productsRes.json();
-        console.log("Products loaded:", productsData.length);
-        setProducts(productsData);
+        console.log("Raw products response:", productsData);
+        
+        // Handle both array and object responses
+        const productsArray = Array.isArray(productsData) ? productsData : (productsData.products || []);
+        console.log("Products loaded:", productsArray.length);
+        
+        // Map products to match our interface
+        const mappedProducts = productsArray.map((p: any) => ({
+          id: p.id,
+          title: p.title,
+          description: p.description || "",
+          price: typeof p.final_price === "number" ? p.final_price : p.price,
+          image: p.primary_image || p.image || "",
+          stock: p.stock || 0,
+          category: p.category || "",
+        }));
+        
+        setProducts(mappedProducts);
       } else {
         const errorText = await productsRes.text();
         console.error("Products fetch failed:", errorText);
         toast.error(`Failed to load products: ${productsRes.status}`);
+        setProducts([]);
       }
 
       if (collectionsRes.ok) {
         const collectionsData = await collectionsRes.json();
-        console.log("Collections loaded:", collectionsData.length);
-        setCollections(collectionsData);
+        console.log("Raw collections response:", collectionsData);
+        
+        // Handle both array and object responses
+        const collectionsArray = Array.isArray(collectionsData) ? collectionsData : (collectionsData.collections || []);
+        console.log("Collections loaded:", collectionsArray.length);
+        
+        setCollections(collectionsArray);
       } else {
         const errorText = await collectionsRes.text();
         console.error("Collections fetch failed:", errorText);
+        setCollections([]);
       }
     } catch (error) {
       console.error("Error loading store data:", error);
