@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key',
 }
 
 interface Database {
@@ -185,7 +185,8 @@ Deno.serve(async (req) => {
     )
 
     const url = new URL(req.url)
-    const apiKey = url.searchParams.get('api_key')
+    // Check for API key in both query params and headers
+    const apiKey = url.searchParams.get('api_key') || req.headers.get('X-API-Key')
 
     if (!apiKey) {
       return new Response(
