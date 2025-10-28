@@ -220,13 +220,18 @@ export type Database = {
           customer_phone: string | null
           customer_street: string | null
           customer_street_number: string | null
+          delivery_type: string | null
           eawb_order_id: number | null
           estimated_delivery_date: string | null
           id: string
           invoice_link: string | null
           invoice_number: string | null
           invoice_series: string | null
+          locker_address: string | null
+          locker_id: string | null
+          locker_name: string | null
           payment_status: string
+          selected_carrier_code: string | null
           shipping_status: string
           total: number
           tracking_url: string | null
@@ -247,13 +252,18 @@ export type Database = {
           customer_phone?: string | null
           customer_street?: string | null
           customer_street_number?: string | null
+          delivery_type?: string | null
           eawb_order_id?: number | null
           estimated_delivery_date?: string | null
           id?: string
           invoice_link?: string | null
           invoice_number?: string | null
           invoice_series?: string | null
+          locker_address?: string | null
+          locker_id?: string | null
+          locker_name?: string | null
           payment_status?: string
+          selected_carrier_code?: string | null
           shipping_status?: string
           total: number
           tracking_url?: string | null
@@ -274,13 +284,18 @@ export type Database = {
           customer_phone?: string | null
           customer_street?: string | null
           customer_street_number?: string | null
+          delivery_type?: string | null
           eawb_order_id?: number | null
           estimated_delivery_date?: string | null
           id?: string
           invoice_link?: string | null
           invoice_number?: string | null
           invoice_series?: string | null
+          locker_address?: string | null
+          locker_id?: string | null
+          locker_name?: string | null
           payment_status?: string
+          selected_carrier_code?: string | null
           shipping_status?: string
           total?: number
           tracking_url?: string | null

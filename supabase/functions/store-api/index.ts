@@ -403,7 +403,13 @@ Deno.serve(async (req) => {
             customer_phone, 
             total,
             items,
-            // Structured address fields (required)
+            // Delivery type fields (optional)
+            delivery_type,
+            selected_carrier_code,
+            locker_id,
+            locker_name,
+            locker_address,
+            // Structured address fields (required for home delivery)
             customer_city,
             customer_county,
             customer_street,
@@ -412,12 +418,14 @@ Deno.serve(async (req) => {
             customer_apartment
           } = body
 
-          // Validate required fields including structured address
-          if (!customer_name || !customer_email || !total || !items || 
-              !customer_city || !customer_county || !customer_street || !customer_street_number) {
+          // Validate delivery type
+          const effectiveDeliveryType = delivery_type || 'home';
+          
+          // Validate required fields based on delivery type
+          if (!customer_name || !customer_email || !total || !items) {
             return new Response(
               JSON.stringify({ 
-                error: 'Missing required fields. All address fields are required: customer_city, customer_county, customer_street, customer_street_number' 
+                error: 'Missing required fields: customer_name, customer_email, total, items' 
               }),
               { 
                 status: 400, 
@@ -426,11 +434,46 @@ Deno.serve(async (req) => {
             )
           }
 
-          // Create composite address from structured fields for legacy support
-          const addressParts = [customer_street, customer_street_number];
-          if (customer_block) addressParts.push(`bl. ${customer_block}`);
-          if (customer_apartment) addressParts.push(`ap. ${customer_apartment}`);
-          const compositeAddress = `${addressParts.join(' ')}, ${customer_city}, ${customer_county}`;
+          // For locker delivery, validate locker details
+          if (effectiveDeliveryType === 'locker') {
+            if (!selected_carrier_code || !locker_id || !locker_name) {
+              return new Response(
+                JSON.stringify({ 
+                  error: 'Locker delivery requires: selected_carrier_code, locker_id, locker_name' 
+                }),
+                { 
+                  status: 400, 
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+                }
+              )
+            }
+          }
+
+          // For home delivery, validate structured address
+          if (effectiveDeliveryType === 'home') {
+            if (!customer_city || !customer_county || !customer_street || !customer_street_number) {
+              return new Response(
+                JSON.stringify({ 
+                  error: 'Home delivery requires address fields: customer_city, customer_county, customer_street, customer_street_number' 
+                }),
+                { 
+                  status: 400, 
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+                }
+              )
+            }
+          }
+
+          // Create composite address from structured fields or locker address
+          let compositeAddress = '';
+          if (effectiveDeliveryType === 'locker') {
+            compositeAddress = locker_address || locker_name || 'Locker delivery';
+          } else {
+            const addressParts = [customer_street, customer_street_number];
+            if (customer_block) addressParts.push(`bl. ${customer_block}`);
+            if (customer_apartment) addressParts.push(`ap. ${customer_apartment}`);
+            compositeAddress = `${addressParts.join(' ')}, ${customer_city}, ${customer_county}`;
+          }
 
           // Create order
           const { data: order, error: orderError } = await supabase
@@ -444,11 +487,17 @@ Deno.serve(async (req) => {
               total: parseFloat(total),
               payment_status: 'pending',
               shipping_status: 'pending',
-              // Store structured address fields (all required)
-              customer_city,
-              customer_county,
-              customer_street,
-              customer_street_number,
+              // Delivery type fields
+              delivery_type: effectiveDeliveryType,
+              selected_carrier_code: selected_carrier_code || null,
+              locker_id: locker_id || null,
+              locker_name: locker_name || null,
+              locker_address: locker_address || null,
+              // Store structured address fields (for home delivery)
+              customer_city: customer_city || null,
+              customer_county: customer_county || null,
+              customer_street: customer_street || null,
+              customer_street_number: customer_street_number || null,
               customer_block: customer_block || null,
               customer_apartment: customer_apartment || null
             })
@@ -788,11 +837,133 @@ Deno.serve(async (req) => {
         break
       }
 
+      case 'lockers': {
+        if (req.method === 'GET') {
+          // Get carrier code from query params
+          const carrierCode = url.searchParams.get('carrier_code')
+          const city = url.searchParams.get('city')
+          const county = url.searchParams.get('county')
+
+          if (!carrierCode) {
+            return new Response(
+              JSON.stringify({ error: 'carrier_code parameter is required' }),
+              { 
+                status: 400, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          }
+
+          // Get user profile to access eAWB API key
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('eawb_api_key')
+            .eq('user_id', userId)
+            .single()
+
+          if (profileError || !profile || !profile.eawb_api_key) {
+            return new Response(
+              JSON.stringify({ 
+                error: 'eAWB API key not configured. Please configure it in Store Settings.' 
+              }),
+              { 
+                status: 400, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          }
+
+          // Get carrier_id from carriers table
+          const { data: carrier, error: carrierError } = await supabase
+            .from('carriers')
+            .select('id, name')
+            .eq('code', carrierCode)
+            .eq('is_active', true)
+            .single()
+
+          if (carrierError || !carrier) {
+            return new Response(
+              JSON.stringify({ error: 'Carrier not found or not active' }),
+              { 
+                status: 404, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          }
+
+          // Fetch lockers from Europarcel API
+          try {
+            const lockerParams = new URLSearchParams({
+              carrier_id: carrier.id.toString()
+            })
+            if (city) lockerParams.append('city', city)
+            if (county) lockerParams.append('county', county)
+
+            const response = await fetch(
+              `https://api.europarcel.com/api/public/lockers?${lockerParams.toString()}`,
+              {
+                method: 'GET',
+                headers: {
+                  'X-API-Key': profile.eawb_api_key,
+                  'Accept': 'application/json'
+                }
+              }
+            )
+
+            const responseData = await response.json()
+            
+            if (!response.ok) {
+              console.error('Europarcel lockers API error:', responseData)
+              return new Response(
+                JSON.stringify({ 
+                  error: 'Failed to fetch lockers',
+                  details: responseData 
+                }),
+                { 
+                  status: response.status, 
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+                }
+              )
+            }
+
+            // Return lockers in a format suitable for frontend
+            return new Response(
+              JSON.stringify({ 
+                success: true,
+                carrier: {
+                  id: carrier.id,
+                  name: carrier.name,
+                  code: carrierCode
+                },
+                lockers: responseData.data || []
+              }),
+              { 
+                status: 200, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          } catch (error) {
+            console.error('Error fetching lockers:', error)
+            return new Response(
+              JSON.stringify({ 
+                error: 'Failed to fetch lockers',
+                message: error instanceof Error ? error.message : 'Unknown error'
+              }),
+              { 
+                status: 500, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          }
+        }
+        break
+      }
+
       default: {
         return new Response(
           JSON.stringify({ 
             error: 'Invalid endpoint',
-            available_endpoints: ['products', 'orders', 'collections', 'payments', 'payment-status', 'payment-webhook']
+            available_endpoints: ['products', 'orders', 'collections', 'payments', 'payment-status', 'payment-webhook', 'lockers']
           }),
           { 
             status: 404, 

@@ -342,6 +342,47 @@ serve(async (req) => {
         street_number: order.customer_street_number
       } : extractStreetInfo(order.customer_address, order);
 
+      // Determine if this is locker delivery
+      const isLockerDelivery = order.delivery_type === 'locker' && order.locker_id;
+      const isLockerService = Number(selected_service) === 2 || Number(selected_service) === 4; // HOME_TO_LOCKER or LOCKER_TO_LOCKER
+
+      console.log('Delivery info:', { 
+        delivery_type: order.delivery_type, 
+        locker_id: order.locker_id,
+        selected_service,
+        isLockerDelivery,
+        isLockerService
+      });
+
+      // Build address_to based on delivery type
+      let addressTo: any;
+      if (isLockerDelivery && isLockerService) {
+        // For locker delivery, use locker details
+        addressTo = {
+          country_code: 'RO',
+          locker_id: order.locker_id,
+          locker_name: order.locker_name || 'Locker',
+          contact: order.customer_name,
+          phone: order.customer_phone || '0700000000',
+          email: order.customer_email
+        };
+        console.log('Using locker address:', addressTo);
+      } else {
+        // For home delivery, use regular structured address
+        addressTo = {
+          country_code: 'RO',
+          county_name: recipientParsed.county,
+          locality_name: recipientParsed.city,
+          postal_code: recipientParsed.postal_code || undefined,
+          contact: order.customer_name,
+          street_name: recipientStreet.street_name,
+          street_number: recipientStreet.street_number,
+          phone: order.customer_phone || '0700000000',
+          email: order.customer_email
+        };
+        console.log('Using home address:', addressTo);
+      }
+
       // Build AWB request with nested content structure (matching quoting format)
       const awbRequest = {
         billing_to: { 
@@ -358,17 +399,7 @@ serve(async (req) => {
           phone: profile.eawb_phone || '0700000000',
           email: profile.eawb_email || user.email
         },
-        address_to: {
-          country_code: 'RO',
-          county_name: recipientParsed.county,
-          locality_name: recipientParsed.city,
-          postal_code: recipientParsed.postal_code || undefined,
-          contact: order.customer_name,
-          street_name: recipientStreet.street_name,
-          street_number: recipientStreet.street_number,
-          phone: order.customer_phone || '0700000000',
-          email: order.customer_email
-        },
+        address_to: addressTo,
         content: {
           parcels_count: 1,
           pallets_count: 0,

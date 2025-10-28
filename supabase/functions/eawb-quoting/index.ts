@@ -20,8 +20,8 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { order_id, package_details, address_override } = await req.json();
-    console.log('Request:', { order_id, package_details, address_override });
+    const { order_id, package_details, address_override, delivery_type, selected_carrier_code } = await req.json();
+    console.log('Request:', { order_id, package_details, address_override, delivery_type, selected_carrier_code });
 
     // Get authenticated user
     const authHeader = req.headers.get('Authorization')?.replace('Bearer ', '');
@@ -389,8 +389,28 @@ serve(async (req) => {
       }
     };
 
+    // Determine which service codes are valid based on delivery type
+    const effectiveDeliveryType = delivery_type || order.delivery_type || 'home';
+    const getValidServiceCodes = (deliveryType: string): number[] => {
+      if (deliveryType === 'locker') {
+        return [2, 4]; // HOME_TO_LOCKER, LOCKER_TO_LOCKER
+      }
+      return [1, 3]; // HOME_TO_HOME, LOCKER_TO_HOME (default)
+    };
+
+    const validServiceCodes = getValidServiceCodes(effectiveDeliveryType);
+    console.log(`Filtering for delivery type: ${effectiveDeliveryType}, valid service codes:`, validServiceCodes);
+
     // Create quote requests for each carrier/service combination
     for (const carrier of dbCarriers) {
+      // For locker delivery, only quote from the selected carrier
+      if (effectiveDeliveryType === 'locker' && selected_carrier_code) {
+        if (carrier.code !== selected_carrier_code) {
+          console.log(`Skipping carrier ${carrier.code} - not the selected carrier for locker delivery`);
+          continue;
+        }
+      }
+
       if (!carrier.carrier_services || carrier.carrier_services.length === 0) {
         continue;
       }
@@ -404,6 +424,12 @@ serve(async (req) => {
         else if (service.service_code === 'HOME_TO_LOCKER') serviceId = 2;
         else if (service.service_code === 'LOCKER_TO_HOME') serviceId = 3;
         else if (service.service_code === 'LOCKER_TO_LOCKER') serviceId = 4;
+
+        // Filter services based on delivery type
+        if (!validServiceCodes.includes(serviceId)) {
+          console.log(`Skipping service ${service.name} (ID: ${serviceId}) - not valid for ${effectiveDeliveryType} delivery`);
+          continue;
+        }
 
         quoteRequests.push({
           mapping: {

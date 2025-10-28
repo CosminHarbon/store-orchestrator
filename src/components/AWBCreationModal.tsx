@@ -81,17 +81,27 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
     }, 300);
     
     try {
+      const requestBody: any = {
+        action: 'calculate_prices',
+        order_id: order.id,
+        package_details: packageDetails,
+        address_override: (addressOverride.city || addressOverride.county || addressOverride.postal_code) ? {
+          city: addressOverride.city || undefined,
+          county: addressOverride.county || undefined,
+          postal_code: addressOverride.postal_code || undefined
+        } : undefined
+      };
+
+      // Pass delivery type and carrier code for filtering
+      if ((order as any).delivery_type) {
+        requestBody.delivery_type = (order as any).delivery_type;
+      }
+      if ((order as any).selected_carrier_code) {
+        requestBody.selected_carrier_code = (order as any).selected_carrier_code;
+      }
+
       const { data, error } = await supabase.functions.invoke('eawb-delivery', {
-        body: {
-          action: 'calculate_prices',
-          order_id: order.id,
-          package_details: packageDetails,
-          address_override: (addressOverride.city || addressOverride.county || addressOverride.postal_code) ? {
-            city: addressOverride.city || undefined,
-            county: addressOverride.county || undefined,
-            postal_code: addressOverride.postal_code || undefined
-          } : undefined
-        }
+        body: requestBody
       });
 
       if (error) throw error;
@@ -263,6 +273,16 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
                 <p><strong>Address:</strong> {order.customer_address}</p>
                 <p><strong>Phone:</strong> {order.customer_phone}</p>
                 <p><strong>Email:</strong> {order.customer_email}</p>
+                {(order as any).delivery_type === 'locker' && (
+                  <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950 rounded border border-blue-200 dark:border-blue-800">
+                    <p className="font-medium text-blue-900 dark:text-blue-100">🔒 Locker Delivery</p>
+                    <p className="text-blue-800 dark:text-blue-200"><strong>Carrier:</strong> {(order as any).selected_carrier_code}</p>
+                    <p className="text-blue-800 dark:text-blue-200"><strong>Locker:</strong> {(order as any).locker_name}</p>
+                    {(order as any).locker_address && (
+                      <p className="text-blue-800 dark:text-blue-200 text-xs mt-1">{(order as any).locker_address}</p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
