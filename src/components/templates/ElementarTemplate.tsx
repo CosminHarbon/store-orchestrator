@@ -72,22 +72,38 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
       setLoading(true);
       const headers = { "X-API-Key": apiKey };
 
+      console.log("Fetching store data from:", API_BASE);
+      console.log("Using API key:", apiKey.substring(0, 10) + "...");
+
       const [productsRes, collectionsRes] = await Promise.all([
         fetch(`${API_BASE}/products`, { headers }),
         fetch(`${API_BASE}/collections`, { headers }),
       ]);
 
+      console.log("Products response status:", productsRes.status);
+      console.log("Collections response status:", collectionsRes.status);
+
       if (productsRes.ok) {
         const productsData = await productsRes.json();
+        console.log("Products loaded:", productsData.length);
         setProducts(productsData);
+      } else {
+        const errorText = await productsRes.text();
+        console.error("Products fetch failed:", errorText);
+        toast.error(`Failed to load products: ${productsRes.status}`);
       }
 
       if (collectionsRes.ok) {
         const collectionsData = await collectionsRes.json();
+        console.log("Collections loaded:", collectionsData.length);
         setCollections(collectionsData);
+      } else {
+        const errorText = await collectionsRes.text();
+        console.error("Collections fetch failed:", errorText);
       }
     } catch (error) {
-      toast.error("Failed to load store data");
+      console.error("Error loading store data:", error);
+      toast.error("Failed to load store data: " + (error as Error).message);
     } finally {
       setLoading(false);
     }
