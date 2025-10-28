@@ -212,6 +212,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
         locker_address: checkoutForm.locker_address,
         items: cart.map((item) => ({
           product_id: item.product.id,
+          title: item.product.title,
           quantity: item.quantity,
           price: item.product.price,
         })),
