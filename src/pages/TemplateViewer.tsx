@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useParams } from "react-router-dom";
 import ElementarTemplate from "@/components/templates/ElementarTemplate";
 
 const TemplateViewer = () => {
   const [searchParams] = useSearchParams();
-  const templateId = window.location.pathname.split("/templates/")[1];
+  const { templateId: routeTemplateId } = useParams();
   const apiKey = searchParams.get("api_key");
+  const templateKey = (routeTemplateId || "").split("?")[0].toLowerCase();
 
   if (!apiKey) {
     return (
@@ -23,7 +24,7 @@ const TemplateViewer = () => {
     );
   }
 
-  if (templateId === "elementar") {
+  if (templateKey === "elementar") {
     return <ElementarTemplate apiKey={apiKey} />;
   }
 
@@ -32,7 +33,7 @@ const TemplateViewer = () => {
       <div className="text-center space-y-4 p-8">
         <h1 className="text-2xl font-bold">Template Not Found</h1>
         <p className="text-muted-foreground">
-          The template "{templateId}" does not exist.
+          The template "{routeTemplateId || templateKey}" does not exist.
         </p>
       </div>
     </div>
