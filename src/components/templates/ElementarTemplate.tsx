@@ -42,6 +42,9 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
   const [loading, setLoading] = useState(true);
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [mapboxToken, setMapboxToken] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
+  const [sortBy, setSortBy] = useState<"default" | "price-low" | "price-high" | "name">("default");
 
   // Carrier ID mapping
   const carrierIdMap: { [key: string]: number } = {
@@ -275,9 +278,30 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
     }
   };
 
-  const filteredProducts = selectedCollection
-    ? products.filter((p) => p.category === selectedCollection)
-    : products;
+  // Advanced product filtering and sorting
+  const filteredProducts = products.filter((p) => {
+    // Collection filter
+    if (selectedCollection && p.category !== selectedCollection) return false;
+    
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      return p.title.toLowerCase().includes(query) || 
+             p.description.toLowerCase().includes(query);
+    }
+    
+    return true;
+  });
+
+  // Sorting
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    switch (sortBy) {
+      case "price-low": return a.price - b.price;
+      case "price-high": return b.price - a.price;
+      case "name": return a.title.localeCompare(b.title);
+      default: return 0;
+    }
+  });
 
   if (loading) {
     return (
@@ -315,17 +339,17 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
         </header>
 
         {/* Hero Section */}
-        <section className="py-20 px-4 bg-gradient-primary text-white">
-          <div className="container mx-auto text-center">
-            <h2 className="text-5xl font-bold mb-4 animate-fade-in">Welcome to ELEMENTAR</h2>
-            <p className="text-xl text-white/90 mb-8 animate-fade-in">
+        <section className="relative py-24 px-4 bg-gradient-to-br from-primary/20 via-primary/10 to-background overflow-hidden">
+          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1441986300917-64674bd600d8')] bg-cover bg-center opacity-10" />
+          <div className="container mx-auto text-center relative z-10">
+            <h2 className="text-5xl md:text-6xl font-bold mb-6 animate-fade-in">Welcome to ELEMENTAR</h2>
+            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto animate-fade-in">
               Discover our curated collection of premium products
             </p>
             <Button
               size="lg"
-              variant="secondary"
               onClick={() => document.getElementById("products")?.scrollIntoView({ behavior: "smooth" })}
-              className="animate-scale-in"
+              className="animate-scale-in shadow-lg hover:shadow-xl transition-shadow"
             >
               Shop Now
             </Button>
@@ -359,13 +383,50 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
         )}
 
         {/* Products Grid */}
-        <section id="products" className="py-12 px-4">
+        <section id="products" className="py-12 px-4 bg-muted/30">
           <div className="container mx-auto">
-            <h3 className="text-2xl font-bold mb-6">
-              {selectedCollection || "All Products"}
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {filteredProducts.map((product) => (
+            {/* Search and Sort Controls */}
+            <div className="mb-8 flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  placeholder="Search products..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background"
+                />
+              </div>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background cursor-pointer"
+              >
+                <option value="default">Sort By: Default</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
+                <option value="name">Name: A-Z</option>
+              </select>
+            </div>
+
+            {/* Results Info */}
+            <div className="mb-6 flex items-center justify-between">
+              <h3 className="text-2xl font-bold">
+                {selectedCollection || "All Products"}
+              </h3>
+              <span className="text-sm text-muted-foreground">
+                {sortedProducts.length} product{sortedProducts.length !== 1 ? 's' : ''} found
+              </span>
+            </div>
+
+            {/* Products Grid */}
+            {sortedProducts.length === 0 ? (
+              <div className="text-center py-16">
+                <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No products found matching your search</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {sortedProducts.map((product) => (
                 <Card
                   key={product.id}
                   className="group hover:shadow-elegant transition-all duration-300 cursor-pointer overflow-hidden"
@@ -411,6 +472,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                 </Card>
               ))}
             </div>
+            )}
           </div>
         </section>
       </div>
