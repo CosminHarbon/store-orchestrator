@@ -48,10 +48,11 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
 
   // Carrier ID mapping
   const carrierIdMap: { [key: string]: number } = {
-    "sameday": 3,
-    "fancourier": 1,
+    "sameday": 6,
+    "fan": 3,
     "gls": 4,
-    "dpd": 2
+    "dpd": 2,
+    "cargus": 1
   };
 
   // Checkout form state
@@ -842,10 +843,11 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                         onChange={(e) => setCheckoutForm({ ...checkoutForm, selected_carrier_code: e.target.value })}
                       >
                         <option value="">Choose a carrier...</option>
-                        <option value="sameday">Sameday</option>
-                        <option value="fancourier">FAN Courier</option>
-                        <option value="gls">GLS</option>
+                        <option value="cargus">Cargus</option>
                         <option value="dpd">DPD</option>
+                        <option value="fan">FAN Courier</option>
+                        <option value="gls">GLS</option>
+                        <option value="sameday">Sameday</option>
                       </select>
                     </div>
                     

@@ -897,11 +897,11 @@ Deno.serve(async (req) => {
             )
           }
 
-          // Get carrier_id from carriers table
+          // Get carrier_id from carriers table (case-insensitive)
           const { data: carrier, error: carrierError } = await supabase
             .from('carriers')
-            .select('id, name')
-            .eq('code', carrierCode)
+            .select('id, name, code')
+            .ilike('code', carrierCode)
             .eq('is_active', true)
             .single()
 
