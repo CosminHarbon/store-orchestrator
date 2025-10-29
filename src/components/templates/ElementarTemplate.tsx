@@ -852,6 +852,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                     {checkoutForm.selected_carrier_code && mapboxToken ? (
                       <LockerMapSelector
                         carrierId={carrierIdMap[checkoutForm.selected_carrier_code]}
+                        carrierCode={checkoutForm.selected_carrier_code}
                         carrierName={checkoutForm.selected_carrier_code.toUpperCase()}
                         apiKey={apiKey}
                         mapboxToken={mapboxToken}

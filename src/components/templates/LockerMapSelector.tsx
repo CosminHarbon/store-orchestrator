@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, MapPin, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 interface Locker {
   id: string;
@@ -22,6 +21,7 @@ interface Locker {
 interface LockerMapSelectorProps {
   carrierId: number;
   carrierName: string;
+  carrierCode: string; // Add carrier code
   apiKey: string;
   onLockerSelect: (locker: { id: string; name: string; address: string }) => void;
   mapboxToken: string;
@@ -31,6 +31,7 @@ interface LockerMapSelectorProps {
 const LockerMapSelector: React.FC<LockerMapSelectorProps> = ({
   carrierId,
   carrierName,
+  carrierCode,
   apiKey,
   onLockerSelect,
   mapboxToken,
@@ -81,27 +82,34 @@ const LockerMapSelector: React.FC<LockerMapSelectorProps> = ({
     setApiKeyMissing(false);
     
     try {
-      // Get current session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error('Please log in to search for lockers');
-      }
-
-      // Call the edge function with proper authentication
-      const { data, error } = await supabase.functions.invoke('eawb-delivery', {
-        body: {
-          action: 'fetch_lockers',
-          carrier_id: carrierId,
-          city: searchCity || undefined,
-          county: searchCounty || undefined
-        }
+      // Build query parameters
+      const params = new URLSearchParams({
+        carrier_code: carrierCode,
       });
 
-      if (error) {
-        console.error('Edge function error:', error);
-        throw new Error(error.message || 'Failed to fetch lockers');
+      if (searchCity.trim()) {
+        params.append('locality_name', searchCity.trim());
       }
+
+      if (searchCounty.trim()) {
+        params.append('county_name', searchCounty.trim());
+      }
+
+      // Call the public store-api lockers endpoint
+      const supabaseUrl = 'https://uffmgvdtkoxkjolfrhab.supabase.co';
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/store-api/lockers?${params.toString()}`,
+        {
+          method: 'GET',
+          headers: {
+            'X-API-Key': apiKey,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const data = await response.json();
+      console.log('Store API response:', data);
 
       if (!data.success) {
         if (data.error === 'MISSING_API_KEY') {
@@ -116,14 +124,15 @@ const LockerMapSelector: React.FC<LockerMapSelectorProps> = ({
         throw new Error(data.message || 'Failed to fetch lockers');
       }
 
-      console.log('Lockers received:', data.lockers);
-      setLockers(data.lockers || []);
+      const lockers = data.lockers || [];
+      console.log(`Fetched ${lockers.length} lockers from ${data.carrier?.name}`);
+      setLockers(lockers);
       
-      if (data.lockers?.length > 0) {
-        displayLockersOnMap(data.lockers);
+      if (lockers.length > 0) {
+        displayLockersOnMap(lockers);
         toast({
           title: "Lockers loaded",
-          description: `Found ${data.lockers.length} locker(s)`
+          description: `Found ${lockers.length} locker(s)`
         });
       } else {
         toast({

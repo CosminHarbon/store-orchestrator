@@ -854,14 +854,20 @@ Deno.serve(async (req) => {
 
       case 'lockers': {
         if (req.method === 'GET') {
-          // Get carrier code from query params
+          // Get carrier code and location from query params
           const carrierCode = url.searchParams.get('carrier_code')
-          const city = url.searchParams.get('city')
-          const county = url.searchParams.get('county')
+          const locality = url.searchParams.get('locality_name') || url.searchParams.get('city')
+          const county = url.searchParams.get('county_name') || url.searchParams.get('county')
+
+          console.log('Lockers request:', { carrierCode, locality, county })
 
           if (!carrierCode) {
             return new Response(
-              JSON.stringify({ error: 'carrier_code parameter is required' }),
+              JSON.stringify({ 
+                success: false,
+                error: 'MISSING_CARRIER',
+                message: 'carrier_code parameter is required' 
+              }),
               { 
                 status: 400, 
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -877,9 +883,12 @@ Deno.serve(async (req) => {
             .single()
 
           if (profileError || !profile || !profile.eawb_api_key) {
+            console.warn('eAWB API key not configured for user:', userId)
             return new Response(
               JSON.stringify({ 
-                error: 'eAWB API key not configured. Please configure it in Store Settings.' 
+                success: false,
+                error: 'MISSING_API_KEY',
+                message: 'eAWB API key not configured. Please configure it in Store Settings.' 
               }),
               { 
                 status: 400, 
@@ -897,8 +906,13 @@ Deno.serve(async (req) => {
             .single()
 
           if (carrierError || !carrier) {
+            console.error('Carrier not found:', carrierCode, carrierError)
             return new Response(
-              JSON.stringify({ error: 'Carrier not found or not active' }),
+              JSON.stringify({ 
+                success: false,
+                error: 'CARRIER_NOT_FOUND',
+                message: 'Carrier not found or not active' 
+              }),
               { 
                 status: 404, 
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -911,8 +925,10 @@ Deno.serve(async (req) => {
             const lockerParams = new URLSearchParams({
               carrier_id: carrier.id.toString()
             })
-            if (city) lockerParams.append('city', city)
-            if (county) lockerParams.append('county', county)
+            if (locality) lockerParams.append('locality_name', locality)
+            if (county) lockerParams.append('county_name', county)
+
+            console.log('Fetching from eAWB API:', lockerParams.toString())
 
             const response = await fetch(
               `https://api.europarcel.com/api/public/lockers?${lockerParams.toString()}`,
@@ -927,11 +943,17 @@ Deno.serve(async (req) => {
 
             const responseData = await response.json()
             
+            console.log('eAWB API response status:', response.status)
+            console.log('eAWB API response type:', Array.isArray(responseData) ? 'array' : typeof responseData)
+            console.log('eAWB API response length:', responseData?.data?.length || responseData?.length || 0)
+            
             if (!response.ok) {
               console.error('Europarcel lockers API error:', responseData)
               return new Response(
                 JSON.stringify({ 
-                  error: 'Failed to fetch lockers',
+                  success: false,
+                  error: 'API_ERROR',
+                  message: 'Failed to fetch lockers from eAWB',
                   details: responseData 
                 }),
                 { 
@@ -941,7 +963,37 @@ Deno.serve(async (req) => {
               )
             }
 
-            // Return lockers in a format suitable for frontend
+            // Normalize lockers data
+            const rawLockers = responseData.data || responseData || []
+            console.log('Sample raw locker:', rawLockers[0])
+
+            const normalizedLockers = rawLockers
+              .map((locker: any) => ({
+                id: locker.id || locker.locker_id || locker.code,
+                name: locker.name || locker.locker_name || locker.address,
+                address: locker.address || locker.street || `${locker.city || ''}, ${locker.county || ''}`.trim(),
+                city: locker.city || locker.locality_name || locality,
+                county: locker.county || locker.county_name || county,
+                latitude: locker.latitude || locker.lat,
+                longitude: locker.longitude || locker.lng || locker.lon,
+                carrier_id: carrier.id,
+                available: locker.available !== false
+              }))
+              .filter((locker: any) => {
+                // Filter out lockers without valid coordinates
+                const hasValidCoords = locker.latitude && locker.longitude &&
+                  !isNaN(parseFloat(locker.latitude)) && 
+                  !isNaN(parseFloat(locker.longitude))
+                
+                if (!hasValidCoords) {
+                  console.warn('Filtered out locker without valid coordinates:', locker.id)
+                }
+                return hasValidCoords
+              })
+
+            console.log(`Normalized ${normalizedLockers.length} lockers with valid coordinates`)
+
+            // Return lockers in a standardized format
             return new Response(
               JSON.stringify({ 
                 success: true,
@@ -950,7 +1002,8 @@ Deno.serve(async (req) => {
                   name: carrier.name,
                   code: carrierCode
                 },
-                lockers: responseData.data || []
+                lockers: normalizedLockers,
+                count: normalizedLockers.length
               }),
               { 
                 status: 200, 
@@ -961,8 +1014,10 @@ Deno.serve(async (req) => {
             console.error('Error fetching lockers:', error)
             return new Response(
               JSON.stringify({ 
-                error: 'Failed to fetch lockers',
-                message: error instanceof Error ? error.message : 'Unknown error'
+                success: false,
+                error: 'FETCH_ERROR',
+                message: 'Failed to fetch lockers',
+                details: error instanceof Error ? error.message : 'Unknown error'
               }),
               { 
                 status: 500, 
