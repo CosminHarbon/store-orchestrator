@@ -71,23 +71,47 @@ serve(async (req) => {
 
       if (!lockersResponse.ok) {
         const errorText = await lockersResponse.text();
-        console.error('Lockers fetch failed:', errorText);
+        console.error('Lockers fetch failed:', lockersResponse.status, errorText);
         return new Response(JSON.stringify({
           success: false,
           error: 'FETCH_FAILED',
-          message: 'Failed to fetch lockers',
-          details: errorText
+          message: 'Failed to fetch lockers from carrier API',
+          details: errorText,
+          status: lockersResponse.status
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
 
       const lockersData = await lockersResponse.json();
-      console.log('Lockers fetched:', lockersData.length || 0);
+      console.log('=== RAW API RESPONSE ===');
+      console.log('Response type:', Array.isArray(lockersData) ? 'array' : typeof lockersData);
+      console.log('Response length:', Array.isArray(lockersData) ? lockersData.length : 'N/A');
+      if (lockersData && lockersData.length > 0) {
+        console.log('First locker sample:', JSON.stringify(lockersData[0], null, 2));
+        console.log('Available fields:', Object.keys(lockersData[0]));
+      }
+      console.log('======================');
+
+      // Transform the response to match expected format
+      // Handle various possible field name variations
+      const transformedLockers = (Array.isArray(lockersData) ? lockersData : []).map((locker: any) => ({
+        id: locker.id || locker.locker_id || locker.lockerId || String(locker.code),
+        name: locker.name || locker.locker_name || locker.lockerName || 'Unnamed Locker',
+        address: locker.address || locker.street_address || locker.streetAddress || '',
+        city: locker.city || locker.locality_name || locker.localityName || '',
+        county: locker.county || locker.county_name || locker.countyName || '',
+        latitude: locker.latitude || locker.lat || locker.coords?.lat || locker.coordinates?.latitude || 0,
+        longitude: locker.longitude || locker.lng || locker.lon || locker.coords?.lng || locker.coordinates?.longitude || 0,
+        carrier_id: carrierId,
+        available: locker.available !== false // Default to true unless explicitly false
+      })).filter(l => l.latitude !== 0 && l.longitude !== 0); // Only include lockers with valid coordinates
+
+      console.log(`Transformed ${transformedLockers.length} lockers with valid coordinates`);
 
       return new Response(JSON.stringify({
         success: true,
-        lockers: lockersData || []
+        lockers: transformedLockers
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });

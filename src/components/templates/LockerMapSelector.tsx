@@ -3,8 +3,9 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, MapPin, Loader2 } from 'lucide-react';
+import { Search, MapPin, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Locker {
   id: string;
@@ -24,6 +25,7 @@ interface LockerMapSelectorProps {
   apiKey: string;
   onLockerSelect: (locker: { id: string; name: string; address: string }) => void;
   mapboxToken: string;
+  userId?: string;
 }
 
 const LockerMapSelector: React.FC<LockerMapSelectorProps> = ({
@@ -31,7 +33,8 @@ const LockerMapSelector: React.FC<LockerMapSelectorProps> = ({
   carrierName,
   apiKey,
   onLockerSelect,
-  mapboxToken
+  mapboxToken,
+  userId
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -42,6 +45,7 @@ const LockerMapSelector: React.FC<LockerMapSelectorProps> = ({
   const [loading, setLoading] = useState(false);
   const [searchCity, setSearchCity] = useState('');
   const [searchCounty, setSearchCounty] = useState('');
+  const [apiKeyMissing, setApiKeyMissing] = useState(false);
 
   useEffect(() => {
     if (!mapContainer.current || !mapboxToken) return;
@@ -74,30 +78,45 @@ const LockerMapSelector: React.FC<LockerMapSelectorProps> = ({
     }
 
     setLoading(true);
+    setApiKeyMissing(false);
+    
     try {
-      const response = await fetch(
-        `https://uffmgvdtkoxkjolfrhab.supabase.co/functions/v1/eawb-delivery`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-API-Key': apiKey,
-          },
-          body: JSON.stringify({
-            action: 'fetch_lockers',
-            carrier_id: carrierId,
-            city: searchCity || undefined,
-            county: searchCounty || undefined
-          })
-        }
-      );
+      // Get current session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('Please log in to search for lockers');
+      }
 
-      const data = await response.json();
+      // Call the edge function with proper authentication
+      const { data, error } = await supabase.functions.invoke('eawb-delivery', {
+        body: {
+          action: 'fetch_lockers',
+          carrier_id: carrierId,
+          city: searchCity || undefined,
+          county: searchCounty || undefined
+        }
+      });
+
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to fetch lockers');
+      }
 
       if (!data.success) {
+        if (data.error === 'MISSING_API_KEY') {
+          setApiKeyMissing(true);
+          toast({
+            title: "Configuration Required",
+            description: "Please configure your eAWB API key in Store Settings",
+            variant: "destructive"
+          });
+          return;
+        }
         throw new Error(data.message || 'Failed to fetch lockers');
       }
 
+      console.log('Lockers received:', data.lockers);
       setLockers(data.lockers || []);
       
       if (data.lockers?.length > 0) {
@@ -197,16 +216,31 @@ const LockerMapSelector: React.FC<LockerMapSelectorProps> = ({
 
   return (
     <div className="space-y-4">
+      {apiKeyMissing && (
+        <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <h4 className="font-semibold text-destructive">eAWB API Key Required</h4>
+            <p className="text-sm text-muted-foreground mt-1">
+              To use the locker selector, you need to configure your eAWB API key in Store Settings. 
+              This key allows us to fetch available locker locations from your shipping provider.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="flex gap-2">
         <Input
           placeholder="City (e.g., București, Iași)"
           value={searchCity}
           onChange={(e) => setSearchCity(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && fetchLockers()}
         />
         <Input
           placeholder="County (optional)"
           value={searchCounty}
           onChange={(e) => setSearchCounty(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && fetchLockers()}
         />
         <Button onClick={fetchLockers} disabled={loading}>
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
