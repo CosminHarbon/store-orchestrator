@@ -235,9 +235,29 @@ Deno.serve(async (req) => {
         // Return public configuration (no auth needed, but API key verified above)
         const mapboxToken = Deno.env.get('MAPBOX_PUBLIC_TOKEN') || '';
         
+        // Also fetch template customization
+        const { data: customization } = await supabase
+          .from('template_customization')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('template_id', 'elementar')
+          .single();
+        
         return new Response(
           JSON.stringify({
-            mapbox_token: mapboxToken
+            mapbox_token: mapboxToken,
+            customization: customization || {
+              primary_color: '#000000',
+              background_color: '#FFFFFF',
+              text_color: '#000000',
+              accent_color: '#666666',
+              hero_image_url: null,
+              logo_url: null,
+              hero_title: 'Welcome to Our Store',
+              hero_subtitle: 'Discover amazing products',
+              hero_button_text: 'Shop now',
+              store_name: profile.store_name || 'My Store'
+            }
           }),
           {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }

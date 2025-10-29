@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Layout, ExternalLink, Copy, Check } from "lucide-react";
+import { Layout, ExternalLink, Copy, Check, Palette } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { TemplateCustomizer } from "./TemplateCustomizer";
 
 const TemplatesManagement = () => {
   const [copiedKey, setCopiedKey] = useState(false);
@@ -63,14 +65,23 @@ const TemplatesManagement = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground mb-2">Store Templates</h1>
-        <p className="text-muted-foreground">
-          Pre-built storefront templates that connect to your products, orders, and payment systems.
-        </p>
-      </div>
+    <Tabs defaultValue="browse" className="space-y-6">
+      <TabsList>
+        <TabsTrigger value="browse">Browse Templates</TabsTrigger>
+        <TabsTrigger value="customize" className="flex items-center gap-2">
+          <Palette className="h-4 w-4" />
+          Customize
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="browse" className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Store Templates</h1>
+          <p className="text-muted-foreground">
+            Pre-built storefront templates that connect to your products, orders, and payment systems.
+          </p>
+        </div>
 
       {/* API Key Card */}
       <Card className="border-primary/20 bg-gradient-card">
@@ -176,7 +187,12 @@ const TemplatesManagement = () => {
           </p>
         </CardContent>
       </Card>
-    </div>
+      </TabsContent>
+
+      <TabsContent value="customize">
+        <TemplateCustomizer />
+      </TabsContent>
+    </Tabs>
   );
 };
 

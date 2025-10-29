@@ -612,6 +612,60 @@ export type Database = {
         }
         Relationships: []
       }
+      template_customization: {
+        Row: {
+          accent_color: string | null
+          background_color: string | null
+          created_at: string
+          hero_button_text: string | null
+          hero_image_url: string | null
+          hero_subtitle: string | null
+          hero_title: string | null
+          id: string
+          logo_url: string | null
+          primary_color: string | null
+          store_name: string | null
+          template_id: string
+          text_color: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accent_color?: string | null
+          background_color?: string | null
+          created_at?: string
+          hero_button_text?: string | null
+          hero_image_url?: string | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          store_name?: string | null
+          template_id?: string
+          text_color?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accent_color?: string | null
+          background_color?: string | null
+          created_at?: string
+          hero_button_text?: string | null
+          hero_image_url?: string | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          store_name?: string | null
+          template_id?: string
+          text_color?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
