@@ -284,7 +284,7 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                       variant="outline"
                       onClick={() => generateAndSendInvoice(order.id)}
                       disabled={!!order.invoice_link}
-                      className="w-full px-4"
+                      className="w-full px-6"
                     >
                       <Receipt className="h-4 w-4 mr-2" />
                       {order.invoice_link ? 'Invoice Sent' : 'Invoice'}
@@ -296,7 +296,7 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                         variant="outline"
                         onClick={() => onViewOrder(order)}
                         disabled={creatingAWB?.has(order.id)}
-                        className="w-full px-4"
+                        className="w-full px-6"
                       >
                         <Package className="h-4 w-4 mr-2" />
                         {creatingAWB?.has(order.id) ? 'Creating...' : 'Generate AWB'}
@@ -307,7 +307,7 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                         variant="outline"
                         onClick={() => window.open(order.tracking_url || '#', '_blank')}
                         disabled={!order.tracking_url}
-                        className="w-full px-4"
+                        className="w-full px-6"
                       >
                         <Truck className="h-4 w-4 mr-2" />
                         Track
