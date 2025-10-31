@@ -988,19 +988,26 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                       <option value="sameday">Sameday</option>
                     </select>
 
-                    {checkoutForm.selected_carrier_code && mapboxToken && (
+                  {checkoutForm.selected_carrier_code && mapboxToken && apiKey && (
                       <LockerMapSelector
                         carrierId={carrierIdMap[checkoutForm.selected_carrier_code]}
+                        carrierName={checkoutForm.selected_carrier_code.toUpperCase()}
                         carrierCode={checkoutForm.selected_carrier_code}
+                        apiKey={apiKey}
                         mapboxToken={mapboxToken}
                         onLockerSelect={(locker) => {
+                          // Parse city and county from address if included
+                          const addressParts = locker.address.split(',');
+                          const city = addressParts.length > 1 ? addressParts[addressParts.length - 2]?.trim() : "";
+                          const county = addressParts.length > 2 ? addressParts[addressParts.length - 1]?.trim() : "";
+                          
                           setCheckoutForm({
                             ...checkoutForm,
                             locker_id: locker.id,
                             locker_name: locker.name,
                             locker_address: locker.address,
-                            city: locker.city || "",
-                            county: locker.county || "",
+                            city: city,
+                            county: county,
                           });
                         }}
                       />

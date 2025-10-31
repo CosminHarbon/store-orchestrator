@@ -337,33 +337,35 @@ export function ResponsiveProductTable({
                   </div>
                   
                   {/* Product Info */}
-                  <div className="p-4 space-y-3">
+                  <div className="p-4 flex flex-col h-full">
                     {/* Price and Stock Row */}
-                    <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start justify-between gap-2 mb-3">
                       <div className="flex-1 min-w-0">
                         {renderMobilePriceDisplay(product)}
                       </div>
-                      <div className="text-right">
-                        <div className="text-xs text-muted-foreground mb-1">
+                      <div className="text-right flex-shrink-0">
+                        <div className="text-xs text-muted-foreground whitespace-nowrap">
                           {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
                         </div>
                       </div>
                     </div>
                     
-                    {/* Product Title */}
-                    <div className="space-y-1">
+                    {/* Product Title - Fixed minimum height */}
+                    <div className="space-y-1 min-h-[3rem] mb-3">
                       <h3 className="font-medium text-sm leading-tight line-clamp-2 text-foreground/90">
                         {product.title}
                       </h3>
-                      {product.category && (
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
-                          {product.category}
-                        </p>
-                      )}
+                      <div className="h-[1.25rem]">
+                        {product.category && (
+                          <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+                            {product.category}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     
-                    {/* Action Buttons */}
-                    <div className="flex justify-center gap-2 pt-2 border-t border-border/30">
+                    {/* Action Buttons - Always at bottom */}
+                    <div className="flex justify-center gap-2 pt-2 mt-auto border-t border-border/30">
                       <Button
                         size="sm"
                         variant="ghost"
