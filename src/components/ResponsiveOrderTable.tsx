@@ -264,10 +264,12 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                   <Truck className="h-4 w-4 text-muted-foreground" />
                   {getStatusBadge(order.shipping_status, 'shipping')}
                 </div>
-                <div className="flex flex-col gap-2">
+                
+                <div className="flex flex-col gap-3">
+                  {/* Primary Action */}
                   <Button
-                    size="sm"
-                    variant="outline"
+                    size="default"
+                    variant="default"
                     onClick={() => onViewOrder(order)}
                     className="w-full"
                   >
@@ -275,74 +277,96 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                     View Details
                   </Button>
                   
+                  {/* Secondary Actions */}
                   <div className="grid grid-cols-2 gap-2">
-                    {onEditOrder && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => generateAndSendInvoice(order.id)}
+                      disabled={!!order.invoice_link}
+                      className="w-full"
+                    >
+                      <Receipt className="h-4 w-4 mr-1" />
+                      {order.invoice_link ? 'Invoice Sent' : 'Invoice'}
+                    </Button>
+                    
+                    {!order.awb_number ? (
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => onEditOrder(order)}
+                        onClick={() => onViewOrder(order)}
+                        disabled={creatingAWB?.has(order.id)}
                         className="w-full"
                       >
-                        <Edit className="h-4 w-4 mr-1" />
-                        Edit
+                        <Package className="h-4 w-4 mr-1" />
+                        {creatingAWB?.has(order.id) ? 'Creating...' : 'Generate AWB'}
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => window.open(order.tracking_url || '#', '_blank')}
+                        disabled={!order.tracking_url}
+                        className="w-full"
+                      >
+                        <Truck className="h-4 w-4 mr-1" />
+                        Track
                       </Button>
                     )}
-                     <Button
-                       size="sm"
-                       variant="outline"
-                       onClick={() => generateAndSendInvoice(order.id)}
-                       disabled={!!order.invoice_link}
-                       className="w-full"
-                     >
-                       <Receipt className="h-4 w-4 mr-1" />
-                       Invoice
-                     </Button>
-                     {order.payment_status === 'pending' && (
-                       <Button
-                         size="sm"
-                         variant="outline"
-                         onClick={() => onRefreshPayment(order.id)}
-                         disabled={refreshingPayments.has(order.id)}
-                         className="w-full"
-                       >
-                         {refreshingPayments.has(order.id) ? 'Checking...' : 'Check Payment'}
-                       </Button>
-                     )}
-                     {order.payment_status === 'pending' && (
-                       <Button
-                         size="sm"
-                         variant="outline"
-                         onClick={() => handleManualComplete(order.id)}
-                         className="w-full"
-                       >
-                         Mark as Paid
-                       </Button>
-                     )}
                   </div>
                   
-                   {order.invoice_link && (
-                     <Button
-                       size="sm"
-                       variant="outline"
-                       onClick={() => window.open(order.invoice_link, '_blank')}
-                       className="w-full"
-                     >
-                       <ExternalLink className="h-4 w-4 mr-2" />
-                       View Invoice
-                     </Button>
-                   )}
-                   {order.awb_number && onCancelAWB && order.shipping_status !== 'delivered' && order.shipping_status !== 'cancelled' && (
-                     <Button
-                       size="sm"
-                       variant="outline"
-                       onClick={() => onCancelAWB(order.id)}
-                       disabled={creatingAWB?.has(order.id)}
-                       className="w-full text-destructive hover:text-destructive"
-                     >
-                       <X className="h-4 w-4 mr-2" />
-                       Cancel AWB
-                     </Button>
-                   )}
+                  {/* Payment Actions */}
+                  {order.payment_status === 'pending' && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => handleManualComplete(order.id)}
+                      className="w-full"
+                    >
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Mark as Paid
+                    </Button>
+                  )}
+                  
+                  {/* Additional Actions Row */}
+                  {(order.invoice_link || (order.awb_number && onCancelAWB && order.shipping_status !== 'delivered' && order.shipping_status !== 'cancelled') || (order.payment_status === 'pending' && onRefreshPayment)) && (
+                    <div className="flex gap-2">
+                      {order.invoice_link && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => window.open(order.invoice_link, '_blank')}
+                          className="flex-1"
+                        >
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          View Invoice
+                        </Button>
+                      )}
+                      {order.payment_status === 'pending' && onRefreshPayment && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => onRefreshPayment(order.id)}
+                          disabled={refreshingPayments.has(order.id)}
+                          className="flex-1"
+                        >
+                          {refreshingPayments.has(order.id) ? 'Checking...' : 'Check Payment'}
+                        </Button>
+                      )}
+                      {order.awb_number && onCancelAWB && order.shipping_status !== 'delivered' && order.shipping_status !== 'cancelled' && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => onCancelAWB(order.id)}
+                          disabled={creatingAWB?.has(order.id)}
+                          className="flex-1 text-destructive hover:text-destructive"
+                        >
+                          <X className="h-4 w-4 mr-1" />
+                          Cancel AWB
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
