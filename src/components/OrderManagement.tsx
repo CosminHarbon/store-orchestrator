@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Eye, Package, Truck, X, Receipt, Send, ExternalLink, Edit, Search } from 'lucide-react';
+import { Eye, Package, Truck, X, Receipt, Send, ExternalLink, Edit, Search, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -567,6 +567,31 @@ const OrderManagement = () => {
                     </Button>
                   )}
                 </div>
+                
+                {/* Payment Actions */}
+                {selectedOrder.payment_status === 'pending' && (
+                  <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                    <Button
+                      onClick={() => handleRefreshPayment(selectedOrder.id)}
+                      variant="secondary"
+                      size="sm"
+                      className="flex-1"
+                      disabled={refreshingPayments.has(selectedOrder.id)}
+                    >
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      {refreshingPayments.has(selectedOrder.id) ? 'Checking...' : 'Check Payment Status'}
+                    </Button>
+                    <Button
+                      onClick={() => handleManualComplete(selectedOrder.id)}
+                      variant="secondary"
+                      size="sm"
+                      className="flex-1"
+                    >
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Mark as Paid
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Shipping Information */}

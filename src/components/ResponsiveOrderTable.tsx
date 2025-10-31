@@ -315,21 +315,8 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                     )}
                   </div>
                   
-                  {/* Payment Actions */}
-                  {order.payment_status === 'pending' && (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => handleManualComplete(order.id)}
-                      className="w-full"
-                    >
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Mark as Paid
-                    </Button>
-                  )}
-                  
                   {/* Additional Actions Row */}
-                  {(order.invoice_link || (order.awb_number && onCancelAWB && order.shipping_status !== 'delivered' && order.shipping_status !== 'cancelled') || (order.payment_status === 'pending' && onRefreshPayment)) && (
+                  {(order.invoice_link || (order.awb_number && onCancelAWB && order.shipping_status !== 'delivered' && order.shipping_status !== 'cancelled')) && (
                     <div className="flex gap-2">
                       {order.invoice_link && (
                         <Button
@@ -340,17 +327,6 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                         >
                           <ExternalLink className="h-4 w-4 mr-1" />
                           View Invoice
-                        </Button>
-                      )}
-                      {order.payment_status === 'pending' && onRefreshPayment && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => onRefreshPayment(order.id)}
-                          disabled={refreshingPayments.has(order.id)}
-                          className="flex-1"
-                        >
-                          {refreshingPayments.has(order.id) ? 'Checking...' : 'Check Payment'}
                         </Button>
                       )}
                       {order.awb_number && onCancelAWB && order.shipping_status !== 'delivered' && order.shipping_status !== 'cancelled' && (
