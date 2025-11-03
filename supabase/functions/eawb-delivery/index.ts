@@ -425,6 +425,11 @@ serve(async (req) => {
         street_number: order.customer_street_number
       } : extractStreetInfo(order.customer_address, order);
 
+      // Extract locker street info from locker_address if available
+      const lockerStreet = order.locker_address
+        ? extractStreetInfo(order.locker_address)
+        : { street_name: 'Locker', street_number: '1' };
+
       // Determine if this is locker delivery
       const isLockerDelivery = order.delivery_type === 'locker' && order.locker_id;
       const isLockerService = Number(selected_service) === 2 || Number(selected_service) === 4; // HOME_TO_LOCKER or LOCKER_TO_LOCKER
@@ -440,12 +445,14 @@ serve(async (req) => {
       // Build address_to based on delivery type
       let addressTo: any;
       if (isLockerDelivery && isLockerService) {
-        // For locker delivery, use fixed_location_id with locality info
+        // For locker delivery, use fixed_location_id with locality info and street placeholders
         addressTo = {
           country_code: 'RO',
           fixed_location_id: Number(order.locker_id),
           locality_name: recipientParsed.city,
           county_name: recipientParsed.county,
+          street_name: lockerStreet.street_name,
+          street_number: lockerStreet.street_number,
           contact: order.customer_name,
           phone: order.customer_phone || '0700000000',
           email: order.customer_email
