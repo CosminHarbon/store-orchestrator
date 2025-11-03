@@ -953,7 +953,7 @@ Deno.serve(async (req) => {
             console.log(`Fetching lockers from Europarcel for country: ${countryCode}, carrier: ${carrier.code}, params:`, lockerParams.toString())
 
             const response = await fetch(
-              `https://api.europarcel.com/locations/fixedlocations/${countryCode}?${lockerParams.toString()}`,
+              `https://api.europarcel.com/api/v1/locations/fixedlocations/${countryCode}?${lockerParams.toString()}`,
               {
                 method: 'GET',
                 headers: {
@@ -985,21 +985,21 @@ Deno.serve(async (req) => {
               )
             }
 
-            // Normalize lockers data
-            const rawLockers = responseData.data || responseData || []
+            // Normalize lockers data - API returns direct array
+            const rawLockers = Array.isArray(responseData) ? responseData : []
             console.log('Sample raw locker:', rawLockers[0])
 
             const normalizedLockers = rawLockers
               .map((locker: any) => ({
                 id: locker.id || locker.locker_id || locker.code,
                 name: locker.name || locker.locker_name || locker.address,
-                address: locker.address || locker.street || `${locker.city || ''}, ${locker.county || ''}`.trim(),
-                city: locker.city || locker.locality_name || locality,
-                county: locker.county || locker.county_name || county,
-                latitude: locker.latitude || locker.lat,
-                longitude: locker.longitude || locker.lng || locker.lon,
+                address: locker.address || locker.street || `${locker.locality_name || ''}, ${locker.county_name || ''}`.trim(),
+                city: locker.locality_name || locker.city || locality,
+                county: locker.county_name || locker.county || county,
+                latitude: locker.coordinates?.lat || locker.lat || locker.latitude,
+                longitude: locker.coordinates?.long || locker.lng || locker.longitude,
                 carrier_id: carrier.id,
-                available: locker.available !== false
+                available: locker.is_active !== false
               }))
               .filter((locker: any) => {
                 // Filter out lockers without valid coordinates
