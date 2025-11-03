@@ -446,6 +446,7 @@ Deno.serve(async (req) => {
             customer_phone, 
             total,
             items,
+            payment_method,
             // Delivery type fields (optional)
             delivery_type,
             selected_carrier_code,
@@ -580,6 +581,55 @@ Deno.serve(async (req) => {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
               }
             )
+          }
+
+          // If payment method is card, initiate Netopia payment
+          if (payment_method === 'card') {
+            try {
+              const { data: netopiaResponse, error: netopiaError } = await supabase.functions.invoke('netopia-payment', {
+                body: {
+                  action: 'create_payment',
+                  user_id: userId,
+                  order_id: order.id,
+                  amount: parseFloat(total),
+                  currency: 'RON',
+                  customer_email,
+                  customer_name
+                }
+              })
+
+              if (netopiaError) {
+                console.error('Netopia payment error:', netopiaError)
+                // Return order anyway but without payment URL
+                return new Response(
+                  JSON.stringify({ 
+                    order, 
+                    items: orderItems,
+                    error: 'Failed to initiate payment. Please contact support.'
+                  }),
+                  { 
+                    status: 201, 
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+                  }
+                )
+              }
+
+              if (netopiaResponse?.payment_url) {
+                return new Response(
+                  JSON.stringify({ 
+                    order, 
+                    items: orderItems,
+                    payment_url: netopiaResponse.payment_url
+                  }),
+                  { 
+                    status: 201, 
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+                  }
+                )
+              }
+            } catch (error) {
+              console.error('Error calling Netopia:', error)
+            }
           }
 
           return new Response(
