@@ -69,6 +69,13 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
     hero_button_text: 'Shop now',
     store_name: 'My Store'
   });
+  const [feeSettings, setFeeSettings] = useState({
+    cash_payment_enabled: true,
+    cash_payment_fee: 0,
+    home_delivery_fee: 0,
+    locker_delivery_fee: 0
+  });
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash'>('card');
 
   const carrierIdMap: { [key: string]: number } = {
     "sameday": 6,
@@ -110,6 +117,14 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
         }
         if (data.customization) {
           setCustomization(data.customization);
+        }
+        if (data.cash_payment_enabled !== undefined) {
+          setFeeSettings({
+            cash_payment_enabled: data.cash_payment_enabled,
+            cash_payment_fee: data.cash_payment_fee || 0,
+            home_delivery_fee: data.home_delivery_fee || 0,
+            locker_delivery_fee: data.locker_delivery_fee || 0
+          });
         }
       } catch (error) {
         console.error('Failed to fetch config:', error);
@@ -225,6 +240,16 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
     0
   );
 
+  const deliveryFee = checkoutForm.delivery_type === 'home' 
+    ? feeSettings.home_delivery_fee 
+    : feeSettings.locker_delivery_fee;
+  
+  const paymentFee = paymentMethod === 'cash' && feeSettings.cash_payment_enabled 
+    ? feeSettings.cash_payment_fee 
+    : 0;
+  
+  const orderTotal = cartTotal + deliveryFee + paymentFee;
+
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleCheckout = async () => {
@@ -269,7 +294,8 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
         locker_id: checkoutForm.locker_id || null,
         locker_name: checkoutForm.locker_name || null,
         locker_address: checkoutForm.locker_address || null,
-        total: cartTotal,
+        total: orderTotal,
+        payment_method: paymentMethod,
         items: cart.map((item) => ({
           product_id: item.product.id,
           title: item.product.title,
@@ -749,14 +775,17 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                 ))}
               </div>
 
-              <div className="border-t pt-8" style={{ borderColor: `${customization.text_color}10` }}>
-                <div className="flex justify-between mb-8">
-                  <span className="text-xl font-light tracking-wide" style={{ color: customization.text_color }}>
-                    Total
-                  </span>
-                  <span className="text-xl font-light" style={{ color: customization.text_color }}>
-                    {formatPrice(cartTotal)}
-                  </span>
+                <div className="border-t pt-4 mb-6" style={{ borderColor: `${customization.text_color}10` }}>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span style={{ color: customization.accent_color }}>Delivery ({checkoutForm.delivery_type})</span>
+                    <span style={{ color: customization.text_color }}>{formatPrice(deliveryFee)}</span>
+                  </div>
+                  {paymentFee > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span style={{ color: customization.accent_color }}>Payment Fee</span>
+                      <span style={{ color: customization.text_color }}>{formatPrice(paymentFee)}</span>
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={() => setView("checkout")}
@@ -769,7 +798,6 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                 >
                   Proceed to Checkout
                 </button>
-              </div>
             </>
           )}
         </div>
@@ -1049,6 +1077,36 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                 <h2 className="text-xl font-semibold mb-6" style={{ color: customization.text_color }}>
                   Order Summary
                 </h2>
+                
+                {/* Payment Method */}
+                <div className="mb-6">
+                  <h3 className="text-sm font-medium mb-3" style={{ color: customization.text_color }}>Payment Method</h3>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setPaymentMethod('card')}
+                      className={`flex-1 px-4 py-2 border text-sm ${paymentMethod === 'card' ? '' : 'opacity-50'}`}
+                      style={{
+                        borderColor: paymentMethod === 'card' ? customization.primary_color : `${customization.text_color}30`,
+                        backgroundColor: paymentMethod === 'card' ? `${customization.primary_color}10` : 'transparent'
+                      }}
+                    >
+                      Card
+                    </button>
+                    {feeSettings.cash_payment_enabled && (
+                      <button
+                        onClick={() => setPaymentMethod('cash')}
+                        className={`flex-1 px-4 py-2 border text-sm ${paymentMethod === 'cash' ? '' : 'opacity-50'}`}
+                        style={{
+                          borderColor: paymentMethod === 'cash' ? customization.primary_color : `${customization.text_color}30`,
+                          backgroundColor: paymentMethod === 'cash' ? `${customization.primary_color}10` : 'transparent'
+                        }}
+                      >
+                        Cash {feeSettings.cash_payment_fee > 0 && `(+${formatPrice(feeSettings.cash_payment_fee)})`}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 <div className="space-y-4 mb-6">
                   {cart.map((item) => (
                     <div key={item.product.id} className="flex justify-between text-sm">
@@ -1061,11 +1119,25 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                     </div>
                   ))}
                 </div>
-                <div className="border-t pt-4 mb-6" style={{ borderColor: `${customization.text_color}20` }}>
-                  <div className="flex justify-between text-xl font-bold">
+                <div className="border-t pt-4 space-y-2" style={{ borderColor: `${customization.text_color}20` }}>
+                  <div className="flex justify-between text-sm">
+                    <span style={{ color: customization.accent_color }}>Subtotal</span>
+                    <span style={{ color: customization.text_color }}>{formatPrice(cartTotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span style={{ color: customization.accent_color }}>Delivery Fee</span>
+                    <span style={{ color: customization.text_color }}>{formatPrice(deliveryFee)}</span>
+                  </div>
+                  {paymentFee > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span style={{ color: customization.accent_color }}>Payment Fee</span>
+                      <span style={{ color: customization.text_color }}>{formatPrice(paymentFee)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-xl font-bold pt-2 border-t" style={{ borderColor: `${customization.text_color}20` }}>
                     <span style={{ color: customization.text_color }}>Total</span>
                     <span style={{ color: customization.text_color }}>
-                      {formatPrice(cartTotal)}
+                      {formatPrice(orderTotal)}
                     </span>
                   </div>
                 </div>

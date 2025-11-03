@@ -485,6 +485,8 @@ export type Database = {
       }
       profiles: {
         Row: {
+          cash_payment_enabled: boolean | null
+          cash_payment_fee: number | null
           created_at: string
           eawb_address: string | null
           eawb_api_key: string | null
@@ -499,8 +501,10 @@ export type Database = {
           eawb_phone: string | null
           eawb_street: string | null
           eawb_street_number: string | null
+          home_delivery_fee: number | null
           id: string
           invoicing_provider: string | null
+          locker_delivery_fee: number | null
           netpopia_api_key: string | null
           netpopia_email: string | null
           netpopia_name: string | null
@@ -527,6 +531,8 @@ export type Database = {
           woot_name: string | null
         }
         Insert: {
+          cash_payment_enabled?: boolean | null
+          cash_payment_fee?: number | null
           created_at?: string
           eawb_address?: string | null
           eawb_api_key?: string | null
@@ -541,8 +547,10 @@ export type Database = {
           eawb_phone?: string | null
           eawb_street?: string | null
           eawb_street_number?: string | null
+          home_delivery_fee?: number | null
           id?: string
           invoicing_provider?: string | null
+          locker_delivery_fee?: number | null
           netpopia_api_key?: string | null
           netpopia_email?: string | null
           netpopia_name?: string | null
@@ -569,6 +577,8 @@ export type Database = {
           woot_name?: string | null
         }
         Update: {
+          cash_payment_enabled?: boolean | null
+          cash_payment_fee?: number | null
           created_at?: string
           eawb_address?: string | null
           eawb_api_key?: string | null
@@ -583,8 +593,10 @@ export type Database = {
           eawb_phone?: string | null
           eawb_street?: string | null
           eawb_street_number?: string | null
+          home_delivery_fee?: number | null
           id?: string
           invoicing_provider?: string | null
+          locker_delivery_fee?: number | null
           netpopia_api_key?: string | null
           netpopia_email?: string | null
           netpopia_name?: string | null

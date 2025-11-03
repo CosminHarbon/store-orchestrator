@@ -47,6 +47,10 @@ interface Profile {
   eawb_billing_address_id?: number;
   eawb_default_carrier_id?: number;
   eawb_default_service_id?: number;
+  cash_payment_enabled?: boolean;
+  cash_payment_fee?: number;
+  home_delivery_fee?: number;
+  locker_delivery_fee?: number;
 }
 
 const StoreSettings = () => {
@@ -68,6 +72,12 @@ const StoreSettings = () => {
     netpopia: { api_key: '', name: '', email: '', signature: '', sandbox: true },
     woot: { api_key: '', name: '', email: '' },
     eawb: { api_key: '', name: '', email: '', phone: '', address: '', billing_address_id: '', default_carrier_id: '', default_service_id: '' }
+  });
+  const [feeSettings, setFeeSettings] = useState({
+    cash_payment_enabled: true,
+    cash_payment_fee: 0,
+    home_delivery_fee: 0,
+    locker_delivery_fee: 0
   });
   const [testOrderData, setTestOrderData] = useState({
     name: 'John Doe',
@@ -155,6 +165,12 @@ const StoreSettings = () => {
         shipping: profile.shipping_provider || 'sameday',
         payment: profile.payment_provider || 'netpopia'
       });
+      setFeeSettings({
+        cash_payment_enabled: profile.cash_payment_enabled ?? true,
+        cash_payment_fee: profile.cash_payment_fee || 0,
+        home_delivery_fee: profile.home_delivery_fee || 0,
+        locker_delivery_fee: profile.locker_delivery_fee || 0
+      });
     }
   }, [profile]);
 
@@ -216,7 +232,11 @@ const StoreSettings = () => {
       eawb_address: providerConfigs.eawb.address,
       eawb_billing_address_id: providerConfigs.eawb.billing_address_id ? parseInt(providerConfigs.eawb.billing_address_id) : null,
       eawb_default_carrier_id: providerConfigs.eawb.default_carrier_id ? parseInt(providerConfigs.eawb.default_carrier_id) : null,
-      eawb_default_service_id: providerConfigs.eawb.default_service_id ? parseInt(providerConfigs.eawb.default_service_id) : null
+      eawb_default_service_id: providerConfigs.eawb.default_service_id ? parseInt(providerConfigs.eawb.default_service_id) : null,
+      cash_payment_enabled: feeSettings.cash_payment_enabled,
+      cash_payment_fee: feeSettings.cash_payment_fee,
+      home_delivery_fee: feeSettings.home_delivery_fee,
+      locker_delivery_fee: feeSettings.locker_delivery_fee
     });
   };
 
@@ -1285,8 +1305,79 @@ class StoreAPI {
                            </div>
                          </div>
                        </div>
-                     )}
+                      )}
                   </div>
+
+                  {/* Payment Options */}
+                  <Card className="mt-4">
+                    <CardHeader>
+                      <CardTitle className="text-base">Payment & Delivery Fees</CardTitle>
+                      <CardDescription>Configure additional fees for cash payments and delivery options</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label>Enable Cash Payments</Label>
+                            <p className="text-xs text-muted-foreground">Allow customers to pay with cash on delivery</p>
+                          </div>
+                          <input
+                            type="checkbox"
+                            checked={feeSettings.cash_payment_enabled}
+                            onChange={(e) => setFeeSettings({ ...feeSettings, cash_payment_enabled: e.target.checked })}
+                            className="h-4 w-4"
+                          />
+                        </div>
+                        {feeSettings.cash_payment_enabled && (
+                          <div className="space-y-2">
+                            <Label htmlFor="cash-fee">Cash Payment Fee (RON)</Label>
+                            <Input
+                              id="cash-fee"
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={feeSettings.cash_payment_fee}
+                              onChange={(e) => setFeeSettings({ ...feeSettings, cash_payment_fee: parseFloat(e.target.value) || 0 })}
+                              placeholder="0.00"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Additional fee for cash on delivery (0 for free)
+                            </p>
+                          </div>
+                        )}
+                        <div className="space-y-2">
+                          <Label htmlFor="home-delivery-fee">Home Delivery Fee (RON)</Label>
+                          <Input
+                            id="home-delivery-fee"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={feeSettings.home_delivery_fee}
+                            onChange={(e) => setFeeSettings({ ...feeSettings, home_delivery_fee: parseFloat(e.target.value) || 0 })}
+                            placeholder="0.00"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Fee for home delivery
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="locker-delivery-fee">Locker Delivery Fee (RON)</Label>
+                          <Input
+                            id="locker-delivery-fee"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={feeSettings.locker_delivery_fee}
+                            onChange={(e) => setFeeSettings({ ...feeSettings, locker_delivery_fee: parseFloat(e.target.value) || 0 })}
+                            placeholder="0.00"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Fee for locker delivery
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
 

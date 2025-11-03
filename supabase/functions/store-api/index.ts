@@ -206,7 +206,11 @@ Deno.serve(async (req) => {
         store_name,
         netpopia_api_key,
         netpopia_signature,
-        netpopia_sandbox
+        netpopia_sandbox,
+        cash_payment_enabled,
+        cash_payment_fee,
+        home_delivery_fee,
+        locker_delivery_fee
       `)
       .eq('store_api_key', apiKey)
       .single()
@@ -246,6 +250,10 @@ Deno.serve(async (req) => {
         return new Response(
           JSON.stringify({
             mapbox_token: mapboxToken,
+            cash_payment_enabled: profile.cash_payment_enabled ?? true,
+            cash_payment_fee: profile.cash_payment_fee || 0,
+            home_delivery_fee: profile.home_delivery_fee || 0,
+            locker_delivery_fee: profile.locker_delivery_fee || 0,
             customization: customization || {
               primary_color: '#000000',
               background_color: '#FFFFFF',
