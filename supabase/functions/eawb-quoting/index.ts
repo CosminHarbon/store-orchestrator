@@ -401,12 +401,16 @@ serve(async (req) => {
     const validServiceCodes = getValidServiceCodes(effectiveDeliveryType);
     console.log(`Filtering for delivery type: ${effectiveDeliveryType}, valid service codes:`, validServiceCodes);
 
+    // Use selected carrier code from request or order
+    const effectiveCarrierCode = selected_carrier_code || order.selected_carrier_code;
+    console.log(`Effective carrier code for locker: ${effectiveCarrierCode}`);
+
     // Create quote requests for each carrier/service combination
     for (const carrier of dbCarriers) {
       // For locker delivery, only quote from the selected carrier
-      if (effectiveDeliveryType === 'locker' && selected_carrier_code) {
-        if (carrier.code !== selected_carrier_code) {
-          console.log(`Skipping carrier ${carrier.code} - not the selected carrier for locker delivery`);
+      if (effectiveDeliveryType === 'locker' && effectiveCarrierCode) {
+        if (carrier.code.toLowerCase() !== effectiveCarrierCode.toLowerCase()) {
+          console.log(`Skipping carrier ${carrier.code} - not the selected carrier (${effectiveCarrierCode}) for locker delivery`);
           continue;
         }
       }
