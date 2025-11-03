@@ -341,56 +341,57 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
     );
   }
 
-  // Dawn-inspired header
+  // Line-inspired header
   const Header = () => (
     <header 
-      className="sticky top-0 z-50 border-b"
+      className="sticky top-0 z-50"
       style={{ 
         backgroundColor: customization.background_color,
-        borderColor: `${customization.text_color}20`
+        borderBottom: `1px solid ${customization.text_color}10`
       }}
     >
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          <button
+        <div className="flex items-center justify-between h-14">
+          {/* Menu Icon */}
+          <button className="p-2">
+            <Menu className="h-5 w-5" style={{ color: customization.text_color }} />
+          </button>
+
+          {/* Logo - Centered */}
+          <button 
             onClick={() => setView("home")}
-            className="text-2xl font-bold tracking-tight"
-            style={{ color: customization.text_color }}
+            className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2"
           >
             {customization.logo_url ? (
               <img 
                 src={customization.logo_url} 
                 alt={customization.store_name}
-                className="h-8 object-contain"
+                className="h-6 w-auto"
               />
             ) : (
-              customization.store_name
+              <span className="text-lg font-light tracking-wider" style={{ color: customization.text_color }}>
+                {customization.store_name}
+              </span>
             )}
           </button>
 
-          <nav className="hidden md:flex items-center gap-8">
-            <button
-              onClick={() => setView("home")}
-              className="text-sm font-medium transition-colors hover:opacity-70"
-              style={{ color: customization.text_color }}
-            >
-              Shop
-            </button>
-          </nav>
-
+          {/* Right Side Icons */}
           <div className="flex items-center gap-4">
+            <button className="p-2 hidden md:block">
+              <Search className="h-5 w-5" style={{ color: customization.text_color }} />
+            </button>
+            
             <button
               onClick={() => setView("cart")}
-              className="relative p-2 hover:opacity-70 transition-opacity"
-              style={{ color: customization.text_color }}
+              className="relative p-2"
             >
-              <ShoppingCart className="h-5 w-5" />
+              <ShoppingCart className="h-5 w-5" style={{ color: customization.text_color }} />
               {cartItemCount > 0 && (
-                <span
-                  className="absolute -top-1 -right-1 h-5 w-5 rounded-full text-xs flex items-center justify-center font-medium"
-                  style={{
-                    backgroundColor: customization.primary_color,
-                    color: customization.background_color,
+                <span 
+                  className="absolute -top-1 -right-1 h-4 w-4 rounded-full flex items-center justify-center text-xs font-light"
+                  style={{ 
+                    backgroundColor: customization.text_color,
+                    color: customization.background_color 
                   }}
                 >
                   {cartItemCount}
@@ -408,56 +409,71 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
       <div style={{ backgroundColor: customization.background_color, color: customization.text_color }}>
         <Header />
 
-        {/* Hero Section - Dawn-inspired */}
-        <section 
-          className="relative h-[60vh] flex items-center justify-center"
-          style={{
-            backgroundImage: customization.hero_image_url 
-              ? `url(${customization.hero_image_url})`
-              : `linear-gradient(135deg, ${customization.accent_color}20, ${customization.primary_color}10)`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/40" />
-          <div className="relative z-10 text-center px-4 max-w-3xl mx-auto">
-            <h1 
-              className="text-5xl md:text-7xl font-bold mb-6 tracking-tight"
-              style={{ color: customization.hero_image_url ? '#FFFFFF' : customization.text_color }}
-            >
-              {customization.hero_title}
-            </h1>
-            <p 
-              className="text-lg md:text-xl mb-8 font-light"
-              style={{ color: customization.hero_image_url ? '#FFFFFF' : customization.accent_color }}
-            >
-              {customization.hero_subtitle}
-            </p>
-            <button
-              onClick={() => {
-                const productsSection = document.getElementById('products-section');
-                productsSection?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="px-8 py-3 text-sm font-medium tracking-wide transition-all hover:scale-105"
-              style={{
-                backgroundColor: customization.hero_image_url ? '#FFFFFF' : customization.primary_color,
-                color: customization.hero_image_url ? customization.primary_color : customization.background_color,
-                border: `1px solid ${customization.hero_image_url ? 'transparent' : customization.primary_color}`
-              }}
-            >
-              {customization.hero_button_text}
-            </button>
+        {/* Hero Section - Line-inspired Split Design */}
+        <section className="grid md:grid-cols-2 h-[70vh]">
+          {/* Left Hero Panel */}
+          <div 
+            className="relative flex items-center justify-center px-8 md:px-12"
+            style={{
+              backgroundImage: customization.hero_image_url 
+                ? `url(${customization.hero_image_url})`
+                : '#F5F5F5',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          >
+            <div className="relative z-10 text-center max-w-xl">
+              <h1 
+                className="text-3xl md:text-5xl font-light mb-6 leading-tight"
+                style={{ color: customization.hero_image_url ? '#FFFFFF' : customization.text_color }}
+              >
+                {customization.hero_title}
+              </h1>
+              <button
+                onClick={() => {
+                  const productsSection = document.getElementById('products-section');
+                  productsSection?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="px-10 py-3 text-sm font-normal tracking-wider uppercase transition-all hover:opacity-70"
+                style={{
+                  backgroundColor: customization.hero_image_url ? 'rgba(255,255,255,0.9)' : customization.background_color,
+                  color: customization.text_color,
+                  border: `1px solid ${customization.text_color}20`,
+                }}
+              >
+                {customization.hero_button_text}
+              </button>
+            </div>
+          </div>
+
+          {/* Right Hero Panel */}
+          <div 
+            className="relative flex items-center justify-center px-8 md:px-12"
+            style={{
+              backgroundColor: '#E8F4F8',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          >
+            <div className="text-center max-w-xl">
+              <h2 
+                className="text-2xl md:text-4xl font-light leading-relaxed"
+                style={{ color: customization.text_color }}
+              >
+                {customization.hero_subtitle}
+              </h2>
+            </div>
           </div>
         </section>
 
         {/* Collections Section */}
         {collections.length > 0 && (
-          <section className="py-16 border-b" style={{ borderColor: `${customization.text_color}10` }}>
+          <section className="py-20">
             <div className="container mx-auto px-4">
-              <h2 className="text-3xl font-bold text-center mb-12" style={{ color: customization.text_color }}>
+              <h2 className="text-2xl font-light text-center mb-16 tracking-wide" style={{ color: customization.text_color }}>
                 Shop by Collection
               </h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 {collections.map((collection) => (
                   <button
                     key={collection.id}
@@ -471,10 +487,18 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                     <img
                       src={collection.image_url || "/placeholder.svg"}
                       alt={collection.name}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      className="w-full h-full object-cover transition-opacity duration-300 group-hover:opacity-90"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end justify-center p-4">
-                      <h3 className="text-white font-medium text-lg">{collection.name}</h3>
+                    <div className="absolute inset-0 flex items-end justify-center p-6">
+                      <h3 
+                        className="font-light text-lg tracking-wide"
+                        style={{ 
+                          color: '#FFFFFF',
+                          textShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                        }}
+                      >
+                        {collection.name}
+                      </h3>
                     </div>
                   </button>
                 ))}
@@ -484,21 +508,21 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
         )}
 
         {/* Products Section */}
-        <section id="products-section" className="py-16">
+        <section id="products-section" className="py-20 bg-white">
           <div className="container mx-auto px-4">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-3xl font-bold" style={{ color: customization.text_color }}>
-                All Products
+            <div className="text-center mb-16">
+              <h2 className="text-2xl font-light tracking-wide mb-4" style={{ color: customization.text_color }}>
+                Enjoy our featured Product
               </h2>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center justify-center gap-4 mt-6">
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
-                  className="px-4 py-2 border rounded-none text-sm"
+                  className="px-6 py-2 border text-sm font-light"
                   style={{
                     backgroundColor: customization.background_color,
                     color: customization.text_color,
-                    borderColor: `${customization.text_color}30`
+                    borderColor: `${customization.text_color}20`
                   }}
                 >
                   <option value="default">Featured</option>
@@ -510,10 +534,10 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
             </div>
 
             {selectedCollection && (
-              <div className="mb-6">
+              <div className="mb-8 text-center">
                 <button
                   onClick={() => setSelectedCollection(null)}
-                  className="text-sm underline"
+                  className="text-sm underline font-light"
                   style={{ color: customization.accent_color }}
                 >
                   Clear filter
@@ -521,7 +545,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
               </div>
             )}
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 md:gap-12">
               {sortedProducts.map((product) => (
                 <div
                   key={product.id}
@@ -531,26 +555,26 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                     setView("product");
                   }}
                 >
-                  <div className="aspect-square overflow-hidden mb-3">
+                  <div className="aspect-square overflow-hidden mb-4 bg-gray-50">
                     <img
                       src={product.image || "/placeholder.svg"}
                       alt={product.title}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      className="w-full h-full object-cover transition-opacity duration-300 group-hover:opacity-80"
                     />
                   </div>
-                  <h3 className="font-medium mb-1 text-sm" style={{ color: customization.text_color }}>
+                  <h3 className="font-light mb-2 text-center" style={{ color: customization.text_color }}>
                     {product.title}
                   </h3>
-                  <p className="text-sm" style={{ color: customization.accent_color }}>
+                  <p className="text-sm text-center font-light" style={{ color: customization.accent_color }}>
                     {formatPrice(product.price)}
                   </p>
                   {product.stock < 5 && product.stock > 0 && (
-                    <p className="text-xs mt-1" style={{ color: '#DC2626' }}>
+                    <p className="text-xs mt-2 text-center" style={{ color: '#DC2626' }}>
                       Only {product.stock} left
                     </p>
                   )}
                   {product.stock === 0 && (
-                    <p className="text-xs mt-1" style={{ color: '#DC2626' }}>
+                    <p className="text-xs mt-2 text-center" style={{ color: '#DC2626' }}>
                       Out of stock
                     </p>
                   )}
@@ -561,9 +585,9 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
         </section>
 
         {/* Footer */}
-        <footer className="py-8 border-t" style={{ borderColor: `${customization.text_color}10` }}>
+        <footer className="py-12 border-t" style={{ borderColor: `${customization.text_color}10`, backgroundColor: '#FAFAFA' }}>
           <div className="container mx-auto px-4 text-center">
-            <p className="text-sm" style={{ color: customization.accent_color }}>
+            <p className="text-sm font-light tracking-wide" style={{ color: customization.accent_color }}>
               © {new Date().getFullYear()} {customization.store_name}. All rights reserved.
             </p>
           </div>
@@ -597,26 +621,26 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
             </div>
 
             <div>
-              <h1 className="text-4xl font-bold mb-4" style={{ color: customization.text_color }}>
+              <h1 className="text-3xl md:text-4xl font-light mb-4 tracking-wide" style={{ color: customization.text_color }}>
                 {selectedProduct.title}
               </h1>
-              <p className="text-2xl font-light mb-6" style={{ color: customization.text_color }}>
+              <p className="text-2xl font-light mb-8" style={{ color: customization.text_color }}>
                 {formatPrice(selectedProduct.price)}
               </p>
               
               {selectedProduct.description && (
-                <p className="mb-8 leading-relaxed" style={{ color: customization.accent_color }}>
+                <p className="mb-8 leading-relaxed font-light" style={{ color: customization.accent_color }}>
                   {selectedProduct.description}
                 </p>
               )}
 
               <div className="mb-8">
                 {selectedProduct.stock > 0 ? (
-                  <p className="text-sm" style={{ color: customization.accent_color }}>
+                  <p className="text-sm font-light" style={{ color: customization.accent_color }}>
                     {selectedProduct.stock} in stock
                   </p>
                 ) : (
-                  <p className="text-sm" style={{ color: '#DC2626' }}>
+                  <p className="text-sm font-light" style={{ color: '#DC2626' }}>
                     Out of stock
                   </p>
                 )}
@@ -625,10 +649,11 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
               <button
                 onClick={() => addToCart(selectedProduct)}
                 disabled={selectedProduct.stock === 0}
-                className="w-full py-4 text-sm font-medium tracking-wide transition-opacity hover:opacity-80 disabled:opacity-50"
+                className="w-full py-4 text-sm font-light tracking-wider uppercase transition-opacity hover:opacity-70 disabled:opacity-50"
                 style={{
-                  backgroundColor: customization.primary_color,
-                  color: customization.background_color,
+                  backgroundColor: customization.background_color,
+                  color: customization.text_color,
+                  border: `1px solid ${customization.text_color}`,
                 }}
               >
                 {selectedProduct.stock === 0 ? "Out of Stock" : "Add to Cart"}
@@ -645,21 +670,22 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
       <div style={{ backgroundColor: customization.background_color, color: customization.text_color, minHeight: '100vh' }}>
         <Header />
         
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
-          <h1 className="text-3xl font-bold mb-8" style={{ color: customization.text_color }}>
+        <div className="container mx-auto px-4 py-12 max-w-4xl">
+          <h1 className="text-3xl font-light mb-12 tracking-wide" style={{ color: customization.text_color }}>
             Shopping Cart
           </h1>
 
           {cart.length === 0 ? (
             <div className="text-center py-16">
-              <ShoppingCart className="h-16 w-16 mx-auto mb-4 opacity-30" />
-              <p className="mb-6" style={{ color: customization.accent_color }}>Your cart is empty</p>
+              <ShoppingCart className="h-16 w-16 mx-auto mb-4 opacity-20" />
+              <p className="mb-8 font-light" style={{ color: customization.accent_color }}>Your cart is empty</p>
               <button
                 onClick={() => setView("home")}
-                className="px-6 py-3 text-sm font-medium"
+                className="px-10 py-3 text-sm font-light tracking-wider uppercase transition-opacity hover:opacity-70"
                 style={{
-                  backgroundColor: customization.primary_color,
-                  color: customization.background_color,
+                  backgroundColor: customization.background_color,
+                  color: customization.text_color,
+                  border: `1px solid ${customization.text_color}`,
                 }}
               >
                 Continue Shopping
@@ -667,55 +693,55 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
             </div>
           ) : (
             <>
-              <div className="space-y-4 mb-8">
+              <div className="space-y-6 mb-12">
                 {cart.map((item) => (
                   <div
                     key={item.product.id}
-                    className="flex gap-4 p-4 border"
-                    style={{ borderColor: `${customization.text_color}20` }}
+                    className="flex gap-6 pb-6 border-b"
+                    style={{ borderColor: `${customization.text_color}10` }}
                   >
                     <img
                       src={item.product.image || "/placeholder.svg"}
                       alt={item.product.title}
-                      className="w-24 h-24 object-cover"
+                      className="w-32 h-32 object-cover bg-gray-50"
                     />
                     <div className="flex-1">
-                      <h3 className="font-medium mb-2" style={{ color: customization.text_color }}>
+                      <h3 className="font-light text-lg mb-2" style={{ color: customization.text_color }}>
                         {item.product.title}
                       </h3>
-                      <p className="text-sm mb-4" style={{ color: customization.accent_color }}>
+                      <p className="text-sm font-light mb-4" style={{ color: customization.accent_color }}>
                         {formatPrice(item.product.price)}
                       </p>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-4">
                         <button
                           onClick={() =>
                             updateCartQuantity(item.product.id, item.quantity - 1)
                           }
-                          className="p-1 rounded-full border"
-                          style={{ borderColor: `${customization.text_color}30` }}
+                          className="p-2 border transition-opacity hover:opacity-60"
+                          style={{ borderColor: `${customization.text_color}20` }}
                         >
-                          <Minus className="h-4 w-4" />
+                          <Minus className="h-3 w-3" />
                         </button>
-                        <span className="w-8 text-center">{item.quantity}</span>
+                        <span className="w-10 text-center font-light">{item.quantity}</span>
                         <button
                           onClick={() =>
                             updateCartQuantity(item.product.id, item.quantity + 1)
                           }
-                          className="p-1 rounded-full border"
-                          style={{ borderColor: `${customization.text_color}30` }}
+                          className="p-2 border transition-opacity hover:opacity-60"
+                          style={{ borderColor: `${customization.text_color}20` }}
                         >
-                          <Plus className="h-4 w-4" />
+                          <Plus className="h-3 w-3" />
                         </button>
                       </div>
                     </div>
                     <div className="flex flex-col items-end justify-between">
                       <button
                         onClick={() => removeFromCart(item.product.id)}
-                        className="p-2 hover:opacity-70"
+                        className="p-2 hover:opacity-60 transition-opacity"
                       >
-                        <X className="h-5 w-5" />
+                        <X className="h-4 w-4" />
                       </button>
-                      <p className="font-medium" style={{ color: customization.text_color }}>
+                      <p className="font-light" style={{ color: customization.text_color }}>
                         {formatPrice(item.product.price * item.quantity)}
                       </p>
                     </div>
@@ -723,21 +749,22 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                 ))}
               </div>
 
-              <div className="border-t pt-6" style={{ borderColor: `${customization.text_color}20` }}>
-                <div className="flex justify-between mb-6">
-                  <span className="text-xl font-bold" style={{ color: customization.text_color }}>
+              <div className="border-t pt-8" style={{ borderColor: `${customization.text_color}10` }}>
+                <div className="flex justify-between mb-8">
+                  <span className="text-xl font-light tracking-wide" style={{ color: customization.text_color }}>
                     Total
                   </span>
-                  <span className="text-xl font-bold" style={{ color: customization.text_color }}>
+                  <span className="text-xl font-light" style={{ color: customization.text_color }}>
                     {formatPrice(cartTotal)}
                   </span>
                 </div>
                 <button
                   onClick={() => setView("checkout")}
-                  className="w-full py-4 text-sm font-medium tracking-wide transition-opacity hover:opacity-80"
+                  className="w-full py-4 text-sm font-light tracking-wider uppercase transition-opacity hover:opacity-70"
                   style={{
-                    backgroundColor: customization.primary_color,
-                    color: customization.background_color,
+                    backgroundColor: customization.background_color,
+                    color: customization.text_color,
+                    border: `1px solid ${customization.text_color}`,
                   }}
                 >
                   Proceed to Checkout
