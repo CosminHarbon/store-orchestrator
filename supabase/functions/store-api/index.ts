@@ -940,19 +940,20 @@ Deno.serve(async (req) => {
             )
           }
 
-          // Fetch lockers from eAWB fixed locations API
+          // Fetch lockers from Europarcel API - fixed locations endpoint
           try {
             const lockerParams = new URLSearchParams({
-              fixed_location_type: 'locker',
               carrier_id: carrier.id.toString()
             })
+            // Add optional filters only if provided
             if (locality) lockerParams.append('locality_name', locality)
             if (county) lockerParams.append('county_name', county)
 
-            console.log('Fetching from eAWB fixed locations API:', lockerParams.toString())
+            const countryCode = 'RO' // Romania
+            console.log(`Fetching lockers from Europarcel for country: ${countryCode}, carrier: ${carrier.code}, params:`, lockerParams.toString())
 
             const response = await fetch(
-              `https://api.eawb.ro/api/v1/locations/fixed?${lockerParams.toString()}`,
+              `https://api.europarcel.com/api/v1/locations/fixedlocations/${countryCode}?${lockerParams.toString()}`,
               {
                 method: 'GET',
                 headers: {

@@ -47,6 +47,7 @@ const LockerMapSelector: React.FC<LockerMapSelectorProps> = ({
   const [searchCity, setSearchCity] = useState('');
   const [searchCounty, setSearchCounty] = useState('');
   const [apiKeyMissing, setApiKeyMissing] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   useEffect(() => {
     if (!mapContainer.current || !mapboxToken) return;
@@ -68,16 +69,14 @@ const LockerMapSelector: React.FC<LockerMapSelectorProps> = ({
     };
   }, [mapboxToken]);
 
-  const fetchLockers = async () => {
-    if (!searchCity && !searchCounty) {
-      toast({
-        title: "Search required",
-        description: "Please enter a city or county to search for lockers",
-        variant: "destructive"
-      });
-      return;
+  // Auto-load all lockers when component mounts
+  useEffect(() => {
+    if (mapboxToken && apiKey && !initialLoadComplete) {
+      fetchLockers(true);
     }
+  }, [mapboxToken, apiKey]);
 
+  const fetchLockers = async (autoLoad = false) => {
     setLoading(true);
     setApiKeyMissing(false);
     
@@ -127,27 +126,32 @@ const LockerMapSelector: React.FC<LockerMapSelectorProps> = ({
       const lockers = data.lockers || [];
       console.log(`Fetched ${lockers.length} lockers from ${data.carrier?.name}`);
       setLockers(lockers);
+      setInitialLoadComplete(true);
       
       if (lockers.length > 0) {
         displayLockersOnMap(lockers);
-        toast({
-          title: "Lockers loaded",
-          description: `Found ${lockers.length} locker(s)`
-        });
+        if (!autoLoad) {
+          toast({
+            title: "Lockers loaded",
+            description: `Found ${lockers.length} locker(s)`
+          });
+        }
       } else {
         toast({
           title: "No lockers found",
-          description: "Try searching in a different area",
+          description: autoLoad ? `No lockers available for ${carrierName}` : "Try searching in a different area",
           variant: "destructive"
         });
       }
     } catch (error: any) {
       console.error('Error fetching lockers:', error);
-      toast({
-        title: "Error",
-        description: error.message || 'Failed to load lockers',
-        variant: "destructive"
-      });
+      if (!autoLoad) {
+        toast({
+          title: "Error",
+          description: error.message || 'Failed to load lockers',
+          variant: "destructive"
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -238,22 +242,39 @@ const LockerMapSelector: React.FC<LockerMapSelectorProps> = ({
         </div>
       )}
 
-      <div className="flex gap-2">
-        <Input
-          placeholder="City (e.g., București, Iași)"
-          value={searchCity}
-          onChange={(e) => setSearchCity(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && fetchLockers()}
-        />
-        <Input
-          placeholder="County (optional)"
-          value={searchCounty}
-          onChange={(e) => setSearchCounty(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && fetchLockers()}
-        />
-        <Button onClick={fetchLockers} disabled={loading}>
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-        </Button>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            {loading ? 'Loading lockers...' : `Showing ${lockers.length} locker(s) for ${carrierName}`}
+          </p>
+          <Button 
+            onClick={() => fetchLockers(false)} 
+            disabled={loading}
+            variant="outline"
+            size="sm"
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
+            Refresh
+          </Button>
+        </div>
+
+        <div className="flex gap-2">
+          <Input
+            placeholder="Filter by city (e.g., București)"
+            value={searchCity}
+            onChange={(e) => setSearchCity(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && fetchLockers(false)}
+          />
+          <Input
+            placeholder="Filter by county (optional)"
+            value={searchCounty}
+            onChange={(e) => setSearchCounty(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && fetchLockers(false)}
+          />
+          <Button onClick={() => fetchLockers(false)} disabled={loading}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+          </Button>
+        </div>
       </div>
 
       <div ref={mapContainer} className="w-full h-96 rounded-lg border" />
