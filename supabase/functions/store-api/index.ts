@@ -953,11 +953,12 @@ Deno.serve(async (req) => {
             console.log(`Fetching lockers from Europarcel for country: ${countryCode}, carrier: ${carrier.code}, params:`, lockerParams.toString())
 
             const response = await fetch(
-              `https://api.europarcel.com/api/v1/locations/fixedlocations/${countryCode}?${lockerParams.toString()}`,
+              `https://api.europarcel.com/api/public/locations/fixedlocations/${countryCode}?${lockerParams.toString()}`,
               {
                 method: 'GET',
                 headers: {
                   'X-API-Key': profile.eawb_api_key,
+                  'X-CSRF-TOKEN': profile.eawb_api_key,
                   'Accept': 'application/json'
                 }
               }
