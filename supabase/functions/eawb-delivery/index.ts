@@ -440,10 +440,12 @@ serve(async (req) => {
       // Build address_to based on delivery type
       let addressTo: any;
       if (isLockerDelivery && isLockerService) {
-        // For locker delivery, use fixed_location_id
+        // For locker delivery, use fixed_location_id with locality info
         addressTo = {
           country_code: 'RO',
-          fixed_location_id: Number(order.locker_id), // API expects fixed_location_id, not locker_id
+          fixed_location_id: Number(order.locker_id),
+          locality_name: recipientParsed.city,
+          county_name: recipientParsed.county,
           contact: order.customer_name,
           phone: order.customer_phone || '0700000000',
           email: order.customer_email
