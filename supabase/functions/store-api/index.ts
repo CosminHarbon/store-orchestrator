@@ -563,6 +563,7 @@ Deno.serve(async (req) => {
               customer_phone: customer_phone || null,
               total: parseFloat(total),
               payment_status: 'pending',
+              order_status: payment_method === 'card' ? 'awaiting_payment' : 'paid',
               shipping_status: 'pending',
               // Delivery type fields
               delivery_type: effectiveDeliveryType,

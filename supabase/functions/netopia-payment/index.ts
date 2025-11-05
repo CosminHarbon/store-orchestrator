@@ -466,13 +466,16 @@ async function processWebhook(supabase: any, webhookData: any) {
 
     // Update order status if payment completed
     if (newStatus === 'completed') {
-      console.log(`Updating order ${transaction.order_id} payment status to paid`);
+      console.log(`Updating order ${transaction.order_id} payment and order status to paid`);
       await supabase
         .from('orders')
-        .update({ payment_status: 'paid' })
+        .update({ 
+          payment_status: 'paid',
+          order_status: 'paid'
+        })
         .eq('id', transaction.order_id);
         
-      console.log('Order payment status updated successfully');
+      console.log('Order payment and order status updated successfully');
     }
 
     console.log(`Webhook processed successfully. Transaction ${transaction.id} status: ${newStatus}`);

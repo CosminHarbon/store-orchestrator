@@ -230,6 +230,7 @@ export type Database = {
           locker_address: string | null
           locker_id: string | null
           locker_name: string | null
+          order_status: Database["public"]["Enums"]["order_status_enum"] | null
           payment_status: string
           selected_carrier_code: string | null
           shipping_status: string
@@ -262,6 +263,7 @@ export type Database = {
           locker_address?: string | null
           locker_id?: string | null
           locker_name?: string | null
+          order_status?: Database["public"]["Enums"]["order_status_enum"] | null
           payment_status?: string
           selected_carrier_code?: string | null
           shipping_status?: string
@@ -294,6 +296,7 @@ export type Database = {
           locker_address?: string | null
           locker_id?: string | null
           locker_name?: string | null
+          order_status?: Database["public"]["Enums"]["order_status_enum"] | null
           payment_status?: string
           selected_carrier_code?: string | null
           shipping_status?: string
@@ -695,7 +698,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      order_status_enum: "draft" | "awaiting_payment" | "paid" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -822,6 +825,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      order_status_enum: ["draft", "awaiting_payment", "paid", "cancelled"],
+    },
   },
 } as const
