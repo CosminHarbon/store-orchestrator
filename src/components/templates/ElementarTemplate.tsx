@@ -106,6 +106,20 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
   const API_BASE = `${SUPABASE_URL}/functions/v1/store-api`;
 
   useEffect(() => {
+    // Check for payment return from Netopia
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentStatus = urlParams.get('payment_status');
+    const orderId = urlParams.get('order_id');
+    
+    if (paymentStatus === 'checking' && orderId) {
+      // Remove query params from URL
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.search.split('?')[0]);
+      
+      // Check payment status
+      checkPaymentStatus(orderId);
+      return;
+    }
+
     const fetchConfig = async () => {
       try {
         const response = await fetch(`${API_BASE}/config`, {
@@ -251,6 +265,65 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
   const orderTotal = cartTotal + deliveryFee + paymentFee;
 
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  const checkPaymentStatus = async (orderId: string) => {
+    setLoading(true);
+    try {
+      // Poll for payment status - wait a bit for webhook to process
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      let attempts = 0;
+      const maxAttempts = 8;
+      
+      while (attempts < maxAttempts) {
+        const response = await fetch(`${API_BASE}/orders?order_id=${orderId}`, {
+          headers: { 'X-API-Key': apiKey },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.order?.payment_status === 'paid') {
+            setView("home");
+            setCart([]);
+            setCheckoutForm({
+              name: "",
+              email: "",
+              phone: "",
+              delivery_type: "home",
+              city: "",
+              county: "",
+              street: "",
+              street_number: "",
+              block: "",
+              apartment: "",
+              selected_carrier_code: "",
+              locker_id: "",
+              locker_name: "",
+              locker_address: "",
+            });
+            toast.success("Payment successful! Thank you for your order.");
+            setLoading(false);
+            return;
+          }
+        }
+        
+        // Wait 2 seconds before next attempt
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        attempts++;
+      }
+      
+      // If we get here, payment is still pending
+      toast.info("Payment verification in progress. Please check your email for order confirmation.");
+      setView("home");
+    } catch (error) {
+      console.error("Error checking payment:", error);
+      toast.error("Error verifying payment. Please contact support with your order details.");
+      setView("home");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCheckout = async () => {
     if (!checkoutForm.name || !checkoutForm.email) {

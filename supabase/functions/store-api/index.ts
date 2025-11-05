@@ -412,6 +412,39 @@ Deno.serve(async (req) => {
 
       case 'orders': {
         if (req.method === 'GET') {
+          // Check if fetching a specific order
+          const orderId = url.searchParams.get('order_id');
+          
+          if (orderId) {
+            // Fetch specific order
+            const { data: order, error } = await supabase
+              .from('orders')
+              .select('*')
+              .eq('id', orderId)
+              .eq('user_id', userId)
+              .single();
+
+            if (error) {
+              console.log('Error fetching order:', error);
+              return new Response(
+                JSON.stringify({ error: 'Order not found' }),
+                { 
+                  status: 404, 
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+                }
+              );
+            }
+
+            return new Response(
+              JSON.stringify({ order }),
+              { 
+                status: 200, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            );
+          }
+          
+          // Fetch all orders
           const { data: orders, error } = await supabase
             .from('orders')
             .select('*')
@@ -586,6 +619,14 @@ Deno.serve(async (req) => {
           // If payment method is card, initiate Netopia payment
           if (payment_method === 'card') {
             try {
+              // Get the base URL for callbacks
+              const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+              const functionUrl = `${supabaseUrl}/functions/v1/netopia-payment`;
+              
+              // Get the template URL for return redirect
+              const templateUrl = req.headers.get('origin') || req.headers.get('referer') || '';
+              const returnUrl = `${templateUrl}?payment_status=checking&order_id=${order.id}`;
+              
               const { data: netopiaResponse, error: netopiaError } = await supabase.functions.invoke('netopia-payment', {
                 body: {
                   action: 'create_payment',
@@ -594,7 +635,9 @@ Deno.serve(async (req) => {
                   amount: parseFloat(total),
                   currency: 'RON',
                   customer_email,
-                  customer_name
+                  customer_name,
+                  return_url: returnUrl,
+                  notify_url: functionUrl
                 }
               })
 
