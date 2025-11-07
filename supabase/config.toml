@@ -70,7 +70,7 @@ verify_jwt = false
 verify_jwt = true
 
 [functions.netopia-payment]
-verify_jwt = false
+verify_jwt = false  # Public endpoint to accept unauthenticated Netopia webhooks
 
 [functions.eawb-quoting]
 verify_jwt = true

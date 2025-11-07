@@ -37,11 +37,41 @@ serve(async (req) => {
     );
 
     if (req.method === 'POST') {
-      const { action, ...payload } = await req.json();
+      const payload = await req.json();
+      const { action } = payload;
       
-      // Get user from auth header - handle both user tokens and API keys
+      console.log('=== NETOPIA PAYMENT FUNCTION CALLED ===');
+      console.log('Headers:', Object.fromEntries(req.headers.entries()));
+      console.log('Payload keys:', Object.keys(payload));
+      console.log('Action field:', action || 'NOT PROVIDED');
+      console.log('Full payload:', JSON.stringify(payload, null, 2));
+      
+      // AUTO-DETECT WEBHOOK: Check if this is a Netopia webhook (no action field but has webhook data)
+      const hasWebhookFields = (
+        payload.ntpID || 
+        payload.paymentId || 
+        payload.payment_id ||
+        payload.orderID || 
+        payload.order_id ||
+        payload.status ||
+        (payload.payment && (payload.payment.ntpID || payload.payment.status)) ||
+        (payload.order && payload.order.orderID)
+      );
+      
+      const isWebhook = !action && hasWebhookFields;
+      
+      if (isWebhook) {
+        console.log('🔔 DETECTED AS WEBHOOK (no action field, has Netopia webhook fields)');
+        console.log('Processing as unauthenticated webhook...');
+        return await processWebhook(supabase, payload);
+      }
+      
+      console.log('Processing as authenticated request with action:', action);
+      
+      // For non-webhook requests, require authentication
       const authHeader = req.headers.get('Authorization');
       if (!authHeader) {
+        console.error('❌ No Authorization header for non-webhook request');
         return new Response(
           JSON.stringify({ error: 'Authorization header required' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -58,7 +88,9 @@ serve(async (req) => {
         // If user auth fails, check if it's an API key and get user_id from payload
         if (payload.user_id) {
           userId = payload.user_id;
+          console.log('✓ Using user_id from payload:', userId);
         } else {
+          console.error('❌ Invalid authentication and no user_id in payload');
           return new Response(
             JSON.stringify({ error: 'Invalid authentication or missing user_id' }),
             { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -66,27 +98,42 @@ serve(async (req) => {
         }
       } else {
         userId = user.id;
+        console.log('✓ Authenticated user:', userId);
       }
 
+      // Handle different actions
       if (action === 'create_payment') {
+        console.log('→ Routing to createPayment()');
         return await createPayment(supabase, userId, payload);
       } else if (action === 'payment_status') {
+        console.log('→ Routing to getPaymentStatus()');
         return await getPaymentStatus(supabase, userId, payload.payment_id);
       } else if (action === 'process_webhook') {
+        console.log('→ Routing to processWebhook() (explicit action)');
         return await processWebhook(supabase, payload);
       } else if (action === 'manual_update') {
+        console.log('→ Routing to manualUpdatePayment()');
         return await manualUpdatePayment(supabase, userId, payload.order_id);
+      } else {
+        console.error('❌ Unknown action:', action);
+        return new Response(
+          JSON.stringify({ error: 'Unknown action', action }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
     }
 
+    console.log('❌ Method not allowed:', req.method);
     return new Response(
       JSON.stringify({ error: 'Method not allowed' }),
       { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error: unknown) {
-    console.error('Error in netopia-payment function:', error);
+    console.error('💥 ERROR in netopia-payment function:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : '';
+    console.error('Error stack:', errorStack);
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -362,7 +409,13 @@ async function getPaymentStatus(supabase: any, userId: string, paymentId: string
 
 async function processWebhook(supabase: any, webhookData: any) {
   try {
-    console.log('Processing Netopia webhook:', JSON.stringify(webhookData, null, 2));
+    console.log('');
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('🔔 PROCESSING NETOPIA WEBHOOK');
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('Timestamp:', new Date().toISOString());
+    console.log('Webhook data received:', JSON.stringify(webhookData, null, 2));
+    console.log('Available fields in webhook:', Object.keys(webhookData));
 
     // Try different possible fields for payment ID from Netopia webhook
     const paymentId = webhookData.paymentId || 
@@ -376,12 +429,24 @@ async function processWebhook(supabase: any, webhookData: any) {
                    webhookData.orderId ||
                    webhookData.order?.orderID;
     
-    console.log('Webhook data - Payment ID:', paymentId, 'Order ID:', orderId);
+    console.log('');
+    console.log('--- Extracted IDs ---');
+    console.log('Payment ID (ntpID):', paymentId || 'NOT FOUND');
+    console.log('Order ID:', orderId || 'NOT FOUND');
+    
+    if (!paymentId && !orderId) {
+      console.error('⚠️  WARNING: No payment ID or order ID found in webhook!');
+      console.error('This might not be a valid Netopia webhook payload.');
+    }
 
     let transaction = null;
 
+    console.log('');
+    console.log('--- Looking up transaction in database ---');
+    
     // Try to find transaction by payment ID first
     if (paymentId) {
+      console.log('Searching by netopia_payment_id:', paymentId);
       const { data: txByPaymentId, error: err1 } = await supabase
         .from('payment_transactions')
         .select('*')
@@ -390,12 +455,15 @@ async function processWebhook(supabase: any, webhookData: any) {
       
       if (!err1 && txByPaymentId) {
         transaction = txByPaymentId;
-        console.log('Found transaction by payment ID:', transaction.id);
+        console.log('✓ Found transaction by payment ID:', transaction.id);
+      } else {
+        console.log('✗ Not found by payment ID. Error:', err1?.message || 'none');
       }
     }
 
     // If not found by payment ID, try by order ID
     if (!transaction && orderId) {
+      console.log('Searching by netopia_order_id:', orderId);
       const { data: txByOrderId, error: err2 } = await supabase
         .from('payment_transactions')
         .select('*')
@@ -404,16 +472,27 @@ async function processWebhook(supabase: any, webhookData: any) {
       
       if (!err2 && txByOrderId) {
         transaction = txByOrderId;
-        console.log('Found transaction by order ID:', transaction.id);
+        console.log('✓ Found transaction by order ID:', transaction.id);
+      } else {
+        console.log('✗ Not found by order ID. Error:', err2?.message || 'none');
       }
     }
 
     if (!transaction) {
-      console.log('Transaction not found for webhook data:', { paymentId, orderId });
-      console.log('Available webhook fields:', Object.keys(webhookData));
+      console.error('');
+      console.error('❌ TRANSACTION NOT FOUND');
+      console.error('Searched for:');
+      console.error('  - netopia_payment_id:', paymentId || 'N/A');
+      console.error('  - netopia_order_id:', orderId || 'N/A');
+      console.error('Available webhook fields:', Object.keys(webhookData));
+      console.error('');
+      console.log('Returning 200 OK to Netopia (to prevent retries)');
       return new Response('Transaction not found but OK', { status: 200 });
     }
 
+    console.log('');
+    console.log('--- Determining payment status ---');
+    
     // Determine new status from webhook - check various possible status fields
     let newStatus = 'pending';
     const webhookStatus = webhookData.status || 
@@ -421,41 +500,57 @@ async function processWebhook(supabase: any, webhookData: any) {
                          webhookData.orderStatus ||
                          webhookData.paymentStatus;
                          
-    console.log('Webhook status received:', webhookStatus);
+    console.log('Raw webhook status field:', webhookStatus);
+    console.log('Status field type:', typeof webhookStatus);
     
     if (webhookStatus) {
-      switch (String(webhookStatus).toLowerCase()) {
+      const statusStr = String(webhookStatus).toLowerCase();
+      console.log('Normalized status string:', statusStr);
+      
+      switch (statusStr) {
         case 'confirmed':
         case 'completed':
         case 'success':
         case 'paid':
         case '1': // Netopia often uses numeric status
           newStatus = 'completed';
+          console.log('→ Mapped to: COMPLETED ✓');
           break;
         case 'cancelled':
         case 'canceled':
         case 'cancel':
         case '0':
           newStatus = 'cancelled';
+          console.log('→ Mapped to: CANCELLED');
           break;
         case 'failed':
         case 'error':
         case 'rejected':
         case '-1':
           newStatus = 'failed';
+          console.log('→ Mapped to: FAILED');
           break;
         case 'processing':
         case 'pending':
         case '2':
           newStatus = 'processing';
+          console.log('→ Mapped to: PROCESSING');
           break;
+        default:
+          console.log('⚠️  Unknown status, keeping as: PENDING');
       }
+    } else {
+      console.warn('⚠️  No status field found in webhook, defaulting to: PENDING');
     }
 
-    console.log(`Updating transaction ${transaction.id} from ${transaction.payment_status} to ${newStatus}`);
+    console.log('');
+    console.log('--- Updating database ---');
+    console.log(`Transaction ${transaction.id}:`);
+    console.log(`  Current status: ${transaction.payment_status}`);
+    console.log(`  New status: ${newStatus}`);
 
     // Update transaction status
-    await supabase
+    const { error: updateError } = await supabase
       .from('payment_transactions')
       .update({ 
         payment_status: newStatus,
@@ -463,11 +558,21 @@ async function processWebhook(supabase: any, webhookData: any) {
         updated_at: new Date().toISOString()
       })
       .eq('id', transaction.id);
+      
+    if (updateError) {
+      console.error('❌ Failed to update transaction:', updateError);
+    } else {
+      console.log('✓ Transaction updated successfully');
+    }
 
     // Update order status if payment completed
     if (newStatus === 'completed') {
-      console.log(`Updating order ${transaction.order_id} payment and order status to paid`);
-      await supabase
+      console.log('');
+      console.log('--- Payment completed! Updating order ---');
+      console.log(`Order ID: ${transaction.order_id}`);
+      console.log('Setting payment_status = "paid" and order_status = "paid"');
+      
+      const { error: orderError } = await supabase
         .from('orders')
         .update({ 
           payment_status: 'paid',
@@ -475,10 +580,20 @@ async function processWebhook(supabase: any, webhookData: any) {
         })
         .eq('id', transaction.order_id);
         
-      console.log('Order payment and order status updated successfully');
+      if (orderError) {
+        console.error('❌ Failed to update order:', orderError);
+      } else {
+        console.log('✓ Order updated successfully - status is now PAID');
+      }
     }
 
-    console.log(`Webhook processed successfully. Transaction ${transaction.id} status: ${newStatus}`);
+    console.log('');
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('✅ WEBHOOK PROCESSED SUCCESSFULLY');
+    console.log(`Transaction: ${transaction.id}`);
+    console.log(`Final status: ${newStatus}`);
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('');
 
     return new Response('OK', { 
       status: 200,
@@ -486,9 +601,19 @@ async function processWebhook(supabase: any, webhookData: any) {
     });
 
   } catch (error) {
-    console.error('Error processing webhook:', error);
-    return new Response('Error', { 
-      status: 500,
+    console.error('');
+    console.error('═══════════════════════════════════════════════════════');
+    console.error('💥 ERROR PROCESSING WEBHOOK');
+    console.error('═══════════════════════════════════════════════════════');
+    console.error('Error:', error);
+    console.error('Error message:', error instanceof Error ? error.message : 'Unknown');
+    console.error('Error stack:', error instanceof Error ? error.stack : '');
+    console.error('═══════════════════════════════════════════════════════');
+    console.error('');
+    
+    // Still return 200 to prevent Netopia from retrying
+    return new Response('Error logged but returning OK', { 
+      status: 200,
       headers: corsHeaders 
     });
   }
