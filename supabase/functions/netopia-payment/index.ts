@@ -61,46 +61,49 @@ serve(async (req) => {
       const isWebhook = !action && hasWebhookFields;
       
       if (isWebhook) {
-        console.log('🔔 DETECTED AS WEBHOOK (no action field, has Netopia webhook fields)');
+      console.log('🔔 DETECTED AS WEBHOOK (no action field, has Netopia webhook fields)');
         console.log('Processing as unauthenticated webhook...');
         return await processWebhook(supabase, payload);
       }
       
       console.log('Processing as authenticated request with action:', action);
       
-      // For non-webhook requests, require authentication
+      // For requests with action field (internal calls or authenticated requests)
       const authHeader = req.headers.get('Authorization');
-      if (!authHeader) {
-        console.error('❌ No Authorization header for non-webhook request');
-        return new Response(
-          JSON.stringify({ error: 'Authorization header required' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      const token = authHeader.replace('Bearer ', '');
       let userId: string;
       
-      // First try as user token
-      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-      
-      if (authError || !user) {
-        // If user auth fails, check if it's an API key and get user_id from payload
-        if (payload.user_id) {
+      if (authHeader) {
+        console.log('Authorization header present, validating...');
+        const token = authHeader.replace('Bearer ', '');
+        
+        // Try to validate as user token
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+        
+        if (user && !authError) {
+          userId = user.id;
+          console.log('✓ Authenticated as user:', userId);
+        } else if (payload.user_id) {
+          // If auth fails but user_id is provided (internal edge function call)
           userId = payload.user_id;
-          console.log('✓ Using user_id from payload:', userId);
+          console.log('✓ Using user_id from payload (internal call):', userId);
         } else {
-          console.error('❌ Invalid authentication and no user_id in payload');
+          console.error('❌ Invalid authentication');
           return new Response(
-            JSON.stringify({ error: 'Invalid authentication or missing user_id' }),
+            JSON.stringify({ error: 'Invalid authentication' }),
             { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
+      } else if (payload.user_id && action) {
+        // No auth header but has user_id and action (internal edge function call)
+        userId = payload.user_id;
+        console.log('✓ Using user_id from payload (internal call, no auth header):', userId);
       } else {
-        userId = user.id;
-        console.log('✓ Authenticated user:', userId);
+        console.error('❌ No authentication provided');
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
-
       // Handle different actions
       if (action === 'create_payment') {
         console.log('→ Routing to createPayment()');
