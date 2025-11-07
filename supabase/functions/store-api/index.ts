@@ -624,9 +624,25 @@ Deno.serve(async (req) => {
               const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
               const functionUrl = `${supabaseUrl}/functions/v1/netopia-payment`;
               
-              // Get the template URL for return redirect
-              const templateUrl = req.headers.get('origin') || req.headers.get('referer') || '';
-              const returnUrl = `${templateUrl}?payment_status=checking&order_id=${order.id}`;
+              // Get the referer which should be the template page
+              const refererUrl = req.headers.get('referer') || '';
+              let returnUrl = '';
+              
+              if (refererUrl) {
+                try {
+                  const refererUrlObj = new URL(refererUrl);
+                  // Extract api_key from referer
+                  const apiKeyFromReferer = refererUrlObj.searchParams.get('api_key') || apiKey;
+                  // Build proper return URL to template
+                  returnUrl = `${refererUrlObj.origin}/templates/elementar?api_key=${apiKeyFromReferer}&payment_status=checking&order_id=${order.id}`;
+                } catch (e) {
+                  // Fallback if URL parsing fails
+                  returnUrl = `${req.headers.get('origin') || ''}/templates/elementar?api_key=${apiKey}&payment_status=checking&order_id=${order.id}`;
+                }
+              } else {
+                // Fallback if no referer
+                returnUrl = `${req.headers.get('origin') || ''}/templates/elementar?api_key=${apiKey}&payment_status=checking&order_id=${order.id}`;
+              }
               
               const { data: netopiaResponse, error: netopiaError } = await supabase.functions.invoke('netopia-payment', {
                 body: {
@@ -1154,11 +1170,51 @@ Deno.serve(async (req) => {
         break
       }
 
+      case 'cleanup-abandoned-orders': {
+        if (req.method === 'POST') {
+          const hoursOld = 24; // Delete orders older than 24 hours
+          const cutoffTime = new Date(Date.now() - hoursOld * 60 * 60 * 1000).toISOString();
+          
+          // Delete old awaiting_payment orders
+          const { data: deletedOrders, error } = await supabase
+            .from('orders')
+            .delete()
+            .eq('user_id', userId)
+            .eq('order_status', 'awaiting_payment')
+            .lt('created_at', cutoffTime)
+            .select();
+            
+          if (error) {
+            console.error('Error cleaning up abandoned orders:', error);
+            return new Response(
+              JSON.stringify({ 
+                success: false, 
+                error: 'CLEANUP_ERROR',
+                message: 'Failed to clean up abandoned orders'
+              }),
+              { 
+                status: 500,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            );
+          }
+            
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              deleted_count: deletedOrders?.length || 0 
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        break;
+      }
+
       default: {
         return new Response(
           JSON.stringify({ 
             error: 'Invalid endpoint',
-            available_endpoints: ['products', 'orders', 'collections', 'payments', 'payment-status', 'payment-webhook', 'lockers']
+            available_endpoints: ['products', 'orders', 'collections', 'payments', 'payment-status', 'payment-webhook', 'lockers', 'cleanup-abandoned-orders']
           }),
           { 
             status: 404, 
