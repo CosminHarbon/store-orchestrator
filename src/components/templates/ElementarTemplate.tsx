@@ -344,6 +344,13 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
       return;
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(checkoutForm.email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
     if (checkoutForm.delivery_type === "home") {
       if (!checkoutForm.city || !checkoutForm.county || !checkoutForm.street) {
         toast.error("Please fill in address details");
@@ -402,11 +409,19 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
       const result = await response.json();
 
       if (response.ok && result.payment_url) {
+        // Redirect to payment page
         window.location.href = result.payment_url;
-      } else if (response.ok) {
-        toast.success("Order created successfully!");
+      } else if (response.ok && result.error) {
+        // Order created but payment initiation failed
+        toast.error(result.error || "Failed to initiate payment. Please contact support.");
+      } else if (response.ok && paymentMethod === 'cash') {
+        // Cash payment - order created successfully without payment URL
+        toast.success("Order created successfully! You will pay cash on delivery.");
         setCart([]);
         setView("home");
+      } else if (response.ok) {
+        // This shouldn't happen for card payments
+        toast.error("Payment setup failed. Please contact support.");
       } else {
         toast.error(result.error || "Failed to create order");
       }
@@ -1020,6 +1035,8 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                     onChange={(e) =>
                       setCheckoutForm({ ...checkoutForm, email: e.target.value })
                     }
+                    required
+                    pattern="[^\s@]+@[^\s@]+\.[^\s@]+"
                     className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                   />
                   <input
