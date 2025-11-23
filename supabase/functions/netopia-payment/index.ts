@@ -502,48 +502,86 @@ async function processWebhook(supabase: any, webhookData: any) {
                          webhookData.payment?.status || 
                          webhookData.orderStatus ||
                          webhookData.paymentStatus;
-                         
-    console.log('Raw webhook status field:', webhookStatus);
-    console.log('Status field type:', typeof webhookStatus);
     
-    if (webhookStatus) {
-      const statusStr = String(webhookStatus).toLowerCase();
-      console.log('Normalized status string:', statusStr);
+    // Also check the code field - Netopia sends "00" for approved payments
+    const webhookCode = webhookData.code || webhookData.payment?.code;
+    const webhookMessage = webhookData.message || webhookData.payment?.message;
+                         
+    console.log('Raw webhook fields:');
+    console.log('  status:', webhookStatus, '(type:', typeof webhookStatus, ')');
+    console.log('  code:', webhookCode);
+    console.log('  message:', webhookMessage);
+    
+    // Netopia status codes:
+    // 0 = Inactive/Open
+    // 1 = New/Pending 3DS
+    // 2 = In Progress
+    // 3 = Paid/Approved ✓ ← THIS IS THE KEY ONE!
+    // 4-9 = Rejected/Credit/Reversed etc.
+    //
+    // Error codes:
+    // "00" = Approved/Success
+    // Other codes = various errors
+    
+    // First check if payment is approved by code
+    if (webhookCode === '00') {
+      newStatus = 'completed';
+      console.log('→ Payment APPROVED by code "00" ✓');
+    } 
+    // Then check status code
+    else if (webhookStatus !== undefined && webhookStatus !== null) {
+      const statusStr = String(webhookStatus);
+      console.log('Checking status code:', statusStr);
       
       switch (statusStr) {
+        case '3': // APPROVED/PAID - This is the missing case!
+          newStatus = 'completed';
+          console.log('→ Status 3: Payment APPROVED/PAID ✓');
+          break;
+        case '1': // New/Pending 3DS
+          newStatus = 'processing';
+          console.log('→ Status 1: Processing/Pending 3DS');
+          break;
+        case '2': // In Progress
+          newStatus = 'processing';
+          console.log('→ Status 2: In Progress');
+          break;
+        case '0': // Inactive
+        case '4': // Rejected
+        case '5': // Credit
+        case '6': // Chargeback
+          newStatus = 'cancelled';
+          console.log('→ Status', statusStr, ': Cancelled/Rejected');
+          break;
         case 'confirmed':
         case 'completed':
         case 'success':
         case 'paid':
-        case '1': // Netopia often uses numeric status
           newStatus = 'completed';
-          console.log('→ Mapped to: COMPLETED ✓');
+          console.log('→ Text status: COMPLETED ✓');
           break;
         case 'cancelled':
         case 'canceled':
         case 'cancel':
-        case '0':
           newStatus = 'cancelled';
-          console.log('→ Mapped to: CANCELLED');
+          console.log('→ Text status: CANCELLED');
           break;
         case 'failed':
         case 'error':
         case 'rejected':
-        case '-1':
           newStatus = 'failed';
-          console.log('→ Mapped to: FAILED');
+          console.log('→ Text status: FAILED');
           break;
         case 'processing':
         case 'pending':
-        case '2':
           newStatus = 'processing';
-          console.log('→ Mapped to: PROCESSING');
+          console.log('→ Text status: PROCESSING');
           break;
         default:
-          console.log('⚠️  Unknown status, keeping as: PENDING');
+          console.log('⚠️  Unknown status code:', statusStr, '- keeping as PENDING');
       }
     } else {
-      console.warn('⚠️  No status field found in webhook, defaulting to: PENDING');
+      console.warn('⚠️  No status or code field found in webhook, defaulting to: PENDING');
     }
 
     console.log('');
