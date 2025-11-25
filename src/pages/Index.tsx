@@ -25,8 +25,21 @@ const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    // Restore last active tab from localStorage
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('activeTab') || 'dashboard';
+    }
+    return 'dashboard';
+  });
   const [isChatOpen, setIsChatOpen] = useState(false);
+
+  // Persist active tab to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('activeTab', activeTab);
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     if (!loading && !user) {
