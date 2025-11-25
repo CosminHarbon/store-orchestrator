@@ -29,8 +29,9 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
               variant="ghost"
               size="sm"
               className={cn(
-                "flex flex-col gap-1 h-12 px-1 rounded-xl transition-all duration-200 relative touch-manipulation",
+                "flex flex-col gap-1 h-12 px-1 rounded-xl transition-colors duration-200 relative touch-manipulation",
                 "focus:outline-none focus-visible:ring-0 active:scale-95",
+                "will-change-[color,background-color]",
                 isActive 
                   ? "text-primary bg-transparent" 
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50 active:bg-muted/30"
@@ -38,11 +39,16 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
               onClick={() => onTabChange(item.id)}
             >
               {isActive && (
-                <div className="absolute top-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-primary rounded-full" />
+                <div className="absolute top-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-primary rounded-full animate-scale-in" />
               )}
-              <Icon className={cn("h-5 w-5", isActive && "text-primary")} />
+              <Icon 
+                className={cn(
+                  "h-5 w-5 transition-colors duration-200",
+                  isActive && "text-primary"
+                )} 
+              />
               <span className={cn(
-                "text-xs font-medium leading-none",
+                "text-xs font-medium leading-none transition-colors duration-200",
                 isActive && "text-primary"
               )}>
                 {item.label}
