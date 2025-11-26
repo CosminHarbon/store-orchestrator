@@ -53,9 +53,10 @@ serve(async (req) => {
         });
       }
 
-      console.log('Fetching billing addresses from eAWB');
+      console.log('Fetching customer info and billing addresses from eAWB');
 
-      const billingResponse = await fetch(`${EAWB_BASE_URL}/billing-addresses`, {
+      // Try the customer endpoint to get billing addresses
+      const billingResponse = await fetch(`${EAWB_BASE_URL}/customer`, {
         headers: {
           'X-API-Key': profile.eawb_api_key,
           'Accept': 'application/json'
@@ -77,11 +78,17 @@ serve(async (req) => {
       }
 
       const billingData = await billingResponse.json();
-      console.log('Billing addresses response:', billingData);
+      console.log('Customer data response:', billingData);
+
+      // Extract billing addresses from customer data
+      // The customer endpoint typically returns: { data: { billing_addresses: [...] } }
+      const billingAddresses = billingData?.data?.billing_addresses || billingData?.billing_addresses || [];
 
       return new Response(JSON.stringify({
         success: true,
-        data: billingData
+        data: {
+          data: billingAddresses  // Match expected format: data.data.data
+        }
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
