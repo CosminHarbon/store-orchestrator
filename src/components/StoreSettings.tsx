@@ -250,35 +250,7 @@ const StoreSettings = () => {
     }));
   };
 
-  // eAWB fetch functions
-  const fetchEawbBillingAddresses = async () => {
-    if (!providerConfigs.eawb?.api_key) {
-      toast.error('Please enter your eAWB API key first');
-      return;
-    }
-
-    setEawbLoading(prev => ({ ...prev, billingAddresses: true }));
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('eawb-delivery', {
-        body: { action: 'fetch_billing_addresses' }
-      });
-
-      if (error) throw error;
-
-      if (data.success) {
-        setEawbData(prev => ({ ...prev, billingAddresses: data.data.data || [] }));
-        toast.success('Billing addresses fetched successfully');
-      } else {
-        throw new Error(data.error);
-      }
-    } catch (error) {
-      console.error('Error fetching billing addresses:', error);
-      toast.error('Failed to fetch billing addresses: ' + error.message);
-    } finally {
-      setEawbLoading(prev => ({ ...prev, billingAddresses: false }));
-    }
-  };
+  // eAWB note: API doesn't support fetching billing addresses, must be entered manually
 
   const fetchEawbCarriers = async () => {
     if (!providerConfigs.eawb?.api_key) {
@@ -1107,40 +1079,31 @@ class StoreAPI {
                               </div>
                               <div className="space-y-4">
                                 <div className="flex items-center gap-2">
-                                  <h5 className="font-medium text-sm">Fetch Configuration from eAWB</h5>
-                                  <p className="text-xs text-muted-foreground">
-                                    Get your billing addresses, carriers, and services
-                                  </p>
+                                  <h5 className="font-medium text-sm">Billing Address ID</h5>
                                 </div>
                                 
                                 <div className="grid gap-3">
-                                  <div className="flex items-center gap-2">
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={fetchEawbBillingAddresses}
-                                      disabled={eawbLoading.billingAddresses || !providerConfigs.eawb?.api_key}
-                                    >
-                                      {eawbLoading.billingAddresses ? 'Fetching...' : 'Fetch Billing Addresses'}
-                                    </Button>
-                                    {eawbData.billingAddresses.length > 0 && (
-                                      <Select
-                                        value={providerConfigs.eawb?.billing_address_id || ''}
-                                        onValueChange={(value) => updateProviderConfig('eawb', 'billing_address_id', value)}
+                                  <div className="space-y-2">
+                                    <Label htmlFor="billing_address_id">Billing Address ID</Label>
+                                    <Input
+                                      id="billing_address_id"
+                                      type="number"
+                                      placeholder="e.g., 12345"
+                                      value={providerConfigs.eawb?.billing_address_id || ''}
+                                      onChange={(e) => updateProviderConfig('eawb', 'billing_address_id', e.target.value)}
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                      Find this ID in your{' '}
+                                      <a 
+                                        href="https://europarcel.com/dashboard" 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="text-primary hover:underline"
                                       >
-                                        <SelectTrigger className="w-[200px]">
-                                          <SelectValue placeholder="Select billing address" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {eawbData.billingAddresses.map((addr: any) => (
-                                            <SelectItem key={addr.id} value={addr.id.toString()}>
-                                              {addr.name || addr.company_name || `Address ${addr.id}`}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    )}
+                                        eAWB dashboard
+                                      </a>
+                                      {' '}under billing addresses
+                                    </p>
                                   </div>
                                   
                                   <div className="flex items-center gap-2">
@@ -1817,40 +1780,31 @@ class StoreAPI {
                             </div>
                             <div className="space-y-4">
                               <div className="flex items-center gap-2">
-                                <h5 className="font-medium text-sm">Fetch Configuration from eAWB</h5>
-                                <p className="text-xs text-muted-foreground">
-                                  Get your billing addresses, carriers, and services
-                                </p>
+                                <h5 className="font-medium text-sm">Billing Address ID</h5>
                               </div>
                               
                               <div className="space-y-3">
                                 <div className="flex flex-col gap-2">
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={fetchEawbBillingAddresses}
-                                    disabled={eawbLoading.billingAddresses || !providerConfigs.eawb?.api_key}
-                                  >
-                                    {eawbLoading.billingAddresses ? 'Fetching...' : 'Fetch Billing Addresses'}
-                                  </Button>
-                                  {eawbData.billingAddresses.length > 0 && (
-                                    <Select
-                                      value={providerConfigs.eawb?.billing_address_id || ''}
-                                      onValueChange={(value) => updateProviderConfig('eawb', 'billing_address_id', value)}
+                                  <Label htmlFor="billing_address_id_mobile">Billing Address ID</Label>
+                                  <Input
+                                    id="billing_address_id_mobile"
+                                    type="number"
+                                    placeholder="e.g., 12345"
+                                    value={providerConfigs.eawb?.billing_address_id || ''}
+                                    onChange={(e) => updateProviderConfig('eawb', 'billing_address_id', e.target.value)}
+                                  />
+                                  <p className="text-xs text-muted-foreground">
+                                    Find this ID in your{' '}
+                                    <a 
+                                      href="https://europarcel.com/dashboard" 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="text-primary hover:underline"
                                     >
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Select billing address" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {eawbData.billingAddresses.map((addr: any) => (
-                                          <SelectItem key={addr.id} value={addr.id.toString()}>
-                                            {addr.name || addr.company_name || `Address ${addr.id}`}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  )}
+                                      eAWB dashboard
+                                    </a>
+                                    {' '}under billing addresses
+                                  </p>
                                 </div>
                                 
                                 <div className="flex flex-col gap-2">

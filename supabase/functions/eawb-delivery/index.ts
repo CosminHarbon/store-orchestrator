@@ -34,62 +34,15 @@ serve(async (req) => {
       throw new Error('Authentication failed');
     }
 
+    // Note: eAWB API does not provide an endpoint to fetch billing addresses
+    // Users must obtain their billing address ID from their eAWB account dashboard
     if (action === 'fetch_billing_addresses') {
-      // Fetch billing addresses from eAWB
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('eawb_api_key')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!profile?.eawb_api_key) {
-        return new Response(JSON.stringify({
-          success: false,
-          error: 'MISSING_API_KEY',
-          message: 'eAWB API key not configured'
-        }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-
-      console.log('Fetching customer info and billing addresses from eAWB');
-
-      // Try the customer endpoint to get billing addresses
-      const billingResponse = await fetch(`${EAWB_BASE_URL}/customer`, {
-        headers: {
-          'X-API-Key': profile.eawb_api_key,
-          'Accept': 'application/json'
-        }
-      });
-
-      if (!billingResponse.ok) {
-        const errorText = await billingResponse.text();
-        console.error('Billing addresses fetch failed:', billingResponse.status, errorText);
-        return new Response(JSON.stringify({
-          success: false,
-          error: 'FETCH_FAILED',
-          message: 'Failed to fetch billing addresses from eAWB API',
-          details: errorText,
-          status: billingResponse.status
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-
-      const billingData = await billingResponse.json();
-      console.log('Customer data response:', billingData);
-
-      // Extract billing addresses from customer data
-      // The customer endpoint typically returns: { data: { billing_addresses: [...] } }
-      const billingAddresses = billingData?.data?.billing_addresses || billingData?.billing_addresses || [];
-
       return new Response(JSON.stringify({
-        success: true,
-        data: {
-          data: billingAddresses  // Match expected format: data.data.data
-        }
+        success: false,
+        error: 'NOT_SUPPORTED',
+        message: 'eAWB API does not provide an endpoint to fetch billing addresses. Please enter your billing address ID manually from your eAWB account dashboard at https://europarcel.com/dashboard'
       }), {
+        status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
