@@ -309,7 +309,25 @@ serve(async (req) => {
 
     // Build quote requests for each carrier/service combination
     const quoteRequests = [];
-    const billingAddressId = profile.eawb_billing_address_id || 1;
+    const billingAddressId = profile.eawb_billing_address_id;
+
+    // Check if billing address is configured
+    if (!billingAddressId) {
+      console.error('Billing address ID not configured in profile');
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'BILLING_ADDRESS_NOT_CONFIGURED',
+        message: 'Please configure your billing address in Store Settings → Integrations → eAWB.ro before generating quotes',
+        carrier_options: [],
+        errors: [{
+          carrier: 'Configuration',
+          service: 'Setup',
+          error: 'Billing address ID not set. Go to Store Settings and fetch/select your billing address.'
+        }]
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     const parcelsCount = Math.max(1, Number(package_details.parcels || 1));
     const totalWeightInput = Number(package_details.weight || 1);

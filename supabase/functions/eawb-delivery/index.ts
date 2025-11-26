@@ -34,6 +34,59 @@ serve(async (req) => {
       throw new Error('Authentication failed');
     }
 
+    if (action === 'fetch_billing_addresses') {
+      // Fetch billing addresses from eAWB
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('eawb_api_key')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile?.eawb_api_key) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'MISSING_API_KEY',
+          message: 'eAWB API key not configured'
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      console.log('Fetching billing addresses from eAWB');
+
+      const billingResponse = await fetch(`${EAWB_BASE_URL}/billing-addresses`, {
+        headers: {
+          'X-API-Key': profile.eawb_api_key,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!billingResponse.ok) {
+        const errorText = await billingResponse.text();
+        console.error('Billing addresses fetch failed:', billingResponse.status, errorText);
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'FETCH_FAILED',
+          message: 'Failed to fetch billing addresses from eAWB API',
+          details: errorText,
+          status: billingResponse.status
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      const billingData = await billingResponse.json();
+      console.log('Billing addresses response:', billingData);
+
+      return new Response(JSON.stringify({
+        success: true,
+        data: billingData
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     if (action === 'fetch_lockers') {
       // Fetch lockers for a specific carrier and location
       const { data: profile } = await supabase
