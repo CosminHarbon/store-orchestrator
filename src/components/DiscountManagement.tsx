@@ -532,11 +532,6 @@ const DiscountManagement = () => {
                 <CardContent className={`space-y-4 ${isMobile ? 'px-6 pb-6' : ''}`}>
                   <div className={`flex items-center gap-6 text-sm ${isMobile ? 'flex-col items-stretch gap-3' : ''}`}>
                     <div className={`flex items-center gap-2 ${isMobile ? 'bg-gradient-to-r from-primary/10 to-accent/10 backdrop-blur-sm rounded-2xl px-4 py-3 border border-primary/20 justify-center' : ''}`}>
-                      {discount.discount_type === 'percentage' ? (
-                        <Percent className={`h-4 w-4 ${isMobile ? 'text-primary' : 'text-primary'}`} />
-                      ) : (
-                        <DollarSign className={`h-4 w-4 ${isMobile ? 'text-primary' : 'text-primary'}`} />
-                      )}
                       <span className={`font-medium ${isMobile ? 'text-primary font-bold text-base' : ''}`}>
                         {discount.discount_type === 'percentage' 
                            ? `${discount.discount_value}% off` 
