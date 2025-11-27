@@ -17,7 +17,7 @@ import CustomerManagement from '@/components/CustomerManagement';
 import PaymentStatistics from '@/components/PaymentStatistics';
 import CollectionsManagement from '@/components/CollectionsManagement';
 import TemplatesManagement from '@/components/TemplatesManagement';
-import { Package, ShoppingCart, DollarSign, Clock, TrendingUp, Users, MessageCircle, Sparkles, Zap, Star } from 'lucide-react';
+import { Package, ShoppingCart, DollarSign, Clock, TrendingUp, Users, MessageCircle, Sparkles, Zap, Star, Settings } from 'lucide-react';
 import AIChat from '@/components/AIChat';
 import { BottomNavigation } from '@/components/BottomNavigation';
 
@@ -298,41 +298,18 @@ const Index = () => {
               ? 'bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-sm border border-border/30 hover:from-card/70 hover:to-card/50 hover:text-primary' 
               : 'bg-gradient-card shadow-card border border-border/50 hover:bg-muted/80 hover:shadow-elegant hover:text-purple-600'
             }`}
-            onClick={() => setActiveTab('products')}
+            onClick={() => setActiveTab('settings')}
           >
             <div className="flex items-center gap-4">
-              <div className={`p-2 rounded-lg ${isMobile ? 'bg-primary/10 border border-primary/20' : 'bg-primary/10'}`}>
-                <Package className={`h-5 w-5 ${isMobile ? 'text-primary/80' : 'text-primary'}`} />
+              <div className={`p-2 rounded-lg ${isMobile ? 'bg-purple-500/10 border border-purple-500/20' : 'bg-purple-50'}`}>
+                <Settings className={`h-5 w-5 ${isMobile ? 'text-purple-500/80' : 'text-purple-600'}`} />
               </div>
               <div className="text-left">
                 <p className={`font-medium`}>
-                  Manage Products
+                  Settings
                 </p>
                 <p className={`text-xs text-muted-foreground`}>
-                  Add, edit, and organize your inventory
-                </p>
-              </div>
-            </div>
-          </Button>
-
-          <Button 
-            variant="ghost" 
-            className={`w-full justify-start h-14 rounded-xl transition-all duration-200 text-foreground ${isMobile 
-              ? 'bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-sm border border-border/30 hover:from-card/70 hover:to-card/50 hover:text-green-600' 
-              : 'bg-gradient-card shadow-card border border-border/50 hover:bg-muted/80 hover:shadow-elegant hover:text-purple-600'
-            }`}
-            onClick={() => setActiveTab('orders')}
-          >
-            <div className="flex items-center gap-4">
-              <div className={`p-2 rounded-lg ${isMobile ? 'bg-green-500/10 border border-green-500/20' : 'bg-green-50'}`}>
-                <ShoppingCart className={`h-5 w-5 ${isMobile ? 'text-green-500/80' : 'text-green-600'}`} />
-              </div>
-              <div className="text-left">
-                <p className={`font-medium`}>
-                  View Orders
-                </p>
-                <p className={`text-xs text-muted-foreground`}>
-                  Process and track customer orders
+                  Configure store and integrations
                 </p>
               </div>
             </div>
@@ -356,6 +333,29 @@ const Index = () => {
                 </p>
                 <p className={`text-xs text-muted-foreground`}>
                   Manage customer relationships
+                </p>
+              </div>
+            </div>
+          </Button>
+
+          <Button 
+            variant="ghost" 
+            className={`w-full justify-start h-14 rounded-xl transition-all duration-200 text-foreground ${isMobile 
+              ? 'bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-sm border border-border/30 hover:from-card/70 hover:to-card/50 hover:text-pink-600' 
+              : 'bg-gradient-card shadow-card border border-border/50 hover:bg-muted/80 hover:shadow-elegant hover:text-purple-600'
+            }`}
+            onClick={() => setActiveTab('templates')}
+          >
+            <div className="flex items-center gap-4">
+              <div className={`p-2 rounded-lg ${isMobile ? 'bg-pink-500/10 border border-pink-500/20' : 'bg-pink-50'}`}>
+                <Sparkles className={`h-5 w-5 ${isMobile ? 'text-pink-500/80' : 'text-pink-600'}`} />
+              </div>
+              <div className="text-left">
+                <p className={`font-medium`}>
+                  Templates
+                </p>
+                <p className={`text-xs text-muted-foreground`}>
+                  Customize your storefront design
                 </p>
               </div>
             </div>
