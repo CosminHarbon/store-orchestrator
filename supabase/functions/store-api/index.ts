@@ -14,6 +14,10 @@ interface Database {
           user_id: string
           store_name: string | null
           store_api_key: string
+          cash_payment_enabled: boolean | null
+          cash_payment_fee: number | null
+          home_delivery_fee: number | null
+          locker_delivery_fee: number | null
           created_at: string
           updated_at: string
         }
@@ -29,6 +33,7 @@ interface Database {
           sku: string | null
           category: string | null
           image: string | null
+          low_stock_threshold: number
           created_at: string
           updated_at: string
         }
@@ -48,6 +53,8 @@ interface Database {
         Row: {
           id: string
           user_id: string
+          name: string
+          description: string | null
           discount_type: 'percentage' | 'fixed_amount'
           discount_value: number
           start_date: string
@@ -73,9 +80,53 @@ interface Database {
           customer_email: string
           customer_address: string
           customer_phone: string | null
+          customer_city: string | null
+          customer_county: string | null
+          customer_street: string | null
+          customer_street_number: string | null
+          customer_block: string | null
+          customer_apartment: string | null
           total: number
           payment_status: string
           shipping_status: string
+          order_status: string | null
+          delivery_type: string | null
+          selected_carrier_code: string | null
+          locker_id: string | null
+          locker_name: string | null
+          locker_address: string | null
+          awb_number: string | null
+          carrier_name: string | null
+          tracking_url: string | null
+          invoice_number: string | null
+          invoice_series: string | null
+          invoice_link: string | null
+          eawb_order_id: number | null
+          estimated_delivery_date: string | null
+          created_at: string
+          updated_at: string
+        }
+      }
+      carriers: {
+        Row: {
+          id: number
+          code: string
+          name: string
+          api_base_url: string
+          is_active: boolean
+          logo_url: string | null
+          created_at: string
+          updated_at: string
+        }
+      }
+      carrier_services: {
+        Row: {
+          id: number
+          carrier_id: number
+          service_code: string
+          name: string
+          description: string | null
+          is_active: boolean
           created_at: string
           updated_at: string
         }
@@ -1210,11 +1261,359 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case 'carriers': {
+        if (req.method === 'GET') {
+          // Get all active carriers with their services
+          const { data: carriers, error: carriersError } = await supabase
+            .from('carriers')
+            .select('*')
+            .eq('is_active', true)
+            .order('name')
+
+          if (carriersError) {
+            console.log('Error fetching carriers:', carriersError)
+            return new Response(
+              JSON.stringify({ error: 'Failed to fetch carriers' }),
+              { 
+                status: 500, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          }
+
+          // Get services for each carrier
+          const carriersWithServices = await Promise.all(
+            carriers.map(async (carrier) => {
+              const { data: services, error: servicesError } = await supabase
+                .from('carrier_services')
+                .select('*')
+                .eq('carrier_id', carrier.id)
+                .eq('is_active', true)
+                .order('name')
+
+              if (servicesError) {
+                console.log('Error fetching carrier services:', servicesError)
+                return { ...carrier, services: [] }
+              }
+
+              return {
+                ...carrier,
+                services: services || []
+              }
+            })
+          )
+
+          return new Response(
+            JSON.stringify({ carriers: carriersWithServices }),
+            { 
+              status: 200, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          )
+        }
+        break
+      }
+
+      case 'discounts': {
+        if (req.method === 'GET') {
+          // Get all active discounts for the user
+          const { data: discounts, error: discountsError } = await supabase
+            .from('discounts')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('is_active', true)
+            .order('created_at', { ascending: false })
+
+          if (discountsError) {
+            console.log('Error fetching discounts:', discountsError)
+            return new Response(
+              JSON.stringify({ error: 'Failed to fetch discounts' }),
+              { 
+                status: 500, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          }
+
+          // Filter to only return discounts that are currently valid (date range)
+          const now = new Date()
+          const activeDiscounts = discounts.filter(discount => {
+            const startDate = new Date(discount.start_date)
+            const endDate = discount.end_date ? new Date(discount.end_date) : null
+            
+            return startDate <= now && (!endDate || endDate >= now)
+          })
+
+          // Get product counts for each discount
+          const discountsWithProductCounts = await Promise.all(
+            activeDiscounts.map(async (discount) => {
+              const { count, error: countError } = await supabase
+                .from('product_discounts')
+                .select('*', { count: 'exact', head: true })
+                .eq('discount_id', discount.id)
+
+              if (countError) {
+                console.log('Error counting discount products:', countError)
+                return { ...discount, product_count: 0 }
+              }
+
+              return {
+                ...discount,
+                product_count: count || 0
+              }
+            })
+          )
+
+          return new Response(
+            JSON.stringify({ discounts: discountsWithProductCounts }),
+            { 
+              status: 200, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          )
+        }
+        break
+      }
+
+      case 'product': {
+        if (req.method === 'GET') {
+          // Get single product by ID
+          const productId = url.searchParams.get('id')
+          
+          if (!productId) {
+            return new Response(
+              JSON.stringify({ error: 'Product ID required' }),
+              { 
+                status: 400, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          }
+
+          const { data: product, error: productError } = await supabase
+            .from('products')
+            .select('*')
+            .eq('id', productId)
+            .eq('user_id', userId)
+            .single()
+
+          if (productError) {
+            console.log('Error fetching product:', productError)
+            return new Response(
+              JSON.stringify({ error: 'Product not found' }),
+              { 
+                status: 404, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          }
+
+          // Get product images
+          const { data: productImages, error: imagesError } = await supabase
+            .from('product_images')
+            .select('*')
+            .eq('product_id', productId)
+            .order('display_order', { ascending: true })
+
+          if (imagesError) {
+            console.log('Error fetching product images:', imagesError)
+          }
+
+          // Get discounts for this product
+          const { data: discounts, error: discountsError } = await supabase
+            .from('discounts')
+            .select('*')
+            .eq('user_id', userId)
+
+          const { data: productDiscounts, error: productDiscountsError } = await supabase
+            .from('product_discounts')
+            .select('*')
+            .eq('product_id', productId)
+
+          if (discountsError || productDiscountsError) {
+            console.log('Error fetching discounts')
+          }
+
+          // Calculate discount price
+          const priceInfo = calculateProductPrice(
+            product.id,
+            product.price,
+            discounts || [],
+            productDiscounts || []
+          )
+
+          const images = productImages || []
+          const primaryImage = images.find(img => img.is_primary) || images[0] || null
+
+          return new Response(
+            JSON.stringify({
+              product: {
+                ...product,
+                images: images,
+                primary_image: primaryImage?.image_url || product.image || null,
+                image_count: images.length,
+                original_price: priceInfo.originalPrice,
+                discounted_price: priceInfo.discountedPrice,
+                has_discount: priceInfo.hasDiscount,
+                discount_percentage: priceInfo.discountPercentage,
+                savings_amount: priceInfo.savingsAmount,
+                final_price: priceInfo.discountedPrice || priceInfo.originalPrice
+              }
+            }),
+            { 
+              status: 200, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          )
+        }
+        break
+      }
+
+      case 'collection': {
+        if (req.method === 'GET') {
+          // Get single collection by ID
+          const collectionId = url.searchParams.get('id')
+          
+          if (!collectionId) {
+            return new Response(
+              JSON.stringify({ error: 'Collection ID required' }),
+              { 
+                status: 400, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          }
+
+          const { data: collection, error: collectionError } = await supabase
+            .from('collections')
+            .select('*')
+            .eq('id', collectionId)
+            .eq('user_id', userId)
+            .single()
+
+          if (collectionError) {
+            console.log('Error fetching collection:', collectionError)
+            return new Response(
+              JSON.stringify({ error: 'Collection not found' }),
+              { 
+                status: 404, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          }
+
+          // Get products in this collection
+          const { data: productCollections, error: pcError } = await supabase
+            .from('product_collections')
+            .select('product_id')
+            .eq('collection_id', collectionId)
+
+          if (pcError) {
+            console.log('Error fetching product collections:', pcError)
+            return new Response(
+              JSON.stringify({ ...collection, products: [], product_count: 0 }),
+              { 
+                status: 200, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          }
+
+          const productIds = productCollections.map(pc => pc.product_id)
+          
+          if (productIds.length === 0) {
+            return new Response(
+              JSON.stringify({ ...collection, products: [], product_count: 0 }),
+              { 
+                status: 200, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          }
+
+          // Get products with images and discounts
+          const { data: products, error: productsError } = await supabase
+            .from('products')
+            .select('*')
+            .in('id', productIds)
+
+          if (productsError) {
+            console.log('Error fetching products for collection:', productsError)
+          }
+
+          const { data: productImages, error: imagesError } = await supabase
+            .from('product_images')
+            .select('*')
+            .in('product_id', productIds)
+            .order('display_order', { ascending: true })
+
+          const { data: discounts } = await supabase
+            .from('discounts')
+            .select('*')
+            .eq('user_id', userId)
+
+          const { data: productDiscounts } = await supabase
+            .from('product_discounts')
+            .select('*')
+
+          const productsWithImagesAndDiscounts = (products || []).map(product => {
+            const images = productImages?.filter(img => img.product_id === product.id) || []
+            const primaryImage = images.find(img => img.is_primary) || images[0] || null
+            
+            const priceInfo = calculateProductPrice(
+              product.id,
+              product.price,
+              discounts || [],
+              productDiscounts || []
+            )
+            
+            return {
+              ...product,
+              images: images,
+              primary_image: primaryImage?.image_url || product.image || null,
+              image_count: images.length,
+              original_price: priceInfo.originalPrice,
+              discounted_price: priceInfo.discountedPrice,
+              has_discount: priceInfo.hasDiscount,
+              discount_percentage: priceInfo.discountPercentage,
+              savings_amount: priceInfo.savingsAmount,
+              final_price: priceInfo.discountedPrice || priceInfo.originalPrice
+            }
+          })
+
+          return new Response(
+            JSON.stringify({
+              ...collection,
+              products: productsWithImagesAndDiscounts,
+              product_count: productsWithImagesAndDiscounts.length
+            }),
+            { 
+              status: 200, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          )
+        }
+        break
+      }
+
       default: {
         return new Response(
           JSON.stringify({ 
             error: 'Invalid endpoint',
-            available_endpoints: ['products', 'orders', 'collections', 'payments', 'payment-status', 'payment-webhook', 'lockers', 'cleanup-abandoned-orders']
+            available_endpoints: [
+              'config',
+              'products',
+              'product',
+              'orders',
+              'collections',
+              'collection',
+              'carriers',
+              'discounts',
+              'payments',
+              'payment-status',
+              'lockers',
+              'cleanup-abandoned-orders'
+            ]
           }),
           { 
             status: 404, 
