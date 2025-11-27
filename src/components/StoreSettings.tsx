@@ -797,477 +797,546 @@ class StoreAPI {
               <CardDescription>Connect your store with invoicing, shipping, and payment providers</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Desktop View - Original Layout */}
+              {/* Desktop View - Collapsible Layout */}
               <div className="hidden md:block">
-                <div className="grid gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="invoicing-provider">Invoicing Provider</Label>
-                    <Select
-                      value={integrations.invoicing}
-                      onValueChange={(value) => setIntegrations({ ...integrations, invoicing: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select invoicing provider" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="oblio.eu">Oblio.eu</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-sm text-muted-foreground">
-                      Handles automatic invoice generation for your orders
-                    </p>
-                    
-                    {integrations.invoicing === 'oblio.eu' && (
-                      <div className="mt-4 p-4 border rounded-lg space-y-4">
-                        <h4 className="font-medium">Oblio.eu Configuration</h4>
-                        <div className="grid gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="oblio-email">Oblio Email Address</Label>
-                            <Input
-                              id="oblio-email"
-                              type="email"
-                              value={providerConfigs.oblio.email}
-                              onChange={(e) => updateProviderConfig('oblio', 'email', e.target.value)}
-                              placeholder="Enter your Oblio.eu account email"
-                            />
-                            <p className="text-xs text-muted-foreground">
-                              This is your Oblio.eu login email (client_id)
-                            </p>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="oblio-api-key">API Secret Key</Label>
-                            <Input
-                              id="oblio-api-key"
-                              type="password"
-                              value={providerConfigs.oblio.api_key}
-                              onChange={(e) => updateProviderConfig('oblio', 'api_key', e.target.value)}
-                              placeholder="Enter your Oblio.eu API secret key"
-                            />
-                            <p className="text-xs text-muted-foreground">
-                              Found in Oblio.eu Settings → Account Data (client_secret)
-                            </p>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="oblio-series-name">Invoice Series</Label>
-                            <Input
-                              id="oblio-series-name"
-                              value={providerConfigs.oblio.series_name}
-                              onChange={(e) => updateProviderConfig('oblio', 'series_name', e.target.value)}
-                              placeholder="e.g., APM"
-                            />
-                            <p className="text-xs text-muted-foreground">
-                              Series prefix for your invoices (e.g., APM, FCT)
-                            </p>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="oblio-first-number">First Invoice Number</Label>
-                            <Input
-                              id="oblio-first-number"
-                              value={providerConfigs.oblio.first_number}
-                              onChange={(e) => updateProviderConfig('oblio', 'first_number', e.target.value)}
-                              placeholder="e.g., 001"
-                            />
-                            <p className="text-xs text-muted-foreground">
-                              Starting number for your invoices (e.g., 001, 0001)
-                            </p>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="oblio-name">Company Name</Label>
-                            <Input
-                              id="oblio-name"
-                              value={providerConfigs.oblio.name}
-                              onChange={(e) => updateProviderConfig('oblio', 'name', e.target.value)}
-                              placeholder="Enter your company name"
-                            />
+                <div className="grid gap-4">
+                  {/* Invoicing Section */}
+                  <Collapsible
+                    open={openCollapsibles.invoicing}
+                    onOpenChange={(isOpen) => setOpenCollapsibles(prev => ({ ...prev, invoicing: isOpen }))}
+                  >
+                    <CollapsibleTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        className="w-full justify-between h-auto p-4 bg-background/95 backdrop-blur-xl border border-border/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-5 w-5 text-primary" />
+                          <div className="text-left">
+                            <div className="font-medium">Invoicing</div>
+                            <div className="text-sm text-muted-foreground">Oblio.eu Integration</div>
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="shipping-provider">Shipping Provider</Label>
-                    <Select
-                      value={integrations.shipping}
-                      onValueChange={(value) => setIntegrations({ ...integrations, shipping: value })}
-                    >
-                       <SelectTrigger>
-                         <SelectValue placeholder="Select shipping provider" />
-                       </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="eawb">eAWB.ro</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <p className="text-sm text-muted-foreground">
-                      Manages shipping and delivery for your orders
-                    </p>
-                    
-                     {integrations.shipping === 'sameday' && (
-                       <div className="mt-4 p-4 border rounded-lg space-y-4">
-                         <h4 className="font-medium">Sameday Configuration</h4>
-                         <div className="grid gap-4">
-                           <div className="space-y-2">
-                             <Label htmlFor="sameday-api-key">API Key</Label>
-                             <Input
-                               id="sameday-api-key"
-                               type="password"
-                               value={providerConfigs.sameday.api_key}
-                               onChange={(e) => updateProviderConfig('sameday', 'api_key', e.target.value)}
-                               placeholder="Enter your Sameday API key"
-                             />
-                           </div>
-                           <div className="space-y-2">
-                             <Label htmlFor="sameday-name">Company Name</Label>
-                             <Input
-                               id="sameday-name"
-                               value={providerConfigs.sameday.name}
-                               onChange={(e) => updateProviderConfig('sameday', 'name', e.target.value)}
-                               placeholder="Enter your company name"
-                             />
-                           </div>
-                           <div className="space-y-2">
-                             <Label htmlFor="sameday-email">Email Address</Label>
-                             <Input
-                               id="sameday-email"
-                               type="email"
-                               value={providerConfigs.sameday.email}
-                               onChange={(e) => updateProviderConfig('sameday', 'email', e.target.value)}
-                               placeholder="Enter your email address"
-                             />
-                           </div>
-                         </div>
-                       </div>
-                     )}
-
-                     {integrations.shipping === 'woot' && (
-                       <div className="mt-4 p-4 border rounded-lg space-y-4">
-                         <h4 className="font-medium">Woot.ro Configuration</h4>
-                         <div className="grid gap-4">
-                           <div className="space-y-2">
-                             <Label htmlFor="woot-api-key">API Key</Label>
-                             <Input
-                               id="woot-api-key"
-                               type="password"
-                               value={providerConfigs.woot?.api_key || ''}
-                               onChange={(e) => updateProviderConfig('woot', 'api_key', e.target.value)}
-                               placeholder="Enter your Woot.ro API key"
-                             />
-                             <p className="text-xs text-muted-foreground">
-                               Your Woot.ro API authentication key
-                             </p>
-                           </div>
-                           <div className="space-y-2">
-                             <Label htmlFor="woot-name">Company Name</Label>
-                             <Input
-                               id="woot-name"
-                               value={providerConfigs.woot?.name || ''}
-                               onChange={(e) => updateProviderConfig('woot', 'name', e.target.value)}
-                               placeholder="Enter your company name"
-                             />
-                           </div>
-                           <div className="space-y-2">
-                             <Label htmlFor="woot-email">Email Address</Label>
-                             <Input
-                               id="woot-email"
-                               type="email"
-                               value={providerConfigs.woot?.email || ''}
-                               onChange={(e) => updateProviderConfig('woot', 'email', e.target.value)}
-                               placeholder="Enter your email address"
-                             />
-                           </div>
-                         </div>
-                        </div>
-                      )}
-
-                      {integrations.shipping === 'eawb' && (
-                        <div className="mt-4 p-4 border rounded-lg space-y-4">
-                          <h4 className="font-medium">eAWB.ro Configuration</h4>
-                          <div className="grid gap-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="eawb-api-key">API Key</Label>
-                              <Input
-                                id="eawb-api-key"
-                                type="password"
-                                value={providerConfigs.eawb?.api_key || ''}
-                                onChange={(e) => updateProviderConfig('eawb', 'api_key', e.target.value)}
-                                placeholder="Enter your eAWB.ro API key"
-                              />
-                              <p className="text-xs text-muted-foreground">
-                                Your eAWB.ro API authentication key from europarcel.com
-                              </p>
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="eawb-name">Company Name</Label>
-                              <Input
-                                id="eawb-name"
-                                value={providerConfigs.eawb?.name || ''}
-                                onChange={(e) => updateProviderConfig('eawb', 'name', e.target.value)}
-                                placeholder="Enter your company name"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="eawb-email">Email Address</Label>
-                              <Input
-                                id="eawb-email"
-                                type="email"
-                                value={providerConfigs.eawb?.email || ''}
-                                onChange={(e) => updateProviderConfig('eawb', 'email', e.target.value)}
-                                placeholder="Enter your email address"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="eawb-phone">Phone Number</Label>
-                              <Input
-                                id="eawb-phone"
-                                type="tel"
-                                value={providerConfigs.eawb?.phone || ''}
-                                onChange={(e) => updateProviderConfig('eawb', 'phone', e.target.value)}
-                                placeholder="Enter your phone number"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="eawb-address">Pickup Address</Label>
-                              <Input
-                                id="eawb-address"
-                                value={providerConfigs.eawb?.address || ''}
-                                onChange={(e) => updateProviderConfig('eawb', 'address', e.target.value)}
-                                placeholder="Enter your pickup address"
-                              />
-                               <p className="text-xs text-muted-foreground">
-                                 Default address for package pickup
-                               </p>
-                             </div>
-                             <div className="space-y-2">
-                               <Label htmlFor="eawb-billing-address-id">Billing Address ID</Label>
-                               <Input
-                                 id="eawb-billing-address-id"
-                                 value={providerConfigs.eawb?.billing_address_id || ''}
-                                 onChange={(e) => updateProviderConfig('eawb', 'billing_address_id', e.target.value)}
-                                 placeholder="1"
-                               />
-                               <p className="text-xs text-muted-foreground">
-                                 Your registered billing address ID (default: 1)
-                               </p>
-                             </div>
-                             <div className="grid grid-cols-2 gap-4">
-                               <div className="space-y-2">
-                                 <Label htmlFor="eawb-default-carrier">Default Carrier ID</Label>
-                                 <Input
-                                   id="eawb-default-carrier"
-                                   value={providerConfigs.eawb?.default_carrier_id || ''}
-                                   onChange={(e) => updateProviderConfig('eawb', 'default_carrier_id', e.target.value)}
-                                   placeholder="Optional"
-                                 />
-                                 <p className="text-xs text-muted-foreground">
-                                   Default carrier ID for pricing (optional)
-                                 </p>
-                               </div>
-                               <div className="space-y-2">
-                                 <Label htmlFor="eawb-default-service">Default Service ID</Label>
-                                 <Input
-                                   id="eawb-default-service"
-                                   value={providerConfigs.eawb?.default_service_id || ''}
-                                   onChange={(e) => updateProviderConfig('eawb', 'default_service_id', e.target.value)}
-                                   placeholder="Optional"
-                                 />
-                                 <p className="text-xs text-muted-foreground">
-                                   Default service ID for pricing (optional)
-                                 </p>
-                               </div>
+                        <ChevronDown className={`h-4 w-4 transition-transform ${openCollapsibles.invoicing ? 'rotate-180' : ''}`} />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2 space-y-4 p-4 border rounded-lg bg-muted/30">
+                      <div className="space-y-2">
+                        <Label htmlFor="invoicing-provider">Invoicing Provider</Label>
+                        <Select
+                          value={integrations.invoicing}
+                          onValueChange={(value) => setIntegrations({ ...integrations, invoicing: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select invoicing provider" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="oblio.eu">Oblio.eu</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-sm text-muted-foreground">
+                          Handles automatic invoice generation for your orders
+                        </p>
+                        
+                        {integrations.invoicing === 'oblio.eu' && (
+                          <div className="mt-4 space-y-4">
+                            <h4 className="font-medium">Oblio.eu Configuration</h4>
+                            <div className="grid gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="oblio-email">Oblio Email Address</Label>
+                                <Input
+                                  id="oblio-email"
+                                  type="email"
+                                  value={providerConfigs.oblio.email}
+                                  onChange={(e) => updateProviderConfig('oblio', 'email', e.target.value)}
+                                  placeholder="Enter your Oblio.eu account email"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                  This is your Oblio.eu login email (client_id)
+                                </p>
                               </div>
-                              <div className="space-y-4">
-                                <div className="flex items-center gap-2">
-                                  <h5 className="font-medium text-sm">Billing Address ID</h5>
-                                </div>
-                                
-                                <div className="grid gap-3">
-                                  <div className="space-y-2">
-                                    <Label htmlFor="billing_address_id">Billing Address ID</Label>
-                                    <Input
-                                      id="billing_address_id"
-                                      type="number"
-                                      placeholder="e.g., 12345"
-                                      value={providerConfigs.eawb?.billing_address_id || ''}
-                                      onChange={(e) => updateProviderConfig('eawb', 'billing_address_id', e.target.value)}
-                                    />
-                                    <p className="text-xs text-muted-foreground">
-                                      Find this ID in your{' '}
-                                      <a 
-                                        href="https://europarcel.com/dashboard" 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="text-primary hover:underline"
-                                      >
-                                        eAWB dashboard
-                                      </a>
-                                      {' '}under billing addresses
-                                    </p>
-                                  </div>
-                                  
-                                  <div className="flex items-center gap-2">
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={fetchEawbCarriers}
-                                      disabled={eawbLoading.carriers || !providerConfigs.eawb?.api_key}
-                                    >
-                                      {eawbLoading.carriers ? 'Fetching...' : 'Fetch Carriers'}
-                                    </Button>
-                                    {eawbData.carriers.length > 0 && (
-                                      <Select
-                                        value={providerConfigs.eawb?.default_carrier_id || ''}
-                                        onValueChange={(value) => {
-                                          updateProviderConfig('eawb', 'default_carrier_id', value);
-                                          setSelectedCarrierForServices(value);
-                                          setEawbData(prev => ({ ...prev, services: [] })); // Clear services when carrier changes
-                                        }}
-                                      >
-                                        <SelectTrigger className="w-[200px]">
-                                          <SelectValue placeholder="Select default carrier" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {eawbData.carriers.map((carrier: any) => (
-                                            <SelectItem key={carrier.id} value={carrier.id.toString()}>
-                                              {carrier.name}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    )}
-                                  </div>
-                                  
-                                  <div className="flex items-center gap-2">
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => fetchEawbServices(selectedCarrierForServices || providerConfigs.eawb?.default_carrier_id)}
-                                      disabled={
-                                        eawbLoading.services || 
-                                        !providerConfigs.eawb?.api_key || 
-                                        (!selectedCarrierForServices && !providerConfigs.eawb?.default_carrier_id)
-                                      }
-                                    >
-                                      {eawbLoading.services ? 'Fetching...' : 'Fetch Services'}
-                                    </Button>
-                                    {eawbData.services.length > 0 && (
-                                      <Select
-                                        value={providerConfigs.eawb?.default_service_id || ''}
-                                        onValueChange={(value) => updateProviderConfig('eawb', 'default_service_id', value)}
-                                      >
-                                        <SelectTrigger className="w-[200px]">
-                                          <SelectValue placeholder="Select default service" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {eawbData.services.map((service: any) => (
-                                            <SelectItem key={service.id} value={service.id.toString()}>
-                                              {service.name}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    )}
-                                  </div>
-                                 </div>
-                               </div>
-                               
-                               {/* Connection Test Section */}
-                               <div className="border-t pt-4 mt-4 space-y-4">
-                                 <EAWBConnectionTest />
-                                 <EAWBDiagnosis />
-                               </div>
-                             </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="oblio-api-key">API Secret Key</Label>
+                                <Input
+                                  id="oblio-api-key"
+                                  type="password"
+                                  value={providerConfigs.oblio.api_key}
+                                  onChange={(e) => updateProviderConfig('oblio', 'api_key', e.target.value)}
+                                  placeholder="Enter your Oblio.eu API secret key"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                  Found in Oblio.eu Settings → Account Data (client_secret)
+                                </p>
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="oblio-series-name">Invoice Series</Label>
+                                <Input
+                                  id="oblio-series-name"
+                                  value={providerConfigs.oblio.series_name}
+                                  onChange={(e) => updateProviderConfig('oblio', 'series_name', e.target.value)}
+                                  placeholder="e.g., APM"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                  Series prefix for your invoices (e.g., APM, FCT)
+                                </p>
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="oblio-first-number">First Invoice Number</Label>
+                                <Input
+                                  id="oblio-first-number"
+                                  value={providerConfigs.oblio.first_number}
+                                  onChange={(e) => updateProviderConfig('oblio', 'first_number', e.target.value)}
+                                  placeholder="e.g., 001"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                  Starting number for your invoices (e.g., 001, 0001)
+                                </p>
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="oblio-name">Company Name</Label>
+                                <Input
+                                  id="oblio-name"
+                                  value={providerConfigs.oblio.name}
+                                  onChange={(e) => updateProviderConfig('oblio', 'name', e.target.value)}
+                                  placeholder="Enter your company name"
+                                />
+                              </div>
+                            </div>
                           </div>
                         )}
-                    </div>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="payment-provider">Payment Processor</Label>
-                    <Select
-                      value={integrations.payment}
-                      onValueChange={(value) => setIntegrations({ ...integrations, payment: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select payment processor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="netpopia">Netpopia Payments</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-sm text-muted-foreground">
-                      Processes online payments from your customers
-                    </p>
-                    
-                    {integrations.payment === 'netpopia' && (
-                      <div className="mt-4 p-4 border rounded-lg space-y-4">
-                        <h4 className="font-medium">Netpopia Configuration</h4>
-                        <div className="grid gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="netpopia-api-key">API Key</Label>
-                            <Input
-                              id="netpopia-api-key"
-                              type="password"
-                              value={providerConfigs.netpopia.api_key}
-                              onChange={(e) => updateProviderConfig('netpopia', 'api_key', e.target.value)}
-                              placeholder="Enter your Netpopia API key"
-                            />
+                  {/* Delivery Section */}
+                  <Collapsible
+                    open={openCollapsibles.delivery}
+                    onOpenChange={(isOpen) => setOpenCollapsibles(prev => ({ ...prev, delivery: isOpen }))}
+                  >
+                    <CollapsibleTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        className="w-full justify-between h-auto p-4 bg-background/95 backdrop-blur-xl border border-border/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Truck className="h-5 w-5 text-primary" />
+                          <div className="text-left">
+                            <div className="font-medium">Delivery</div>
+                            <div className="text-sm text-muted-foreground">eAWB.ro Integration</div>
                           </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="netpopia-name">Company Name</Label>
-                            <Input
-                              id="netpopia-name"
-                              value={providerConfigs.netpopia.name}
-                              onChange={(e) => updateProviderConfig('netpopia', 'name', e.target.value)}
-                              placeholder="Enter your company name"
-                            />
-                          </div>
-                           <div className="space-y-2">
-                             <Label htmlFor="netpopia-email">Email Address</Label>
-                             <Input
-                               id="netpopia-email"
-                               type="email"
-                               value={providerConfigs.netpopia.email}
-                               onChange={(e) => updateProviderConfig('netpopia', 'email', e.target.value)}
-                               placeholder="Enter your email address"
-                             />
+                        </div>
+                        <ChevronDown className={`h-4 w-4 transition-transform ${openCollapsibles.delivery ? 'rotate-180' : ''}`} />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2 space-y-4 p-4 border rounded-lg bg-muted/30">
+                      <div className="space-y-2">
+                        <Label htmlFor="shipping-provider">Shipping Provider</Label>
+                        <Select
+                          value={integrations.shipping}
+                          onValueChange={(value) => setIntegrations({ ...integrations, shipping: value })}
+                        >
+                           <SelectTrigger>
+                             <SelectValue placeholder="Select shipping provider" />
+                           </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="eawb">eAWB.ro</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <p className="text-sm text-muted-foreground">
+                          Manages shipping and delivery for your orders
+                        </p>
+                        
+                         {integrations.shipping === 'sameday' && (
+                           <div className="mt-4 space-y-4">
+                             <h4 className="font-medium">Sameday Configuration</h4>
+                             <div className="grid gap-4">
+                               <div className="space-y-2">
+                                 <Label htmlFor="sameday-api-key">API Key</Label>
+                                 <Input
+                                   id="sameday-api-key"
+                                   type="password"
+                                   value={providerConfigs.sameday.api_key}
+                                   onChange={(e) => updateProviderConfig('sameday', 'api_key', e.target.value)}
+                                   placeholder="Enter your Sameday API key"
+                                 />
+                               </div>
+                               <div className="space-y-2">
+                                 <Label htmlFor="sameday-name">Company Name</Label>
+                                 <Input
+                                   id="sameday-name"
+                                   value={providerConfigs.sameday.name}
+                                   onChange={(e) => updateProviderConfig('sameday', 'name', e.target.value)}
+                                   placeholder="Enter your company name"
+                                 />
+                               </div>
+                               <div className="space-y-2">
+                                 <Label htmlFor="sameday-email">Email Address</Label>
+                                 <Input
+                                   id="sameday-email"
+                                   type="email"
+                                   value={providerConfigs.sameday.email}
+                                   onChange={(e) => updateProviderConfig('sameday', 'email', e.target.value)}
+                                   placeholder="Enter your email address"
+                                 />
+                               </div>
+                             </div>
                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="netpopia-signature">POS Signature *</Label>
-                              <Input
-                                id="netpopia-signature"
-                                type="password"
-                                value={providerConfigs.netpopia.signature}
-                                onChange={(e) => updateProviderConfig('netpopia', 'signature', e.target.value)}
-                                placeholder="Enter your POS signature"
-                                required
-                              />
-                              <p className="text-xs text-muted-foreground">
-                                Required for payment processing. Found in your Netpopia admin panel.
-                              </p>
+                         )}
+
+                         {integrations.shipping === 'woot' && (
+                           <div className="mt-4 space-y-4">
+                             <h4 className="font-medium">Woot.ro Configuration</h4>
+                             <div className="grid gap-4">
+                               <div className="space-y-2">
+                                 <Label htmlFor="woot-api-key">API Key</Label>
+                                 <Input
+                                   id="woot-api-key"
+                                   type="password"
+                                   value={providerConfigs.woot?.api_key || ''}
+                                   onChange={(e) => updateProviderConfig('woot', 'api_key', e.target.value)}
+                                   placeholder="Enter your Woot.ro API key"
+                                 />
+                                 <p className="text-xs text-muted-foreground">
+                                   Your Woot.ro API authentication key
+                                 </p>
+                               </div>
+                               <div className="space-y-2">
+                                 <Label htmlFor="woot-name">Company Name</Label>
+                                 <Input
+                                   id="woot-name"
+                                   value={providerConfigs.woot?.name || ''}
+                                   onChange={(e) => updateProviderConfig('woot', 'name', e.target.value)}
+                                   placeholder="Enter your company name"
+                                 />
+                               </div>
+                               <div className="space-y-2">
+                                 <Label htmlFor="woot-email">Email Address</Label>
+                                 <Input
+                                   id="woot-email"
+                                   type="email"
+                                   value={providerConfigs.woot?.email || ''}
+                                   onChange={(e) => updateProviderConfig('woot', 'email', e.target.value)}
+                                   placeholder="Enter your email address"
+                                 />
+                               </div>
+                             </div>
                             </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="netpopia-sandbox">Environment</Label>
-                             <Select
-                               value={providerConfigs.netpopia.sandbox ? 'sandbox' : 'live'}
-                               onValueChange={(value) => updateProviderConfig('netpopia', 'sandbox', value === 'sandbox')}
-                             >
-                               <SelectTrigger>
-                                 <SelectValue />
-                               </SelectTrigger>
-                               <SelectContent>
-                                 <SelectItem value="sandbox">Sandbox (Testing)</SelectItem>
-                                 <SelectItem value="live">Live (Production)</SelectItem>
-                               </SelectContent>
-                             </Select>
-                             <p className="text-xs text-muted-foreground">
-                               Use sandbox for testing, live for production
-                             </p>
+                          )}
+
+                          {integrations.shipping === 'eawb' && (
+                            <div className="mt-4 space-y-4">
+                              <h4 className="font-medium">eAWB.ro Configuration</h4>
+                              <div className="grid gap-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="eawb-api-key">API Key</Label>
+                                  <Input
+                                    id="eawb-api-key"
+                                    type="password"
+                                    value={providerConfigs.eawb?.api_key || ''}
+                                    onChange={(e) => updateProviderConfig('eawb', 'api_key', e.target.value)}
+                                    placeholder="Enter your eAWB.ro API key"
+                                  />
+                                  <p className="text-xs text-muted-foreground">
+                                    Your eAWB.ro API authentication key from europarcel.com
+                                  </p>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="eawb-name">Company Name</Label>
+                                  <Input
+                                    id="eawb-name"
+                                    value={providerConfigs.eawb?.name || ''}
+                                    onChange={(e) => updateProviderConfig('eawb', 'name', e.target.value)}
+                                    placeholder="Enter your company name"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="eawb-email">Email Address</Label>
+                                  <Input
+                                    id="eawb-email"
+                                    type="email"
+                                    value={providerConfigs.eawb?.email || ''}
+                                    onChange={(e) => updateProviderConfig('eawb', 'email', e.target.value)}
+                                    placeholder="Enter your email address"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="eawb-phone">Phone Number</Label>
+                                  <Input
+                                    id="eawb-phone"
+                                    type="tel"
+                                    value={providerConfigs.eawb?.phone || ''}
+                                    onChange={(e) => updateProviderConfig('eawb', 'phone', e.target.value)}
+                                    placeholder="Enter your phone number"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="eawb-address">Pickup Address</Label>
+                                  <Input
+                                    id="eawb-address"
+                                    value={providerConfigs.eawb?.address || ''}
+                                    onChange={(e) => updateProviderConfig('eawb', 'address', e.target.value)}
+                                    placeholder="Enter your pickup address"
+                                  />
+                                   <p className="text-xs text-muted-foreground">
+                                     Default address for package pickup
+                                   </p>
+                                 </div>
+                                 <div className="space-y-2">
+                                   <Label htmlFor="eawb-billing-address-id">Billing Address ID</Label>
+                                   <Input
+                                     id="eawb-billing-address-id"
+                                     value={providerConfigs.eawb?.billing_address_id || ''}
+                                     onChange={(e) => updateProviderConfig('eawb', 'billing_address_id', e.target.value)}
+                                     placeholder="1"
+                                   />
+                                   <p className="text-xs text-muted-foreground">
+                                     Your registered billing address ID (default: 1)
+                                   </p>
+                                 </div>
+                                 <div className="grid grid-cols-2 gap-4">
+                                   <div className="space-y-2">
+                                     <Label htmlFor="eawb-default-carrier">Default Carrier ID</Label>
+                                     <Input
+                                       id="eawb-default-carrier"
+                                       value={providerConfigs.eawb?.default_carrier_id || ''}
+                                       onChange={(e) => updateProviderConfig('eawb', 'default_carrier_id', e.target.value)}
+                                       placeholder="Optional"
+                                     />
+                                     <p className="text-xs text-muted-foreground">
+                                       Default carrier ID for pricing (optional)
+                                     </p>
+                                   </div>
+                                   <div className="space-y-2">
+                                     <Label htmlFor="eawb-default-service">Default Service ID</Label>
+                                     <Input
+                                       id="eawb-default-service"
+                                       value={providerConfigs.eawb?.default_service_id || ''}
+                                       onChange={(e) => updateProviderConfig('eawb', 'default_service_id', e.target.value)}
+                                       placeholder="Optional"
+                                     />
+                                     <p className="text-xs text-muted-foreground">
+                                       Default service ID for pricing (optional)
+                                     </p>
+                                   </div>
+                                  </div>
+                                  <div className="space-y-4">
+                                    <div className="flex items-center gap-2">
+                                      <h5 className="font-medium text-sm">Billing Address ID</h5>
+                                    </div>
+                                    
+                                    <div className="grid gap-3">
+                                      <div className="space-y-2">
+                                        <Label htmlFor="billing_address_id">Billing Address ID</Label>
+                                        <Input
+                                          id="billing_address_id"
+                                          type="number"
+                                          placeholder="e.g., 12345"
+                                          value={providerConfigs.eawb?.billing_address_id || ''}
+                                          onChange={(e) => updateProviderConfig('eawb', 'billing_address_id', e.target.value)}
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                          Find this ID in your{' '}
+                                          <a 
+                                            href="https://europarcel.com/dashboard" 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="text-primary hover:underline"
+                                          >
+                                            eAWB dashboard
+                                          </a>
+                                          {' '}under billing addresses
+                                        </p>
+                                      </div>
+                                      
+                                      <div className="flex items-center gap-2">
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={fetchEawbCarriers}
+                                          disabled={eawbLoading.carriers || !providerConfigs.eawb?.api_key}
+                                        >
+                                          {eawbLoading.carriers ? 'Fetching...' : 'Fetch Carriers'}
+                                        </Button>
+                                        {eawbData.carriers.length > 0 && (
+                                          <Select
+                                            value={providerConfigs.eawb?.default_carrier_id || ''}
+                                            onValueChange={(value) => {
+                                              updateProviderConfig('eawb', 'default_carrier_id', value);
+                                              setSelectedCarrierForServices(value);
+                                              setEawbData(prev => ({ ...prev, services: [] })); // Clear services when carrier changes
+                                            }}
+                                          >
+                                            <SelectTrigger className="w-[200px]">
+                                              <SelectValue placeholder="Select default carrier" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {eawbData.carriers.map((carrier: any) => (
+                                                <SelectItem key={carrier.id} value={carrier.id.toString()}>
+                                                  {carrier.name}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                        )}
+                                      </div>
+                                      
+                                      <div className="flex items-center gap-2">
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => fetchEawbServices(selectedCarrierForServices || providerConfigs.eawb?.default_carrier_id)}
+                                          disabled={
+                                            eawbLoading.services || 
+                                            !providerConfigs.eawb?.api_key || 
+                                            (!selectedCarrierForServices && !providerConfigs.eawb?.default_carrier_id)
+                                          }
+                                        >
+                                          {eawbLoading.services ? 'Fetching...' : 'Fetch Services'}
+                                        </Button>
+                                        {eawbData.services.length > 0 && (
+                                          <Select
+                                            value={providerConfigs.eawb?.default_service_id || ''}
+                                            onValueChange={(value) => updateProviderConfig('eawb', 'default_service_id', value)}
+                                          >
+                                            <SelectTrigger className="w-[200px]">
+                                              <SelectValue placeholder="Select default service" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {eawbData.services.map((service: any) => (
+                                                <SelectItem key={service.id} value={service.id.toString()}>
+                                                  {service.name}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                        )}
+                                      </div>
+                                     </div>
+                                   </div>
+                                   
+                                   {/* Connection Test Section */}
+                                   <div className="border-t pt-4 mt-4 space-y-4">
+                                     <EAWBConnectionTest />
+                                     <EAWBDiagnosis />
+                                   </div>
+                                 </div>
+                              </div>
+                            )}
+                        </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+
+                  {/* Payment Section */}
+                  <Collapsible
+                    open={openCollapsibles.payment}
+                    onOpenChange={(isOpen) => setOpenCollapsibles(prev => ({ ...prev, payment: isOpen }))}
+                  >
+                    <CollapsibleTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        className="w-full justify-between h-auto p-4 bg-background/95 backdrop-blur-xl border border-border/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <CreditCard className="h-5 w-5 text-primary" />
+                          <div className="text-left">
+                            <div className="font-medium">Payment</div>
+                            <div className="text-sm text-muted-foreground">Netpopia Integration</div>
+                          </div>
+                        </div>
+                        <ChevronDown className={`h-4 w-4 transition-transform ${openCollapsibles.payment ? 'rotate-180' : ''}`} />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2 space-y-4 p-4 border rounded-lg bg-muted/30">
+                      <div className="space-y-2">
+                        <Label htmlFor="payment-provider">Payment Processor</Label>
+                        <Select
+                          value={integrations.payment}
+                          onValueChange={(value) => setIntegrations({ ...integrations, payment: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select payment processor" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="netpopia">Netpopia Payments</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-sm text-muted-foreground">
+                          Processes online payments from your customers
+                        </p>
+                        
+                        {integrations.payment === 'netpopia' && (
+                          <div className="mt-4 space-y-4">
+                            <h4 className="font-medium">Netpopia Configuration</h4>
+                            <div className="grid gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="netpopia-api-key">API Key</Label>
+                                <Input
+                                  id="netpopia-api-key"
+                                  type="password"
+                                  value={providerConfigs.netpopia.api_key}
+                                  onChange={(e) => updateProviderConfig('netpopia', 'api_key', e.target.value)}
+                                  placeholder="Enter your Netpopia API key"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="netpopia-name">Company Name</Label>
+                                <Input
+                                  id="netpopia-name"
+                                  value={providerConfigs.netpopia.name}
+                                  onChange={(e) => updateProviderConfig('netpopia', 'name', e.target.value)}
+                                  placeholder="Enter your company name"
+                                />
+                              </div>
+                               <div className="space-y-2">
+                                 <Label htmlFor="netpopia-email">Email Address</Label>
+                                 <Input
+                                   id="netpopia-email"
+                                   type="email"
+                                   value={providerConfigs.netpopia.email}
+                                   onChange={(e) => updateProviderConfig('netpopia', 'email', e.target.value)}
+                                   placeholder="Enter your email address"
+                                 />
+                               </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="netpopia-signature">POS Signature *</Label>
+                                  <Input
+                                    id="netpopia-signature"
+                                    type="password"
+                                    value={providerConfigs.netpopia.signature}
+                                    onChange={(e) => updateProviderConfig('netpopia', 'signature', e.target.value)}
+                                    placeholder="Enter your POS signature"
+                                    required
+                                  />
+                                  <p className="text-xs text-muted-foreground">
+                                    Required for payment processing. Found in your Netpopia admin panel.
+                                  </p>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="netpopia-sandbox">Environment</Label>
+                                 <Select
+                                   value={providerConfigs.netpopia.sandbox ? 'sandbox' : 'live'}
+                                   onValueChange={(value) => updateProviderConfig('netpopia', 'sandbox', value === 'sandbox')}
+                                 >
+                                   <SelectTrigger>
+                                     <SelectValue />
+                                   </SelectTrigger>
+                                   <SelectContent>
+                                     <SelectItem value="sandbox">Sandbox (Testing)</SelectItem>
+                                     <SelectItem value="live">Live (Production)</SelectItem>
+                                   </SelectContent>
+                                 </Select>
+                                 <p className="text-xs text-muted-foreground">
+                                   Use sandbox for testing, live for production
+                                 </p>
+                               </div>
+                             </div>
                            </div>
-                         </div>
-                       </div>
-                      )}
-                  </div>
+                          )}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
 
                   {/* Payment Options */}
                   <Card className="mt-4">
