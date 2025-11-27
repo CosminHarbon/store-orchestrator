@@ -34,9 +34,7 @@ export function MobileHeader({ userEmail, storeName, onTabChange }: MobileHeader
           <div className="flex items-center gap-3">
             <SidebarTrigger className="md:hidden p-2 hover:bg-muted/50 rounded-lg transition-colors" />
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-primary rounded-xl">
-                <Store className="h-5 w-5 text-white" />
-              </div>
+              <img src="/logo.png" alt="Store Logo" className="h-10 w-10 object-contain" />
               <div className="hidden sm:block">
                 <h1 className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">
                   {storeName || "Store Admin"}
