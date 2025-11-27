@@ -150,10 +150,13 @@ const Index = () => {
 
       {/* Quick Stats Grid */}
       <div className={`grid grid-cols-2 gap-3 md:gap-4`}>
-        <div className={`rounded-xl p-4 shadow-card border ${isMobile 
-          ? 'bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-sm border-border/30 hover:from-card/70 hover:to-card/50 transition-all duration-300' 
-          : 'bg-gradient-card border-border/50'
-        }`}>
+        <div 
+          onClick={() => setActiveTab('products')}
+          className={`rounded-xl p-4 shadow-card border cursor-pointer ${isMobile 
+            ? 'bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-sm border-border/30 hover:from-card/70 hover:to-card/50 transition-all duration-300 active:scale-95' 
+            : 'bg-gradient-card border-border/50 hover:shadow-lg hover:border-primary/30 transition-all duration-200'
+          }`}
+        >
           <div className="flex items-center gap-3 mb-2">
             <div className={`p-2 rounded-lg ${isMobile ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50'}`}>
               <Package className={`h-4 w-4 ${isMobile ? 'text-blue-500/80' : 'text-blue-600'}`} />
@@ -167,10 +170,13 @@ const Index = () => {
           </div>
         </div>
 
-        <div className={`rounded-xl p-4 shadow-card border ${isMobile 
-          ? 'bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-sm border-border/30 hover:from-card/70 hover:to-card/50 transition-all duration-300' 
-          : 'bg-gradient-card border-border/50'
-        }`}>
+        <div 
+          onClick={() => setActiveTab('orders')}
+          className={`rounded-xl p-4 shadow-card border cursor-pointer ${isMobile 
+            ? 'bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-sm border-border/30 hover:from-card/70 hover:to-card/50 transition-all duration-300 active:scale-95' 
+            : 'bg-gradient-card border-border/50 hover:shadow-lg hover:border-primary/30 transition-all duration-200'
+          }`}
+        >
           <div className="flex items-center gap-3 mb-2">
             <div className={`p-2 rounded-lg ${isMobile ? 'bg-green-500/10 border border-green-500/20' : 'bg-green-50'}`}>
               <ShoppingCart className={`h-4 w-4 ${isMobile ? 'text-green-500/80' : 'text-green-600'}`} />
@@ -184,10 +190,13 @@ const Index = () => {
           </div>
         </div>
 
-        <div className={`rounded-xl p-4 shadow-card border ${isMobile 
-          ? 'bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-sm border-border/30 hover:from-card/70 hover:to-card/50 transition-all duration-300' 
-          : 'bg-gradient-card border-border/50'
-        }`}>
+        <div 
+          onClick={() => setActiveTab('orders')}
+          className={`rounded-xl p-4 shadow-card border cursor-pointer ${isMobile 
+            ? 'bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-sm border-border/30 hover:from-card/70 hover:to-card/50 transition-all duration-300 active:scale-95' 
+            : 'bg-gradient-card border-border/50 hover:shadow-lg hover:border-primary/30 transition-all duration-200'
+          }`}
+        >
           <div className="flex items-center gap-3 mb-2">
             <div className={`p-2 rounded-lg ${isMobile ? 'bg-orange-500/10 border border-orange-500/20' : 'bg-orange-50'}`}>
               <Clock className={`h-4 w-4 ${isMobile ? 'text-orange-500/80' : 'text-orange-600'}`} />
@@ -201,10 +210,13 @@ const Index = () => {
           </div>
         </div>
 
-        <div className={`rounded-xl p-4 shadow-card border ${isMobile 
-          ? 'bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-sm border-border/30 hover:from-card/70 hover:to-card/50 transition-all duration-300' 
-          : 'bg-gradient-card border-border/50'
-        }`}>
+        <div 
+          onClick={() => setActiveTab('stock')}
+          className={`rounded-xl p-4 shadow-card border cursor-pointer ${isMobile 
+            ? 'bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-sm border-border/30 hover:from-card/70 hover:to-card/50 transition-all duration-300 active:scale-95' 
+            : 'bg-gradient-card border-border/50 hover:shadow-lg hover:border-primary/30 transition-all duration-200'
+          }`}
+        >
           <div className="flex items-center gap-3 mb-2">
             <div className={`p-2 rounded-lg ${isMobile ? 'bg-red-500/10 border border-red-500/20' : 'bg-red-50'}`}>
               <TrendingUp className={`h-4 w-4 ${isMobile ? 'text-red-500/80' : 'text-red-600'}`} />
