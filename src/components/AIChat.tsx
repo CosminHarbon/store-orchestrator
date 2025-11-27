@@ -23,7 +23,7 @@ const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose }) => {
   const [messages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: 'AI CHAT IS CURRENTLY UNAVAILABLE\n\nWe apologize for the inconvenience. Our AI assistant is temporarily unavailable.\n\nFor support and more information, please contact our department:\n\n📞 Phone: +4072 046 211\n📧 Email: support@yourstore.com\n\nOur team is available Monday to Friday, 9:00 AM - 6:00 PM.\n\nThank you for your understanding!',
+      content: 'AI CHAT IS CURRENTLY UNAVAILABLE\n\nWe apologize for the inconvenience. Our AI assistant is temporarily unavailable.\n\nFor support and more information, please contact our department:\n\n📞 Phone: +4072 046 211\n\nOur team is available Monday to Friday, 9:00 AM - 6:00 PM.\n\nThank you for your understanding!',
       timestamp: new Date()
     }
   ]);
