@@ -412,6 +412,7 @@ const OrderManagement = () => {
           onManualComplete={handleManualComplete}
           onCancelAWB={handleCancelAWB}
           creatingAWB={creatingAWB}
+          onCreateAWB={handleCreateAWB}
         />
         {filteredOrders.length === 0 && !searchQuery && (
           <div className="text-center py-8 text-muted-foreground">
