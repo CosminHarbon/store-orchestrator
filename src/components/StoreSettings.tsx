@@ -891,14 +891,12 @@ class StoreAPI {
                       value={integrations.shipping}
                       onValueChange={(value) => setIntegrations({ ...integrations, shipping: value })}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select shipping provider" />
-                      </SelectTrigger>
-                       <SelectContent>
-                         <SelectItem value="sameday">Sameday</SelectItem>
-                         <SelectItem value="woot">Woot.ro</SelectItem>
-                         <SelectItem value="eawb">eAWB.ro</SelectItem>
-                       </SelectContent>
+                       <SelectTrigger>
+                         <SelectValue placeholder="Select shipping provider" />
+                       </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="eawb">eAWB.ro</SelectItem>
+                        </SelectContent>
                     </Select>
                     <p className="text-sm text-muted-foreground">
                       Manages shipping and delivery for your orders
@@ -1591,14 +1589,12 @@ class StoreAPI {
                         value={integrations.shipping}
                         onValueChange={(value) => setIntegrations({ ...integrations, shipping: value })}
                       >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select shipping provider" />
-                        </SelectTrigger>
-                        <SelectContent className="z-50 bg-background border border-border/50">
-                          <SelectItem value="sameday">Sameday</SelectItem>
-                          <SelectItem value="woot">Woot.ro</SelectItem>
-                          <SelectItem value="eawb">eAWB.ro</SelectItem>
-                        </SelectContent>
+                         <SelectTrigger>
+                           <SelectValue placeholder="Select shipping provider" />
+                         </SelectTrigger>
+                         <SelectContent className="z-50 bg-background border border-border/50">
+                           <SelectItem value="eawb">eAWB.ro</SelectItem>
+                         </SelectContent>
                       </Select>
                       <p className="text-sm text-muted-foreground">
                         Manages shipping and delivery for your orders
