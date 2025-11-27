@@ -31,9 +31,10 @@ interface ResponsiveOrderTableProps {
   onManualComplete: (orderId: string) => void;
   onCancelAWB?: (orderId: string) => void;
   creatingAWB?: Set<string>;
+  onCreateAWB?: (orderId: string) => void;
 }
 
-export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoice, onEditOrder, onRefreshPayment, refreshingPayments, onManualComplete, onCancelAWB, creatingAWB }: ResponsiveOrderTableProps) {
+export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoice, onEditOrder, onRefreshPayment, refreshingPayments, onManualComplete, onCancelAWB, creatingAWB, onCreateAWB }: ResponsiveOrderTableProps) {
   
   const handleManualComplete = (orderId: string) => {
     onManualComplete(orderId);
@@ -294,7 +295,7 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => onViewOrder(order)}
+                        onClick={() => onCreateAWB ? onCreateAWB(order.id) : onViewOrder(order)}
                         disabled={creatingAWB?.has(order.id)}
                         className="w-full px-2 text-xs"
                       >
