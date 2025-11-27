@@ -53,7 +53,7 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
         <SidebarGroup>
           <SidebarGroupLabel className="px-4 py-2">
             <div className="flex items-center gap-2">
-              <Store className="h-5 w-5" />
+              <img src="/logo.png" alt="Store Logo" className="h-5 w-5 object-contain" />
               {!collapsed && <span className="font-semibold">Store Admin</span>}
             </div>
           </SidebarGroupLabel>

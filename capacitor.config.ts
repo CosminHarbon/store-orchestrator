@@ -2,7 +2,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'app.lovable.f5f7031422474e0c9124fa81d2e3fa11',
-  appName: 'store-orchestrator',
+  appName: 'Store Orchestrator',
   webDir: 'dist',
   // Comment out server config for native app to use local files
   // server: {
