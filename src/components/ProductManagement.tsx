@@ -339,7 +339,7 @@ const ProductManagement = () => {
                       Add Product
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-md bg-background/95 backdrop-blur-xl border border-border/20 rounded-3xl shadow-2xl">
+                  <DialogContent className="max-w-md w-[calc(100vw-2rem)] sm:w-full max-h-[90vh] overflow-y-auto bg-background/95 backdrop-blur-xl border border-border/20 rounded-3xl shadow-2xl">
                     <DialogHeader>
                       <DialogTitle className="text-xl font-semibold text-primary-dark">
                         {editingProduct ? 'Edit Product' : 'Add New Product'}
