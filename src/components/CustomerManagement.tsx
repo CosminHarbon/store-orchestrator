@@ -320,9 +320,13 @@ const CustomerManagement: React.FC = () => {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>{customer.customer_email}</TableCell>
+                      <TableCell className="max-w-xs">
+                        <div className="truncate" title={customer.customer_email}>
+                          {customer.customer_email}
+                        </div>
+                      </TableCell>
                       <TableCell>
-                        <Badge variant={customer.total_orders > 1 ? "default" : "secondary"}>
+                        <Badge variant={customer.total_orders > 1 ? "default" : "secondary"} className="whitespace-nowrap">
                           {customer.total_orders}
                         </Badge>
                       </TableCell>
@@ -351,7 +355,7 @@ const CustomerManagement: React.FC = () => {
                                   <CardContent className="pt-0">
                                     <div className="space-y-1">
                                       {customer.unique_names.map((name, idx) => (
-                                        <div key={idx} className="text-sm">{name}</div>
+                                        <div key={`name-${customer.customer_email}-${idx}`} className="text-sm">{name}</div>
                                       ))}
                                     </div>
                                   </CardContent>
@@ -364,7 +368,7 @@ const CustomerManagement: React.FC = () => {
                                   <CardContent className="pt-0">
                                     <div className="space-y-1">
                                       {customer.unique_addresses.map((address, idx) => (
-                                        <div key={idx} className="text-sm">{address}</div>
+                                        <div key={`address-${customer.customer_email}-${idx}`} className="text-sm">{address}</div>
                                       ))}
                                     </div>
                                   </CardContent>
@@ -384,22 +388,22 @@ const CustomerManagement: React.FC = () => {
                                     {getPaginatedOrders(customer).map((order) => (
                                       <div key={order.id} className="border rounded-lg p-3 bg-background">
                                         <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
-                                          <div className="space-y-1">
-                                            <div className="font-medium text-sm">Order #{order.id.slice(-8)}</div>
-                                            <div className="text-xs text-muted-foreground">
+                                          <div className="space-y-1 flex-1 min-w-0">
+                                            <div className="font-medium text-sm truncate">Order #{order.id.slice(-8)}</div>
+                                            <div className="text-xs text-muted-foreground truncate">
                                               {formatDate(order.created_at)} • {order.customer_name}
                                             </div>
-                                            <div className="text-xs text-muted-foreground">
+                                            <div className="text-xs text-muted-foreground truncate">
                                               {order.customer_address}
                                             </div>
                                           </div>
-                                          <div className="flex flex-col sm:text-right gap-2">
-                                            <div className="font-medium text-sm">{formatCurrency(order.total)}</div>
-                                            <div className="flex flex-wrap gap-1">
-                                              <Badge variant={order.payment_status === 'paid' ? 'default' : 'secondary'} className="text-xs">
+                                          <div className="flex flex-col sm:text-right gap-2 flex-shrink-0">
+                                            <div className="font-medium text-sm whitespace-nowrap">{formatCurrency(order.total)}</div>
+                                            <div className="flex flex-wrap gap-1 justify-end">
+                                              <Badge variant={order.payment_status === 'paid' ? 'default' : 'secondary'} className="text-xs whitespace-nowrap">
                                                 {order.payment_status}
                                               </Badge>
-                                              <Badge variant={order.shipping_status === 'delivered' ? 'default' : 'secondary'} className="text-xs">
+                                              <Badge variant={order.shipping_status === 'delivered' ? 'default' : 'secondary'} className="text-xs whitespace-nowrap">
                                                 {order.shipping_status}
                                               </Badge>
                                             </div>
@@ -409,9 +413,9 @@ const CustomerManagement: React.FC = () => {
                                         {/* Products in order */}
                                         <div className="space-y-1 mt-3">
                                           {order.order_items.map((item, idx) => (
-                                            <div key={idx} className="flex justify-between text-xs text-muted-foreground">
-                                              <span className="truncate mr-2">{item.quantity}x {item.product_title}</span>
-                                              <span className="flex-shrink-0">{formatCurrency(item.product_price * item.quantity)}</span>
+                                            <div key={`${order.id}-item-${idx}`} className="flex justify-between text-xs text-muted-foreground gap-2">
+                                              <span className="truncate">{item.quantity}x {item.product_title}</span>
+                                              <span className="flex-shrink-0 whitespace-nowrap">{formatCurrency(item.product_price * item.quantity)}</span>
                                             </div>
                                           ))}
                                         </div>
@@ -512,16 +516,18 @@ const CustomerManagement: React.FC = () => {
                         </Button>
                         <CardTitle className="text-base font-medium">{customer.unique_names[0]}</CardTitle>
                       </div>
-                      <p className="text-sm text-muted-foreground">{customer.customer_email}</p>
+                      <p className="text-sm text-muted-foreground truncate max-w-[200px]" title={customer.customer_email}>
+                        {customer.customer_email}
+                      </p>
                       {customer.unique_names.length > 1 && (
                         <p className="text-xs text-muted-foreground">
                           +{customer.unique_names.length - 1} other name{customer.unique_names.length > 2 ? 's' : ''}
                         </p>
                       )}
                     </div>
-                    <div className="text-right space-y-1">
-                      <p className="text-lg font-semibold">{formatCurrency(customer.total_spent)}</p>
-                      <Badge variant={customer.total_orders > 1 ? "default" : "secondary"} className="text-xs">
+                    <div className="text-right space-y-1 flex-shrink-0">
+                      <p className="text-lg font-semibold whitespace-nowrap">{formatCurrency(customer.total_spent)}</p>
+                      <Badge variant={customer.total_orders > 1 ? "default" : "secondary"} className="text-xs whitespace-nowrap">
                         {customer.total_orders} order{customer.total_orders > 1 ? 's' : ''}
                       </Badge>
                     </div>
@@ -549,7 +555,7 @@ const CustomerManagement: React.FC = () => {
                           <h4 className="text-sm font-medium mb-2">Names Used</h4>
                           <div className="space-y-1">
                             {customer.unique_names.map((name, idx) => (
-                              <div key={idx} className="text-sm bg-muted/50 p-2 rounded">{name}</div>
+                              <div key={`mobile-name-${customer.customer_email}-${idx}`} className="text-sm bg-muted/50 p-2 rounded">{name}</div>
                             ))}
                           </div>
                         </div>
@@ -558,7 +564,7 @@ const CustomerManagement: React.FC = () => {
                           <h4 className="text-sm font-medium mb-2">Addresses Used</h4>
                           <div className="space-y-1">
                             {customer.unique_addresses.map((address, idx) => (
-                              <div key={idx} className="text-sm bg-muted/50 p-2 rounded break-words">{address}</div>
+                              <div key={`mobile-address-${customer.customer_email}-${idx}`} className="text-sm bg-muted/50 p-2 rounded break-words">{address}</div>
                             ))}
                           </div>
                         </div>
@@ -574,23 +580,23 @@ const CustomerManagement: React.FC = () => {
                           {getPaginatedOrders(customer).map((order) => (
                             <div key={order.id} className="border rounded-lg p-3 bg-background">
                               <div className="space-y-2">
-                                <div className="flex justify-between items-start">
-                                  <div>
-                                    <div className="font-medium text-sm">Order #{order.id.slice(-8)}</div>
-                                    <div className="text-xs text-muted-foreground">
+                                <div className="flex justify-between items-start gap-2">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-medium text-sm truncate">Order #{order.id.slice(-8)}</div>
+                                    <div className="text-xs text-muted-foreground truncate">
                                       {formatDate(order.created_at)}
                                     </div>
                                   </div>
-                                  <div className="text-right">
-                                    <div className="font-medium text-sm">{formatCurrency(order.total)}</div>
+                                  <div className="text-right flex-shrink-0">
+                                    <div className="font-medium text-sm whitespace-nowrap">{formatCurrency(order.total)}</div>
                                   </div>
                                 </div>
                                 
                                 <div className="flex flex-wrap gap-1">
-                                  <Badge variant={order.payment_status === 'paid' ? 'default' : 'secondary'} className="text-xs">
+                                  <Badge variant={order.payment_status === 'paid' ? 'default' : 'secondary'} className="text-xs whitespace-nowrap">
                                     {order.payment_status}
                                   </Badge>
-                                  <Badge variant={order.shipping_status === 'delivered' ? 'default' : 'secondary'} className="text-xs">
+                                  <Badge variant={order.shipping_status === 'delivered' ? 'default' : 'secondary'} className="text-xs whitespace-nowrap">
                                     {order.shipping_status}
                                   </Badge>
                                 </div>
@@ -598,9 +604,9 @@ const CustomerManagement: React.FC = () => {
                                 {/* Products in order */}
                                 <div className="space-y-1">
                                   {order.order_items.map((item, idx) => (
-                                    <div key={idx} className="flex justify-between text-xs text-muted-foreground">
-                                      <span className="truncate mr-2">{item.quantity}x {item.product_title}</span>
-                                      <span className="flex-shrink-0">{formatCurrency(item.product_price * item.quantity)}</span>
+                                    <div key={`mobile-${order.id}-item-${idx}`} className="flex justify-between text-xs text-muted-foreground gap-2">
+                                      <span className="truncate">{item.quantity}x {item.product_title}</span>
+                                      <span className="flex-shrink-0 whitespace-nowrap">{formatCurrency(item.product_price * item.quantity)}</span>
                                     </div>
                                   ))}
                                 </div>
