@@ -38,13 +38,13 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
   const handleManualComplete = (orderId: string) => {
     onManualComplete(orderId);
   };
-  const getStatusBadge = (status: string, type: 'payment' | 'shipping') => {
+  const getStatusBadge = (status: string, type: 'payment' | 'shipping', isMobile: boolean = false) => {
     const baseClasses = "text-xs";
     
     if (type === 'payment') {
       switch (status.toLowerCase()) {
         case 'pending':
-          return <Badge variant="secondary" className={baseClasses}>Pending Payment</Badge>;
+          return <Badge variant="secondary" className={`${baseClasses} px-2 py-0.5`}>{isMobile ? 'Pending' : 'Pending Payment'}</Badge>;
         case 'paid':
           return <Badge variant="default" className={baseClasses}>Paid</Badge>;
         case 'failed':
@@ -227,7 +227,7 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                 <div className="text-right space-y-1">
                   <p className="text-lg font-semibold">{order.total.toFixed(2)} RON</p>
                   <div className="flex gap-1">
-                    {getStatusBadge(order.payment_status, 'payment')}
+                    {getStatusBadge(order.payment_status, 'payment', true)}
                   </div>
                 </div>
               </div>
@@ -284,10 +284,10 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                       variant="outline"
                       onClick={() => generateAndSendInvoice(order.id)}
                       disabled={!!order.invoice_link}
-                      className="w-full px-6"
+                      className="w-full px-2 text-xs"
                     >
-                      <Receipt className="h-4 w-4 mr-2" />
-                      {order.invoice_link ? 'Invoice Sent' : 'Invoice'}
+                      <Receipt className="h-3.5 w-3.5 mr-1" />
+                      {order.invoice_link ? 'Sent' : 'Invoice'}
                     </Button>
                     
                     {!order.awb_number ? (
@@ -296,10 +296,10 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                         variant="outline"
                         onClick={() => onViewOrder(order)}
                         disabled={creatingAWB?.has(order.id)}
-                        className="w-full px-6"
+                        className="w-full px-2 text-xs"
                       >
-                        <Package className="h-4 w-4 mr-2" />
-                        {creatingAWB?.has(order.id) ? 'Creating...' : 'Generate AWB'}
+                        <Package className="h-3.5 w-3.5 mr-1" />
+                        {creatingAWB?.has(order.id) ? 'Creating...' : 'AWB'}
                       </Button>
                     ) : (
                       <Button
