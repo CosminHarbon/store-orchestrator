@@ -162,12 +162,12 @@ export const TemplateCustomizer = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold">Template Customization</h2>
           <p className="text-muted-foreground">Customize your Elementar template</p>
         </div>
-        <div className="flex gap-2">
+        <div className="hidden sm:flex gap-2">
           <Button
             variant="outline"
             onClick={() => window.open(getPreviewUrl(), '_blank')}
@@ -374,6 +374,28 @@ export const TemplateCustomizer = () => {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Mobile Action Buttons */}
+      <div className="flex sm:hidden flex-col gap-3 sticky bottom-4 z-10">
+        <Button
+          onClick={handleSave}
+          disabled={updateCustomizationMutation.isPending}
+          size="lg"
+          className="w-full shadow-lg"
+        >
+          <Save className="h-4 w-4 mr-2" />
+          Save Changes
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => window.open(getPreviewUrl(), '_blank')}
+          size="lg"
+          className="w-full"
+        >
+          <Eye className="h-4 w-4 mr-2" />
+          Preview
+        </Button>
       </div>
     </div>
   );
