@@ -47,17 +47,18 @@ const Index = () => {
     }
   }, [user, loading, navigate]);
 
-  // Check if setup is completed
+  // Check if setup is completed - show wizard only if no store name
   useEffect(() => {
     const checkSetup = async () => {
       if (user) {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('setup_completed, welcome_dismissed')
+          .select('setup_completed, welcome_dismissed, store_name')
           .eq('user_id', user.id)
           .single();
         
-        if (profile && !profile.setup_completed && !profile.welcome_dismissed) {
+        // Show wizard only if store_name is not set and user hasn't dismissed it
+        if (profile && !profile.store_name && !profile.welcome_dismissed) {
           navigate('/setup');
         }
       }
