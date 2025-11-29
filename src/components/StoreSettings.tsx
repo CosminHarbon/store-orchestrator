@@ -1115,59 +1115,16 @@ class StoreAPI {
                                    </p>
                                  </div>
                                   <div className="space-y-2">
-                                    <Label>Billing Address</Label>
-                                    <div className="flex items-center gap-2">
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={fetchEawbBillingAddresses}
-                                        disabled={eawbLoading.billingAddresses || !providerConfigs.eawb?.api_key}
-                                      >
-                                        {eawbLoading.billingAddresses ? 'Fetching...' : 'Fetch Billing Addresses'}
-                                      </Button>
-                                      {eawbData.billingAddresses.length > 0 && (
-                                        <Select
-                                          value={providerConfigs.eawb?.billing_address_id || ''}
-                                          onValueChange={(value) => updateProviderConfig('eawb', 'billing_address_id', value)}
-                                        >
-                                          <SelectTrigger className="flex-1">
-                                            <SelectValue placeholder="Select billing address" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            {eawbData.billingAddresses.map((address: any) => (
-                                              <SelectItem key={address.id} value={address.id.toString()}>
-                                                <div className="flex items-center gap-2">
-                                                  <span>{address.contact}</span>
-                                                  {address.is_default && (
-                                                    <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">Default</span>
-                                                  )}
-                                                </div>
-                                              </SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                      )}
-                                    </div>
-                                    {eawbData.billingAddresses.length > 0 && providerConfigs.eawb?.billing_address_id && (
-                                      <div className="text-xs text-muted-foreground p-2 border rounded bg-muted/30">
-                                        {(() => {
-                                          const selected = eawbData.billingAddresses.find(
-                                            (addr: any) => addr.id.toString() === providerConfigs.eawb?.billing_address_id
-                                          );
-                                          return selected ? (
-                                            <div>
-                                              <div className="font-medium">{selected.contact}</div>
-                                              <div>{selected.street_name} {selected.street_no}</div>
-                                              <div>{selected.locality_name}</div>
-                                              <div>ID: {selected.id}</div>
-                                            </div>
-                                          ) : null;
-                                        })()}
-                                      </div>
-                                    )}
+                                    <Label htmlFor="eawb-billing-id">Billing Address ID</Label>
+                                    <Input
+                                      id="eawb-billing-id"
+                                      type="number"
+                                      value={providerConfigs.eawb?.billing_address_id || ''}
+                                      onChange={(e) => updateProviderConfig('eawb', 'billing_address_id', e.target.value)}
+                                      placeholder="Enter billing address ID from eAWB"
+                                    />
                                     <p className="text-xs text-muted-foreground">
-                                      Click "Fetch Billing Addresses" to load your registered addresses from eAWB
+                                      Enter your billing address ID from your eAWB account
                                     </p>
                                   </div>
                                  <div className="grid grid-cols-2 gap-4">
