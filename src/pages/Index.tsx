@@ -47,6 +47,25 @@ const Index = () => {
     }
   }, [user, loading, navigate]);
 
+  // Check if setup is completed
+  useEffect(() => {
+    const checkSetup = async () => {
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('setup_completed, welcome_dismissed')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (profile && !profile.setup_completed && !profile.welcome_dismissed) {
+          navigate('/setup');
+        }
+      }
+    };
+    
+    checkSetup();
+  }, [user, navigate]);
+
   const { data: stats } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {

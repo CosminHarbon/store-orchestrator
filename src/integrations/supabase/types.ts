@@ -524,11 +524,13 @@ export type Database = {
           sameday_api_key: string | null
           sameday_email: string | null
           sameday_name: string | null
+          setup_completed: boolean | null
           shipping_provider: string | null
           store_api_key: string
           store_name: string | null
           updated_at: string
           user_id: string
+          welcome_dismissed: boolean | null
           woot_api_key: string | null
           woot_email: string | null
           woot_name: string | null
@@ -570,11 +572,13 @@ export type Database = {
           sameday_api_key?: string | null
           sameday_email?: string | null
           sameday_name?: string | null
+          setup_completed?: boolean | null
           shipping_provider?: string | null
           store_api_key?: string
           store_name?: string | null
           updated_at?: string
           user_id: string
+          welcome_dismissed?: boolean | null
           woot_api_key?: string | null
           woot_email?: string | null
           woot_name?: string | null
@@ -616,11 +620,13 @@ export type Database = {
           sameday_api_key?: string | null
           sameday_email?: string | null
           sameday_name?: string | null
+          setup_completed?: boolean | null
           shipping_provider?: string | null
           store_api_key?: string
           store_name?: string | null
           updated_at?: string
           user_id?: string
+          welcome_dismissed?: boolean | null
           woot_api_key?: string | null
           woot_email?: string | null
           woot_name?: string | null
