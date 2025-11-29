@@ -99,14 +99,17 @@ const SetupWizard = () => {
     setLoading(true);
     const { error } = await supabase
       .from('profiles')
-      .update({ store_name: storeName })
+      .update({ 
+        store_name: storeName,
+        setup_completed: true // Mark setup as complete once store name is added
+      })
       .eq('user_id', user.id);
     
     if (error) {
       toast.error('Failed to save store name');
     } else {
-      toast.success('Store name saved!');
-      nextStep();
+      toast.success('Store name saved! Setup complete.');
+      navigate('/');
     }
     setLoading(false);
   };
@@ -241,10 +244,13 @@ const SetupWizard = () => {
                     Back
                   </Button>
                   <Button onClick={updateStoreName} disabled={loading} className="flex-1">
-                    Continue
+                    Save & Complete Setup
                     <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>
                 </div>
+                <p className="text-xs text-center text-muted-foreground">
+                  Once you add your store name, you can configure other settings anytime from the dashboard
+                </p>
               </div>
             </TabsContent>
 
@@ -295,6 +301,9 @@ const SetupWizard = () => {
                   <Button variant="outline" onClick={prevStep}>
                     <ChevronLeft className="h-4 w-4 mr-2" />
                     Back
+                  </Button>
+                  <Button variant="ghost" onClick={nextStep}>
+                    Skip for Now
                   </Button>
                   <Button onClick={nextStep} className="flex-1">
                     Continue
@@ -353,6 +362,9 @@ const SetupWizard = () => {
                     <ChevronLeft className="h-4 w-4 mr-2" />
                     Back
                   </Button>
+                  <Button variant="ghost" onClick={nextStep}>
+                    Skip for Now
+                  </Button>
                   <Button onClick={nextStep} className="flex-1">
                     Continue
                     <ChevronRight className="h-4 w-4 ml-2" />
@@ -410,6 +422,9 @@ const SetupWizard = () => {
                     <ChevronLeft className="h-4 w-4 mr-2" />
                     Back
                   </Button>
+                  <Button variant="ghost" onClick={nextStep}>
+                    Skip for Now
+                  </Button>
                   <Button onClick={nextStep} className="flex-1">
                     Continue
                     <ChevronRight className="h-4 w-4 ml-2" />
@@ -458,6 +473,9 @@ const SetupWizard = () => {
                   <Button variant="outline" onClick={prevStep}>
                     <ChevronLeft className="h-4 w-4 mr-2" />
                     Back
+                  </Button>
+                  <Button variant="ghost" onClick={nextStep}>
+                    Skip for Now
                   </Button>
                   <Button onClick={nextStep} className="flex-1">
                     Continue
