@@ -53,34 +53,50 @@ serve(async (req) => {
         });
       }
 
-      const billingUrl = `${EAWB_BASE_URL}/api/addresses`;
-      console.log('Fetching billing addresses from eAWB API');
+      const billingUrl = 'https://eawb.ro/api/addresses';
+      console.log('=== Fetching Billing Addresses ===');
       console.log('URL:', billingUrl);
-      console.log('API Key present:', !!profile.eawb_api_key);
+      console.log('API Key (first 10 chars):', profile.eawb_api_key?.substring(0, 10) + '...');
+      console.log('API Key length:', profile.eawb_api_key?.length);
 
       const billingResponse = await fetch(billingUrl, {
+        method: 'GET',
         headers: {
           'Authorization': `Bearer ${profile.eawb_api_key}`,
           'Accept': 'application/json'
         }
       });
 
+      console.log('Response status:', billingResponse.status);
+      console.log('Response headers:', Object.fromEntries(billingResponse.headers.entries()));
+
       if (!billingResponse.ok) {
         const errorText = await billingResponse.text();
-        console.error('Billing addresses fetch failed:', billingResponse.status, errorText);
+        console.error('=== Billing addresses fetch failed ===');
+        console.error('Status:', billingResponse.status);
+        console.error('Error body:', errorText);
+        
         return new Response(JSON.stringify({
           success: false,
           error: 'FETCH_FAILED',
           message: 'Failed to fetch billing addresses from eAWB API',
           details: errorText,
-          status: billingResponse.status
+          status: billingResponse.status,
+          url: billingUrl
         }), {
+          status: billingResponse.status,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
 
       const billingData = await billingResponse.json();
-      console.log('Billing addresses fetched:', billingData);
+      console.log('=== Billing Data Response ===');
+      console.log('Response type:', typeof billingData);
+      console.log('Has list property:', 'list' in billingData);
+      console.log('List length:', billingData.list?.length || 0);
+      if (billingData.list && billingData.list.length > 0) {
+        console.log('First address sample:', JSON.stringify(billingData.list[0]));
+      }
 
       return new Response(JSON.stringify({
         success: true,
