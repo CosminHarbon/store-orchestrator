@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const EAWB_BASE_URL = 'https://api.europarcel.com/api/public';
+const EAWB_BASE_URL = 'https://eawb.ro/api';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -57,7 +57,7 @@ serve(async (req) => {
 
       const billingResponse = await fetch(`${EAWB_BASE_URL}/addresses`, {
         headers: {
-          'X-API-Key': profile.eawb_api_key,
+          'Authorization': `Bearer ${profile.eawb_api_key}`,
           'Accept': 'application/json'
         }
       });
