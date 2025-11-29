@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Copy, RefreshCw, Eye, Code, TestTube, Settings, ChevronDown, FileText, CreditCard, Truck } from 'lucide-react';
+import { Copy, RefreshCw, Eye, Code, Settings, ChevronDown, FileText, CreditCard, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -78,14 +78,6 @@ const StoreSettings = () => {
     cash_payment_fee: 0,
     home_delivery_fee: 0,
     locker_delivery_fee: 0
-  });
-  const [testOrderData, setTestOrderData] = useState({
-    name: 'John Doe',
-    email: 'john@example.com',
-    phone: '+1234567890',
-    address: '123 Main St, City, State 12345',
-    items: '[{"product_id": "your-product-id", "quantity": 2}]',
-    total: '29.99'
   });
   
   // eAWB fetch states
@@ -351,34 +343,6 @@ const StoreSettings = () => {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('Copied to clipboard');
-  };
-
-  const createTestOrder = async () => {
-    try {
-      const orderData = {
-        ...testOrderData,
-        items: JSON.parse(testOrderData.items)
-      };
-
-      // This would typically be called from an external website
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${profile?.store_api_key}`
-        },
-        body: JSON.stringify(orderData)
-      });
-
-      if (response.ok) {
-        toast.success('Test order created successfully');
-        queryClient.invalidateQueries({ queryKey: ['orders'] });
-      } else {
-        toast.error('Failed to create test order');
-      }
-    } catch (error) {
-      toast.error('Invalid JSON in items field');
-    }
   };
 
   if (isLoading) {
@@ -729,96 +693,6 @@ class StoreAPI {
                   <span className="truncate">Copy Code</span>
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Test Your Integration</CardTitle>
-              <CardDescription>Create a test order to verify your setup</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Tabs defaultValue="test-order" className="w-full">
-                <TabsList>
-                  <TabsTrigger value="test-order">Test Order</TabsTrigger>
-                  <TabsTrigger value="api-endpoints">API Endpoints</TabsTrigger>
-                </TabsList>
-                <TabsContent value="test-order" className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="test-name">Customer Name</Label>
-                      <Input
-                        id="test-name"
-                        value={testOrderData.name}
-                        onChange={(e) => setTestOrderData({ ...testOrderData, name: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="test-email">Customer Email</Label>
-                      <Input
-                        id="test-email"
-                        value={testOrderData.email}
-                        onChange={(e) => setTestOrderData({ ...testOrderData, email: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="test-phone">Customer Phone</Label>
-                      <Input
-                        id="test-phone"
-                        value={testOrderData.phone}
-                        onChange={(e) => setTestOrderData({ ...testOrderData, phone: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="test-total">Total Amount</Label>
-                      <Input
-                        id="test-total"
-                        type="number"
-                        step="0.01"
-                        value={testOrderData.total}
-                        onChange={(e) => setTestOrderData({ ...testOrderData, total: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="test-address">Customer Address</Label>
-                    <Textarea
-                      id="test-address"
-                      value={testOrderData.address}
-                      onChange={(e) => setTestOrderData({ ...testOrderData, address: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="test-items">Order Items (JSON)</Label>
-                    <Textarea
-                      id="test-items"
-                      value={testOrderData.items}
-                      onChange={(e) => setTestOrderData({ ...testOrderData, items: e.target.value })}
-                      placeholder='[{"product_id": "uuid", "quantity": 1}]'
-                    />
-                  </div>
-                  <Button onClick={createTestOrder}>
-                    <TestTube className="h-4 w-4 mr-2" />
-                    Create Test Order
-                  </Button>
-                </TabsContent>
-                <TabsContent value="api-endpoints" className="space-y-4">
-                  <div className="space-y-4">
-                    <div className="p-4 border rounded-lg">
-                      <h4 className="font-semibold mb-2">Get Products</h4>
-                      <code className="text-sm bg-muted p-2 rounded block">
-                        GET https://uffmgvdtkoxkjolfrhab.supabase.co/functions/v1/store-api/products?api_key={profile.store_api_key}
-                      </code>
-                    </div>
-                    <div className="p-4 border rounded-lg">
-                      <h4 className="font-semibold mb-2">Create Order</h4>
-                      <code className="text-sm bg-muted p-2 rounded block">
-                        POST https://uffmgvdtkoxkjolfrhab.supabase.co/functions/v1/store-api/orders?api_key={profile.store_api_key}
-                      </code>
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
             </CardContent>
           </Card>
         </TabsContent>
