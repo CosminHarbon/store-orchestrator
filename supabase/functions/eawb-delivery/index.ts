@@ -55,7 +55,7 @@ serve(async (req) => {
 
       console.log('Fetching billing addresses from eAWB API');
 
-      const billingResponse = await fetch(`${EAWB_BASE_URL}/billing-addresses`, {
+      const billingResponse = await fetch(`${EAWB_BASE_URL}/addresses`, {
         headers: {
           'X-API-Key': profile.eawb_api_key,
           'Accept': 'application/json'
