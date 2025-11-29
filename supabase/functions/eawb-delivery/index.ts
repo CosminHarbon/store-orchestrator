@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const EAWB_BASE_URL = 'https://eawb.ro/api';
+const EAWB_BASE_URL = 'https://eawb.ro';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -53,9 +53,12 @@ serve(async (req) => {
         });
       }
 
+      const billingUrl = `${EAWB_BASE_URL}/api/addresses`;
       console.log('Fetching billing addresses from eAWB API');
+      console.log('URL:', billingUrl);
+      console.log('API Key present:', !!profile.eawb_api_key);
 
-      const billingResponse = await fetch(`${EAWB_BASE_URL}/addresses`, {
+      const billingResponse = await fetch(billingUrl, {
         headers: {
           'Authorization': `Bearer ${profile.eawb_api_key}`,
           'Accept': 'application/json'
