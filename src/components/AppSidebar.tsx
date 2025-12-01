@@ -51,12 +51,12 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
     <Sidebar className={`${collapsed ? "w-14" : "w-64"} ${isMobile ? "top-16 safe-area-top" : ""}`} collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="px-4 py-2">
-            <div className="flex items-center gap-2">
-              <img src="/logo.png" alt="Store Logo" className="h-5 w-5 object-contain" />
-              {!collapsed && <span className="font-semibold">Store Admin</span>}
+          <div className="px-3 py-3 mb-2">
+            <div className="flex items-center gap-3">
+              <img src="/logo.png" alt="Store Logo" className="h-8 w-8 object-contain" />
+              {!collapsed && <span className="font-semibold text-base">STORE VENDORS</span>}
             </div>
-          </SidebarGroupLabel>
+          </div>
           
           <SidebarGroupContent>
             <SidebarMenu>
