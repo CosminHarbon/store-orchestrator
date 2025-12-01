@@ -72,7 +72,7 @@ const SetupWizard = () => {
       toast.error('Failed to complete setup');
     } else {
       toast.success('Setup completed! Welcome to your store.');
-      navigate('/');
+      navigate('/app');
     }
     setLoading(false);
   };
@@ -86,7 +86,7 @@ const SetupWizard = () => {
       .eq('user_id', user.id);
     
     if (!error) {
-      navigate('/');
+      navigate('/app');
     }
   };
 
@@ -109,7 +109,7 @@ const SetupWizard = () => {
       toast.error('Failed to save store name');
     } else {
       toast.success('Store name saved! Setup complete.');
-      navigate('/');
+      navigate('/app');
     }
     setLoading(false);
   };
@@ -289,7 +289,7 @@ const SetupWizard = () => {
                           Open Netopia Website
                         </a>
                       </Button>
-                      <Button variant="outline" onClick={() => navigate('/')}>
+                      <Button variant="outline" onClick={() => navigate('/app')}>
                         <ExternalLink className="h-4 w-4 mr-2" />
                         Configure in Settings Now
                       </Button>
@@ -349,7 +349,7 @@ const SetupWizard = () => {
                           Open eAWB Website
                         </a>
                       </Button>
-                      <Button variant="outline" onClick={() => navigate('/')}>
+                      <Button variant="outline" onClick={() => navigate('/app')}>
                         <ExternalLink className="h-4 w-4 mr-2" />
                         Configure in Settings Now
                       </Button>
@@ -409,7 +409,7 @@ const SetupWizard = () => {
                           Open Oblio Website
                         </a>
                       </Button>
-                      <Button variant="outline" onClick={() => navigate('/')}>
+                      <Button variant="outline" onClick={() => navigate('/app')}>
                         <ExternalLink className="h-4 w-4 mr-2" />
                         Configure in Settings Now
                       </Button>

@@ -19,7 +19,7 @@ const Auth = () => {
 
   useEffect(() => {
     if (user) {
-      navigate('/');
+      navigate('/app');
     }
   }, [user, navigate]);
 
@@ -34,7 +34,7 @@ const Auth = () => {
       setError(error.message);
     } else {
       toast.success('Successfully signed in!');
-      navigate('/');
+      navigate('/app');
     }
     
     setLoading(false);
