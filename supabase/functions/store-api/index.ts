@@ -300,6 +300,7 @@ Deno.serve(async (req) => {
         
         return new Response(
           JSON.stringify({
+            user_id: userId,
             mapbox_token: mapboxToken,
             cash_payment_enabled: profile.cash_payment_enabled ?? true,
             cash_payment_fee: profile.cash_payment_fee || 0,

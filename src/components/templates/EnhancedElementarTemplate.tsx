@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import LiveTemplateEditor from "./LiveTemplateEditor";
 import BlockRenderer from "./BlockRenderer";
 import type { TemplateBlock } from "./BlockEditor";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Product {
   id: string;
@@ -166,6 +167,28 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
     }
   }, [customization.animation_style]);
 
+  // Fetch blocks from database
+  const fetchBlocks = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('template_blocks')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('template_id', 'elementar')
+        .order('block_order', { ascending: true });
+      
+      if (error) throw error;
+      if (data) {
+        setBlocks(data.map(block => ({
+          ...block,
+          content: block.content as any
+        })));
+      }
+    } catch (error) {
+      console.error('Failed to fetch blocks:', error);
+    }
+  };
+
   useEffect(() => {
     const fetchConfig = async () => {
       try {
@@ -178,6 +201,10 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
         }
         if (data.customization) {
           setCustomization(prev => ({ ...prev, ...data.customization }));
+          // Fetch blocks for this user
+          if (data.user_id) {
+            fetchBlocks(data.user_id);
+          }
         }
         if (data.cash_payment_enabled !== undefined) {
           setFeeSettings({
