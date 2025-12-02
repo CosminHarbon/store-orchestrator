@@ -633,6 +633,45 @@ export type Database = {
         }
         Relationships: []
       }
+      template_blocks: {
+        Row: {
+          block_order: number
+          block_type: string
+          content: Json
+          created_at: string
+          id: string
+          is_visible: boolean
+          template_id: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          block_order?: number
+          block_type: string
+          content?: Json
+          created_at?: string
+          id?: string
+          is_visible?: boolean
+          template_id?: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          block_order?: number
+          block_type?: string
+          content?: Json
+          created_at?: string
+          id?: string
+          is_visible?: boolean
+          template_id?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       template_customization: {
         Row: {
           accent_color: string | null
