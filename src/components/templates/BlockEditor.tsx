@@ -69,7 +69,7 @@ interface BlockEditorProps {
 }
 
 export const BlockEditor = ({ blocks, onBlocksChange, customization }: BlockEditorProps) => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const [editingBlock, setEditingBlock] = useState<TemplateBlock | null>(null);
   const [showAddBlock, setShowAddBlock] = useState(false);
@@ -77,18 +77,24 @@ export const BlockEditor = ({ blocks, onBlocksChange, customization }: BlockEdit
 
   const saveBlocksMutation = useMutation({
     mutationFn: async (blocksToSave: TemplateBlock[]) => {
-      if (!user?.id) throw new Error('User not authenticated');
+      // Get fresh session to ensure we have auth
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      
+      if (!userId) {
+        throw new Error('Please log in to save blocks');
+      }
       
       const { error: deleteError } = await supabase
         .from('template_blocks')
         .delete()
-        .eq('user_id', user.id);
+        .eq('user_id', userId);
       
       if (deleteError) throw deleteError;
       
       if (blocksToSave.length > 0) {
         const blocksData = blocksToSave.map((block, index) => ({
-          user_id: user.id,
+          user_id: userId,
           template_id: 'elementar',
           block_type: block.block_type,
           block_order: index,
