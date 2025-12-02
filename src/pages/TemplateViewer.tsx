@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
-import ElementarTemplate from "@/components/templates/ElementarTemplate";
+import EnhancedElementarTemplate from "@/components/templates/EnhancedElementarTemplate";
 
 const TemplateViewer = () => {
   const [searchParams] = useSearchParams();
   const { templateId: routeTemplateId } = useParams();
   const apiKey = searchParams.get("api_key");
+  const editMode = searchParams.get("edit") === "true";
   const templateKey = (routeTemplateId || "").split("?")[0].toLowerCase();
 
   if (!apiKey) {
@@ -25,7 +25,7 @@ const TemplateViewer = () => {
   }
 
   if (templateKey === "elementar") {
-    return <ElementarTemplate apiKey={apiKey} />;
+    return <EnhancedElementarTemplate apiKey={apiKey} editMode={editMode} />;
   }
 
   return (
