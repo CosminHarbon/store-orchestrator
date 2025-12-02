@@ -60,8 +60,9 @@ const TemplatesManagement = () => {
     }
   ];
 
-  const getTemplateUrl = (templateId: string) => {
-    return `${window.location.origin}/templates/${templateId}?api_key=${profile?.store_api_key || 'YOUR_API_KEY'}`;
+  const getTemplateUrl = (templateId: string, editMode: boolean = false) => {
+    const baseUrl = `${window.location.origin}/templates/${templateId}?api_key=${profile?.store_api_key || 'YOUR_API_KEY'}`;
+    return editMode ? `${baseUrl}&edit=true` : baseUrl;
   };
 
   return (
@@ -162,7 +163,16 @@ const TemplatesManagement = () => {
                   disabled={!profile?.store_api_key}
                 >
                   <ExternalLink className="h-4 w-4 mr-2 flex-shrink-0" />
-                  <span className="truncate">Open Template</span>
+                  <span className="truncate">Preview</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => window.open(getTemplateUrl(template.id, true), '_blank')}
+                  disabled={!profile?.store_api_key}
+                >
+                  <Palette className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <span className="truncate">Edit Live</span>
                 </Button>
               </div>
 

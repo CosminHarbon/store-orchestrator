@@ -636,15 +636,28 @@ export type Database = {
       template_customization: {
         Row: {
           accent_color: string | null
+          animation_style: string | null
           background_color: string | null
+          border_radius: string | null
+          button_style: string | null
           created_at: string
+          font_family: string | null
+          footer_text: string | null
+          gradient_enabled: boolean | null
+          heading_font: string | null
           hero_button_text: string | null
           hero_image_url: string | null
+          hero_layout: string | null
           hero_subtitle: string | null
           hero_title: string | null
           id: string
           logo_url: string | null
+          navbar_style: string | null
           primary_color: string | null
+          product_card_style: string | null
+          secondary_color: string | null
+          show_collection_images: boolean | null
+          show_hero_section: boolean | null
           store_name: string | null
           template_id: string
           text_color: string | null
@@ -653,15 +666,28 @@ export type Database = {
         }
         Insert: {
           accent_color?: string | null
+          animation_style?: string | null
           background_color?: string | null
+          border_radius?: string | null
+          button_style?: string | null
           created_at?: string
+          font_family?: string | null
+          footer_text?: string | null
+          gradient_enabled?: boolean | null
+          heading_font?: string | null
           hero_button_text?: string | null
           hero_image_url?: string | null
+          hero_layout?: string | null
           hero_subtitle?: string | null
           hero_title?: string | null
           id?: string
           logo_url?: string | null
+          navbar_style?: string | null
           primary_color?: string | null
+          product_card_style?: string | null
+          secondary_color?: string | null
+          show_collection_images?: boolean | null
+          show_hero_section?: boolean | null
           store_name?: string | null
           template_id?: string
           text_color?: string | null
@@ -670,15 +696,28 @@ export type Database = {
         }
         Update: {
           accent_color?: string | null
+          animation_style?: string | null
           background_color?: string | null
+          border_radius?: string | null
+          button_style?: string | null
           created_at?: string
+          font_family?: string | null
+          footer_text?: string | null
+          gradient_enabled?: boolean | null
+          heading_font?: string | null
           hero_button_text?: string | null
           hero_image_url?: string | null
+          hero_layout?: string | null
           hero_subtitle?: string | null
           hero_title?: string | null
           id?: string
           logo_url?: string | null
+          navbar_style?: string | null
           primary_color?: string | null
+          product_card_style?: string | null
+          secondary_color?: string | null
+          show_collection_images?: boolean | null
+          show_hero_section?: boolean | null
           store_name?: string | null
           template_id?: string
           text_color?: string | null
