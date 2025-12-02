@@ -3,7 +3,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { 
   X, Save, Eye, EyeOff, Palette, Type, Layout, Image, 
   Sparkles, ChevronDown, ChevronUp, Upload, Loader2, 
-  RotateCcw, Settings2, Layers, Wand2
+  RotateCcw, Settings2, Layers, Wand2, LayoutGrid
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import BlockEditor, { TemplateBlock } from './BlockEditor';
 
 interface ExtendedCustomization {
   id?: string;
@@ -51,6 +52,8 @@ interface LiveTemplateEditorProps {
   onClose: () => void;
   customization: ExtendedCustomization;
   onCustomizationChange: (customization: ExtendedCustomization) => void;
+  blocks: TemplateBlock[];
+  onBlocksChange: (blocks: TemplateBlock[]) => void;
 }
 
 const fontOptions = [
@@ -114,7 +117,9 @@ export const LiveTemplateEditor = ({
   isOpen, 
   onClose, 
   customization, 
-  onCustomizationChange 
+  onCustomizationChange,
+  blocks,
+  onBlocksChange
 }: LiveTemplateEditorProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -125,6 +130,7 @@ export const LiveTemplateEditor = ({
     hero: false,
     layout: false,
     images: false,
+    blocks: false,
   });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
@@ -595,6 +601,15 @@ export const LiveTemplateEditor = ({
                 placeholder="All rights reserved."
               />
             </div>
+          </Section>
+
+          {/* Blocks Section */}
+          <Section id="blocks" title="Custom Blocks" icon={LayoutGrid}>
+            <BlockEditor
+              blocks={blocks}
+              onBlocksChange={onBlocksChange}
+              customization={customization}
+            />
           </Section>
         </div>
       </ScrollArea>

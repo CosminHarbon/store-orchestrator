@@ -12,6 +12,8 @@ import { formatPrice } from "@/lib/discountUtils";
 import LockerMapSelector from "./LockerMapSelector";
 import { Skeleton } from "@/components/ui/skeleton";
 import LiveTemplateEditor from "./LiveTemplateEditor";
+import BlockRenderer from "./BlockRenderer";
+import type { TemplateBlock } from "./BlockEditor";
 
 interface Product {
   id: string;
@@ -114,6 +116,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
   const [showEditor, setShowEditor] = useState(editMode);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [wishlist, setWishlist] = useState<string[]>([]);
+  const [blocks, setBlocks] = useState<TemplateBlock[]>([]);
   const [feeSettings, setFeeSettings] = useState({
     cash_payment_enabled: true,
     cash_payment_fee: 0,
@@ -612,6 +615,8 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
         onClose={() => setShowEditor(false)}
         customization={customization}
         onCustomizationChange={setCustomization}
+        blocks={blocks}
+        onBlocksChange={setBlocks}
       />
 
       {view === "home" && (
@@ -831,6 +836,18 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
               )}
             </div>
           </section>
+
+          {/* Custom Blocks Section */}
+          {blocks.filter(b => b.is_visible).length > 0 && (
+            <section className="custom-blocks">
+              {blocks
+                .filter(b => b.is_visible)
+                .sort((a, b) => a.block_order - b.block_order)
+                .map(block => (
+                  <BlockRenderer key={block.id} block={block} customization={customization} />
+                ))}
+            </section>
+          )}
 
           {/* Footer */}
           <footer 
