@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Layout, ExternalLink, Copy, Check, Palette } from "lucide-react";
@@ -11,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { TemplateCustomizer } from "./TemplateCustomizer";
 
 const TemplatesManagement = () => {
+  const navigate = useNavigate();
   const [copiedKey, setCopiedKey] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState<string | null>(null);
 
@@ -168,7 +170,7 @@ const TemplatesManagement = () => {
                 <Button
                   variant="outline"
                   className="flex-1"
-                  onClick={() => window.open(getTemplateUrl(template.id, true), '_blank')}
+                  onClick={() => navigate(`/templates/${template.id}?api_key=${profile?.store_api_key}&edit=true`)}
                   disabled={!profile?.store_api_key}
                 >
                   <Palette className="h-4 w-4 mr-2 flex-shrink-0" />
