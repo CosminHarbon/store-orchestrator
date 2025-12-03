@@ -177,7 +177,7 @@ serve(async (req) => {
         county: locker.county || locker.county_name || locker.countyName || '',
         latitude: locker.latitude || locker.lat || locker.coords?.lat || locker.coordinates?.latitude || 0,
         longitude: locker.longitude || locker.lng || locker.lon || locker.coords?.lng || locker.coordinates?.longitude || 0,
-        carrier_id: carrierId,
+        carrier_id: carrier_id,
         available: locker.available !== false // Default to true unless explicitly false
       })).filter(l => l.latitude !== 0 && l.longitude !== 0); // Only include lockers with valid coordinates
 
