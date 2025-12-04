@@ -38,9 +38,9 @@ export default function Landing() {
           title: "Low Payment Fees",
           desc: "Netopia processor - 0.9% or lower based on volume"
         },
-        pricing: {
-          title: "Transparent Pricing",
-          desc: "€12/month - no hidden fees, no surprises"
+        allInOne: {
+          title: "All-in-One Platform",
+          desc: "Everything you need in one place"
         },
         simple: {
           title: "No Hassle Setup",
@@ -50,19 +50,6 @@ export default function Landing() {
           title: "Dedicated Support",
           desc: "We're here to help your business grow"
         }
-      },
-      pricing: {
-        title: "Simple, Transparent Pricing",
-        monthly: "€12/month",
-        features: [
-          "Full platform access",
-          "Unlimited products",
-          "eAWB.ro integration",
-          "365 days FREE Oblio invoicing",
-          "Netopia payments (0.9%)",
-          "No hidden fees",
-          "24/7 support"
-        ]
       },
       footer: {
         ready: "Ready to grow your business?",
@@ -91,9 +78,9 @@ export default function Landing() {
           title: "Comisioane Mici",
           desc: "Procesor Netopia - 0.9% sau mai puțin în funcție de volum"
         },
-        pricing: {
-          title: "Prețuri Transparente",
-          desc: "€12/lună - fără taxe ascunse, fără surprize"
+        allInOne: {
+          title: "Platformă All-in-One",
+          desc: "Tot ce ai nevoie într-un singur loc"
         },
         simple: {
           title: "Configurare Rapidă",
@@ -103,19 +90,6 @@ export default function Landing() {
           title: "Suport Dedicat",
           desc: "Suntem aici să te ajutăm să crești"
         }
-      },
-      pricing: {
-        title: "Prețuri Simple și Transparente",
-        monthly: "€12/lună",
-        features: [
-          "Acces complet platformă",
-          "Produse nelimitate",
-          "Integrare eAWB.ro",
-          "365 zile facturare Oblio GRATUIT",
-          "Plăți Netopia (0.9%)",
-          "Fără taxe ascunse",
-          "Suport 24/7"
-        ]
       },
       footer: {
         ready: "Pregătit să-ți crești afacerea?",
@@ -194,8 +168,8 @@ export default function Landing() {
           />
           <FeatureCard
             icon={<TrendingUp />}
-            title={t.features.pricing.title}
-            description={t.features.pricing.desc}
+            title={t.features.allInOne.title}
+            description={t.features.allInOne.desc}
           />
           <FeatureCard
             icon={<Shield />}
@@ -210,28 +184,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section className="container mx-auto px-4 py-16">
-        <div className="max-w-2xl mx-auto">
-          <h2 className="text-4xl font-bold text-center mb-8">{t.pricing.title}</h2>
-          <div className="bg-card border border-border rounded-2xl p-8 shadow-lg">
-            <div className="text-center mb-6">
-              <div className="text-5xl font-bold text-primary mb-2">{t.pricing.monthly}</div>
-              <p className="text-muted-foreground">{language === "en" ? "per store" : "per magazin"}</p>
-            </div>
-            <ul className="space-y-4">
-              {t.pricing.features.map((feature, index) => (
-                <li key={index} className="flex items-start gap-3">
-                  <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <div className="h-2 w-2 rounded-full bg-primary" />
-                  </div>
-                  <span className="text-foreground">{feature}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
 
       {/* Final CTA */}
       <section className="container mx-auto px-4 py-16 text-center">
@@ -249,8 +201,14 @@ export default function Landing() {
 
       {/* Footer */}
       <footer className="border-t border-border py-8 mt-16">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          © 2025 STORE VENDORS. {language === "en" ? "All rights reserved." : "Toate drepturile rezervate."}
+        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground space-y-2">
+          <p>© 2025 STORE VENDORS. {language === "en" ? "All rights reserved." : "Toate drepturile rezervate."}</p>
+          <button 
+            onClick={() => navigate("/privacy")}
+            className="text-primary hover:underline"
+          >
+            {language === "en" ? "Privacy Policy" : "Politica de Confidențialitate"}
+          </button>
         </div>
       </footer>
     </div>
