@@ -1,11 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Globe, Package, FileText, CreditCard, TrendingUp, Shield } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 
 export default function Landing() {
   const [language, setLanguage] = useState<"en" | "ro">("en");
   const navigate = useNavigate();
+
+  // Redirect to auth page on native iOS/Android apps (skip landing page)
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      navigate("/auth", { replace: true });
+    }
+  }, [navigate]);
 
   const content = {
     en: {
