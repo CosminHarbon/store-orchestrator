@@ -67,7 +67,7 @@ const Auth = () => {
           <div className="flex justify-center mb-4">
             <img src="/logo.png" alt="Store Logo" className="h-20 w-20 object-contain" />
           </div>
-          <CardTitle className="text-2xl font-bold">Store Admin</CardTitle>
+          <CardTitle className="text-2xl font-bold">SPEED VENDORS</CardTitle>
           <CardDescription>
             Sign in to manage your online store
           </CardDescription>
