@@ -37,7 +37,7 @@ export function MobileHeader({ userEmail, storeName, onTabChange }: MobileHeader
               <img src="/logo.png" alt="Store Logo" className="h-10 w-10 object-contain" />
               <div className="hidden sm:block">
                 <h1 className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">
-                  {storeName || "STORE VENDORS"}
+                  {storeName || "SPEED VENDORS"}
                 </h1>
               </div>
             </div>
