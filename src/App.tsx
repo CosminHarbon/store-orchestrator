@@ -8,6 +8,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import Landing from "./pages/Landing";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import AuthCallback from "./pages/AuthCallback";
 import NotFound from "./pages/NotFound";
 import TemplateViewer from "./pages/TemplateViewer";
 import SetupWizard from "./pages/SetupWizard";
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/app" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/setup" element={<SetupWizard />} />
             <Route path="/templates/:templateId" element={<TemplateViewer />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
