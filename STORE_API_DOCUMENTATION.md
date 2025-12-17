@@ -43,7 +43,8 @@ Get store configuration, delivery fees, and template customization.
     "hero_title": "Welcome to Our Store",
     "hero_subtitle": "Discover amazing products",
     "hero_button_text": "Shop now",
-    "store_name": "My Store"
+    "store_name": "My Store",
+    "show_reviews": true
   }
 }
 ```
@@ -440,6 +441,106 @@ Delete orders older than 24 hours that are still awaiting payment.
 {
   "success": true,
   "deleted_count": 5
+}
+```
+
+---
+
+### 13. Get Product Reviews
+
+Get all approved reviews for a product with average rating.
+
+**Endpoint**: `GET /product-reviews?product_id=PRODUCT_ID`
+
+**Response**:
+```json
+{
+  "reviews": [
+    {
+      "id": "uuid",
+      "product_id": "uuid",
+      "customer_name": "John D.",
+      "rating": 5,
+      "review_text": "Amazing product! Highly recommend.",
+      "is_approved": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "average_rating": 4.5,
+  "total_reviews": 12
+}
+```
+
+**Note**: Only returns reviews where `is_approved = true`. Returns empty array if `show_reviews` is disabled in store settings.
+
+---
+
+### 14. Submit a Review
+
+Submit a customer review for a product.
+
+**Endpoint**: `POST /reviews`
+
+**Request Body**:
+```json
+{
+  "product_id": "uuid",
+  "customer_name": "John Doe",
+  "customer_email": "john@example.com",
+  "rating": 5,
+  "review_text": "Great product, fast delivery!"
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "review": {
+    "id": "uuid",
+    "product_id": "uuid",
+    "customer_name": "John Doe",
+    "rating": 5,
+    "review_text": "Great product, fast delivery!",
+    "is_approved": true,
+    "created_at": "2024-01-01T00:00:00Z"
+  }
+}
+```
+
+**Fields**:
+- `product_id` (required): UUID of the product being reviewed
+- `customer_name` (required): Customer's display name
+- `customer_email` (optional): Customer's email
+- `rating` (required): Integer from 1 to 5
+- `review_text` (optional): Written review content
+
+**Note**: Reviews are automatically approved by default (`is_approved = true`). Store owners can disable/delete reviews from their admin panel.
+
+---
+
+### 15. Get All Reviews (Store Owner)
+
+Get all reviews for the store (including non-approved).
+
+**Endpoint**: `GET /reviews`
+
+**Response**:
+```json
+{
+  "reviews": [
+    {
+      "id": "uuid",
+      "product_id": "uuid",
+      "customer_name": "John D.",
+      "customer_email": "john@example.com",
+      "rating": 5,
+      "review_text": "Amazing product!",
+      "is_approved": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "product_title": "Product Name"
+    }
+  ]
 }
 ```
 
