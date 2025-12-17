@@ -1597,6 +1597,211 @@ Deno.serve(async (req) => {
         break
       }
 
+      case 'reviews': {
+        if (req.method === 'GET') {
+          // Get product_id from query params (optional)
+          const productId = url.searchParams.get('product_id');
+          
+          let query = supabase
+            .from('reviews')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('is_approved', true)
+            .order('created_at', { ascending: false });
+          
+          if (productId) {
+            query = query.eq('product_id', productId);
+          }
+          
+          const { data: reviews, error } = await query;
+
+          if (error) {
+            console.log('Error fetching reviews:', error);
+            return new Response(
+              JSON.stringify({ error: 'Failed to fetch reviews' }),
+              { 
+                status: 500, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            );
+          }
+
+          // Calculate average rating
+          const avgRating = reviews.length > 0
+            ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+            : 0;
+
+          return new Response(
+            JSON.stringify({ 
+              reviews,
+              total_reviews: reviews.length,
+              average_rating: parseFloat(avgRating.toFixed(1))
+            }),
+            { 
+              status: 200, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        }
+
+        if (req.method === 'POST') {
+          const body = await req.json();
+          const { product_id, customer_name, customer_email, rating, review_text } = body;
+
+          if (!product_id || !customer_name || !rating) {
+            return new Response(
+              JSON.stringify({ 
+                error: 'Missing required fields: product_id, customer_name, rating' 
+              }),
+              { 
+                status: 400, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            );
+          }
+
+          if (rating < 1 || rating > 5) {
+            return new Response(
+              JSON.stringify({ error: 'Rating must be between 1 and 5' }),
+              { 
+                status: 400, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            );
+          }
+
+          // Verify product belongs to this store
+          const { data: product, error: productError } = await supabase
+            .from('products')
+            .select('id')
+            .eq('id', product_id)
+            .eq('user_id', userId)
+            .single();
+
+          if (productError || !product) {
+            return new Response(
+              JSON.stringify({ error: 'Product not found' }),
+              { 
+                status: 404, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            );
+          }
+
+          const { data: review, error } = await supabase
+            .from('reviews')
+            .insert({
+              product_id,
+              user_id: userId,
+              customer_name,
+              customer_email: customer_email || null,
+              rating: parseInt(rating),
+              review_text: review_text || null,
+              is_approved: true // Default to approved, owner can unapprove
+            })
+            .select()
+            .single();
+
+          if (error) {
+            console.log('Error creating review:', error);
+            return new Response(
+              JSON.stringify({ error: 'Failed to create review' }),
+              { 
+                status: 500, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            );
+          }
+
+          return new Response(
+            JSON.stringify({ review, message: 'Review submitted successfully' }),
+            { 
+              status: 201, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        }
+        break;
+      }
+
+      case 'product-reviews': {
+        // Get reviews for a specific product with average rating
+        if (req.method === 'GET') {
+          const productId = url.searchParams.get('product_id');
+          
+          if (!productId) {
+            return new Response(
+              JSON.stringify({ error: 'product_id is required' }),
+              { 
+                status: 400, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            );
+          }
+
+          // Check if reviews are enabled for this store
+          const { data: customization } = await supabase
+            .from('template_customization')
+            .select('show_reviews')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+          const showReviews = customization?.show_reviews ?? true;
+
+          if (!showReviews) {
+            return new Response(
+              JSON.stringify({ 
+                reviews: [],
+                total_reviews: 0,
+                average_rating: 0,
+                reviews_enabled: false
+              }),
+              { 
+                status: 200, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            );
+          }
+
+          const { data: reviews, error } = await supabase
+            .from('reviews')
+            .select('id, customer_name, rating, review_text, created_at')
+            .eq('product_id', productId)
+            .eq('user_id', userId)
+            .eq('is_approved', true)
+            .order('created_at', { ascending: false });
+
+          if (error) {
+            console.log('Error fetching product reviews:', error);
+            return new Response(
+              JSON.stringify({ error: 'Failed to fetch reviews' }),
+              { 
+                status: 500, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            );
+          }
+
+          const avgRating = reviews.length > 0
+            ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+            : 0;
+
+          return new Response(
+            JSON.stringify({ 
+              reviews,
+              total_reviews: reviews.length,
+              average_rating: parseFloat(avgRating.toFixed(1)),
+              reviews_enabled: true
+            }),
+            { 
+              status: 200, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        }
+        break;
+      }
+
       default: {
         return new Response(
           JSON.stringify({ 
@@ -1613,6 +1818,8 @@ Deno.serve(async (req) => {
               'payments',
               'payment-status',
               'lockers',
+              'reviews',
+              'product-reviews',
               'cleanup-abandoned-orders'
             ]
           }),

@@ -1,4 +1,4 @@
-import { Home, Package, ShoppingCart, Settings, Store, Users, BarChart3, CreditCard, Layout } from "lucide-react";
+import { Home, Package, ShoppingCart, Settings, Store, Users, BarChart3, CreditCard, Layout, Star } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -19,6 +19,7 @@ const navigationItems = [
   { title: "Stock", url: "/stock", icon: BarChart3, tab: "stock" },
   { title: "Orders", url: "/orders", icon: ShoppingCart, tab: "orders" },
   { title: "Customers", url: "/customers", icon: Users, tab: "customers" },
+  { title: "Reviews", url: "/reviews", icon: Star, tab: "reviews" },
   { title: "Payments", url: "/payments", icon: CreditCard, tab: "payments" },
   { title: "Templates", url: "/templates", icon: Layout, tab: "templates" },
 ];

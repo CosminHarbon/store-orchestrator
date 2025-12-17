@@ -633,6 +633,53 @@ export type Database = {
         }
         Relationships: []
       }
+      reviews: {
+        Row: {
+          created_at: string
+          customer_email: string | null
+          customer_name: string
+          id: string
+          is_approved: boolean
+          product_id: string
+          rating: number
+          review_text: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_email?: string | null
+          customer_name: string
+          id?: string
+          is_approved?: boolean
+          product_id: string
+          rating: number
+          review_text?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string
+          id?: string
+          is_approved?: boolean
+          product_id?: string
+          rating?: number
+          review_text?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       template_blocks: {
         Row: {
           block_order: number
@@ -697,6 +744,7 @@ export type Database = {
           secondary_color: string | null
           show_collection_images: boolean | null
           show_hero_section: boolean | null
+          show_reviews: boolean | null
           store_name: string | null
           template_id: string
           text_color: string | null
@@ -727,6 +775,7 @@ export type Database = {
           secondary_color?: string | null
           show_collection_images?: boolean | null
           show_hero_section?: boolean | null
+          show_reviews?: boolean | null
           store_name?: string | null
           template_id?: string
           text_color?: string | null
@@ -757,6 +806,7 @@ export type Database = {
           secondary_color?: string | null
           show_collection_images?: boolean | null
           show_hero_section?: boolean | null
+          show_reviews?: boolean | null
           store_name?: string | null
           template_id?: string
           text_color?: string | null
