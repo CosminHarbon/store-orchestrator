@@ -614,6 +614,335 @@ Discounts are automatically applied based on:
 
 ---
 
+## Delivery Address Collection
+
+### Delivery Types
+
+Your checkout must support two delivery types:
+- `home` - Home/address delivery
+- `locker` - Pickup locker delivery
+
+### Home Delivery Address Fields
+
+When `delivery_type: "home"` is selected, collect these fields:
+
+| Field | Required | Description | Example |
+|-------|----------|-------------|---------|
+| `customer_city` | Yes | City name | "București" |
+| `customer_county` | Yes | County/region | "București" |
+| `customer_street` | Yes | Street name | "Strada Victoriei" |
+| `customer_street_number` | Yes | Street number | "123" |
+| `customer_block` | No | Building/block | "A1" |
+| `customer_apartment` | No | Apartment number | "45" |
+
+**Example Form Structure (HTML)**:
+```html
+<form id="home-delivery-form">
+  <input type="text" name="customer_city" placeholder="Oraș" required />
+  <input type="text" name="customer_county" placeholder="Județ" required />
+  <input type="text" name="customer_street" placeholder="Strada" required />
+  <input type="text" name="customer_street_number" placeholder="Număr" required />
+  <input type="text" name="customer_block" placeholder="Bloc (opțional)" />
+  <input type="text" name="customer_apartment" placeholder="Apartament (opțional)" />
+</form>
+```
+
+### Locker Delivery Fields
+
+When `delivery_type: "locker"` is selected, collect these fields:
+
+| Field | Required | Description | Example |
+|-------|----------|-------------|---------|
+| `selected_carrier_code` | Yes | Carrier code from `/carriers` | "fancourier" |
+| `locker_id` | Yes | Locker ID from `/lockers` | "FC_BUC_001" |
+| `locker_name` | Yes | Locker display name | "Fan Courier - AFI Mall" |
+| `locker_address` | No | Locker full address | "Bd. Vasile Milea 4, București" |
+
+---
+
+## Locker Map Implementation
+
+Display available lockers on an interactive map using Mapbox GL JS.
+
+### Step 1: Get Mapbox Token
+
+Retrieve the Mapbox public token from config:
+
+```javascript
+const configResponse = await fetch(`${BASE_URL}/config?api_key=${API_KEY}`);
+const config = await configResponse.json();
+const mapboxToken = config.mapbox_token;
+```
+
+### Step 2: Fetch Available Lockers
+
+```javascript
+async function fetchLockers(carrierCode, city, county) {
+  const params = new URLSearchParams({
+    api_key: API_KEY,
+    carrier_code: carrierCode,
+    locality: city || '',
+    county: county || ''
+  });
+  
+  const response = await fetch(`${BASE_URL}/lockers?${params}`);
+  const data = await response.json();
+  return data.lockers; // Array of locker objects with lat/lng
+}
+```
+
+### Step 3: Initialize Mapbox Map
+
+```html
+<!-- Include Mapbox CSS and JS -->
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.0.0/mapbox-gl.css" rel="stylesheet" />
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.0.0/mapbox-gl.js"></script>
+
+<div id="locker-map" style="width: 100%; height: 400px;"></div>
+```
+
+```javascript
+// Initialize map
+mapboxgl.accessToken = mapboxToken;
+
+const map = new mapboxgl.Map({
+  container: 'locker-map',
+  style: 'mapbox://styles/mapbox/streets-v12',
+  center: [26.1025, 44.4268], // Default: Bucharest
+  zoom: 11
+});
+
+// Add navigation controls
+map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+// Add geolocation control (optional)
+map.addControl(new mapboxgl.GeolocateControl({
+  positionOptions: { enableHighAccuracy: true },
+  trackUserLocation: true
+}));
+```
+
+### Step 4: Add Locker Markers
+
+```javascript
+let selectedLocker = null;
+const markers = [];
+
+function displayLockers(lockers) {
+  // Clear existing markers
+  markers.forEach(marker => marker.remove());
+  markers.length = 0;
+  
+  // Add markers for each locker
+  lockers.forEach(locker => {
+    // Create custom marker element
+    const el = document.createElement('div');
+    el.className = 'locker-marker';
+    el.style.cssText = `
+      width: 32px;
+      height: 32px;
+      background: #3b82f6;
+      border-radius: 50%;
+      border: 3px solid white;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      cursor: pointer;
+    `;
+    
+    // Create popup
+    const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
+      <div style="padding: 8px;">
+        <strong>${locker.name}</strong>
+        <p style="margin: 4px 0; font-size: 12px;">${locker.address}</p>
+        <button onclick="selectLocker('${locker.id}')" style="
+          background: #3b82f6;
+          color: white;
+          border: none;
+          padding: 6px 12px;
+          border-radius: 4px;
+          cursor: pointer;
+          width: 100%;
+        ">Selectează</button>
+      </div>
+    `);
+    
+    // Add marker to map
+    const marker = new mapboxgl.Marker(el)
+      .setLngLat([locker.longitude, locker.latitude])
+      .setPopup(popup)
+      .addTo(map);
+    
+    markers.push(marker);
+  });
+  
+  // Fit map to show all markers
+  if (lockers.length > 0) {
+    const bounds = new mapboxgl.LngLatBounds();
+    lockers.forEach(locker => {
+      bounds.extend([locker.longitude, locker.latitude]);
+    });
+    map.fitBounds(bounds, { padding: 50 });
+  }
+}
+
+// Locker selection handler
+function selectLocker(lockerId) {
+  const locker = lockers.find(l => l.id === lockerId);
+  if (locker) {
+    selectedLocker = {
+      locker_id: locker.id,
+      locker_name: locker.name,
+      locker_address: locker.address,
+      selected_carrier_code: locker.carrier_code || carrierCode
+    };
+    
+    // Update UI to show selection
+    document.getElementById('selected-locker-display').textContent = locker.name;
+  }
+}
+```
+
+### Step 5: Complete Locker Selection UI
+
+```html
+<div id="locker-selection">
+  <!-- Carrier Selection -->
+  <label>Selectează curier:</label>
+  <select id="carrier-select" onchange="onCarrierChange()">
+    <option value="">-- Selectează --</option>
+    <!-- Populated from /carriers endpoint -->
+  </select>
+  
+  <!-- Optional: City filter -->
+  <input type="text" id="city-filter" placeholder="Filtrează după oraș" />
+  
+  <!-- Map Container -->
+  <div id="locker-map" style="width: 100%; height: 400px; margin: 16px 0;"></div>
+  
+  <!-- Selected Locker Display -->
+  <div id="selected-locker-info" style="display: none;">
+    <strong>Locker selectat:</strong>
+    <span id="selected-locker-display"></span>
+  </div>
+</div>
+```
+
+### Step 6: Submit Order with Locker
+
+```javascript
+async function submitLockerOrder() {
+  if (!selectedLocker) {
+    alert('Te rugăm să selectezi un locker');
+    return;
+  }
+  
+  const orderData = {
+    customer_name: document.getElementById('name').value,
+    customer_email: document.getElementById('email').value,
+    customer_phone: document.getElementById('phone').value,
+    total: calculateTotal(),
+    items: cartItems,
+    payment_method: 'card', // or 'cash'
+    delivery_type: 'locker',
+    selected_carrier_code: selectedLocker.selected_carrier_code,
+    locker_id: selectedLocker.locker_id,
+    locker_name: selectedLocker.locker_name,
+    locker_address: selectedLocker.locker_address
+  };
+  
+  const response = await fetch(`${BASE_URL}/orders?api_key=${API_KEY}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(orderData)
+  });
+  
+  const result = await response.json();
+  
+  if (result.payment_url) {
+    window.location.href = result.payment_url;
+  }
+}
+```
+
+### Locker Object Structure
+
+Each locker from the `/lockers` endpoint has:
+
+```json
+{
+  "id": "FC_BUC_001",
+  "name": "Fan Courier - AFI Cotroceni",
+  "address": "Bd. Vasile Milea 4, București",
+  "city": "București",
+  "county": "București",
+  "latitude": 44.4323,
+  "longitude": 26.0547,
+  "carrier_id": 1,
+  "available": true
+}
+```
+
+### React/TypeScript Example
+
+```tsx
+import { useEffect, useRef, useState } from 'react';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+
+interface Locker {
+  id: string;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+}
+
+export function LockerMap({ 
+  mapboxToken, 
+  lockers, 
+  onSelect 
+}: { 
+  mapboxToken: string;
+  lockers: Locker[];
+  onSelect: (locker: Locker) => void;
+}) {
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+  
+  useEffect(() => {
+    if (!mapContainer.current || !mapboxToken) return;
+    
+    mapboxgl.accessToken = mapboxToken;
+    
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [26.1025, 44.4268],
+      zoom: 11
+    });
+    
+    map.current.addControl(new mapboxgl.NavigationControl());
+    
+    return () => map.current?.remove();
+  }, [mapboxToken]);
+  
+  useEffect(() => {
+    if (!map.current || !lockers.length) return;
+    
+    lockers.forEach(locker => {
+      const marker = new mapboxgl.Marker()
+        .setLngLat([locker.longitude, locker.latitude])
+        .addTo(map.current!);
+      
+      marker.getElement().addEventListener('click', () => onSelect(locker));
+    });
+  }, [lockers, onSelect]);
+  
+  return <div ref={mapContainer} style={{ width: '100%', height: '400px' }} />;
+}
+```
+
+---
+
 ## Integration Examples
 
 ### JavaScript/TypeScript
