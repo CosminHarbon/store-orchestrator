@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Upload, Palette, Save, Eye, Loader2 } from 'lucide-react';
+import { Upload, Palette, Save, Eye, Loader2, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -24,6 +25,7 @@ interface TemplateCustomization {
   hero_subtitle: string;
   hero_button_text: string;
   store_name: string;
+  show_reviews: boolean;
 }
 
 export const TemplateCustomizer = () => {
@@ -43,7 +45,8 @@ export const TemplateCustomizer = () => {
     hero_title: 'Welcome to Our Store',
     hero_subtitle: 'Discover amazing products',
     hero_button_text: 'Shop now',
-    store_name: 'My Store'
+    store_name: 'My Store',
+    show_reviews: true
   });
 
   const { data: existingCustomization, isLoading } = useQuery({
@@ -370,6 +373,31 @@ export const TemplateCustomizer = () => {
                 value={customization.hero_button_text}
                 onChange={(e) => setCustomization({ ...customization, hero_button_text: e.target.value })}
                 placeholder="Shop now"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Star className="h-5 w-5" />
+              Reviews Settings
+            </CardTitle>
+            <CardDescription>Control how customer reviews appear on your store</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="show-reviews">Show Reviews</Label>
+                <p className="text-sm text-muted-foreground">
+                  Display customer reviews and ratings on product pages
+                </p>
+              </div>
+              <Switch
+                id="show-reviews"
+                checked={customization.show_reviews}
+                onCheckedChange={(checked) => setCustomization({ ...customization, show_reviews: checked })}
               />
             </div>
           </CardContent>
