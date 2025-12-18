@@ -63,23 +63,34 @@ secure_password_change = true
 enabled = true
 port = 54330
 
+# Store API - Main public API for storefronts
 [functions.store-api]
 verify_jwt = false
 
+# Oblio Invoice - Generate and send invoices via Oblio.eu
 [functions.oblio-invoice]
 verify_jwt = true
 
+# Netopia Payment - Payment processing with Netopia
 [functions.netopia-payment]
-verify_jwt = false  # Public endpoint to accept unauthenticated Netopia webhooks
+verify_jwt = false
 
+# eAWB Quoting - Get shipping quotes from eAWB/Europarcel
 [functions.eawb-quoting]
 verify_jwt = true
 
+# eAWB Delivery - Create AWB and manage deliveries
+[functions.eawb-delivery]
+verify_jwt = true
+
+# Test eAWB Connection - Verify eAWB API credentials
 [functions.test-eawb-connection]
 verify_jwt = true
 
+# Diagnose eAWB - Debug eAWB integration issues
 [functions.diagnose-eawb]
 verify_jwt = true
 
-[functions.create-test-order]
+# AI Chat - AI assistant for store management
+[functions.ai-chat]
 verify_jwt = true
