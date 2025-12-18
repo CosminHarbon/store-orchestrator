@@ -287,36 +287,106 @@ Deno.serve(async (req) => {
 
     switch (path) {
       case 'config': {
-        // Return public configuration (no auth needed, but API key verified above)
+        // Return comprehensive store configuration
         const mapboxToken = Deno.env.get('MAPBOX_PUBLIC_TOKEN') || '';
         
-        // Also fetch template customization
+        // Fetch template customization
         const { data: customization } = await supabase
           .from('template_customization')
           .select('*')
           .eq('user_id', userId)
           .eq('template_id', 'elementar')
           .single();
+
+        // Fetch template blocks for the store
+        const { data: templateBlocks } = await supabase
+          .from('template_blocks')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('is_visible', true)
+          .order('block_order', { ascending: true });
+
+        // Check payment provider configuration
+        const isNetopiaConfigured = profile.netpopia_api_key && profile.netpopia_signature;
         
         return new Response(
           JSON.stringify({
             user_id: userId,
+            store_name: profile.store_name || 'My Store',
             mapbox_token: mapboxToken,
-            cash_payment_enabled: profile.cash_payment_enabled ?? true,
-            cash_payment_fee: profile.cash_payment_fee || 0,
-            home_delivery_fee: profile.home_delivery_fee || 0,
-            locker_delivery_fee: profile.locker_delivery_fee || 0,
+            // Payment configuration
+            payment: {
+              card_enabled: !!isNetopiaConfigured,
+              cash_enabled: profile.cash_payment_enabled ?? true,
+              cash_fee: profile.cash_payment_fee || 0,
+              provider: isNetopiaConfigured ? 'netopia' : null
+            },
+            // Delivery configuration
+            delivery: {
+              home_fee: profile.home_delivery_fee || 0,
+              locker_fee: profile.locker_delivery_fee || 0,
+              home_enabled: true,
+              locker_enabled: true
+            },
+            // Template customization
             customization: customization || {
               primary_color: '#000000',
               background_color: '#FFFFFF',
               text_color: '#000000',
               accent_color: '#666666',
+              secondary_color: '#F5F5F5',
               hero_image_url: null,
               logo_url: null,
               hero_title: 'Welcome to Our Store',
               hero_subtitle: 'Discover amazing products',
               hero_button_text: 'Shop now',
-              store_name: profile.store_name || 'My Store'
+              store_name: profile.store_name || 'My Store',
+              show_hero_section: true,
+              show_reviews: true,
+              show_collection_images: true,
+              font_family: 'Inter',
+              heading_font: 'Inter',
+              border_radius: 'rounded-lg',
+              button_style: 'solid',
+              navbar_style: 'transparent',
+              product_card_style: 'minimal',
+              animation_style: 'smooth',
+              gradient_enabled: true,
+              footer_text: 'All rights reserved.'
+            },
+            // Template blocks for custom sections
+            template_blocks: templateBlocks || [],
+            // API capabilities
+            api_version: '1.0',
+            available_endpoints: [
+              'config',
+              'products',
+              'product',
+              'orders',
+              'order-items',
+              'collections',
+              'collection',
+              'carriers',
+              'discounts',
+              'payments',
+              'payment-status',
+              'lockers',
+              'reviews',
+              'product-reviews',
+              'template-blocks',
+              'cleanup-abandoned-orders'
+            ],
+            features: {
+              products: true,
+              collections: true,
+              discounts: true,
+              reviews: customization?.show_reviews ?? true,
+              online_payments: !!isNetopiaConfigured,
+              cash_payments: profile.cash_payment_enabled ?? true,
+              home_delivery: true,
+              locker_delivery: true,
+              invoicing: true,
+              awb_generation: true
             }
           }),
           {
@@ -468,7 +538,7 @@ Deno.serve(async (req) => {
           const orderId = url.searchParams.get('order_id');
           
           if (orderId) {
-            // Fetch specific order
+            // Fetch specific order with items
             const { data: order, error } = await supabase
               .from('orders')
               .select('*')
@@ -487,8 +557,37 @@ Deno.serve(async (req) => {
               );
             }
 
+            // Fetch order items with product details
+            const { data: orderItems, error: itemsError } = await supabase
+              .from('order_items')
+              .select('*')
+              .eq('order_id', orderId);
+
+            if (itemsError) {
+              console.log('Error fetching order items:', itemsError);
+            }
+
+            // Parse structured address for response
+            const parsedAddress = {
+              street: order.customer_street,
+              street_number: order.customer_street_number,
+              block: order.customer_block,
+              apartment: order.customer_apartment,
+              city: order.customer_city,
+              county: order.customer_county,
+              full_address: order.customer_address
+            };
+
             return new Response(
-              JSON.stringify({ order }),
+              JSON.stringify({ 
+                order: {
+                  ...order,
+                  parsed_address: parsedAddress,
+                  items: orderItems || [],
+                  item_count: orderItems?.length || 0,
+                  subtotal: orderItems?.reduce((sum, item) => sum + (item.product_price * item.quantity), 0) || 0
+                }
+              }),
               { 
                 status: 200, 
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -1802,24 +1901,186 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case 'order-items': {
+        if (req.method === 'GET') {
+          const orderId = url.searchParams.get('order_id');
+          
+          if (!orderId) {
+            return new Response(
+              JSON.stringify({ error: 'order_id is required' }),
+              { 
+                status: 400, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            );
+          }
+
+          // Verify order belongs to this user
+          const { data: order, error: orderError } = await supabase
+            .from('orders')
+            .select('id')
+            .eq('id', orderId)
+            .eq('user_id', userId)
+            .single();
+
+          if (orderError || !order) {
+            return new Response(
+              JSON.stringify({ error: 'Order not found' }),
+              { 
+                status: 404, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            );
+          }
+
+          // Fetch order items with product info
+          const { data: items, error } = await supabase
+            .from('order_items')
+            .select('*')
+            .eq('order_id', orderId);
+
+          if (error) {
+            console.log('Error fetching order items:', error);
+            return new Response(
+              JSON.stringify({ error: 'Failed to fetch order items' }),
+              { 
+                status: 500, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            );
+          }
+
+          // Calculate totals
+          const subtotal = items.reduce((sum, item) => sum + (item.product_price * item.quantity), 0);
+          const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+
+          return new Response(
+            JSON.stringify({ 
+              items,
+              item_count: items.length,
+              total_quantity: totalQuantity,
+              subtotal
+            }),
+            { 
+              status: 200, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        }
+        break;
+      }
+
+      case 'template-blocks': {
+        if (req.method === 'GET') {
+          const { data: blocks, error } = await supabase
+            .from('template_blocks')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('is_visible', true)
+            .order('block_order', { ascending: true });
+
+          if (error) {
+            console.log('Error fetching template blocks:', error);
+            return new Response(
+              JSON.stringify({ error: 'Failed to fetch template blocks' }),
+              { 
+                status: 500, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            );
+          }
+
+          return new Response(
+            JSON.stringify({ 
+              blocks: blocks || [],
+              block_count: blocks?.length || 0
+            }),
+            { 
+              status: 200, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        }
+        break;
+      }
+
+      case 'store-info': {
+        // Public store information endpoint
+        if (req.method === 'GET') {
+          const { data: customization } = await supabase
+            .from('template_customization')
+            .select('store_name, logo_url, footer_text, primary_color, background_color')
+            .eq('user_id', userId)
+            .single();
+
+          // Get product count
+          const { count: productCount } = await supabase
+            .from('products')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId);
+
+          // Get collection count
+          const { count: collectionCount } = await supabase
+            .from('collections')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId);
+
+          // Get review stats
+          const { data: reviews } = await supabase
+            .from('reviews')
+            .select('rating')
+            .eq('user_id', userId)
+            .eq('is_approved', true);
+
+          const avgRating = reviews && reviews.length > 0
+            ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+            : 0;
+
+          return new Response(
+            JSON.stringify({
+              store_name: customization?.store_name || profile.store_name || 'My Store',
+              logo_url: customization?.logo_url || null,
+              footer_text: customization?.footer_text || 'All rights reserved.',
+              primary_color: customization?.primary_color || '#000000',
+              background_color: customization?.background_color || '#FFFFFF',
+              stats: {
+                product_count: productCount || 0,
+                collection_count: collectionCount || 0,
+                review_count: reviews?.length || 0,
+                average_rating: parseFloat(avgRating.toFixed(1))
+              }
+            }),
+            { 
+              status: 200, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        }
+        break;
+      }
+
       default: {
         return new Response(
           JSON.stringify({ 
             error: 'Invalid endpoint',
             available_endpoints: [
               'config',
+              'store-info',
               'products',
               'product',
               'orders',
+              'order-items',
               'collections',
               'collection',
               'carriers',
               'discounts',
               'payments',
               'payment-status',
+              'payment-webhook',
               'lockers',
               'reviews',
               'product-reviews',
+              'template-blocks',
               'cleanup-abandoned-orders'
             ]
           }),

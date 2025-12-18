@@ -21,30 +21,72 @@ Your API key can be found in Store Settings.
 
 ### 1. Get Configuration
 
-Get store configuration, delivery fees, and template customization.
+Get comprehensive store configuration, payment/delivery settings, template customization, and API capabilities.
 
 **Endpoint**: `GET /config`
 
 **Response**:
 ```json
 {
+  "user_id": "uuid",
+  "store_name": "My Store",
   "mapbox_token": "pk.xxx...",
-  "cash_payment_enabled": true,
-  "cash_payment_fee": 0,
-  "home_delivery_fee": 15,
-  "locker_delivery_fee": 10,
+  "payment": {
+    "card_enabled": true,
+    "cash_enabled": true,
+    "cash_fee": 0,
+    "provider": "netopia"
+  },
+  "delivery": {
+    "home_fee": 15,
+    "locker_fee": 10,
+    "home_enabled": true,
+    "locker_enabled": true
+  },
   "customization": {
     "primary_color": "#000000",
     "background_color": "#FFFFFF",
     "text_color": "#000000",
     "accent_color": "#666666",
+    "secondary_color": "#F5F5F5",
     "hero_image_url": "https://...",
     "logo_url": "https://...",
     "hero_title": "Welcome to Our Store",
     "hero_subtitle": "Discover amazing products",
     "hero_button_text": "Shop now",
     "store_name": "My Store",
-    "show_reviews": true
+    "show_hero_section": true,
+    "show_reviews": true,
+    "show_collection_images": true,
+    "font_family": "Inter",
+    "heading_font": "Inter",
+    "border_radius": "rounded-lg",
+    "button_style": "solid",
+    "navbar_style": "transparent",
+    "product_card_style": "minimal",
+    "animation_style": "smooth",
+    "gradient_enabled": true,
+    "footer_text": "All rights reserved."
+  },
+  "template_blocks": [],
+  "api_version": "1.0",
+  "available_endpoints": [
+    "config", "store-info", "products", "product", "orders", "order-items",
+    "collections", "collection", "carriers", "discounts", "payments",
+    "payment-status", "payment-webhook", "lockers", "reviews",
+    "product-reviews", "template-blocks", "cleanup-abandoned-orders"
+  ],
+  "features": {
+    "products": true,
+    "collections": true,
+    "discounts": true,
+    "reviews": true,
+    "online_payments": true,
+    "cash_payments": true,
+    "home_delivery": true,
+    "locker_delivery": true,
+    "invoicing": true,
+    "awb_generation": true
   }
 }
 ```
@@ -541,6 +583,83 @@ Get all reviews for the store (including non-approved).
       "product_title": "Product Name"
     }
   ]
+}
+```
+
+---
+
+### 16. Get Store Info
+
+Get public store information and statistics.
+
+**Endpoint**: `GET /store-info`
+
+**Response**:
+```json
+{
+  "store_name": "My Store",
+  "logo_url": "https://...",
+  "footer_text": "All rights reserved.",
+  "primary_color": "#000000",
+  "background_color": "#FFFFFF",
+  "stats": {
+    "product_count": 50,
+    "collection_count": 5,
+    "review_count": 120,
+    "average_rating": 4.5
+  }
+}
+```
+
+---
+
+### 17. Get Order Items
+
+Get all items for a specific order.
+
+**Endpoint**: `GET /order-items?order_id=ORDER_ID`
+
+**Response**:
+```json
+{
+  "items": [
+    {
+      "id": "uuid",
+      "order_id": "uuid",
+      "product_id": "uuid",
+      "product_title": "Product Name",
+      "product_price": 99.99,
+      "quantity": 2
+    }
+  ],
+  "item_count": 3,
+  "total_quantity": 5,
+  "subtotal": 299.97
+}
+```
+
+---
+
+### 18. Get Template Blocks
+
+Get custom template blocks for the storefront.
+
+**Endpoint**: `GET /template-blocks`
+
+**Response**:
+```json
+{
+  "blocks": [
+    {
+      "id": "uuid",
+      "block_type": "hero",
+      "title": "Hero Section",
+      "content": {},
+      "block_order": 0,
+      "is_visible": true
+    }
+  ],
+  "block_count": 5
 }
 ```
 
