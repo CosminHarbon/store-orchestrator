@@ -1796,7 +1796,7 @@ Deno.serve(async (req) => {
               customer_email: customer_email || null,
               rating: parseInt(rating),
               review_text: review_text || null,
-              is_approved: true // Default to approved, owner can unapprove
+              is_approved: false // Pending by default, owner must approve
             })
             .select()
             .single();
