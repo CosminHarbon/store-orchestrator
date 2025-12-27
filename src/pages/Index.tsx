@@ -18,6 +18,7 @@ import PaymentStatistics from '@/components/PaymentStatistics';
 import CollectionsManagement from '@/components/CollectionsManagement';
 import TemplatesManagement from '@/components/TemplatesManagement';
 import ReviewsManagement from '@/components/ReviewsManagement';
+import { DateRangeFilter, useDateRangeFilter } from '@/components/DateRangeFilter';
 import { Package, ShoppingCart, DollarSign, Clock, TrendingUp, Users, MessageCircle, Sparkles, Zap, Star, Settings } from 'lucide-react';
 import AIChat from '@/components/AIChat';
 import { BottomNavigation } from '@/components/BottomNavigation';
@@ -34,7 +35,7 @@ const Index = () => {
     return 'dashboard';
   });
   const [isChatOpen, setIsChatOpen] = useState(false);
-
+  const { dateRange, setDateRange, preset, setPreset } = useDateRangeFilter('30days');
   // Persist active tab to localStorage whenever it changes
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -69,15 +70,20 @@ const Index = () => {
   }, [user, navigate]);
 
   const { data: stats } = useQuery({
-    queryKey: ['dashboard-stats'],
+    queryKey: ['dashboard-stats', dateRange.from, dateRange.to],
     queryFn: async () => {
       const today = new Date();
       const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
       const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
       
-      const [productsRes, ordersRes, todayOrdersRes, profileRes] = await Promise.all([
+      const [productsRes, ordersRes, periodOrdersRes, todayOrdersRes, profileRes] = await Promise.all([
         supabase.from('products').select('*', { count: 'exact' }),
         supabase.from('orders').select('*', { count: 'exact' }),
+        supabase
+          .from('orders')
+          .select('*')
+          .gte('created_at', dateRange.from.toISOString())
+          .lte('created_at', dateRange.to.toISOString()),
         supabase
           .from('orders')
           .select('*')
@@ -86,8 +92,12 @@ const Index = () => {
         supabase.from('profiles').select('store_name').eq('user_id', user?.id).single()
       ]);
 
-      const totalRevenue = ordersRes.data?.reduce((sum, order) => sum + Number(order.total), 0) || 0;
-      const pendingOrders = ordersRes.data?.filter(order => order.payment_status === 'pending').length || 0;
+      // Period-based stats (filtered by date range)
+      const periodOrders = periodOrdersRes.data || [];
+      const periodRevenue = periodOrders.reduce((sum, order) => sum + Number(order.total), 0);
+      const periodOrderCount = periodOrders.length;
+      const periodPendingOrders = periodOrders.filter(order => order.payment_status === 'pending').length;
+
       const lowStockProducts = productsRes.data?.filter(product => product.stock < 5).length || 0;
       
       // Today's real data
@@ -98,8 +108,9 @@ const Index = () => {
       return {
         totalProducts: productsRes.count || 0,
         totalOrders: ordersRes.count || 0,
-        totalRevenue,
-        pendingOrders,
+        totalRevenue: periodRevenue,
+        periodOrders: periodOrderCount,
+        pendingOrders: periodPendingOrders,
         lowStockProducts,
         storeName: profileRes.data?.store_name || 'My Store',
         todayOrders: todayNewOrders,
@@ -126,6 +137,16 @@ const Index = () => {
 
   const renderDashboard = () => (
     <div className={`space-y-4 p-3 md:p-6 pb-24 safe-area-bottom ${isMobile ? 'mobile-futuristic-container' : ''}`}>
+      {/* Date Range Filter */}
+      <div className="flex items-center justify-end">
+        <DateRangeFilter
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          preset={preset}
+          onPresetChange={setPreset}
+        />
+      </div>
+
       {/* Hero Value Card */}
       <div className={`rounded-2xl p-6 md:p-8 text-white shadow-glow relative overflow-hidden ${isMobile 
         ? 'bg-gradient-to-br from-card/90 to-card/70 backdrop-blur-xl border border-white/10 shadow-xl' 
@@ -141,13 +162,13 @@ const Index = () => {
                 </div>
               )}
               <p className={`text-sm mb-1 ${isMobile ? 'text-muted-foreground' : 'text-white/80'}`}>
-                {isMobile ? 'Total Value' : 'Your Store Value'}
+                {isMobile ? 'Period Revenue' : 'Period Revenue'}
               </p>
               <h1 className={`text-3xl md:text-4xl font-bold ${isMobile ? 'text-foreground' : ''}`}>
                 {stats?.totalRevenue?.toFixed(2) || '0.00'} RON
               </h1>
               <p className={`text-sm mt-1 ${isMobile ? 'text-muted-foreground' : 'text-white/80'}`}>
-                ▲ {((stats?.totalRevenue || 0) * 0.15).toFixed(2)} RON this week
+                {stats?.periodOrders || 0} orders in selected period
               </p>
             </div>
             <Button 
