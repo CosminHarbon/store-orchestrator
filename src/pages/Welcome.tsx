@@ -1,14 +1,54 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { Sparkles, Package, Truck, Smartphone } from "lucide-react";
+import { Sparkles, Package, Truck, Smartphone, Globe } from "lucide-react";
 
 export default function Welcome() {
+  const [language, setLanguage] = useState<"en" | "ro">("ro");
   const navigate = useNavigate();
+
+  const content = {
+    en: {
+      tagline: "Sell online. Simple and fast.",
+      features: [
+        { icon: Truck, title: "No delivery contracts", desc: "Choose the cheapest courier", color: "orange" },
+        { icon: Package, title: "Manage products", desc: "Stock, prices, images", color: "violet" },
+        { icon: Smartphone, title: "From your phone", desc: "Orders, deliveries, invoices", color: "cyan" }
+      ],
+      cta: "Get Started",
+      login: "I already have an account"
+    },
+    ro: {
+      tagline: "Vinde online. Simplu și rapid.",
+      features: [
+        { icon: Truck, title: "Fără contracte de livrare", desc: "Alege cel mai ieftin curier", color: "orange" },
+        { icon: Package, title: "Gestionează produsele", desc: "Stocuri, prețuri, imagini", color: "violet" },
+        { icon: Smartphone, title: "Direct din telefon", desc: "Comenzi, livrări, facturi", color: "cyan" }
+      ],
+      cta: "Începe acum",
+      login: "Am deja cont"
+    }
+  };
+
+  const t = content[language];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 flex flex-col">
+      {/* Language Toggle */}
+      <div className="flex justify-end p-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setLanguage(language === "ro" ? "en" : "ro")}
+          className="gap-2"
+        >
+          <Globe className="w-4 h-4" />
+          {language === "ro" ? "EN" : "RO"}
+        </Button>
+      </div>
+
       {/* Logo & Branding */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
         <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center mb-6 shadow-lg">
           <Sparkles className="w-10 h-10 text-primary-foreground" />
         </div>
@@ -17,40 +57,22 @@ export default function Welcome() {
           SpeedVendors
         </h1>
         <p className="text-muted-foreground text-center text-lg mb-8">
-          Vinde online. Simplu și rapid.
+          {t.tagline}
         </p>
 
         {/* Feature highlights */}
         <div className="w-full max-w-sm space-y-4 mb-12">
-          <div className="flex items-center gap-4 p-4 bg-card/50 backdrop-blur-sm rounded-xl border border-border/50">
-            <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center">
-              <Truck className="w-6 h-6 text-orange-500" />
+          {t.features.map((feature, index) => (
+            <div key={index} className="flex items-center gap-4 p-4 bg-card/50 backdrop-blur-sm rounded-xl border border-border/50">
+              <div className={`w-12 h-12 rounded-xl bg-${feature.color}-500/10 flex items-center justify-center`}>
+                <feature.icon className={`w-6 h-6 text-${feature.color}-500`} />
+              </div>
+              <div>
+                <h3 className="font-medium text-foreground">{feature.title}</h3>
+                <p className="text-sm text-muted-foreground">{feature.desc}</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-medium text-foreground">Fără contracte de livrare</h3>
-              <p className="text-sm text-muted-foreground">Alege cel mai ieftin curier</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4 p-4 bg-card/50 backdrop-blur-sm rounded-xl border border-border/50">
-            <div className="w-12 h-12 rounded-xl bg-violet-500/10 flex items-center justify-center">
-              <Package className="w-6 h-6 text-violet-500" />
-            </div>
-            <div>
-              <h3 className="font-medium text-foreground">Gestionează produsele</h3>
-              <p className="text-sm text-muted-foreground">Stocuri, prețuri, imagini</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4 p-4 bg-card/50 backdrop-blur-sm rounded-xl border border-border/50">
-            <div className="w-12 h-12 rounded-xl bg-cyan-500/10 flex items-center justify-center">
-              <Smartphone className="w-6 h-6 text-cyan-500" />
-            </div>
-            <div>
-              <h3 className="font-medium text-foreground">Direct din telefon</h3>
-              <p className="text-sm text-muted-foreground">Comenzi, livrări, facturi</p>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
@@ -60,14 +82,14 @@ export default function Welcome() {
           className="w-full h-14 text-lg font-semibold"
           onClick={() => navigate("/auth")}
         >
-          Începe acum
+          {t.cta}
         </Button>
         <Button 
           variant="outline"
           className="w-full h-14 text-lg"
           onClick={() => navigate("/auth")}
         >
-          Am deja cont
+          {t.login}
         </Button>
       </div>
     </div>
