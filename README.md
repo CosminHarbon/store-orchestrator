@@ -1,73 +1,58 @@
-# Welcome to your Lovable project
+# Speed Vendors
 
-## Project info
+Multi-tenant e-commerce platform for managing online stores with custom templates, payments, and shipping integration.
 
-**URL**: https://lovable.dev/projects/f5f70314-2247-4e0c-9124-fa81d2e3fa11
+## Getting Started
 
-## How can I edit this code?
+### Prerequisites
 
-There are several ways of editing your application.
+- Node.js & npm - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/f5f70314-2247-4e0c-9124-fa81d2e3fa11) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### Installation
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
+# Clone the repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Navigate to the project directory
+cd speed-vendors
 
-# Step 3: Install the necessary dependencies.
+# Install dependencies
 npm i
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
+## Technologies
 
 - Vite
 - TypeScript
 - React
 - shadcn-ui
 - Tailwind CSS
+- Supabase
 
-## How can I deploy this project?
+## Mobile App (Capacitor)
 
-Simply open [Lovable](https://lovable.dev/projects/f5f70314-2247-4e0c-9124-fa81d2e3fa11) and click on Share -> Publish.
+This project uses Capacitor for native mobile builds.
 
-## Can I connect a custom domain to my Lovable project?
+```sh
+# Build for Android
+npm run build
+npx cap sync android
+npx cap open android
 
-Yes, you can!
+# Build for iOS
+npm run build
+npx cap sync ios
+npx cap open ios
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Deployment
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Build the project and deploy the `dist` folder to your preferred hosting provider.
+
+```sh
+npm run build
+```
