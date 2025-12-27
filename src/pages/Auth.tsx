@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Capacitor } from '@capacitor/core';
 
@@ -17,6 +18,8 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') === 'signup' ? 'signup' : 'signin');
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
 
@@ -76,6 +79,28 @@ const Auth = () => {
     setLoading(false);
   };
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    const redirectUrl = 'https://speedvendors.lovable.app/auth/callback';
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: redirectUrl,
+    });
+
+    if (error) {
+      setError(error.message);
+    } else {
+      toast.success('Password reset email sent! Check your inbox.');
+      setShowResetPassword(false);
+      setResetEmail('');
+    }
+
+    setLoading(false);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
@@ -85,10 +110,44 @@ const Auth = () => {
           </div>
           <CardTitle className="text-2xl font-bold">SPEED VENDORS</CardTitle>
           <CardDescription>
-            Sign in to manage your online store
+            {showResetPassword ? 'Reset your password' : 'Sign in to manage your online store'}
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {showResetPassword ? (
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="reset-email">Email</Label>
+                <Input
+                  id="reset-email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  required
+                />
+              </div>
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Sending...' : 'Send Reset Link'}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => {
+                  setShowResetPassword(false);
+                  setError('');
+                }}
+              >
+                Back to Sign In
+              </Button>
+            </form>
+          ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
@@ -126,6 +185,17 @@ const Auth = () => {
                 )}
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Signing In...' : 'Sign In'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="w-full text-sm"
+                  onClick={() => {
+                    setShowResetPassword(true);
+                    setError('');
+                  }}
+                >
+                  Forgot password?
                 </Button>
               </form>
             </TabsContent>
@@ -166,6 +236,7 @@ const Auth = () => {
               </form>
             </TabsContent>
           </Tabs>
+          )}
         </CardContent>
       </Card>
     </div>
