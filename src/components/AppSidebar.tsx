@@ -1,4 +1,5 @@
 import { Home, Package, ShoppingCart, Settings, Store, Users, BarChart3, CreditCard, Layout, Star } from "lucide-react";
+import logoImg from "@/assets/logo.png";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -54,8 +55,8 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
         <SidebarGroup>
           <div className="px-3 py-3 mb-2">
             <div className="flex items-center gap-3">
-              <img src="/logo.png" alt="Store Logo" className="h-8 w-8 object-contain shrink-0" />
-              {!collapsed && <span className="font-semibold text-base truncate">Speed Vendors</span>}
+              <img src={logoImg} alt="Speed Vendors Logo" className="h-10 w-10 object-contain shrink-0" />
+              {!collapsed && <span className="font-semibold text-lg truncate">Speed Vendors</span>}
             </div>
           </div>
           
