@@ -54,7 +54,7 @@ export default function Welcome() {
         </div>
         
         <h1 className="text-3xl font-bold text-foreground text-center mb-2">
-          SpeedVendors
+          Speed Vendors
         </h1>
         <p className="text-muted-foreground text-center text-lg mb-8">
           {t.tagline}

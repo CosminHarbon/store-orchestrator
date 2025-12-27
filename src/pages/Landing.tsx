@@ -26,7 +26,7 @@ export default function Landing() {
         ctaSecondary: "See How It Works"
       },
       features: {
-        title: "Why SpeedVendors?",
+        title: "Why Speed Vendors?",
         cards: [
           { icon: Truck, title: "No Delivery Contracts", desc: "Compare prices & choose the cheapest courier each time. Works for everyone!", color: "from-orange-500 to-amber-500" },
           { icon: Zap, title: "We Build It For You", desc: "One-time setup fee. You don't touch any code. Ever.", color: "from-violet-500 to-purple-500" },
@@ -36,7 +36,7 @@ export default function Landing() {
       },
       comparison: {
         title: "Individual or Company?",
-        subtitle: "SpeedVendors works for both!",
+        subtitle: "Speed Vendors works for both!",
         pf: {
           title: "Without a Company",
           subtitle: "Perfect for individuals selling locally",
@@ -112,7 +112,7 @@ export default function Landing() {
         ctaSecondary: "Vezi Cum Funcționează"
       },
       features: {
-        title: "De Ce SpeedVendors?",
+        title: "De Ce Speed Vendors?",
         cards: [
           { icon: Truck, title: "Fără Contracte Curier", desc: "Compară prețuri și alege cel mai ieftin curier de fiecare dată!", color: "from-orange-500 to-amber-500" },
           { icon: Zap, title: "Noi Construim Totul", desc: "O singură taxă de setup. Tu nu atingi niciun cod. Niciodată.", color: "from-violet-500 to-purple-500" },
@@ -122,7 +122,7 @@ export default function Landing() {
       },
       comparison: {
         title: "Persoană Fizică sau Firmă?",
-        subtitle: "SpeedVendors funcționează pentru ambele!",
+        subtitle: "Speed Vendors funcționează pentru ambele!",
         pf: {
           title: "Fără Firmă",
           subtitle: "Perfect pentru vânzători locali",
@@ -207,7 +207,7 @@ export default function Landing() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <span className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
-            SpeedVendors
+            Speed Vendors
           </span>
           <Button
             variant="ghost"
@@ -510,8 +510,8 @@ export default function Landing() {
       {/* Footer */}
       <footer className="border-t border-border/50 py-8 bg-muted/20">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground space-y-2">
-          <p className="font-semibold text-foreground">SpeedVendors</p>
-          <p>© 2025 SpeedVendors. {t.footer.rights}</p>
+          <p className="font-semibold text-foreground">Speed Vendors</p>
+          <p>© 2025 Speed Vendors. {t.footer.rights}</p>
           <Link to="/privacy-policy" className="text-primary hover:underline">
             {language === "ro" ? "Politica de Confidențialitate" : "Privacy Policy"}
           </Link>
