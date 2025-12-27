@@ -499,14 +499,14 @@ const CustomerManagement: React.FC = () => {
             {filteredCustomers?.map((customer) => (
               <Card key={customer.customer_email} className="overflow-hidden">
                 <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1 flex-1">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
+                    <div className="space-y-1 flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => toggleCustomerExpansion(customer.customer_email)}
-                          className="p-0 h-6 w-6"
+                          className="p-0 h-6 w-6 flex-shrink-0"
                         >
                           {expandedCustomers.has(customer.customer_email) ? (
                             <ChevronDown className="h-4 w-4" />
@@ -514,9 +514,9 @@ const CustomerManagement: React.FC = () => {
                             <ChevronRight className="h-4 w-4" />
                           )}
                         </Button>
-                        <CardTitle className="text-base font-medium">{customer.unique_names[0]}</CardTitle>
+                        <CardTitle className="text-base font-medium truncate">{customer.unique_names[0]}</CardTitle>
                       </div>
-                      <p className="text-sm text-muted-foreground truncate max-w-[200px]" title={customer.customer_email}>
+                      <p className="text-sm text-muted-foreground truncate" title={customer.customer_email}>
                         {customer.customer_email}
                       </p>
                       {customer.unique_names.length > 1 && (
@@ -525,9 +525,9 @@ const CustomerManagement: React.FC = () => {
                         </p>
                       )}
                     </div>
-                    <div className="text-right space-y-1 flex-shrink-0">
-                      <p className="text-lg font-semibold whitespace-nowrap">{formatCurrency(customer.total_spent)}</p>
-                      <Badge variant={customer.total_orders > 1 ? "default" : "secondary"} className="text-xs whitespace-nowrap">
+                    <div className="flex items-center justify-between sm:flex-col sm:items-end gap-2 sm:gap-1 flex-shrink-0">
+                      <p className="text-lg font-semibold">{formatCurrency(customer.total_spent)}</p>
+                      <Badge variant={customer.total_orders > 1 ? "default" : "secondary"} className="text-xs">
                         {customer.total_orders} order{customer.total_orders > 1 ? 's' : ''}
                       </Badge>
                     </div>
