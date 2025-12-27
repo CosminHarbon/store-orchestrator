@@ -526,10 +526,14 @@ const StockManagement = () => {
                            <Minus className="h-3 w-3" />
                          </Button>
                          <Input
-                           type="number"
-                           min="0"
-                           value={newStock}
-                           onChange={(e) => handleStockChange(product.id, parseInt(e.target.value) || 0)}
+                           type="text"
+                           inputMode="numeric"
+                           pattern="[0-9]*"
+                           value={stockUpdates[product.id] !== undefined ? String(newStock) : String(product.stock)}
+                           onChange={(e) => {
+                             const val = e.target.value.replace(/^0+(?=\d)/, '');
+                             handleStockChange(product.id, val === '' ? 0 : parseInt(val) || 0);
+                           }}
                            className="w-16 text-center"
                          />
                          <Button
@@ -543,13 +547,17 @@ const StockManagement = () => {
                        </div>
                      </TableCell>
                      <TableCell>
-                       <Input
-                         type="number"
-                         min="0"
-                         value={newThreshold}
-                         onChange={(e) => handleThresholdChange(product.id, parseInt(e.target.value) || 0)}
-                         className="w-20"
-                       />
+                     <Input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={thresholdUpdates[product.id] !== undefined ? String(newThreshold) : String(product.low_stock_threshold)}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/^0+(?=\d)/, '');
+                            handleThresholdChange(product.id, val === '' ? 0 : parseInt(val) || 0);
+                          }}
+                          className="w-20"
+                        />
                      </TableCell>
                      <TableCell>${product.price}</TableCell>
                      <TableCell>{product.category || '-'}</TableCell>
@@ -610,10 +618,14 @@ const StockManagement = () => {
                       <label className="text-sm font-medium text-muted-foreground">Alert Threshold</label>
                       <div className="flex items-center gap-2">
                         <Input
-                          type="number"
-                          min="0"
-                          value={newThreshold}
-                          onChange={(e) => handleThresholdChange(product.id, parseInt(e.target.value) || 0)}
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={thresholdUpdates[product.id] !== undefined ? String(newThreshold) : String(product.low_stock_threshold)}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/^0+(?=\d)/, '');
+                            handleThresholdChange(product.id, val === '' ? 0 : parseInt(val) || 0);
+                          }}
                           className="w-20 h-8"
                         />
                       </div>
@@ -655,10 +667,14 @@ const StockManagement = () => {
                         </Button>
                         <div className="flex-1">
                           <Input
-                            type="number"
-                            min="0"
-                            value={newStock}
-                            onChange={(e) => handleStockChange(product.id, parseInt(e.target.value) || 0)}
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={stockUpdates[product.id] !== undefined ? String(newStock) : String(product.stock)}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/^0+(?=\d)/, '');
+                              handleStockChange(product.id, val === '' ? 0 : parseInt(val) || 0);
+                            }}
                             className="text-center text-lg h-10"
                             placeholder="Stock quantity"
                           />
