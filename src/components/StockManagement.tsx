@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Package, Upload, Download, RefreshCw, Save, AlertTriangle, Plus, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,12 @@ interface StockUpdate {
   low_stock_threshold?: number;
 }
 
-const StockManagement = () => {
+interface StockManagementProps {
+  onPendingChangesChange?: (hasPendingChanges: boolean) => void;
+  saveRef?: React.MutableRefObject<(() => void) | null>;
+}
+
+const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementProps = {}) => {
   const [stockUpdates, setStockUpdates] = useState<{ [key: string]: number }>({});
   const [thresholdUpdates, setThresholdUpdates] = useState<{ [key: string]: number }>({});
   const [isUpdating, setIsUpdating] = useState(false);
@@ -107,6 +112,25 @@ const StockManagement = () => {
     const newStock = Math.max(0, currentStock + adjustment);
     handleStockChange(productId, newStock);
   };
+
+  // Notify parent about pending changes
+  const hasPendingChanges = Object.keys(stockUpdates).length > 0 || Object.keys(thresholdUpdates).length > 0;
+  
+  useEffect(() => {
+    onPendingChangesChange?.(hasPendingChanges);
+  }, [hasPendingChanges, onPendingChangesChange]);
+
+  // Expose save function to parent via ref
+  useEffect(() => {
+    if (saveRef) {
+      saveRef.current = handleSaveChanges;
+    }
+    return () => {
+      if (saveRef) {
+        saveRef.current = null;
+      }
+    };
+  }, [stockUpdates, thresholdUpdates]);
 
   const handleSaveChanges = () => {
     const stockUpdatesArray = Object.entries(stockUpdates).map(([productId, stock]) => ({
