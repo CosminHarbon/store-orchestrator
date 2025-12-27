@@ -137,16 +137,6 @@ const Index = () => {
 
   const renderDashboard = () => (
     <div className={`space-y-4 p-3 md:p-6 pb-24 safe-area-bottom ${isMobile ? 'mobile-futuristic-container' : ''}`}>
-      {/* Date Range Filter */}
-      <div className="flex items-center justify-end">
-        <DateRangeFilter
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-          preset={preset}
-          onPresetChange={setPreset}
-        />
-      </div>
-
       {/* Hero Value Card */}
       <div className={`rounded-2xl p-6 md:p-8 text-white shadow-glow relative overflow-hidden ${isMobile 
         ? 'bg-gradient-to-br from-card/90 to-card/70 backdrop-blur-xl border border-white/10 shadow-xl' 
@@ -171,17 +161,25 @@ const Index = () => {
                 {stats?.periodOrders || 0} orders in selected period
               </p>
             </div>
-            <Button 
-              variant="secondary" 
-              size="sm" 
-              className={`rounded-full px-4 ${isMobile 
-                ? 'bg-primary/10 border-primary/20 text-primary hover:bg-primary/20' 
-                : 'bg-white/20 border-white/30 text-white hover:bg-white/30'
-              }`}
+            <div className="flex flex-col items-end gap-2">
+              <DateRangeFilter
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
+                preset={preset}
+                onPresetChange={setPreset}
+              />
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                className={`rounded-full px-4 ${isMobile 
+                  ? 'bg-primary/10 border-primary/20 text-primary hover:bg-primary/20' 
+                  : 'bg-white/20 border-white/30 text-white hover:bg-white/30'
+                }`}
               onClick={() => setActiveTab('payments')}
             >
               {isMobile ? 'Analytics' : '+ View Analytics'}
             </Button>
+            </div>
           </div>
         </div>
         
