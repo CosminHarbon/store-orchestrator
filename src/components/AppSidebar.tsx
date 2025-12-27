@@ -55,7 +55,7 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
           <div className="px-3 py-3 mb-2 pt-[env(safe-area-inset-top)]">
             <div className="flex items-center gap-3">
               <img src="/logo.png" alt="Store Logo" className="h-8 w-8 object-contain shrink-0" />
-              {!collapsed && <span className="font-semibold text-base truncate">SPEED VENDORS</span>}
+              {!collapsed && <span className="font-semibold text-base truncate">Speed Vendors</span>}
             </div>
           </div>
           
