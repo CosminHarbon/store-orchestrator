@@ -39,9 +39,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signUp = async (email: string, password: string) => {
-    // Use the published domain for email redirects so it works for both web and mobile app users
-    const publishedDomain = 'https://speedvendors.lovable.app';
-    const redirectUrl = `${publishedDomain}/auth/callback`;
+    const redirectUrl = 'https://www.speedvendors.com/auth/callback';
+    
     
     const { error } = await supabase.auth.signUp({
       email,
