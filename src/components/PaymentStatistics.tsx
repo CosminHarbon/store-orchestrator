@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { CreditCard, TrendingUp, AlertCircle, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { DateRangeFilter, useDateRangeFilter } from '@/components/DateRangeFilter';
 
 interface PaymentTransaction {
   id: string;
@@ -28,14 +29,17 @@ interface PaymentStats {
 
 const PaymentStatistics = () => {
   const { user } = useAuth();
+  const { dateRange, setDateRange, preset, setPreset } = useDateRangeFilter('30days');
 
   const { data: transactions, isLoading } = useQuery({
-    queryKey: ['payment-transactions'],
+    queryKey: ['payment-transactions', dateRange.from, dateRange.to],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('payment_transactions')
         .select('*')
         .eq('user_id', user?.id)
+        .gte('created_at', dateRange.from.toISOString())
+        .lte('created_at', dateRange.to.toISOString())
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -108,6 +112,17 @@ const PaymentStatistics = () => {
 
   return (
     <div className="space-y-6">
+      {/* Date Range Filter */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Payment Analytics</h2>
+        <DateRangeFilter
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          preset={preset}
+          onPresetChange={setPreset}
+        />
+      </div>
+
       {/* Payment Statistics Overview */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <Card className="bg-gradient-card shadow-card border border-border/50">
