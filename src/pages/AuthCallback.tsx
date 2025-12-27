@@ -20,9 +20,16 @@ const AuthCallback = () => {
   const [updatingPassword, setUpdatingPassword] = useState(false);
 
   useEffect(() => {
+    // Check URL hash FIRST before Supabase processes it
+    const hash = window.location.hash;
+    if (hash && hash.includes('type=recovery')) {
+      setStatus('reset_password');
+      setMessage('Enter your new password');
+      return;
+    }
+
     const handleAuthCallback = async () => {
       try {
-        // Check for error in URL params
         const error = searchParams.get('error');
         const errorDescription = searchParams.get('error_description');
         
@@ -37,39 +44,13 @@ const AuthCallback = () => {
           return;
         }
 
-        // Get session to check the type of callback
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        const { data: { session } } = await supabase.auth.getSession();
         
         if (session) {
-          // Check if this is a password recovery flow
-          // The URL hash contains type=recovery for password reset
-          const hashParams = new URLSearchParams(window.location.hash.substring(1));
-          const type = hashParams.get('type');
-          
-          if (type === 'recovery') {
-            setStatus('reset_password');
-            setMessage('Enter your new password');
-            return;
-          }
-          
           setStatus('success');
           setMessage('Email verified successfully! Redirecting...');
           setTimeout(() => navigate('/app'), 2000);
           return;
-        }
-
-        // Check hash params for recovery type even without session
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const type = hashParams.get('type');
-        
-        if (type === 'recovery') {
-          // Wait a moment for Supabase to process the token
-          const { data: { session: recoverySession } } = await supabase.auth.getSession();
-          if (recoverySession) {
-            setStatus('reset_password');
-            setMessage('Enter your new password');
-            return;
-          }
         }
 
         setStatus('success');
@@ -82,8 +63,8 @@ const AuthCallback = () => {
       }
     };
 
-    // Listen for auth state changes (password recovery triggers this)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    // Listen for PASSWORD_RECOVERY event
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
         setStatus('reset_password');
         setMessage('Enter your new password');
