@@ -114,7 +114,7 @@ export function DateRangeFilter({
     <div className={cn('flex items-center gap-2', className)}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="h-9 gap-2">
+          <Button variant="outline" size="sm" className="h-9 gap-2 bg-background text-foreground border-border hover:bg-muted">
             <CalendarIcon className="h-4 w-4" />
             <span className="hidden sm:inline">{getPresetLabel()}</span>
             <span className="sm:hidden">
