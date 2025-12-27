@@ -110,7 +110,7 @@ const AuthCallback = () => {
           <div className="flex justify-center mb-4">
             <img src="/logo.png" alt="Speed Vendors Logo" className="h-20 w-20 object-contain" />
           </div>
-          <CardTitle className="text-2xl font-bold">SPEED VENDORS</CardTitle>
+          <CardTitle className="text-2xl font-bold">Speed Vendors</CardTitle>
           <CardDescription>
             {status === 'reset_password' ? 'Reset Your Password' : 'Email Verification'}
           </CardDescription>

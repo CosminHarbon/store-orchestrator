@@ -2,7 +2,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'app.lovable.f5f7031422474e0c9124fa81d2e3fa11',
-  appName: 'STORE VENDORS',
+  appName: 'Speed Vendors',
   webDir: 'dist',
   // For production builds, comment out the server config
   // For development with hot reload, uncomment the lines below:
