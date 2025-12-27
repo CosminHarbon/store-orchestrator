@@ -84,7 +84,7 @@ const Auth = () => {
     setLoading(true);
     setError('');
 
-    const redirectUrl = 'https://speedvendors.lovable.app/auth/callback';
+    const redirectUrl = 'https://www.speedvendors.com/auth/callback';
     
     const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
       redirectTo: redirectUrl,
