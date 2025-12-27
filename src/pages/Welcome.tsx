@@ -82,7 +82,7 @@ export default function Welcome() {
           className="w-full h-14 text-lg font-semibold"
           onClick={() => {
             localStorage.setItem('hasSeenWelcome', 'true');
-            navigate("/auth");
+            navigate("/auth?tab=signup");
           }}
         >
           {t.cta}
@@ -92,7 +92,7 @@ export default function Welcome() {
           className="w-full h-14 text-lg"
           onClick={() => {
             localStorage.setItem('hasSeenWelcome', 'true');
-            navigate("/auth");
+            navigate("/auth?tab=signin");
           }}
         >
           {t.login}
