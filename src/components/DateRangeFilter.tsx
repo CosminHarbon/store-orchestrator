@@ -105,7 +105,7 @@ export function DateRangeFilter({
 
   const getPresetLabel = () => {
     if (preset === 'custom') {
-      return `${format(dateRange.from, 'MMM d')} - ${format(dateRange.to, 'MMM d, yyyy')}`;
+      return `${format(dateRange.from, 'd MMM')} - ${format(dateRange.to, 'd MMM yyyy')}`;
     }
     return presets.find((p) => p.key === preset)?.label || 'Select period';
   };
@@ -119,7 +119,7 @@ export function DateRangeFilter({
             <span className="hidden sm:inline">{getPresetLabel()}</span>
             <span className="sm:hidden">
               {preset === 'custom' 
-                ? `${format(dateRange.from, 'M/d')} - ${format(dateRange.to, 'M/d')}`
+                ? `${format(dateRange.from, 'd/M')} - ${format(dateRange.to, 'd/M')}`
                 : presets.find((p) => p.key === preset)?.label.replace('Last ', '') || 'Period'
               }
             </span>
