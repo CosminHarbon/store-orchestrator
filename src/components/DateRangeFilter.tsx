@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { format, subDays, subMonths, startOfYear } from 'date-fns';
+import { format, subDays, startOfYear } from 'date-fns';
 import { Calendar as CalendarIcon, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,9 +67,13 @@ export function DateRangeFilter({
   const [isCustomOpen, setIsCustomOpen] = useState(false);
   const [tempFrom, setTempFrom] = useState<Date | undefined>(dateRange.from);
   const [tempTo, setTempTo] = useState<Date | undefined>(dateRange.to);
+  const [selectingDate, setSelectingDate] = useState<'from' | 'to'>('from');
 
   const handlePresetSelect = (presetKey: PresetKey) => {
     if (presetKey === 'custom') {
+      setTempFrom(dateRange.from);
+      setTempTo(dateRange.to);
+      setSelectingDate('from');
       setIsCustomOpen(true);
       onPresetChange('custom');
     } else {
@@ -84,6 +90,17 @@ export function DateRangeFilter({
       onDateRangeChange({ from: tempFrom, to: tempTo });
       setIsCustomOpen(false);
     }
+  };
+
+  const handleFromSelect = (date: Date | undefined) => {
+    setTempFrom(date);
+    if (date) {
+      setSelectingDate('to');
+    }
+  };
+
+  const handleToSelect = (date: Date | undefined) => {
+    setTempTo(date);
   };
 
   const getPresetLabel = () => {
@@ -109,7 +126,7 @@ export function DateRangeFilter({
             <ChevronDown className="h-3 w-3 opacity-50" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuContent align="end" className="w-48 bg-popover border border-border z-50">
           {presets.map((p) => (
             <DropdownMenuItem
               key={p.key}
@@ -126,49 +143,70 @@ export function DateRangeFilter({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Custom Date Range Popover */}
-      <Popover open={isCustomOpen} onOpenChange={setIsCustomOpen}>
-        <PopoverTrigger asChild>
-          <span className="hidden" />
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="end">
-          <div className="p-4 space-y-4">
+      {/* Custom Date Range Dialog */}
+      <Dialog open={isCustomOpen} onOpenChange={setIsCustomOpen}>
+        <DialogContent className="sm:max-w-fit">
+          <DialogHeader>
+            <DialogTitle>Select Date Range</DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex flex-col sm:flex-row gap-4 py-4">
+            {/* From Date */}
             <div className="space-y-2">
-              <p className="text-sm font-medium">From</p>
-              <Calendar
-                mode="single"
-                selected={tempFrom}
-                onSelect={setTempFrom}
-                disabled={(date) => date > new Date()}
-                initialFocus
-                className="pointer-events-auto"
-              />
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm font-medium">To</p>
-              <Calendar
-                mode="single"
-                selected={tempTo}
-                onSelect={setTempTo}
-                disabled={(date) => date > new Date() || (tempFrom && date < tempFrom)}
-                className="pointer-events-auto"
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setIsCustomOpen(false)}>
-                Cancel
-              </Button>
-              <Button 
-                size="sm" 
-                onClick={handleApplyCustomRange}
-                disabled={!tempFrom || !tempTo}
+              <Button
+                variant={selectingDate === 'from' ? 'default' : 'outline'}
+                size="sm"
+                className="w-full justify-start"
+                onClick={() => setSelectingDate('from')}
               >
-                Apply
+                From: {tempFrom ? format(tempFrom, 'MMM d, yyyy') : 'Select date'}
               </Button>
+              {selectingDate === 'from' && (
+                <Calendar
+                  mode="single"
+                  selected={tempFrom}
+                  onSelect={handleFromSelect}
+                  disabled={(date) => date > new Date()}
+                  className="rounded-md border pointer-events-auto"
+                />
+              )}
+            </div>
+
+            {/* To Date */}
+            <div className="space-y-2">
+              <Button
+                variant={selectingDate === 'to' ? 'default' : 'outline'}
+                size="sm"
+                className="w-full justify-start"
+                onClick={() => setSelectingDate('to')}
+              >
+                To: {tempTo ? format(tempTo, 'MMM d, yyyy') : 'Select date'}
+              </Button>
+              {selectingDate === 'to' && (
+                <Calendar
+                  mode="single"
+                  selected={tempTo}
+                  onSelect={handleToSelect}
+                  disabled={(date) => date > new Date() || (tempFrom ? date < tempFrom : false)}
+                  className="rounded-md border pointer-events-auto"
+                />
+              )}
             </div>
           </div>
-        </PopoverContent>
-      </Popover>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCustomOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleApplyCustomRange}
+              disabled={!tempFrom || !tempTo}
+            >
+              Apply Range
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
