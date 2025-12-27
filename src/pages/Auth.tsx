@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { Capacitor } from '@capacitor/core';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -19,6 +20,15 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // On native platforms, redirect to welcome if user hasn't seen it
+    if (Capacitor.isNativePlatform()) {
+      const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
+      if (!hasSeenWelcome) {
+        navigate('/welcome', { replace: true });
+        return;
+      }
+    }
+    
     if (user) {
       navigate('/app');
     }

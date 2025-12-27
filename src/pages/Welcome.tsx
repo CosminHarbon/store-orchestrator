@@ -80,14 +80,20 @@ export default function Welcome() {
       <div className="px-6 pb-8 space-y-3">
         <Button 
           className="w-full h-14 text-lg font-semibold"
-          onClick={() => navigate("/auth")}
+          onClick={() => {
+            localStorage.setItem('hasSeenWelcome', 'true');
+            navigate("/auth");
+          }}
         >
           {t.cta}
         </Button>
         <Button 
           variant="outline"
           className="w-full h-14 text-lg"
-          onClick={() => navigate("/auth")}
+          onClick={() => {
+            localStorage.setItem('hasSeenWelcome', 'true');
+            navigate("/auth");
+          }}
         >
           {t.login}
         </Button>
