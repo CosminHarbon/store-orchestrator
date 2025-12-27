@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,16 @@ import { DateRangeFilter, useDateRangeFilter } from '@/components/DateRangeFilte
 import { Package, ShoppingCart, DollarSign, Clock, TrendingUp, Users, MessageCircle, Sparkles, Zap, Star, Settings } from 'lucide-react';
 import AIChat from '@/components/AIChat';
 import { BottomNavigation } from '@/components/BottomNavigation';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -36,6 +46,45 @@ const Index = () => {
   });
   const [isChatOpen, setIsChatOpen] = useState(false);
   const { dateRange, setDateRange, preset, setPreset } = useDateRangeFilter('30days');
+  
+  // Stock management unsaved changes tracking
+  const [hasStockPendingChanges, setHasStockPendingChanges] = useState(false);
+  const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
+  const [pendingTab, setPendingTab] = useState<string | null>(null);
+  const stockSaveRef = useRef<(() => void) | null>(null);
+
+  // Handle tab change with unsaved changes check
+  const handleTabChange = (newTab: string) => {
+    if (activeTab === 'stock' && hasStockPendingChanges && newTab !== 'stock') {
+      setPendingTab(newTab);
+      setShowUnsavedWarning(true);
+    } else {
+      setActiveTab(newTab);
+    }
+  };
+
+  const handleDiscardAndNavigate = () => {
+    setShowUnsavedWarning(false);
+    if (pendingTab) {
+      setActiveTab(pendingTab);
+      setPendingTab(null);
+    }
+  };
+
+  const handleSaveAndNavigate = () => {
+    if (stockSaveRef.current) {
+      stockSaveRef.current();
+    }
+    setShowUnsavedWarning(false);
+    if (pendingTab) {
+      // Small delay to allow save to complete
+      setTimeout(() => {
+        setActiveTab(pendingTab);
+        setPendingTab(null);
+      }, 500);
+    }
+  };
+
   // Persist active tab to localStorage whenever it changes
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -421,7 +470,10 @@ const Index = () => {
       case 'stock':
         return (
           <div className="p-3 md:p-6 pb-24 md:pb-6 safe-area-bottom">
-            <StockManagement />
+            <StockManagement 
+              onPendingChangesChange={setHasStockPendingChanges}
+              saveRef={stockSaveRef}
+            />
           </div>
         );
       case 'orders':
@@ -468,13 +520,13 @@ const Index = () => {
   return (
     <SidebarProvider>
       <div className="mobile-viewport flex w-full bg-background safe-area-left safe-area-right">
-        <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        <AppSidebar activeTab={activeTab} onTabChange={handleTabChange} />
         
         <div className="flex-1 flex flex-col min-w-0">
           <MobileHeader 
             userEmail={user.email || undefined} 
             storeName={stats?.storeName}
-            onTabChange={setActiveTab}
+            onTabChange={handleTabChange}
           />
           
           <main className="flex-1 overflow-auto hide-scrollbar">
@@ -483,7 +535,7 @@ const Index = () => {
         </div>
         
         {/* Bottom Navigation */}
-        <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+        <BottomNavigation activeTab={activeTab} onTabChange={handleTabChange} />
         
         {/* AI Chat Button */}
         <Button
@@ -496,6 +548,29 @@ const Index = () => {
         
         {/* AI Chat Modal */}
         <AIChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+        
+        {/* Unsaved Changes Warning Dialog */}
+        <AlertDialog open={showUnsavedWarning} onOpenChange={setShowUnsavedWarning}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Unsaved Stock Changes</AlertDialogTitle>
+              <AlertDialogDescription>
+                You have unsaved stock changes. Would you like to save them before leaving?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              <AlertDialogCancel onClick={() => setShowUnsavedWarning(false)}>
+                Cancel
+              </AlertDialogCancel>
+              <Button variant="destructive" onClick={handleDiscardAndNavigate}>
+                Discard Changes
+              </Button>
+              <AlertDialogAction onClick={handleSaveAndNavigate}>
+                Save & Continue
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </SidebarProvider>
   );
