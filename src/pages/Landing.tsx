@@ -12,7 +12,7 @@ export default function Landing() {
 
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
-      navigate("/auth", { replace: true });
+      navigate("/welcome", { replace: true });
     }
   }, [navigate]);
 
