@@ -1,4 +1,5 @@
 import { Menu, Store, LogOut, User, Settings } from "lucide-react";
+import logoImg from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
@@ -34,7 +35,7 @@ export function MobileHeader({ userEmail, storeName, onTabChange }: MobileHeader
           <div className="flex items-center gap-3">
             <SidebarTrigger className="md:hidden p-2 hover:bg-muted/50 rounded-lg transition-colors" />
             <div className="flex items-center gap-3">
-              <img src="/logo.png" alt="Store Logo" className="h-10 w-10 object-contain" />
+              <img src={logoImg} alt="Speed Vendors Logo" className="h-12 w-12 object-contain" />
               <div className="hidden sm:block">
                 <h1 className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">
                   {storeName || "Speed Vendors"}
