@@ -35,7 +35,7 @@ export default function Welcome() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 flex flex-col">
       {/* Language Toggle */}
-      <div className="flex justify-end p-4">
+      <div className="flex justify-end p-4 pt-[max(1rem,env(safe-area-inset-top))]">
         <Button
           variant="ghost"
           size="sm"
