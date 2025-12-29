@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import Landing from "./pages/Landing";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -15,11 +16,18 @@ import TemplateViewer from "./pages/TemplateViewer";
 import SetupWizard from "./pages/SetupWizard";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 
+// Component to initialize push notifications
+const PushNotificationInitializer = () => {
+  usePushNotifications();
+  return null;
+};
+
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
+      <PushNotificationInitializer />
       <TooltipProvider>
         <Toaster />
         <Sonner />
