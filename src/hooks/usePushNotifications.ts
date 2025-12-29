@@ -7,6 +7,9 @@ declare global {
   interface Window {
     OneSignalDeferred?: Array<(oneSignal: OneSignalInstance) => void>;
     OneSignal?: OneSignalInstance;
+    plugins?: {
+      OneSignal?: NativeOneSignalPlugin;
+    };
   }
 }
 
@@ -25,6 +28,15 @@ interface OneSignalInstance {
   };
 }
 
+// Native OneSignal plugin interface (Cordova/Capacitor)
+interface NativeOneSignalPlugin {
+  setAppId: (appId: string) => void;
+  promptForPushNotificationsWithUserResponse: (callback: (accepted: boolean) => void) => void;
+  getDeviceState: (callback: (state: { userId?: string; pushToken?: string; isSubscribed?: boolean }) => void) => void;
+  setNotificationOpenedHandler: (callback: (data: unknown) => void) => void;
+  setNotificationWillShowInForegroundHandler: (callback: (data: { notification: unknown; complete: (notification: unknown) => void }) => void) => void;
+}
+
 export const usePushNotifications = () => {
   const registerDeviceToken = useCallback(async (playerId: string, token: string, platform: 'ios' | 'android' | 'web') => {
     try {
@@ -33,6 +45,8 @@ export const usePushNotifications = () => {
         console.log('No session, skipping push token registration');
         return;
       }
+
+      console.log(`Registering push token: platform=${platform}, playerId=${playerId}`);
 
       const response = await supabase.functions.invoke('push-notification', {
         body: {
@@ -46,25 +60,95 @@ export const usePushNotifications = () => {
       if (response.error) {
         console.error('Error registering push token:', response.error);
       } else {
-        console.log('Push token registered successfully');
+        console.log('Push token registered successfully:', response.data);
       }
     } catch (error) {
       console.error('Failed to register push token:', error);
     }
   }, []);
 
-  const initializeOneSignal = useCallback(async () => {
+  const initializeNativeOneSignal = useCallback(async () => {
+    const ONESIGNAL_APP_ID = '174b3f62-9e31-4e4d-a38a-f4f0c310fe80'; // You should replace this with your actual OneSignal App ID
+    
+    console.log('Initializing native OneSignal...');
+    
+    // Wait for the plugin to be available
+    const waitForPlugin = (): Promise<NativeOneSignalPlugin | null> => {
+      return new Promise((resolve) => {
+        let attempts = 0;
+        const checkPlugin = () => {
+          attempts++;
+          if (window.plugins?.OneSignal) {
+            resolve(window.plugins.OneSignal);
+          } else if (attempts < 20) {
+            setTimeout(checkPlugin, 500);
+          } else {
+            console.log('OneSignal native plugin not found after 10 seconds');
+            resolve(null);
+          }
+        };
+        checkPlugin();
+      });
+    };
+
+    const OneSignal = await waitForPlugin();
+    
+    if (!OneSignal) {
+      console.log('OneSignal native plugin not available');
+      return;
+    }
+
+    try {
+      // Initialize OneSignal with app ID
+      OneSignal.setAppId(ONESIGNAL_APP_ID);
+      console.log('OneSignal app ID set');
+
+      // Request push notification permissions
+      OneSignal.promptForPushNotificationsWithUserResponse((accepted) => {
+        console.log('Push notifications permission:', accepted ? 'granted' : 'denied');
+      });
+
+      // Get device state and register token
+      const getAndRegisterToken = () => {
+        OneSignal.getDeviceState((state) => {
+          console.log('OneSignal device state:', JSON.stringify(state));
+          
+          if (state?.userId) {
+            const platform = Capacitor.getPlatform() as 'ios' | 'android';
+            registerDeviceToken(state.userId, state.pushToken || state.userId, platform);
+          } else {
+            console.log('No OneSignal userId yet, will retry...');
+            // Retry after a delay
+            setTimeout(getAndRegisterToken, 3000);
+          }
+        });
+      };
+
+      // Initial attempt
+      setTimeout(getAndRegisterToken, 2000);
+
+      // Handle notifications when app is opened
+      OneSignal.setNotificationOpenedHandler((data) => {
+        console.log('Notification opened:', data);
+      });
+
+      // Handle notifications when app is in foreground
+      OneSignal.setNotificationWillShowInForegroundHandler((event) => {
+        console.log('Notification received in foreground:', event.notification);
+        // Show the notification
+        event.complete(event.notification);
+      });
+
+    } catch (error) {
+      console.error('Error initializing native OneSignal:', error);
+    }
+  }, [registerDeviceToken]);
+
+  const initializeWebOneSignal = useCallback(async () => {
     const ONESIGNAL_APP_ID = import.meta.env.VITE_ONESIGNAL_APP_ID;
     
     if (!ONESIGNAL_APP_ID) {
       console.log('OneSignal App ID not configured for client');
-      return;
-    }
-
-    if (Capacitor.isNativePlatform()) {
-      // Native iOS/Android initialization would go here
-      // For now, we'll handle this through the native OneSignal SDK
-      console.log('Native push notifications - configure in native project');
       return;
     }
 
@@ -99,6 +183,14 @@ export const usePushNotifications = () => {
     script.defer = true;
     document.head.appendChild(script);
   }, [registerDeviceToken]);
+
+  const initializeOneSignal = useCallback(async () => {
+    if (Capacitor.isNativePlatform()) {
+      await initializeNativeOneSignal();
+    } else {
+      await initializeWebOneSignal();
+    }
+  }, [initializeNativeOneSignal, initializeWebOneSignal]);
 
   useEffect(() => {
     // Initialize when user is logged in
