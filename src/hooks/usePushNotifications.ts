@@ -68,7 +68,8 @@ export const usePushNotifications = () => {
   }, []);
 
   const initializeNativeOneSignal = useCallback(async () => {
-    const ONESIGNAL_APP_ID = '174b3f62-9e31-4e4d-a38a-f4f0c310fe80'; // You should replace this with your actual OneSignal App ID
+    const ONESIGNAL_APP_ID = 'ace71291-f0e5-42f9-bf49-736ea1bfeac4'; // You should replace this with your actual OneSignal App ID
+    // test one ( wrong id '174b3f62-9e31-4e4d-a38a-f4f0c310fe80' 
     
     console.log('Initializing native OneSignal...');
     
