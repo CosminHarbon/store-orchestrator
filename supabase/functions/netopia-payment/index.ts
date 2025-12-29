@@ -613,6 +613,13 @@ async function processWebhook(supabase: any, webhookData: any) {
       console.log(`Order ID: ${transaction.order_id}`);
       console.log('Setting payment_status = "paid" and order_status = "paid"');
       
+      // Get order details for notification
+      const { data: order, error: orderFetchError } = await supabase
+        .from('orders')
+        .select('id, user_id, customer_name, total')
+        .eq('id', transaction.order_id)
+        .single();
+      
       const { error: orderError } = await supabase
         .from('orders')
         .update({ 
@@ -625,6 +632,30 @@ async function processWebhook(supabase: any, webhookData: any) {
         console.error('❌ Failed to update order:', orderError);
       } else {
         console.log('✓ Order updated successfully - status is now PAID');
+        
+        // Send push notification for paid order
+        if (order && !orderFetchError) {
+          try {
+            await supabase.functions.invoke('push-notification', {
+              body: {
+                action: 'send',
+                user_ids: [order.user_id],
+                title: '💳 Plată confirmată!',
+                message: `Comandă plătită de ${parseFloat(order.total).toFixed(2)} RON de la ${order.customer_name}`,
+                notification_type: 'order_update',
+                data: {
+                  order_id: order.id,
+                  total: order.total.toString(),
+                  customer_name: order.customer_name
+                }
+              }
+            });
+            console.log('✓ Push notification sent for paid order:', order.id);
+          } catch (pushError) {
+            console.error('Failed to send push notification:', pushError);
+            // Don't fail the webhook if push fails
+          }
+        }
       }
     }
 
