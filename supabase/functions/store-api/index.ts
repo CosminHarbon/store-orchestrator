@@ -826,6 +826,8 @@ Deno.serve(async (req) => {
               }
 
               if (netopiaResponse?.payment_url) {
+                // Don't send notification yet for card payments - wait for payment confirmation
+                // The netopia-payment function will handle this when payment is confirmed
                 return new Response(
                   JSON.stringify({ 
                     order, 
@@ -841,6 +843,28 @@ Deno.serve(async (req) => {
             } catch (error) {
               console.error('Error calling Netopia:', error)
             }
+          }
+
+          // Send push notification for new order (cash payment - already marked as paid)
+          try {
+            await supabase.functions.invoke('push-notification', {
+              body: {
+                action: 'send',
+                user_ids: [userId],
+                title: '🛒 Comandă nouă!',
+                message: `Comandă nouă de ${parseFloat(total).toFixed(2)} RON de la ${customer_name}`,
+                notification_type: 'order_update',
+                data: {
+                  order_id: order.id,
+                  total: total.toString(),
+                  customer_name
+                }
+              }
+            });
+            console.log('Push notification sent for new order:', order.id);
+          } catch (pushError) {
+            console.error('Failed to send push notification:', pushError);
+            // Don't fail the order creation if push fails
           }
 
           return new Response(
