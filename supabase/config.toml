@@ -94,3 +94,7 @@ verify_jwt = true
 # AI Chat - AI assistant for store management
 [functions.ai-chat]
 verify_jwt = true
+
+# Push Notifications - OneSignal push notification service
+[functions.push-notification]
+verify_jwt = false
