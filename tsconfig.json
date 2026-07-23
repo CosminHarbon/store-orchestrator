@@ -10,6 +10,9 @@
   ],
   "compilerOptions": {
     "paths": {
+      "@/integrations/supabase/client": [
+        "./src/lib/supabaseClient.ts"
+      ],
       "@/*": [
         "./src/*"
       ]

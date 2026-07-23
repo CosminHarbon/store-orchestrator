@@ -95,7 +95,7 @@ const LockerMapSelector: React.FC<LockerMapSelectorProps> = ({
       }
 
       // Call the public store-api lockers endpoint
-      const supabaseUrl = 'https://uffmgvdtkoxkjolfrhab.supabase.co';
+      const supabaseUrl = 'https://mkkqbekhvcnwcheegjpy.supabase.co';
       const response = await fetch(
         `${supabaseUrl}/functions/v1/store-api/lockers?${params.toString()}`,
         {

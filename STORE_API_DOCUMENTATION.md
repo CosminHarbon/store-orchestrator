@@ -5,7 +5,7 @@ Complete API reference for integrating with your store's backend.
 ## Base URL
 
 ```
-https://uffmgvdtkoxkjolfrhab.supabase.co/functions/v1/store-api
+https://mkkqbekhvcnwcheegjpy.supabase.co/functions/v1/store-api
 ```
 
 ## Authentication
@@ -1068,7 +1068,7 @@ export function LockerMap({
 
 ```javascript
 const API_KEY = 'your-api-key-here';
-const BASE_URL = 'https://uffmgvdtkoxkjolfrhab.supabase.co/functions/v1/store-api';
+const BASE_URL = 'https://mkkqbekhvcnwcheegjpy.supabase.co/functions/v1/store-api';
 
 // Get products
 async function getProducts() {
