@@ -1,52 +1,39 @@
 ## Goal
+Get you onto a fresh Lovable project that has a **native Supabase integration** to your project `mkkqbekhvcnwcheegjpy`, with all your current code intact, so I can edit the database, edge functions, and secrets directly — no more Terminal.
 
-Move the app off the freshly-enabled Lovable Cloud backend and point it at your restored Supabase project (`mkkqbekhvcnwcheegjpy`), then redeploy every edge function and reconfigure secrets there so all functionality returns.
+## Why this fixes the pain
+This current project is stuck on **Lovable Cloud** (a managed Supabase that I fully control). Cloud cannot be disconnected or repointed at your external Supabase — that's why every schema/function/secret change has been forcing you into the CLI. A brand-new project started with the **Supabase connector** (instead of Cloud) gives me direct tool access to your external project.
 
-## Important caveat about Lovable Cloud
+## Steps
 
-You just enabled Lovable Cloud, which provisioned a managed Supabase instance and wrote its URL/key into `.env`. Lovable Cloud cannot be uninstalled from a project once added — but we can still make the app talk to your external project by overriding the client config. The managed Cloud backend will remain provisioned in the background but unused.
+### 1. You: create the new project (2 minutes)
+- Go to lovable.dev → **New project** → give it any name (e.g. "Speed Vendors").
+- In the new project, open the **+ menu** (bottom-left of chat) → **Supabase** → **Connect Supabase**.
+- Authorize and pick project **`mkkqbekhvcnwcheegjpy`**.
+- Do **NOT** enable Lovable Cloud on the new project. If it asks, say no.
 
-The cleanest, fully-supported path is for you to do one manual step in the Lovable UI: **disconnect Lovable Cloud's Supabase link and connect your external Supabase project instead** (Connectors → Supabase → Connect, then paste your project ref). That regenerates `src/integrations/supabase/client.ts`, `types.ts`, and `.env` against `mkkqbekhvcnwcheegjpy` automatically. Once you've done that, I take over.
+### 2. You: bring the code over
+Two options, pick one:
+- **Easiest — Remix**: on the current project, top-left project name → **Remix this project**. Then in the remix, connect Supabase as in step 1.
+- **Or GitHub**: push this project to GitHub (+ menu → GitHub), then in the new project + menu → GitHub → import the same repo.
 
-## Steps I'll do after you connect the new Supabase project
+Tell me which you did and share the new project link (or just switch to it and message me there).
 
-1. **Verify connection** — confirm `.env` and `src/integrations/supabase/client.ts` now point at `mkkqbekhvcnwcheegjpy`, and regenerate `types.ts` against your restored schema.
+### 3. Me: wire everything up (in the new project)
+Once connected, I can directly:
+- Read your DB, see what tables exist, and generate/fix any missing schema via migrations you approve in-chat.
+- Deploy all 9 edge functions (ai-chat, store-api, netopia-payment, push-notification, oblio-invoice, eawb-*, diagnose-eawb) — no Docker, no CLI.
+- Set the secrets (`ONESIGNAL_APP_ID`, `ONESIGNAL_REST_API_KEY`, `MAPBOX_PUBLIC_TOKEN`, Netopia/Oblio/eAWB keys) through a secure form.
+- Configure auth redirect URLs and Google provider.
 
-2. **Redeploy edge functions** to the new project. All source is already in `supabase/functions/`:
-   - `store-api` — public storefront API (products, orders, reviews, checkout)
-   - `netopia-payment` — card payment callbacks
-   - `push-notification` — OneSignal sender
-   - `oblio-invoice` — invoice generation
-   - `eawb-quoting`, `eawb-delivery`, `diagnose-eawb`, `test-eawb-connection` — shipping
-   - `ai-chat` — AI assistant
+### 4. Me: iOS app fixes
+Once the backend works end-to-end in the browser, we rebuild the iOS app pointing at the same Supabase project and re-submit to App Store Connect.
 
-3. **Reconfigure edge function secrets** on the new project. Your old secrets don't carry over. I'll request:
-   - `ONESIGNAL_APP_ID`, `ONESIGNAL_REST_API_KEY`
-   - `MAPBOX_PUBLIC_TOKEN`
-   - Netopia credentials (signature, public key)
-   - Oblio credentials (email, secret)
-   - eAWB credentials (Sameday/Cargus API keys)
-   - Any others surfaced when I open each function
+## What stays the same
+- Your Supabase project, data, and users are untouched — we're only changing which Lovable project talks to it.
+- All your app code (components, pages, edge functions, template customizations) comes along via remix/GitHub.
 
-   `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` are auto-injected on the new project.
-
-4. **Verify auth configuration**:
-   - Site URL + redirect URLs set to `https://www.speedvendors.com/auth/callback` and preview URL
-   - Google OAuth provider re-enabled (you'll need to re-add the Google client ID/secret in your Supabase dashboard, since OAuth provider config lives in Supabase, not in code)
-   - Email templates re-uploaded if you customized them
-
-5. **Sanity-check the restored schema** — run the linter and read key tables (`profiles`, `products`, `orders`, `reviews`, `push_tokens`, `template_customization`) to confirm RLS policies and GRANTs came through the backup restore. Patch any missing GRANTs via migration.
-
-6. **Test critical flows**:
-   - Sign in / sign up
-   - Load storefront via `store-api`
-   - Place a cash order → push notification fires
-   - Reviews submit + moderate
-
-## What I need from you before I start building
-
-- **Do the Cloud → external Supabase swap in the Lovable UI** (Connectors panel). Confirm here once done.
-- Have your third-party API keys ready (OneSignal, Netopia, Oblio, eAWB, Mapbox) — I'll request them one at a time via the secure form.
-- Re-add Google OAuth in your new Supabase dashboard (Authentication → Providers → Google) since that config isn't in code.
-
-Reply "done, connected" once the Supabase swap is complete and I'll proceed with steps 1–6.
+## What to do right now
+1. Create the new Lovable project and connect Supabase to `mkkqbekhvcnwcheegjpy` (step 1).
+2. Remix or GitHub-import this project's code into it (step 2).
+3. Message me in the new project — I'll take it from there.
