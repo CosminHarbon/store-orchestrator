@@ -356,7 +356,7 @@ const StoreSettings = () => {
   const integrationCode = `<!-- Add this to your website -->
 <script>
 const STORE_API_KEY = "${profile.store_api_key}";
-const API_BASE_URL = "https://uffmgvdtkoxkjolfrhab.supabase.co/functions/v1/store-api";
+const API_BASE_URL = "https://mkkqbekhvcnwcheegjpy.supabase.co/functions/v1/store-api";
 
 // Function to get products with images and stock information
 async function getProducts() {
@@ -493,7 +493,7 @@ async function checkPaymentStatus(paymentId) {
 class StoreAPI {
   constructor(apiKey) {
     this.apiKey = apiKey;
-    this.baseUrl = 'https://uffmgvdtkoxkjolfrhab.supabase.co/functions/v1/store-api';
+    this.baseUrl = 'https://mkkqbekhvcnwcheegjpy.supabase.co/functions/v1/store-api';
   }
 
   async getProducts() {

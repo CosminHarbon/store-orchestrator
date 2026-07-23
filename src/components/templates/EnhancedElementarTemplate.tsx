@@ -143,7 +143,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
     locker_address: "",
   });
 
-  const SUPABASE_URL = "https://uffmgvdtkoxkjolfrhab.supabase.co";
+  const SUPABASE_URL = "https://mkkqbekhvcnwcheegjpy.supabase.co";
   const API_BASE = `${SUPABASE_URL}/functions/v1/store-api`;
 
   // Dynamic CSS variables based on customization
