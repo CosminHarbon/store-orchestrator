@@ -153,7 +153,7 @@ const OrderManagement = () => {
     mutationFn: async ({ id, field, value }: { id: string; field: string; value: string }) => {
       const { data, error } = await supabase
         .from('orders')
-        .update({ [field]: value })
+        .update({ [field]: value } as any)
         .eq('id', id)
         .select();
       
