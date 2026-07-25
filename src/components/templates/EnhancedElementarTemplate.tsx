@@ -15,6 +15,7 @@ import LiveTemplateEditor from "./LiveTemplateEditor";
 import BlockRenderer from "./BlockRenderer";
 import type { TemplateBlock } from "./BlockEditor";
 import { supabase } from "@/integrations/supabase/client";
+import { ROMANIA_LOCATIONS, ROMANIA_COUNTIES } from "@/lib/romaniaLocations";
 
 interface Product {
   id: string;
@@ -1172,20 +1173,29 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
                   {checkoutForm.delivery_type === "home" && (
                     <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-3">
-                        <input
-                          placeholder="City *"
+                        <select
+                          value={checkoutForm.county}
+                          onChange={(e) => setCheckoutForm({ ...checkoutForm, county: e.target.value, city: "" })}
+                          className={`p-3 ${customization.border_radius}`}
+                          style={{ backgroundColor: customization.background_color, color: customization.text_color, border: `1px solid ${customization.primary_color}20` }}
+                        >
+                          <option value="">Select County *</option>
+                          {ROMANIA_COUNTIES.map((c) => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                        <select
                           value={checkoutForm.city}
                           onChange={(e) => setCheckoutForm({ ...checkoutForm, city: e.target.value })}
-                          className={`p-3 ${customization.border_radius}`}
-                          style={{ backgroundColor: customization.background_color, border: `1px solid ${customization.primary_color}20` }}
-                        />
-                        <input
-                          placeholder="County *"
-                          value={checkoutForm.county}
-                          onChange={(e) => setCheckoutForm({ ...checkoutForm, county: e.target.value })}
-                          className={`p-3 ${customization.border_radius}`}
-                          style={{ backgroundColor: customization.background_color, border: `1px solid ${customization.primary_color}20` }}
-                        />
+                          disabled={!checkoutForm.county}
+                          className={`p-3 ${customization.border_radius} disabled:opacity-50`}
+                          style={{ backgroundColor: customization.background_color, color: customization.text_color, border: `1px solid ${customization.primary_color}20` }}
+                        >
+                          <option value="">Select City *</option>
+                          {(ROMANIA_LOCATIONS[checkoutForm.county] || []).map((city) => (
+                            <option key={city} value={city}>{city}</option>
+                          ))}
+                        </select>
                       </div>
                       <input
                         placeholder="Street *"
