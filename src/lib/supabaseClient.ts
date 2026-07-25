@@ -1,8 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+// Hardcoded to external Supabase project — .env keeps getting overwritten by Lovable Cloud.
+const SUPABASE_URL = "https://mkkqbekhvcnwcheegjpy.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iEVxi80EISNqsn_M64o61A_8PAf8FDf";
 
 function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith('sb_publishable_') || value.startsWith('sb_secret_');
