@@ -80,6 +80,63 @@ serve(async (req) => {
 
     // Enhanced address parsing with Romanian locality validation
     const parseAddress = (address: string, structuredFields?: any) => {
+      // City → County fallback for the ~100 most common Romanian localities.
+      // Used when the stored county is missing, a country name, or otherwise invalid.
+      const cityToCounty: { [key: string]: string } = {
+        'bucuresti': 'București', 'bucharest': 'București',
+        'ploiesti': 'Prahova', 'campina': 'Prahova', 'sinaia': 'Prahova', 'busteni': 'Prahova',
+        'cluj-napoca': 'Cluj', 'cluj': 'Cluj', 'turda': 'Cluj', 'dej': 'Cluj',
+        'timisoara': 'Timiș', 'lugoj': 'Timiș',
+        'iasi': 'Iași', 'pascani': 'Iași',
+        'constanta': 'Constanța', 'mangalia': 'Constanța', 'medgidia': 'Constanța',
+        'brasov': 'Brașov', 'fagaras': 'Brașov', 'sacele': 'Brașov',
+        'craiova': 'Dolj', 'calafat': 'Dolj',
+        'galati': 'Galați', 'tecuci': 'Galați',
+        'oradea': 'Bihor', 'salonta': 'Bihor',
+        'braila': 'Brăila',
+        'arad': 'Arad',
+        'pitesti': 'Argeș', 'campulung': 'Argeș', 'curtea de arges': 'Argeș',
+        'sibiu': 'Sibiu', 'medias': 'Sibiu',
+        'bacau': 'Bacău', 'onesti': 'Bacău',
+        'baia mare': 'Maramureș', 'sighetu marmatiei': 'Maramureș',
+        'buzau': 'Buzău', 'ramnicu sarat': 'Buzău',
+        'satu mare': 'Satu Mare',
+        'botosani': 'Botoșani', 'dorohoi': 'Botoșani',
+        'ramnicu valcea': 'Vâlcea', 'drobeta-turnu severin': 'Mehedinți',
+        'suceava': 'Suceava', 'radauti': 'Suceava', 'falticeni': 'Suceava',
+        'targu mures': 'Mureș', 'sighisoara': 'Mureș', 'reghin': 'Mureș',
+        'piatra neamt': 'Neamț', 'roman': 'Neamț',
+        'targu jiu': 'Gorj', 'motru': 'Gorj',
+        'tulcea': 'Tulcea',
+        'targoviste': 'Dâmbovița',
+        'focsani': 'Vrancea', 'adjud': 'Vrancea',
+        'bistrita': 'Bistrița-Năsăud',
+        'resita': 'Caraș-Severin', 'caransebes': 'Caraș-Severin',
+        'slatina': 'Olt', 'caracal': 'Olt',
+        'alba iulia': 'Alba', 'aiud': 'Alba', 'sebes': 'Alba',
+        'deva': 'Hunedoara', 'hunedoara': 'Hunedoara', 'petrosani': 'Hunedoara',
+        'zalau': 'Sălaj',
+        'sfantu gheorghe': 'Covasna',
+        'miercurea ciuc': 'Harghita', 'odorheiu secuiesc': 'Harghita',
+        'giurgiu': 'Giurgiu',
+        'calarasi': 'Călărași',
+        'slobozia': 'Ialomița', 'urziceni': 'Ialomița',
+        'alexandria': 'Teleorman', 'rosiori de vede': 'Teleorman',
+        'vaslui': 'Vaslui', 'barlad': 'Vaslui', 'husi': 'Vaslui',
+      };
+
+      const isInvalidCounty = (val: string | null | undefined): boolean => {
+        if (!val) return true;
+        const n = val.toLowerCase().trim().replace(/[șş]/g, 's').replace(/[țţ]/g, 't');
+        return n === 'romania' || n === 'românia' || n === 'ro' || n === 'jud' || n === 'judet' || n.length < 2;
+      };
+
+      const deriveCountyFromCity = (city: string): string | null => {
+        if (!city) return null;
+        const n = city.toLowerCase().trim().replace(/[șş]/g, 's').replace(/[țţ]/g, 't');
+        return cityToCounty[n] || null;
+      };
+
       // Romanian city-county validation mapping
       const validateRomanianLocality = (city: string): string => {
         const normalizedCity = city.toLowerCase().replace(/[șş]/g, 's').replace(/[țţ]/g, 't');
@@ -163,9 +220,13 @@ serve(async (req) => {
 
       // If structured fields are available, use them directly
       if (structuredFields?.customer_city && structuredFields?.customer_street && structuredFields?.customer_street_number) {
+        const rawCounty = structuredFields.customer_county;
+        const effectiveCounty = isInvalidCounty(rawCounty)
+          ? (deriveCountyFromCity(structuredFields.customer_city) || structuredFields.customer_city)
+          : rawCounty;
         return {
           city: validateRomanianLocality(structuredFields.customer_city),
-          county: validateRomanianCounty(structuredFields.customer_county || structuredFields.customer_city),
+          county: validateRomanianCounty(effectiveCounty),
           street: `${structuredFields.customer_street} ${structuredFields.customer_street_number}`,
           postal_code: address.match(/\b\d{6}\b/)?.[0] || ''
         };
@@ -283,14 +344,20 @@ serve(async (req) => {
     } : parseAddress(profile.eawb_address || 'București, România');
     
     // For recipient, prioritize structured fields
+    const fallbackParsed = parseAddress(order.customer_address, order);
+    const isBadCounty = (v: string | null | undefined) => {
+      if (!v) return true;
+      const n = v.toLowerCase().trim();
+      return n === 'romania' || n === 'românia' || n === 'ro' || n.length < 2;
+    };
     const recipientParsed = address_override ? {
       city: address_override.city || (order.customer_city || parseAddress(order.customer_address, order).city),
-      county: address_override.county || (order.customer_county || parseAddress(order.customer_address, order).county),
+      county: address_override.county || (isBadCounty(order.customer_county) ? fallbackParsed.county : order.customer_county),
       street: order.customer_street ? `${order.customer_street} ${order.customer_street_number || ''}`.trim() : parseAddress(order.customer_address, order).street,
       postal_code: address_override.postal_code || parseAddress(order.customer_address, order).postal_code
     } : {
       city: order.customer_city || parseAddress(order.customer_address, order).city,
-      county: order.customer_county || parseAddress(order.customer_address, order).county,
+      county: isBadCounty(order.customer_county) ? fallbackParsed.county : order.customer_county,
       street: order.customer_street ? `${order.customer_street} ${order.customer_street_number || ''}`.trim() : parseAddress(order.customer_address, order).street,
       postal_code: parseAddress(order.customer_address, order).postal_code
     };
