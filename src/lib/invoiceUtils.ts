@@ -1,7 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 
 const SUPABASE_URL = 'https://mkkqbekhvcnwcheegjpy.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ra3FiZWtodmNud2NoZWVnanB5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY0MzUxNTAsImV4cCI6MjA1MjAxMTE1MH0.PLACEHOLDER';
 
 /**
  * Opens an Oblio invoice via our Edge Function proxy so browser ad blockers
