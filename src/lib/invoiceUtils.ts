@@ -14,8 +14,22 @@ export async function openInvoice(orderId: string, fallbackLink?: string) {
       if (fallbackLink) window.open(fallbackLink, '_blank');
       return;
     }
-    const url = `${SUPABASE_URL}/functions/v1/oblio-invoice?orderId=${encodeURIComponent(orderId)}&token=${encodeURIComponent(token)}`;
-    window.open(url, '_blank');
+    // Fetch the PDF as a blob via our proxy, then open as a blob URL so no oblio.eu URL is ever loaded by the browser
+    const url = `${SUPABASE_URL}/functions/v1/oblio-invoice?orderId=${encodeURIComponent(orderId)}`;
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: token,
+      },
+    });
+    if (!res.ok) {
+      if (fallbackLink) window.open(fallbackLink, '_blank');
+      return;
+    }
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    window.open(blobUrl, '_blank');
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
   } catch {
     if (fallbackLink) window.open(fallbackLink, '_blank');
   }
