@@ -15,6 +15,7 @@ import LiveTemplateEditor from "./LiveTemplateEditor";
 import BlockRenderer from "./BlockRenderer";
 import type { TemplateBlock } from "./BlockEditor";
 import { supabase } from "@/integrations/supabase/client";
+import { ROMANIA_LOCATIONS, ROMANIA_COUNTIES } from "@/lib/romaniaLocations";
 
 interface Product {
   id: string;
