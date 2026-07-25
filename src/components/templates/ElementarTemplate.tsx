@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { calculateProductPrice, formatPrice, formatDiscount } from "@/lib/discountUtils";
 import LockerMapSelector from "./LockerMapSelector";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ROMANIA_LOCATIONS, ROMANIA_COUNTIES } from "@/lib/romaniaLocations";
 
 interface Product {
   id: string;
@@ -1087,24 +1088,31 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
 
                 {checkoutForm.delivery_type === "home" ? (
                   <div className="space-y-4">
-                    <input
-                      type="text"
-                      placeholder="City *"
+                    <select
+                      value={checkoutForm.county}
+                      onChange={(e) =>
+                        setCheckoutForm({ ...checkoutForm, county: e.target.value, city: "" })
+                      }
+                      className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                    >
+                      <option value="">Select County *</option>
+                      {ROMANIA_COUNTIES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                    <select
                       value={checkoutForm.city}
                       onChange={(e) =>
                         setCheckoutForm({ ...checkoutForm, city: e.target.value })
                       }
-                      className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                    />
-                    <input
-                      type="text"
-                      placeholder="County *"
-                      value={checkoutForm.county}
-                      onChange={(e) =>
-                        setCheckoutForm({ ...checkoutForm, county: e.target.value })
-                      }
-                      className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                    />
+                      disabled={!checkoutForm.county}
+                      className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all disabled:opacity-50"
+                    >
+                      <option value="">Select City *</option>
+                      {(ROMANIA_LOCATIONS[checkoutForm.county] || []).map((city) => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
+                    </select>
                     <div className="grid grid-cols-2 gap-4">
                       <input
                         type="text"
