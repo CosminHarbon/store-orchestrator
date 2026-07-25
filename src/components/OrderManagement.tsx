@@ -558,7 +558,7 @@ const OrderManagement = () => {
                   )}
                   {selectedOrder.invoice_link && (
                     <Button
-                      onClick={() => window.open(selectedOrder.invoice_link, '_blank')}
+                      onClick={() => import('@/lib/invoiceUtils').then(m => m.openInvoice(selectedOrder.id, selectedOrder.invoice_link))}
                       variant="outline"
                       size="sm"
                       className="flex-1"

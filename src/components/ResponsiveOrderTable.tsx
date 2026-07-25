@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
+import { openInvoice } from '@/lib/invoiceUtils';
 
 interface Order {
   id: string;
@@ -185,7 +186,7 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => window.open(order.invoice_link, '_blank')}
+                        onClick={() => openInvoice(order.id, order.invoice_link)}
                         title="View Invoice"
                       >
                         <ExternalLink className="h-4 w-4" />
@@ -323,7 +324,7 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => window.open(order.invoice_link, '_blank')}
+                          onClick={() => openInvoice(order.id, order.invoice_link)}
                           className="flex-1"
                         >
                           <ExternalLink className="h-4 w-4 mr-1" />

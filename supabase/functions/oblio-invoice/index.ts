@@ -161,6 +161,39 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // GET proxy: stream the Oblio invoice through our domain so browser
+    // ad blockers (uBlock/AdGuard) that block oblio.eu cannot break "View Invoice".
+    // URL: /oblio-invoice?orderId=xxx  (auth via Authorization header or ?token=)
+    if (req.method === 'GET') {
+      const url = new URL(req.url);
+      const orderId = url.searchParams.get('orderId');
+      const tokenParam = url.searchParams.get('token');
+      const authHeader = req.headers.get('authorization');
+      const jwt = tokenParam || (authHeader ? authHeader.replace('Bearer ', '') : '');
+      if (!orderId || !jwt) {
+        return new Response('Missing orderId or token', { status: 400, headers: corsHeaders });
+      }
+      const { data: { user }, error: authErr } = await supabase.auth.getUser(jwt);
+      if (authErr || !user) {
+        return new Response('Unauthorized', { status: 401, headers: corsHeaders });
+      }
+      const { data: ord, error: ordErr } = await supabase
+        .from('orders')
+        .select('invoice_link')
+        .eq('id', orderId)
+        .eq('user_id', user.id)
+        .single();
+      if (ordErr || !ord?.invoice_link) {
+        return new Response('Invoice not found', { status: 404, headers: corsHeaders });
+      }
+      const upstream = await fetch(ord.invoice_link, { redirect: 'follow' });
+      const headers = new Headers(corsHeaders);
+      const ct = upstream.headers.get('content-type');
+      if (ct) headers.set('content-type', ct);
+      headers.set('content-disposition', 'inline');
+      return new Response(upstream.body, { status: upstream.status, headers });
+    }
+
     // Get user from JWT token
     const authHeader = req.headers.get('authorization');
     if (!authHeader) {
