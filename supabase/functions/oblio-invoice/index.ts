@@ -222,6 +222,29 @@ const handler = async (req: Request): Promise<Response> => {
     const cif = await getOblioCompanyCIF(accessToken);
 
     if (action === 'generate') {
+      // Idempotency: if an invoice already exists for this order, return it instead of creating a duplicate
+      if (order.invoice_number && order.invoice_series) {
+        console.log('Invoice already exists for order, skipping creation:', order.id);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: 'Invoice already generated for this order',
+            invoice: {
+              data: {
+                number: order.invoice_number,
+                seriesName: order.invoice_series,
+                link: order.invoice_link,
+              },
+            },
+            alreadyExists: true,
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          }
+        );
+      }
+
       // Create invoice
       const invoiceResult = await createOblioInvoice(
         accessToken,
