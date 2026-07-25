@@ -475,14 +475,20 @@ serve(async (req) => {
       } : parseAddress(profile.eawb_address || 'București, România');
       
       // For recipient, prioritize structured fields
+      const isBadCounty = (v: string | null | undefined) => {
+        if (!v) return true;
+        const n = String(v).toLowerCase().trim();
+        return n === 'romania' || n === 'românia' || n === 'ro' || n.length < 2;
+      };
+      const fallbackParsed = parseAddress(order.customer_address, order);
       const recipientParsed = address_override ? {
         city: address_override.city || (order.customer_city || parseAddress(order.customer_address, order).city),
-        county: address_override.county || (order.customer_county || parseAddress(order.customer_address, order).county),
+        county: address_override.county || (isBadCounty(order.customer_county) ? fallbackParsed.county : order.customer_county),
         street: order.customer_street ? `${order.customer_street} ${order.customer_street_number || ''}`.trim() : parseAddress(order.customer_address, order).street,
         postal_code: address_override.postal_code || parseAddress(order.customer_address, order).postal_code
       } : {
         city: order.customer_city || parseAddress(order.customer_address, order).city,
-        county: order.customer_county || parseAddress(order.customer_address, order).county,
+        county: isBadCounty(order.customer_county) ? fallbackParsed.county : order.customer_county,
         street: order.customer_street ? `${order.customer_street} ${order.customer_street_number || ''}`.trim() : parseAddress(order.customer_address, order).street,
         postal_code: parseAddress(order.customer_address, order).postal_code
       };
@@ -614,7 +620,23 @@ serve(async (req) => {
         body: JSON.stringify(awbRequest)
       });
 
-      const responseData = await response.json();
+      const responseText = await response.text();
+      let responseData: any;
+      try {
+        responseData = JSON.parse(responseText);
+      } catch {
+        console.error('AWB API returned non-JSON response. Status:', response.status, 'Body (first 500):', responseText.slice(0, 500));
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'EAWB_API_ERROR',
+          message: `eAWB API returned status ${response.status} with non-JSON response. Check API key and endpoint.`,
+          status: response.status,
+          preview: responseText.slice(0, 300)
+        }), {
+          status: 502,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
       console.log('AWB creation response:', responseData);
 
       if (response.ok && responseData.data && responseData.data.awb_number) {
