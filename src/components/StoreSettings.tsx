@@ -1756,6 +1756,19 @@ class StoreAPI {
                                 {eawbLoading.billingAddresses ? 'Retrieving...' : 'Retrieve billing address'}
                               </Button>
                                   </div>
+                            <div className="grid grid-cols-1 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="mobile-eawb-default-carrier">Default Carrier ID</Label>
+                                <Input
+                                  id="mobile-eawb-default-carrier"
+                                  value={providerConfigs.eawb?.default_carrier_id || ''}
+                                  onChange={(e) => updateProviderConfig('eawb', 'default_carrier_id', e.target.value)}
+                                  placeholder="Optional"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                  Default carrier ID for pricing (optional)
+                                </p>
+                              </div>
                               <div className="space-y-2">
                                 <Label htmlFor="mobile-eawb-default-service">Default Service ID</Label>
                                 <Input
