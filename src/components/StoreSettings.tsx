@@ -81,7 +81,7 @@ const StoreSettings = () => {
   });
   
   // eAWB fetch states
-  const [eawbData, setEawbData] = useState({
+  const [eawbData, setEawbData] = useState<{ billingAddresses: any[]; carriers: any[]; services: any[] }>({
     billingAddresses: [],
     carriers: [],
     services: [],
@@ -1757,34 +1757,6 @@ class StoreAPI {
                               </div>
                             </div>
                             <div className="space-y-4">
-                              <div className="flex items-center gap-2">
-                                <h5 className="font-medium text-sm">Billing Address ID</h5>
-                              </div>
-                              
-                              <div className="space-y-3">
-                                <div className="flex flex-col gap-2">
-                                  <Label htmlFor="billing_address_id_mobile">Billing Address ID</Label>
-                                  <Input
-                                    id="billing_address_id_mobile"
-                                    type="number"
-                                    placeholder="e.g., 12345"
-                                    value={providerConfigs.eawb?.billing_address_id || ''}
-                                    onChange={(e) => updateProviderConfig('eawb', 'billing_address_id', e.target.value)}
-                                  />
-                                  <p className="text-xs text-muted-foreground">
-                                    Find this ID in your{' '}
-                                    <a 
-                                      href="https://europarcel.com/dashboard" 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      className="text-primary hover:underline"
-                                    >
-                                      eAWB dashboard
-                                    </a>
-                                    {' '}under billing addresses
-                                  </p>
-                                </div>
-                                
                                 <div className="flex flex-col gap-2">
                                   <Button
                                     type="button"
