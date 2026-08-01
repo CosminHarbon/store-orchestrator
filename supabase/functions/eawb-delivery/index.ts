@@ -585,10 +585,53 @@ serve(async (req) => {
         console.log('Using home address:', addressTo);
       }
 
+      // Resolve billing address automatically (never ask the user for an internal ID)
+      let billingAddressId: number | null = profile.eawb_billing_address_id ?? null;
+      if (!billingAddressId) {
+        console.log('No stored billing_address_id, fetching from eAWB...');
+        const bResp = await fetch(`${EAWB_BASE_URL}/addresses/billing?all=true`, {
+          method: 'GET',
+          headers: {
+            'X-API-Key': profile.eawb_api_key,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+        const bText = await bResp.text();
+        console.log('Billing lookup status:', bResp.status, 'body:', bText);
+        let bJson: any = null;
+        try { bJson = JSON.parse(bText); } catch (_e) { /* ignore */ }
+        const bList = Array.isArray(bJson?.list)
+          ? bJson.list
+          : (Array.isArray(bJson?.data?.list) ? bJson.data.list : (Array.isArray(bJson?.data) ? bJson.data : []));
+        const pick = bList.length === 1 ? bList[0] : bList.find((a: any) => a.is_default);
+        if (pick?.id) {
+          billingAddressId = Number(pick.id);
+          await supabase
+            .from('profiles')
+            .update({ eawb_billing_address_id: billingAddressId })
+            .eq('user_id', user.id);
+          console.log('Auto-resolved billing_address_id:', billingAddressId);
+        } else if (bList.length > 1) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'MULTIPLE_BILLING_ADDRESSES',
+            message: 'Multiple billing addresses found. Please select one in Store Settings → Integrations → eAWB.',
+            billing_addresses: bList
+          }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        } else {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'NO_BILLING_ADDRESS',
+            message: 'No billing address found in your Europarcel/eAWB account. Please create one in your Europarcel dashboard.'
+          }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      }
+
       // Build AWB request with nested content structure (matching quoting format)
       const awbRequest = {
         billing_to: { 
-          billing_address_id: profile.eawb_billing_address_id || 1 
+          billing_address_id: billingAddressId 
         },
         address_from: {
           country_code: 'RO',
