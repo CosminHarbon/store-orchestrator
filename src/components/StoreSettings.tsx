@@ -1848,7 +1848,6 @@ class StoreAPI {
                                     </Select>
                                   )}
                                 </div>
-                              </div>
                             </div>
                             
                             <div className="border-t pt-4 mt-4 space-y-4">
