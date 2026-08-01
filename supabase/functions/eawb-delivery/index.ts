@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const EAWB_BASE_URL = 'https://eawb.ro';
+const EAWB_BASE_URL = 'https://api.europarcel.com/api/public';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -53,56 +53,87 @@ serve(async (req) => {
         });
       }
 
-      const billingUrl = 'https://eawb.ro/api/addresses';
+      const billingUrl = `${EAWB_BASE_URL}/addresses/billing?all=true`;
       console.log('=== Fetching Billing Addresses ===');
       console.log('URL:', billingUrl);
-      console.log('API Key (first 10 chars):', profile.eawb_api_key?.substring(0, 10) + '...');
-      console.log('API Key length:', profile.eawb_api_key?.length);
 
       const billingResponse = await fetch(billingUrl, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${profile.eawb_api_key}`,
+          'X-API-Key': profile.eawb_api_key,
           'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+          'Content-Type': 'application/json'
         }
       });
 
-      console.log('Response status:', billingResponse.status);
-      console.log('Response headers:', Object.fromEntries(billingResponse.headers.entries()));
+      const billingText = await billingResponse.text();
+      console.log('Billing response status:', billingResponse.status);
+      console.log('Billing raw response:', billingText);
+
+      let billingData: any = null;
+      try {
+        billingData = JSON.parse(billingText);
+      } catch (_e) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'EAWB_API_ERROR',
+          message: `eAWB returned a non-JSON response (status ${billingResponse.status})`,
+          details: billingText.slice(0, 300)
+        }), {
+          status: 502,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
 
       if (!billingResponse.ok) {
-        const errorText = await billingResponse.text();
-        console.error('=== Billing addresses fetch failed ===');
-        console.error('Status:', billingResponse.status);
-        console.error('Error body:', errorText);
-        
+        console.error('Billing addresses fetch failed:', billingResponse.status, billingText);
         return new Response(JSON.stringify({
           success: false,
           error: 'FETCH_FAILED',
-          message: 'Failed to fetch billing addresses from eAWB API',
-          details: errorText,
-          status: billingResponse.status,
-          url: billingUrl
+          message: billingData?.message || 'Failed to fetch billing addresses from eAWB API',
+          details: billingData,
+          status: billingResponse.status
         }), {
           status: billingResponse.status,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
 
-      const billingData = await billingResponse.json();
-      console.log('=== Billing Data Response ===');
-      console.log('Response type:', typeof billingData);
-      console.log('Has list property:', 'list' in billingData);
-      console.log('List length:', billingData.list?.length || 0);
-      if (billingData.list && billingData.list.length > 0) {
-        console.log('First address sample:', JSON.stringify(billingData.list[0]));
+      const billingList = Array.isArray(billingData?.list)
+        ? billingData.list
+        : (Array.isArray(billingData?.data?.list) ? billingData.data.list : (Array.isArray(billingData?.data) ? billingData.data : []));
+
+      console.log('Parsed billing addresses count:', billingList.length);
+      console.log('Parsed billing addresses:', JSON.stringify(billingList));
+
+      if (billingList.length === 0) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'NO_BILLING_ADDRESS',
+          message: 'No billing address found in your Europarcel/eAWB account. Please create one in your Europarcel dashboard.'
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Auto-save when there is exactly one billing address (or one marked default)
+      let savedId: number | null = null;
+      const defaultAddress = billingList.find((a: any) => a.is_default);
+      const autoSelect = billingList.length === 1 ? billingList[0] : defaultAddress;
+      if (autoSelect?.id) {
+        savedId = Number(autoSelect.id);
+        await supabase
+          .from('profiles')
+          .update({ eawb_billing_address_id: savedId })
+          .eq('user_id', user.id);
+        console.log('Auto-saved billing_address_id:', savedId);
       }
 
       return new Response(JSON.stringify({
         success: true,
-        billing_addresses: billingData.list || []
+        billing_addresses: billingList,
+        selected_billing_address_id: savedId
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -554,10 +585,53 @@ serve(async (req) => {
         console.log('Using home address:', addressTo);
       }
 
+      // Resolve billing address automatically (never ask the user for an internal ID)
+      let billingAddressId: number | null = profile.eawb_billing_address_id ?? null;
+      if (!billingAddressId) {
+        console.log('No stored billing_address_id, fetching from eAWB...');
+        const bResp = await fetch(`${EAWB_BASE_URL}/addresses/billing?all=true`, {
+          method: 'GET',
+          headers: {
+            'X-API-Key': profile.eawb_api_key,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+        const bText = await bResp.text();
+        console.log('Billing lookup status:', bResp.status, 'body:', bText);
+        let bJson: any = null;
+        try { bJson = JSON.parse(bText); } catch (_e) { /* ignore */ }
+        const bList = Array.isArray(bJson?.list)
+          ? bJson.list
+          : (Array.isArray(bJson?.data?.list) ? bJson.data.list : (Array.isArray(bJson?.data) ? bJson.data : []));
+        const pick = bList.length === 1 ? bList[0] : bList.find((a: any) => a.is_default);
+        if (pick?.id) {
+          billingAddressId = Number(pick.id);
+          await supabase
+            .from('profiles')
+            .update({ eawb_billing_address_id: billingAddressId })
+            .eq('user_id', user.id);
+          console.log('Auto-resolved billing_address_id:', billingAddressId);
+        } else if (bList.length > 1) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'MULTIPLE_BILLING_ADDRESSES',
+            message: 'Multiple billing addresses found. Please select one in Store Settings → Integrations → eAWB.',
+            billing_addresses: bList
+          }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        } else {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'NO_BILLING_ADDRESS',
+            message: 'No billing address found in your Europarcel/eAWB account. Please create one in your Europarcel dashboard.'
+          }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      }
+
       // Build AWB request with nested content structure (matching quoting format)
       const awbRequest = {
         billing_to: { 
-          billing_address_id: profile.eawb_billing_address_id || 1 
+          billing_address_id: billingAddressId 
         },
         address_from: {
           country_code: 'RO',
