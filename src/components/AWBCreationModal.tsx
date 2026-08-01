@@ -215,7 +215,12 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
       }
     } catch (error: any) {
       console.error('Error creating AWB:', error);
-      toast.error(error.message || 'Failed to create AWB');
+      let message = error?.message || 'Failed to create AWB';
+      try {
+        const body = await error?.context?.json?.();
+        if (body?.message) message = body.message;
+      } catch (_e) { /* ignore */ }
+      toast.error(message);
       setStep('pricing'); // Go back to pricing step
     } finally {
       setLoading(false);
