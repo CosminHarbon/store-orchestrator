@@ -24,7 +24,7 @@ export type DateRange = {
   to: Date;
 };
 
-export type PresetKey = 'week' | '30days' | '90days' | 'year' | 'custom';
+export type PresetKey = 'today' | 'week' | '30days' | '90days' | 'year' | 'custom';
 
 interface DateRangeFilterProps {
   dateRange: DateRange;
@@ -35,6 +35,16 @@ interface DateRangeFilterProps {
 }
 
 const presets: { key: PresetKey; label: string; getRange: () => DateRange }[] = [
+  {
+    key: 'today',
+    label: 'Today',
+    getRange: () => {
+      const now = new Date();
+      const from = new Date(now);
+      from.setHours(0, 0, 0, 0);
+      return { from, to: now };
+    },
+  },
   {
     key: 'week',
     label: 'Last 7 days',

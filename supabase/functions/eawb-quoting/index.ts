@@ -396,6 +396,22 @@ serve(async (req) => {
       });
     }
 
+    const shippingAddressId: number | null = profile.eawb_shipping_address_id ?? null;
+    const addressFrom = shippingAddressId
+      ? { address_from_id: shippingAddressId }
+      : {
+          country_code: 'RO',
+          county_name: senderParsed.county,
+          locality_name: senderParsed.city,
+          postal_code: senderParsed.postal_code || undefined,
+          contact: profile.eawb_name || profile.store_name || 'Sender',
+          street_name: senderStreet.street_name,
+          street_number: senderStreet.street_number,
+          phone: profile.eawb_phone || '0700000000',
+          email: profile.eawb_email || user.email
+        };
+    console.log('Using address_from:', addressFrom);
+
     const parcelsCount = Math.max(1, Number(package_details.parcels || 1));
     const totalWeightInput = Number(package_details.weight || 1);
     const unitWeight = totalWeightInput / parcelsCount;
@@ -434,17 +450,7 @@ serve(async (req) => {
 
     const basePayload = {
       billing_to: { billing_address_id: billingAddressId },
-      address_from: {
-        country_code: 'RO',
-        county_name: senderParsed.county,
-        locality_name: senderParsed.city,
-        postal_code: senderParsed.postal_code || undefined,
-        contact: profile.eawb_name || profile.store_name || 'Sender',
-        street_name: senderStreet.street_name,
-        street_number: senderStreet.street_number,
-        phone: profile.eawb_phone || '0700000000',
-        email: profile.eawb_email || user.email
-      },
+      address_from: addressFrom,
       address_to: {
         country_code: 'RO',
         county_name: recipientParsed.county,

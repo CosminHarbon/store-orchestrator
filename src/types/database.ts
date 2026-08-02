@@ -209,6 +209,7 @@ export type Database = {
         Row: {
           awb_number: string | null
           carrier_name: string | null
+          checkout_session_id: string | null
           created_at: string
           customer_address: string
           customer_apartment: string | null
@@ -242,6 +243,7 @@ export type Database = {
         Insert: {
           awb_number?: string | null
           carrier_name?: string | null
+          checkout_session_id?: string | null
           created_at?: string
           customer_address: string
           customer_apartment?: string | null
@@ -260,9 +262,9 @@ export type Database = {
           invoice_link?: string | null
           invoice_number?: string | null
           invoice_series?: string | null
-          locker_address?: string | null
           locker_id?: string | null
           locker_name?: string | null
+          locker_address?: string | null
           order_status?: Database["public"]["Enums"]["order_status_enum"] | null
           payment_status?: string
           selected_carrier_code?: string | null
@@ -275,6 +277,7 @@ export type Database = {
         Update: {
           awb_number?: string | null
           carrier_name?: string | null
+          checkout_session_id?: string | null
           created_at?: string
           customer_address?: string
           customer_apartment?: string | null
@@ -310,6 +313,7 @@ export type Database = {
       payment_transactions: {
         Row: {
           amount: number
+          checkout_session_id: string | null
           created_at: string
           currency: string
           error_message: string | null
@@ -327,6 +331,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          checkout_session_id?: string | null
           created_at?: string
           currency?: string
           error_message?: string | null
@@ -344,6 +349,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          checkout_session_id?: string | null
           created_at?: string
           currency?: string
           error_message?: string | null
@@ -494,6 +500,7 @@ export type Database = {
           eawb_address: string | null
           eawb_api_key: string | null
           eawb_billing_address_id: number | null
+          eawb_shipping_address_id: number | null
           eawb_city: string | null
           eawb_county: string | null
           eawb_customer_id: number | null
@@ -542,6 +549,7 @@ export type Database = {
           eawb_address?: string | null
           eawb_api_key?: string | null
           eawb_billing_address_id?: number | null
+          eawb_shipping_address_id?: number | null
           eawb_city?: string | null
           eawb_county?: string | null
           eawb_customer_id?: number | null
@@ -590,6 +598,7 @@ export type Database = {
           eawb_address?: string | null
           eawb_api_key?: string | null
           eawb_billing_address_id?: number | null
+          eawb_shipping_address_id?: number | null
           eawb_city?: string | null
           eawb_county?: string | null
           eawb_customer_id?: number | null

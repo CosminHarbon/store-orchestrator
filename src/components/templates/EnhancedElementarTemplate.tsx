@@ -16,6 +16,7 @@ import BlockRenderer from "./BlockRenderer";
 import type { TemplateBlock } from "./BlockEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { ROMANIA_LOCATIONS, ROMANIA_COUNTIES } from "@/lib/romaniaLocations";
+import { useAbandonedCartAutosave } from "@/hooks/useAbandonedCartAutosave";
 
 interface Product {
   id: string;
@@ -191,6 +192,21 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
   };
 
   useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentStatus = urlParams.get('payment_status');
+    const orderId = urlParams.get('order_id');
+    const checkoutSessionId = urlParams.get('checkout_session_id');
+
+    if (paymentStatus === 'checking' && (checkoutSessionId || orderId)) {
+      const apiKeyParam = urlParams.get('api_key');
+      const clean = apiKeyParam
+        ? `${window.location.pathname}?api_key=${apiKeyParam}`
+        : window.location.pathname;
+      window.history.replaceState({}, document.title, clean);
+      checkPaymentStatus(checkoutSessionId || orderId!);
+      return;
+    }
+
     const fetchConfig = async () => {
       try {
         const response = await fetch(`${API_BASE}/config`, {
@@ -222,6 +238,59 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
     fetchConfig();
     fetchData();
   }, [apiKey]);
+
+  const checkPaymentStatus = async (refId: string) => {
+    setLoading(true);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      let attempts = 0;
+      const maxAttempts = 8;
+
+      while (attempts < maxAttempts) {
+        const statusResponse = await fetch(
+          `${API_BASE}/payment-status?checkout_session_id=${refId}&payment_id=${refId}`,
+          { headers: { 'X-API-Key': apiKey } }
+        );
+
+        if (statusResponse.ok) {
+          const statusData = await statusResponse.json();
+          if (statusData.payment_status === 'completed' || statusData.payment_status === 'paid') {
+            setCart([]);
+            setView('home');
+            toast.success('Payment successful! Thank you for your order.');
+            setLoading(false);
+            return;
+          }
+        } else {
+          const response = await fetch(`${API_BASE}/orders?order_id=${refId}`, {
+            headers: { 'X-API-Key': apiKey },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            if (data.order?.payment_status === 'paid') {
+              setCart([]);
+              setView('home');
+              toast.success('Payment successful! Thank you for your order.');
+              setLoading(false);
+              return;
+            }
+          }
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        attempts++;
+      }
+
+      toast.info('Payment verification in progress. You will receive confirmation shortly.');
+      setView('home');
+    } catch (error) {
+      console.error('Error checking payment:', error);
+      toast.error('Error verifying payment. Please contact support if you were charged.');
+      setView('home');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -334,6 +403,29 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
   const orderTotal = cartTotal + deliveryFee + paymentFee;
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  const abandonedCartItems = useMemo(
+    () =>
+      cart.map((item) => ({
+        product_id: item.product.id,
+        title: item.product.title,
+        price: item.product.price,
+        quantity: item.quantity,
+      })),
+    [cart]
+  );
+
+  const { getSessionToken, markConvertedLocally } = useAbandonedCartAutosave({
+    apiBase: API_BASE,
+    apiKey,
+    enabled: !editMode,
+    view,
+    paymentMethod,
+    checkoutForm,
+    items: abandonedCartItems,
+    cartSubtotal: cartTotal,
+    estimatedTotal: orderTotal,
+  });
+
   const filteredProducts = products.filter((product) => {
     const matchesCollection = !selectedCollection || selectedCollection === "all" ||
       (productCollections[product.id] && productCollections[product.id].includes(selectedCollection));
@@ -397,6 +489,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
         locker_address: checkoutForm.locker_address || null,
         total: orderTotal,
         payment_method: paymentMethod,
+        session_token: getSessionToken() || undefined,
         items: cart.map((item) => ({
           product_id: item.product.id,
           title: item.product.title,
@@ -414,8 +507,10 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
       const result = await response.json();
 
       if (response.ok && result.payment_url) {
+        markConvertedLocally();
         window.location.href = result.payment_url;
       } else if (response.ok && paymentMethod === 'cash') {
+        markConvertedLocally();
         toast.success("Order created successfully! You will pay cash on delivery.");
         setCart([]);
         setView("home");

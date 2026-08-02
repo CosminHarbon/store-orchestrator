@@ -13,7 +13,7 @@ interface Order {
   customer_address: string;
   customer_phone?: string;
   total: number;
-  payment_status: 'pending' | 'paid' | 'failed' | 'refunded' | 'invoiced';
+  payment_status: 'pending' | 'paid' | 'failed' | 'refunded' | 'invoiced' | 'cash';
   shipping_status: string;
   created_at: string;
   invoice_link?: string;
@@ -47,6 +47,8 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
       switch (status.toLowerCase()) {
         case 'pending':
           return <Badge variant="secondary" className={`${baseClasses} px-2 py-0.5`}>{isMobile ? 'Pending' : 'Pending Payment'}</Badge>;
+        case 'cash':
+          return <Badge variant="outline" className={`${baseClasses} px-2 py-0.5`}>Cash</Badge>;
         case 'paid':
           return <Badge variant="default" className={baseClasses}>Paid</Badge>;
         case 'failed':

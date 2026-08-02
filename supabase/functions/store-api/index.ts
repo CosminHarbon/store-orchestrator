@@ -223,6 +223,32 @@ function calculateProductPrice(
   };
 }
 
+/** Mark active abandoned cart as converted. Never throws — Place Order must not fail because of this. */
+async function convertAbandonedCart(
+  supabase: any,
+  userId: string,
+  sessionToken: string | null | undefined,
+  links: { checkout_session_id?: string | null; order_id?: string | null } = {}
+) {
+  if (!sessionToken || typeof sessionToken !== 'string') return;
+  try {
+    await supabase
+      .from('abandoned_carts')
+      .update({
+        status: 'converted',
+        converted_at: new Date().toISOString(),
+        converted_checkout_session_id: links.checkout_session_id || null,
+        converted_order_id: links.order_id || null,
+        last_activity_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId)
+      .eq('session_token', sessionToken)
+      .eq('status', 'active');
+  } catch (e) {
+    console.warn('Abandoned cart convert warning:', e);
+  }
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -631,6 +657,7 @@ Deno.serve(async (req) => {
             total,
             items,
             payment_method,
+            session_token,
             // Delivery type fields (optional)
             delivery_type,
             selected_carrier_code,
@@ -703,7 +730,209 @@ Deno.serve(async (req) => {
             compositeAddress = `${addressParts.join(' ')}, ${customer_city}, ${customer_county}`;
           }
 
-          // Create order
+          const snapshotItems = (items as any[]).map((item: any) => ({
+            product_id: item.product_id || null,
+            title: item.title,
+            price: parseFloat(item.price),
+            quantity: parseInt(item.quantity, 10),
+          }));
+
+          // ===== CARD: Checkout Session only (no Order until payment confirms) =====
+          if (payment_method === 'card') {
+            if (!isNetopiaConfigured) {
+              return new Response(
+                JSON.stringify({
+                  error: 'Netopia payment gateway not configured. Please configure API Key and POS Signature in Store Settings → Payment.',
+                }),
+                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+
+            try {
+              await supabase.rpc('expire_checkout_sessions');
+              await supabase.rpc('cleanup_old_checkout_sessions');
+            } catch (maintainErr) {
+              console.warn('Checkout session maintenance warning:', maintainErr);
+            }
+
+            const cartFingerprint = await crypto.subtle
+              .digest(
+                'SHA-256',
+                new TextEncoder().encode(
+                  JSON.stringify({
+                    email: String(customer_email).trim().toLowerCase(),
+                    items: snapshotItems
+                      .map((i) => ({
+                        product_id: i.product_id,
+                        title: i.title,
+                        price: i.price,
+                        quantity: i.quantity,
+                      }))
+                      .sort((a, b) =>
+                        String(a.product_id || a.title).localeCompare(String(b.product_id || b.title))
+                      ),
+                    total: parseFloat(total),
+                    delivery_type: effectiveDeliveryType,
+                    locker_id: locker_id || null,
+                  })
+                )
+              )
+              .then((buf) =>
+                Array.from(new Uint8Array(buf))
+                  .map((b) => b.toString(16).padStart(2, '0'))
+                  .join('')
+              );
+
+            // Reuse an existing pending session for the same cart/customer (dedupe double-clicks)
+            const { data: existingSession } = await supabase
+              .from('checkout_sessions')
+              .select('*')
+              .eq('user_id', userId)
+              .eq('customer_email', customer_email)
+              .eq('cart_fingerprint', cartFingerprint)
+              .eq('status', 'pending')
+              .gt('expires_at', new Date().toISOString())
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            let session = existingSession;
+
+            if (session?.netopia_payment_url) {
+              await convertAbandonedCart(supabase, userId, session_token, {
+                checkout_session_id: session.id,
+              });
+              return new Response(
+                JSON.stringify({
+                  checkout_session_id: session.id,
+                  payment_url: session.netopia_payment_url,
+                  reused: true,
+                }),
+                { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+
+            if (!session) {
+              const subtotal = snapshotItems.reduce(
+                (sum: number, i: any) => sum + i.price * i.quantity,
+                0
+              );
+              const shippingAmount = Math.max(0, parseFloat(total) - subtotal);
+              const { data: createdSession, error: sessionError } = await supabase
+                .from('checkout_sessions')
+                .insert({
+                  user_id: userId,
+                  status: 'pending',
+                  payment_method: 'card',
+                  payment_status: 'pending',
+                  customer_name,
+                  customer_email,
+                  customer_phone: customer_phone || null,
+                  customer_address: compositeAddress,
+                  customer_city: customer_city || null,
+                  customer_county: customer_county || null,
+                  customer_street: customer_street || null,
+                  customer_street_number: customer_street_number || null,
+                  customer_block: customer_block || null,
+                  customer_apartment: customer_apartment || null,
+                  delivery_type: effectiveDeliveryType,
+                  selected_carrier_code: selected_carrier_code || null,
+                  locker_id: locker_id || null,
+                  locker_name: locker_name || null,
+                  locker_address: locker_address || null,
+                  items: snapshotItems,
+                  cart_fingerprint: cartFingerprint,
+                  subtotal,
+                  shipping_amount: shippingAmount,
+                  discount_amount: 0,
+                  tax_amount: 0,
+                  total: parseFloat(total),
+                  expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+                })
+                .select()
+                .single();
+
+              if (sessionError || !createdSession) {
+                console.error('Error creating checkout session:', sessionError);
+                return new Response(
+                  JSON.stringify({ error: 'Failed to create checkout session' }),
+                  { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                );
+              }
+              session = createdSession;
+            }
+
+            const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+            const functionUrl = `${supabaseUrl}/functions/v1/netopia-payment`;
+            const refererUrl = req.headers.get('referer') || '';
+            let returnUrl = '';
+
+            if (refererUrl) {
+              try {
+                const refererUrlObj = new URL(refererUrl);
+                const apiKeyFromReferer = refererUrlObj.searchParams.get('api_key') || apiKey;
+                returnUrl = `${refererUrlObj.origin}/templates/elementar?api_key=${apiKeyFromReferer}&payment_status=checking&checkout_session_id=${session.id}`;
+              } catch {
+                returnUrl = `${req.headers.get('origin') || ''}/templates/elementar?api_key=${apiKey}&payment_status=checking&checkout_session_id=${session.id}`;
+              }
+            } else {
+              returnUrl = `${req.headers.get('origin') || ''}/templates/elementar?api_key=${apiKey}&payment_status=checking&checkout_session_id=${session.id}`;
+            }
+
+            const { data: netopiaResponse, error: netopiaError } = await supabase.functions.invoke(
+              'netopia-payment',
+              {
+                body: {
+                  action: 'create_payment',
+                  user_id: userId,
+                  checkout_session_id: session.id,
+                  amount: parseFloat(total),
+                  currency: 'RON',
+                  customer_email,
+                  customer_name,
+                  customer_phone: customer_phone || '',
+                  return_url: returnUrl,
+                  notify_url: functionUrl,
+                },
+              }
+            );
+
+            if (netopiaError || !netopiaResponse?.payment_url) {
+              console.error('Netopia payment error:', netopiaError || netopiaResponse);
+              return new Response(
+                JSON.stringify({
+                  error:
+                    netopiaResponse?.details ||
+                    netopiaResponse?.error ||
+                    'Failed to initiate payment. Please contact support.',
+                  checkout_session_id: session.id,
+                }),
+                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+
+            await supabase
+              .from('checkout_sessions')
+              .update({
+                netopia_payment_url: netopiaResponse.payment_url,
+                netopia_payment_id: netopiaResponse.payment_id || null,
+              })
+              .eq('id', session.id);
+
+            await convertAbandonedCart(supabase, userId, session_token, {
+              checkout_session_id: session.id,
+            });
+
+            return new Response(
+              JSON.stringify({
+                checkout_session_id: session.id,
+                payment_url: netopiaResponse.payment_url,
+              }),
+              { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          // ===== CASH / COD: create Order immediately (unchanged behaviour) =====
           const { data: order, error: orderError } = await supabase
             .from('orders')
             .insert({
@@ -713,139 +942,50 @@ Deno.serve(async (req) => {
               customer_address: compositeAddress,
               customer_phone: customer_phone || null,
               total: parseFloat(total),
-              payment_status: 'pending',
-              order_status: payment_method === 'card' ? 'awaiting_payment' : 'paid',
+              payment_status: 'cash',
+              order_status: 'paid',
               shipping_status: 'pending',
-              // Delivery type fields
               delivery_type: effectiveDeliveryType,
               selected_carrier_code: selected_carrier_code || null,
               locker_id: locker_id || null,
               locker_name: locker_name || null,
               locker_address: locker_address || null,
-              // Store structured address fields (for home delivery)
               customer_city: customer_city || null,
               customer_county: customer_county || null,
               customer_street: customer_street || null,
               customer_street_number: customer_street_number || null,
               customer_block: customer_block || null,
-              customer_apartment: customer_apartment || null
+              customer_apartment: customer_apartment || null,
             })
             .select()
-            .single()
+            .single();
 
           if (orderError) {
-            console.log('Error creating order:', orderError)
-            return new Response(
-              JSON.stringify({ error: 'Failed to create order' }),
-              { 
-                status: 500, 
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-              }
-            )
+            console.log('Error creating order:', orderError);
+            return new Response(JSON.stringify({ error: 'Failed to create order' }), {
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
           }
 
-          // Create order items
-          const orderItems = items.map((item: any) => ({
+          const orderItems = snapshotItems.map((item: any) => ({
             order_id: order.id,
             product_id: item.product_id || null,
             product_title: item.title,
-            product_price: parseFloat(item.price),
-            quantity: parseInt(item.quantity)
-          }))
+            product_price: item.price,
+            quantity: item.quantity,
+          }));
 
-          const { error: itemsError } = await supabase
-            .from('order_items')
-            .insert(orderItems)
+          const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
 
           if (itemsError) {
-            console.log('Error creating order items:', itemsError)
-            return new Response(
-              JSON.stringify({ error: 'Failed to create order items' }),
-              { 
-                status: 500, 
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-              }
-            )
+            console.log('Error creating order items:', itemsError);
+            return new Response(JSON.stringify({ error: 'Failed to create order items' }), {
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
           }
 
-          // If payment method is card, initiate Netopia payment
-          if (payment_method === 'card') {
-            try {
-              // Get the base URL for callbacks
-              const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-              const functionUrl = `${supabaseUrl}/functions/v1/netopia-payment`;
-              
-              // Get the referer which should be the template page
-              const refererUrl = req.headers.get('referer') || '';
-              let returnUrl = '';
-              
-              if (refererUrl) {
-                try {
-                  const refererUrlObj = new URL(refererUrl);
-                  // Extract api_key from referer
-                  const apiKeyFromReferer = refererUrlObj.searchParams.get('api_key') || apiKey;
-                  // Build proper return URL to template
-                  returnUrl = `${refererUrlObj.origin}/templates/elementar?api_key=${apiKeyFromReferer}&payment_status=checking&order_id=${order.id}`;
-                } catch (e) {
-                  // Fallback if URL parsing fails
-                  returnUrl = `${req.headers.get('origin') || ''}/templates/elementar?api_key=${apiKey}&payment_status=checking&order_id=${order.id}`;
-                }
-              } else {
-                // Fallback if no referer
-                returnUrl = `${req.headers.get('origin') || ''}/templates/elementar?api_key=${apiKey}&payment_status=checking&order_id=${order.id}`;
-              }
-              
-              const { data: netopiaResponse, error: netopiaError } = await supabase.functions.invoke('netopia-payment', {
-                body: {
-                  action: 'create_payment',
-                  user_id: userId,
-                  order_id: order.id,
-                  amount: parseFloat(total),
-                  currency: 'RON',
-                  customer_email,
-                  customer_name,
-                  return_url: returnUrl,
-                  notify_url: functionUrl
-                }
-              })
-
-              if (netopiaError) {
-                console.error('Netopia payment error:', netopiaError)
-                // Return order anyway but without payment URL
-                return new Response(
-                  JSON.stringify({ 
-                    order, 
-                    items: orderItems,
-                    error: 'Failed to initiate payment. Please contact support.'
-                  }),
-                  { 
-                    status: 201, 
-                    headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-                  }
-                )
-              }
-
-              if (netopiaResponse?.payment_url) {
-                // Don't send notification yet for card payments - wait for payment confirmation
-                // The netopia-payment function will handle this when payment is confirmed
-                return new Response(
-                  JSON.stringify({ 
-                    order, 
-                    items: orderItems,
-                    payment_url: netopiaResponse.payment_url
-                  }),
-                  { 
-                    status: 201, 
-                    headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-                  }
-                )
-              }
-            } catch (error) {
-              console.error('Error calling Netopia:', error)
-            }
-          }
-
-          // Send push notification for new order (cash payment - already marked as paid)
           try {
             await supabase.functions.invoke('push-notification', {
               body: {
@@ -857,23 +997,23 @@ Deno.serve(async (req) => {
                 data: {
                   order_id: order.id,
                   total: total.toString(),
-                  customer_name
-                }
-              }
+                  customer_name,
+                },
+              },
             });
             console.log('Push notification sent for new order:', order.id);
           } catch (pushError) {
             console.error('Failed to send push notification:', pushError);
-            // Don't fail the order creation if push fails
           }
 
-          return new Response(
-            JSON.stringify({ order, items: orderItems }),
-            { 
-              status: 201, 
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-            }
-          )
+          await convertAbandonedCart(supabase, userId, session_token, {
+            order_id: order.id,
+          });
+
+          return new Response(JSON.stringify({ order, items: orderItems }), {
+            status: 201,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
         }
         break
       }
@@ -1011,7 +1151,7 @@ Deno.serve(async (req) => {
           if (!isNetopiaConfigured) {
             return new Response(
               JSON.stringify({ 
-                error: 'Netopia payment gateway not configured. Please configure API key and signature in your store settings.' 
+                error: 'Netopia payment gateway not configured. Please configure API Key and POS Signature in Store Settings → Payment.' 
               }),
               { 
                 status: 400, 
@@ -1074,7 +1214,7 @@ Deno.serve(async (req) => {
           if (!isNetopiaConfigured) {
             return new Response(
               JSON.stringify({ 
-                error: 'Netopia payment gateway not configured. Please configure API key and signature in your store settings.' 
+                error: 'Netopia payment gateway not configured. Please configure API Key and POS Signature in Store Settings → Payment.' 
               }),
               { 
                 status: 400, 
@@ -1083,10 +1223,13 @@ Deno.serve(async (req) => {
             )
           }
 
-          const paymentId = url.searchParams.get('payment_id')
+          const paymentId =
+            url.searchParams.get('payment_id') ||
+            url.searchParams.get('checkout_session_id') ||
+            url.searchParams.get('order_id')
           if (!paymentId) {
             return new Response(
-              JSON.stringify({ error: 'payment_id parameter required' }),
+              JSON.stringify({ error: 'payment_id or checkout_session_id parameter required' }),
               { 
                 status: 400, 
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -1098,8 +1241,9 @@ Deno.serve(async (req) => {
             const { data: statusResponse, error: statusError } = await supabase.functions.invoke('netopia-payment', {
               body: {
                 action: 'payment_status',
-                user_id: userId, // Pass user_id explicitly for API key authentication
-                payment_id: paymentId
+                user_id: userId,
+                payment_id: paymentId,
+                checkout_session_id: url.searchParams.get('checkout_session_id') || undefined,
               },
               headers: {
                 'Authorization': req.headers.get('Authorization') || `Bearer ${apiKey}`
@@ -1345,12 +1489,187 @@ Deno.serve(async (req) => {
         break
       }
 
+      case 'abandoned-carts': {
+        if (req.method !== 'POST') {
+          return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+            status: 405,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const body = await req.json();
+        const action = body.action || 'upsert';
+        const sessionToken = typeof body.session_token === 'string' ? body.session_token.trim() : '';
+
+        if (!sessionToken) {
+          return new Response(JSON.stringify({ error: 'session_token is required' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        if (action === 'discard') {
+          const { error } = await supabase
+            .from('abandoned_carts')
+            .update({
+              status: 'discarded',
+              last_activity_at: new Date().toISOString(),
+            })
+            .eq('user_id', userId)
+            .eq('session_token', sessionToken)
+            .eq('status', 'active');
+
+          if (error) {
+            console.error('Abandoned cart discard error:', error);
+            return new Response(JSON.stringify({ error: 'Failed to discard abandoned cart' }), {
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+
+          return new Response(JSON.stringify({ success: true, status: 'discarded' }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        if (action === 'convert') {
+          await convertAbandonedCart(supabase, userId, sessionToken, {
+            checkout_session_id: body.checkout_session_id || null,
+            order_id: body.order_id || null,
+          });
+          return new Response(JSON.stringify({ success: true, status: 'converted' }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // upsert
+        const items = Array.isArray(body.items) ? body.items : [];
+        if (items.length === 0) {
+          return new Response(JSON.stringify({ error: 'items required for upsert' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const snapshotItems = items.map((item: any) => ({
+          product_id: item.product_id || null,
+          title: item.title || item.product_title || 'Item',
+          price: parseFloat(item.price ?? item.product_price ?? 0),
+          quantity: parseInt(item.quantity ?? 1, 10),
+        }));
+
+        const checkoutStep = ['cart', 'checkout', 'ready'].includes(body.checkout_step)
+          ? body.checkout_step
+          : 'cart';
+
+        const row = {
+          user_id: userId,
+          session_token: sessionToken,
+          status: 'active',
+          customer_name: body.customer_name || null,
+          customer_email: body.customer_email || null,
+          customer_phone: body.customer_phone || null,
+          customer_address: body.customer_address || null,
+          customer_city: body.customer_city || null,
+          customer_county: body.customer_county || null,
+          customer_street: body.customer_street || null,
+          customer_street_number: body.customer_street_number || null,
+          customer_block: body.customer_block || null,
+          customer_apartment: body.customer_apartment || null,
+          delivery_type: body.delivery_type || null,
+          selected_carrier_code: body.selected_carrier_code || null,
+          locker_id: body.locker_id || null,
+          locker_name: body.locker_name || null,
+          locker_address: body.locker_address || null,
+          payment_method: body.payment_method || null,
+          items: snapshotItems,
+          cart_subtotal: parseFloat(body.cart_subtotal ?? 0) || 0,
+          estimated_total: parseFloat(body.estimated_total ?? body.cart_subtotal ?? 0) || 0,
+          checkout_step: checkoutStep,
+          last_activity_at: new Date().toISOString(),
+        };
+
+        const { data: existing } = await supabase
+          .from('abandoned_carts')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('session_token', sessionToken)
+          .eq('status', 'active')
+          .maybeSingle();
+
+        let saved;
+        if (existing?.id) {
+          const { data, error } = await supabase
+            .from('abandoned_carts')
+            .update(row)
+            .eq('id', existing.id)
+            .select('id, status, last_activity_at')
+            .single();
+          if (error) {
+            console.error('Abandoned cart update error:', error);
+            return new Response(JSON.stringify({ error: 'Failed to update abandoned cart' }), {
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+          saved = data;
+        } else {
+          const { data, error } = await supabase
+            .from('abandoned_carts')
+            .insert(row)
+            .select('id, status, last_activity_at')
+            .single();
+          if (error) {
+            console.error('Abandoned cart insert error:', error);
+            return new Response(JSON.stringify({ error: 'Failed to create abandoned cart' }), {
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+          saved = data;
+        }
+
+        return new Response(JSON.stringify({ success: true, abandoned_cart: saved }), {
+          status: existing?.id ? 200 : 201,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       case 'cleanup-abandoned-orders': {
         if (req.method === 'POST') {
-          const hoursOld = 24; // Delete orders older than 24 hours
+          const hoursOld = 24;
           const cutoffTime = new Date(Date.now() - hoursOld * 60 * 60 * 1000).toISOString();
-          
-          // Delete old awaiting_payment orders
+
+          // Maintain checkout sessions (expire pending, delete old expired)
+          let expiredSessions = 0;
+          let cleanedSessions = 0;
+          try {
+            const { data: expired } = await supabase.rpc('expire_checkout_sessions');
+            const { data: cleaned } = await supabase.rpc('cleanup_old_checkout_sessions');
+            expiredSessions = expired || 0;
+            cleanedSessions = cleaned || 0;
+          } catch (e) {
+            console.warn('Session cleanup warning:', e);
+          }
+
+          let expiredAbandoned = 0;
+          let cleanedAbandoned = 0;
+          try {
+            const { data: expiredCarts } = await supabase.rpc('expire_abandoned_carts', {
+              p_idle_days: 14,
+            });
+            const { data: cleanedCarts } = await supabase.rpc('cleanup_old_abandoned_carts', {
+              p_keep_days: 60,
+            });
+            expiredAbandoned = expiredCarts || 0;
+            cleanedAbandoned = cleanedCarts || 0;
+          } catch (e) {
+            console.warn('Abandoned cart cleanup warning:', e);
+          }
+
+          // Legacy: delete old awaiting_payment orders (pre-checkout-session leftovers)
           const { data: deletedOrders, error } = await supabase
             .from('orders')
             .delete()
@@ -1358,26 +1677,30 @@ Deno.serve(async (req) => {
             .eq('order_status', 'awaiting_payment')
             .lt('created_at', cutoffTime)
             .select();
-            
+
           if (error) {
             console.error('Error cleaning up abandoned orders:', error);
             return new Response(
-              JSON.stringify({ 
-                success: false, 
+              JSON.stringify({
+                success: false,
                 error: 'CLEANUP_ERROR',
-                message: 'Failed to clean up abandoned orders'
+                message: 'Failed to clean up abandoned orders',
               }),
-              { 
+              {
                 status: 500,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
               }
             );
           }
-            
+
           return new Response(
-            JSON.stringify({ 
-              success: true, 
-              deleted_count: deletedOrders?.length || 0 
+            JSON.stringify({
+              success: true,
+              deleted_count: deletedOrders?.length || 0,
+              expired_sessions: expiredSessions,
+              cleaned_sessions: cleanedSessions,
+              expired_abandoned_carts: expiredAbandoned,
+              cleaned_abandoned_carts: cleanedAbandoned,
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );

@@ -114,13 +114,17 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
     const urlParams = new URLSearchParams(window.location.search);
     const paymentStatus = urlParams.get('payment_status');
     const orderId = urlParams.get('order_id');
+    const checkoutSessionId = urlParams.get('checkout_session_id');
     
-    if (paymentStatus === 'checking' && orderId) {
-      // Remove query params from URL
-      window.history.replaceState({}, document.title, window.location.pathname + window.location.search.split('?')[0]);
+    if (paymentStatus === 'checking' && (checkoutSessionId || orderId)) {
+      // Keep api_key in URL; drop payment query params
+      const apiKeyParam = urlParams.get('api_key');
+      const clean = apiKeyParam
+        ? `${window.location.pathname}?api_key=${apiKeyParam}`
+        : window.location.pathname;
+      window.history.replaceState({}, document.title, clean);
       
-      // Check payment status
-      checkPaymentStatus(orderId);
+      checkPaymentStatus(checkoutSessionId || orderId!);
       return;
     }
 
@@ -280,24 +284,24 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
 
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  const checkPaymentStatus = async (orderId: string) => {
+  const checkPaymentStatus = async (refId: string) => {
     setLoading(true);
     try {
-      // Poll for payment status - wait a bit for webhook to process
       await new Promise(resolve => setTimeout(resolve, 3000));
       
       let attempts = 0;
       const maxAttempts = 8;
       
       while (attempts < maxAttempts) {
-        const response = await fetch(`${API_BASE}/orders?order_id=${orderId}`, {
-          headers: { 'X-API-Key': apiKey },
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          
-          if (data.order?.payment_status === 'paid') {
+        // Prefer payment-status (handles checkout sessions + Netopia status sync)
+        const statusResponse = await fetch(
+          `${API_BASE}/payment-status?checkout_session_id=${refId}&payment_id=${refId}`,
+          { headers: { 'X-API-Key': apiKey } }
+        );
+
+        if (statusResponse.ok) {
+          const statusData = await statusResponse.json();
+          if (statusData.payment_status === 'completed' || statusData.payment_status === 'paid') {
             setView("home");
             setCart([]);
             setCheckoutForm({
@@ -320,14 +324,28 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
             setLoading(false);
             return;
           }
+        } else {
+          // Legacy fallback for old order_id return URLs
+          const response = await fetch(`${API_BASE}/orders?order_id=${refId}`, {
+            headers: { 'X-API-Key': apiKey },
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.order?.payment_status === 'paid') {
+              setView("home");
+              setCart([]);
+              toast.success("Payment successful! Thank you for your order.");
+              setLoading(false);
+              return;
+            }
+          }
         }
         
-        // Wait 2 seconds before next attempt
         await new Promise(resolve => setTimeout(resolve, 2000));
         attempts++;
       }
       
-      // If we get here, payment is still pending
       toast.info("Payment verification in progress. Please check your email for order confirmation.");
       setView("home");
     } catch (error) {

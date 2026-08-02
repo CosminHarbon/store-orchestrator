@@ -1,763 +1,685 @@
-import { useState, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Folder, Plus, Upload, Edit, Trash2, Save, X, Image as ImageIcon, Search, Grid3X3, List, Sparkles, Zap } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useMemo, useState, type ComponentType } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  ArrowUpDown,
+  BarChart3,
+  ChevronDown,
+  Folder,
+  FolderOpen,
+  Package,
+  Plus,
+  Search,
+  Trash2,
+  TrendingUp,
+  Wallet,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
+import { CollectionEditorDrawer, type CollectionRow } from './CollectionEditorDrawer';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import CollectionImageUpload from './CollectionImageUpload';
+import { formatRon } from '@/lib/paymentAnalytics';
+import { cn } from '@/lib/utils';
 
-interface Collection {
-  id: string;
-  name: string;
-  description: string;
-  image_url: string;
-  user_id: string;
-  created_at: string;
-  updated_at: string;
-  product_count?: number;
-}
+type SortKey = 'name' | 'product_count' | 'inventory_value' | 'revenue' | 'updated_at';
 
-interface Product {
-  id: string;
+function KpiCard({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+}: {
   title: string;
-  sku: string;
-  price: number;
-  category: string;
-  is_in_collection?: boolean;
+  value: string;
+  subtitle: string;
+  icon: ComponentType<{ className?: string }>;
+}) {
+  return (
+    <Card className="border-border/60 bg-gradient-to-br from-background to-muted/30 shadow-sm">
+      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+        <CardTitle className="text-xs font-medium text-muted-foreground tracking-wide uppercase">
+          {title}
+        </CardTitle>
+        <div className="rounded-md p-1.5 bg-muted/80">
+          <Icon className="h-4 w-4 text-foreground/70" />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-1">
+        <div className="text-2xl font-semibold tracking-tight tabular-nums">{value}</div>
+        <p className="text-xs text-muted-foreground">{subtitle}</p>
+      </CardContent>
+    </Card>
+  );
 }
 
 const CollectionsManagement = () => {
-  const isMobile = useIsMobile();
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isProductsDialogOpen, setIsProductsDialogOpen] = useState(false);
-  const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    image_url: ''
+  const queryClient = useQueryClient();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('updated_at');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [page, setPage] = useState(1);
+  const pageSize = 12;
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: '', description: '', image_url: '' });
+  const [drawerCollection, setDrawerCollection] = useState<CollectionRow | null>(null);
+  const [showAnalytics, setShowAnalytics] = useState(() => {
+    try {
+      return localStorage.getItem('collections-show-analytics') === '1';
+    } catch {
+      return false;
+    }
   });
 
-  const queryClient = useQueryClient();
+  const toggleAnalytics = (next: boolean) => {
+    setShowAnalytics(next);
+    try {
+      localStorage.setItem('collections-show-analytics', next ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  };
 
-  const { data: collections, isLoading } = useQuery({
+  const { data: rawCollections, isLoading } = useQuery({
     queryKey: ['collections'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('collections')
         .select('*')
         .order('created_at', { ascending: false });
-      
       if (error) throw error;
-      
-      // Get product counts for each collection
-      const collectionsWithCounts = await Promise.all(
-        data.map(async (collection) => {
-          const { count } = await supabase
-            .from('product_collections')
-            .select('*', { count: 'exact', head: true })
-            .eq('collection_id', collection.id);
-          
-          return {
-            ...collection,
-            product_count: count || 0
-          };
-        })
-      );
-      
-      return collectionsWithCounts as Collection[];
-    }
+      return data || [];
+    },
   });
 
-  const { data: products } = useQuery({
+  const { data: products = [] } = useQuery({
     queryKey: ['products-for-collections'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
-        .select('id, title, sku, price, category')
+        .select('id, title, sku, price, category, stock')
         .order('title');
-      
       if (error) throw error;
-      return data as Product[];
-    }
+      return data || [];
+    },
   });
 
-  const { data: collectionProducts, refetch: refetchCollectionProducts } = useQuery({
-    queryKey: ['collection-products', selectedCollection?.id],
+  const { data: productCollections = [] } = useQuery({
+    queryKey: ['product-collections-map'],
     queryFn: async () => {
-      if (!selectedCollection) return [];
-      
       const { data, error } = await supabase
         .from('product_collections')
-        .select('product_id')
-        .eq('collection_id', selectedCollection.id);
-      
+        .select('product_id, collection_id, created_at');
       if (error) throw error;
-      
-      const productIds = data.map((pc: any) => pc.product_id);
-      
-      return products?.map(product => ({
-        ...product,
-        is_in_collection: productIds.includes(product.id)
-      })) || [];
+      return data || [];
     },
-    enabled: !!selectedCollection && !!products
   });
 
-  // Filter collections based on search query
-  const filteredCollections = useMemo(() => {
-    if (!collections || !searchQuery.trim()) return collections;
-    
-    const query = searchQuery.toLowerCase();
-    return collections.filter(collection => 
-      collection.name.toLowerCase().includes(query) ||
-      (collection.description && collection.description.toLowerCase().includes(query))
+  const { data: orderItems = [] } = useQuery({
+    queryKey: ['order-items-for-collections'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('order_items')
+        .select('product_id, quantity, price');
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const productById = useMemo(() => {
+    const map = new Map<string, (typeof products)[0]>();
+    products.forEach((p) => map.set(p.id, p));
+    return map;
+  }, [products]);
+
+  const revenueByProduct = useMemo(() => {
+    const map = new Map<string, { revenue: number; units: number }>();
+    for (const item of orderItems) {
+      if (!item.product_id) continue;
+      const prev = map.get(item.product_id) || { revenue: 0, units: 0 };
+      prev.revenue += Number(item.price || 0) * Number(item.quantity || 0);
+      prev.units += Number(item.quantity || 0);
+      map.set(item.product_id, prev);
+    }
+    return map;
+  }, [orderItems]);
+
+  const collections: CollectionRow[] = useMemo(() => {
+    if (!rawCollections) return [];
+    return rawCollections.map((c) => {
+      const links = productCollections.filter((pc) => pc.collection_id === c.id);
+      const productIds = links.map((l) => l.product_id);
+      let inventory_value = 0;
+      let revenue = 0;
+      for (const pid of productIds) {
+        const p = productById.get(pid);
+        if (p) {
+          inventory_value += Number(p.price || 0) * Math.max(0, Number(p.stock || 0));
+        }
+        const sales = revenueByProduct.get(pid);
+        if (sales) revenue += sales.revenue;
+      }
+      return {
+        id: c.id,
+        name: c.name,
+        description: c.description,
+        image_url: c.image_url,
+        created_at: c.created_at,
+        updated_at: c.updated_at,
+        product_count: productIds.length,
+        inventory_value,
+        revenue,
+      };
+    });
+  }, [rawCollections, productCollections, productById, revenueByProduct]);
+
+  // Keep open drawer metrics in sync after refetch
+  const drawerCollectionSynced = useMemo(() => {
+    if (!drawerCollection) return null;
+    return collections.find((c) => c.id === drawerCollection.id) || drawerCollection;
+  }, [collections, drawerCollection]);
+
+  const kpis = useMemo(() => {
+    const total = collections.length;
+    const assignedSet = new Set(
+      productCollections.map((pc) => pc.product_id)
     );
-  }, [collections, searchQuery]);
+    const empty = collections.filter((c) => c.product_count === 0).length;
+    const largest = collections.reduce(
+      (best, c) => (c.product_count > best.product_count ? c : best),
+      { name: '—', product_count: 0 } as { name: string; product_count: number }
+    );
+    const avg =
+      total === 0 ? 0 : collections.reduce((s, c) => s + c.product_count, 0) / total;
+    return {
+      total,
+      productsAssigned: assignedSet.size,
+      largestName: largest.name,
+      largestCount: largest.product_count,
+      empty,
+      avg: Math.round(avg * 10) / 10,
+      totalRevenue: collections.reduce((s, c) => s + c.revenue, 0),
+      totalInventory: collections.reduce((s, c) => s + c.inventory_value, 0),
+    };
+  }, [collections, productCollections]);
+
+  const filtered = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    let list = collections;
+    if (q) {
+      list = list.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          (c.description || '').toLowerCase().includes(q)
+      );
+    }
+    const dir = sortDir === 'asc' ? 1 : -1;
+    list = [...list].sort((a, b) => {
+      switch (sortKey) {
+        case 'name':
+          return a.name.localeCompare(b.name) * dir;
+        case 'product_count':
+          return (a.product_count - b.product_count) * dir;
+        case 'inventory_value':
+          return (a.inventory_value - b.inventory_value) * dir;
+        case 'revenue':
+          return (a.revenue - b.revenue) * dir;
+        case 'updated_at':
+        default:
+          return (
+            (new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()) * dir
+          );
+      }
+    });
+    return list;
+  }, [collections, searchQuery, sortKey, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const pageSafe = Math.min(page, totalPages);
+  const rows = filtered.slice((pageSafe - 1) * pageSize, pageSafe * pageSize);
+
+  const assignedIdsForDrawer = useMemo(() => {
+    if (!drawerCollectionSynced) return [];
+    return productCollections
+      .filter((pc) => pc.collection_id === drawerCollectionSynced.id)
+      .map((pc) => pc.product_id);
+  }, [drawerCollectionSynced, productCollections]);
+
+  const bestSellersForDrawer = useMemo(() => {
+    if (!drawerCollectionSynced) return [];
+    const ids = new Set(assignedIdsForDrawer);
+    return [...ids]
+      .map((id) => {
+        const p = productById.get(id);
+        const sales = revenueByProduct.get(id) || { revenue: 0, units: 0 };
+        return {
+          id,
+          title: p?.title || 'Unknown',
+          units: sales.units,
+          revenue: sales.revenue,
+        };
+      })
+      .filter((b) => b.units > 0)
+      .sort((a, b) => b.revenue - a.revenue);
+  }, [drawerCollectionSynced, assignedIdsForDrawer, productById, revenueByProduct]);
 
   const createMutation = useMutation({
-    mutationFn: async (data: typeof formData) => {
+    mutationFn: async (data: typeof createForm) => {
       const { data: result, error } = await supabase
         .from('collections')
         .insert([{ ...data, user_id: (await supabase.auth.getUser()).data.user?.id }])
         .select()
         .single();
-      
       if (error) throw error;
       return result;
     },
-    onSuccess: () => {
-      toast.success('Collection created successfully');
-      setIsCreateDialogOpen(false);
-      resetForm();
+    onSuccess: (result) => {
+      toast.success('Collection created');
+      setIsCreateOpen(false);
+      setCreateForm({ name: '', description: '', image_url: '' });
       queryClient.invalidateQueries({ queryKey: ['collections'] });
+      if (result) {
+        setDrawerCollection({
+          id: result.id,
+          name: result.name,
+          description: result.description,
+          image_url: result.image_url,
+          created_at: result.created_at,
+          updated_at: result.updated_at,
+          product_count: 0,
+          inventory_value: 0,
+          revenue: 0,
+        });
+      }
     },
     onError: (error: any) => {
       toast.error(`Failed to create collection: ${error.message}`);
-    }
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async (data: typeof formData) => {
-      const { data: result, error } = await supabase
-        .from('collections')
-        .update(data)
-        .eq('id', selectedCollection?.id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return result;
     },
-    onSuccess: () => {
-      toast.success('Collection updated successfully');
-      setIsEditDialogOpen(false);
-      resetForm();
-      queryClient.invalidateQueries({ queryKey: ['collections'] });
-    },
-    onError: (error: any) => {
-      toast.error(`Failed to update collection: ${error.message}`);
-    }
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('collections')
-        .delete()
-        .eq('id', id);
-      
+      await supabase.from('product_collections').delete().eq('collection_id', id);
+      const { error } = await supabase.from('collections').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success('Collection deleted successfully');
+      toast.success('Collection deleted');
+      setDrawerCollection(null);
       queryClient.invalidateQueries({ queryKey: ['collections'] });
+      queryClient.invalidateQueries({ queryKey: ['product-collections-map'] });
     },
     onError: (error: any) => {
       toast.error(`Failed to delete collection: ${error.message}`);
-    }
+    },
   });
 
-  const updateProductCollectionMutation = useMutation({
-    mutationFn: async ({ productId, inCollection }: { productId: string; inCollection: boolean }) => {
-      if (!selectedCollection) return;
-      
-      if (inCollection) {
-        const { error } = await supabase
-          .from('product_collections')
-          .insert([{ product_id: productId, collection_id: selectedCollection.id }]);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('product_collections')
-          .delete()
-          .eq('product_id', productId)
-          .eq('collection_id', selectedCollection.id);
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      refetchCollectionProducts();
-      queryClient.invalidateQueries({ queryKey: ['collections'] });
-    },
-    onError: (error: any) => {
-      toast.error(`Failed to update product collection: ${error.message}`);
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else {
+      setSortKey(key);
+      setSortDir(key === 'name' ? 'asc' : 'desc');
     }
-  });
-
-  const resetForm = () => {
-    setFormData({ name: '', description: '', image_url: '' });
-    setSelectedCollection(null);
+    setPage(1);
   };
 
-  const handleEdit = (collection: Collection) => {
-    setSelectedCollection(collection);
-    setFormData({
-      name: collection.name,
-      description: collection.description || '',
-      image_url: collection.image_url || ''
-    });
-    setIsEditDialogOpen(true);
-  };
-
-  const handleManageProducts = (collection: Collection) => {
-    setSelectedCollection(collection);
-    setIsProductsDialogOpen(true);
-  };
-
-  const handleDelete = (collection: Collection) => {
-    if (confirm(`Are you sure you want to delete "${collection.name}"?`)) {
-      deleteMutation.mutate(collection.id);
-    }
-  };
-
-  const handleProductToggle = (productId: string, checked: boolean) => {
-    updateProductCollectionMutation.mutate({ productId, inCollection: checked });
-  };
+  const SortHead = ({ label, k }: { label: string; k: SortKey }) => (
+    <button
+      type="button"
+      className="inline-flex items-center gap-1 hover:text-foreground"
+      onClick={() => toggleSort(k)}
+    >
+      {label}
+      <ArrowUpDown className={cn('h-3.5 w-3.5', sortKey === k && 'text-foreground')} />
+    </button>
+  );
 
   return (
-    <Card className={`${isMobile ? 'mobile-futuristic-container border-none shadow-none bg-transparent' : ''}`}>
-      <CardHeader className={`${isMobile ? 'relative z-10' : ''}`}>
-        <CardTitle className={`flex items-center gap-2 ${isMobile ? 'text-3xl font-bold animate-fade-in' : ''}`}>
-          {isMobile ? (
-            <div className="flex items-center gap-2 text-gradient bg-gradient-to-r from-primary via-primary-glow to-accent bg-clip-text text-transparent">
-              <Sparkles className="h-8 w-8 text-primary animate-pulse" />
-              Collections
-              <Zap className="h-8 w-8 text-accent animate-pulse" />
-            </div>
-          ) : (
-            <>
-              <Folder className="h-5 w-5" />
-              Collections Management
-            </>
-          )}
-        </CardTitle>
-        <CardDescription className={`${isMobile ? 'text-lg animate-fade-in delay-200' : ''}`}>
-          {isMobile 
-            ? '🚀 Create and manage product collections with futuristic style'
-            : 'Create and manage product collections. Products can belong to multiple collections.'
-          }
-        </CardDescription>
-      </CardHeader>
-      <CardContent className={`${isMobile ? 'relative z-10 px-4' : ''}`}>
-        {/* Search and View Controls */}
-        <div className={`flex flex-col gap-4 mb-6 ${isMobile ? 'gap-6' : ''}`}>
-          <div className="flex flex-col sm:flex-row gap-4 justify-between">
-            {/* Search Bar */}
-            <div className={`relative flex-1 max-w-sm ${isMobile ? 'max-w-full' : ''}`}>
-              <Search className={`absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${isMobile ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />
-              <Input
-                placeholder={isMobile ? "🔍 Search your collections..." : "Search collections..."}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className={`${isMobile 
-                  ? 'pl-12 bg-gradient-to-r from-card/80 to-card/40 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl text-foreground placeholder:text-muted-foreground/70 focus:border-primary/50 focus:shadow-glow' 
-                  : 'pl-10'
-                }`}
-              />
-            </div>
-
-            {/* View Toggle and Create Button */}
-            <div className="flex gap-2">
-              {!isMobile && (
-                <div className="flex rounded-lg border border-border p-1">
-                  <Button
-                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('grid')}
-                    className="h-8 px-3"
-                  >
-                    <Grid3X3 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === 'list' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('list')}
-                    className="h-8 px-3"
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-              {!isMobile && (
-                <Button onClick={() => setIsCreateDialogOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Collection
-                </Button>
-              )}
-            </div>
-          </div>
-          
-          {/* Mobile View Toggle */}
-          {isMobile && (
-            <div className="flex justify-center">
-              <div className="flex rounded-2xl border border-white/20 p-1 bg-gradient-to-r from-card/80 to-card/40 backdrop-blur-xl shadow-2xl">
-                <Button
-                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('grid')}
-                  className={`h-10 px-6 rounded-xl ${viewMode === 'grid' ? 'bg-gradient-to-r from-primary to-accent text-white shadow-lg' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                  <Grid3X3 className="h-4 w-4 mr-2" />
-                  Grid
-                </Button>
-                <Button
-                  variant={viewMode === 'list' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('list')}
-                  className={`h-10 px-6 rounded-xl ${viewMode === 'list' ? 'bg-gradient-to-r from-primary to-accent text-white shadow-lg' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                  <List className="h-4 w-4 mr-2" />
-                  List
-                </Button>
-              </div>
-            </div>
-          )}
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
+            <Folder className="h-6 w-6" />
+            Collections
+          </h2>
+          <p className="text-muted-foreground text-sm mt-1">
+            Group products into curated collections for your storefront.
+          </p>
         </div>
+        <Button onClick={() => setIsCreateOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Collection
+        </Button>
+      </div>
 
-        {/* Floating Action Button for Mobile */}
-        {isMobile && (
-          <Button 
-            onClick={() => setIsCreateDialogOpen(true)}
-            className="fixed bottom-20 right-6 z-50 w-14 h-14 rounded-full p-0 bg-gradient-to-br from-primary via-primary-glow to-accent shadow-2xl border-0 hover:scale-110 hover:shadow-glow transition-all duration-300 hover:animate-pulse"
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Overview
+          </h3>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => toggleAnalytics(!showAnalytics)}
           >
-            <Plus className="h-8 w-8" />
+            <BarChart3 className="h-4 w-4 mr-2" />
+            {showAnalytics ? 'Hide Analytics' : 'Show Analytics'}
+            <ChevronDown
+              className={cn('h-4 w-4 ml-1 transition-transform', showAnalytics && 'rotate-180')}
+            />
           </Button>
-        )}
-
-        {/* Collections Display */}
-        {viewMode === 'grid' ? (
-          // Grid View
-          <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 ${isMobile ? 'gap-6 px-2' : ''}`}>
-            {filteredCollections?.map((collection) => (
-              <Card 
-                key={collection.id} 
-                className={`overflow-hidden ${isMobile 
-                  ? 'bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl hover:shadow-glow transition-all duration-500 hover:scale-[1.02] hover:bg-gradient-to-br hover:from-card/90 hover:to-card/50' 
-                  : ''
-                }`}
-              >
-                <div className={`aspect-video relative overflow-hidden ${isMobile ? 'rounded-t-3xl' : 'bg-muted'}`}>
-                  {collection.image_url ? (
-                    <img
-                      src={collection.image_url}
-                      alt={collection.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className={`w-full h-full flex items-center justify-center ${isMobile ? 'bg-gradient-to-br from-primary/10 to-accent/10 backdrop-blur-sm' : 'bg-muted/50'}`}>
-                      <div className="text-center">
-                        <ImageIcon className={`h-12 w-12 mx-auto mb-2 ${isMobile ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />
-                        <p className={`text-sm ${isMobile ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
-                          {isMobile ? '✨ No image' : 'No image'}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <CardContent className={`${isMobile ? 'p-6' : 'p-4'}`}>
-                  <div className={`flex justify-between items-start mb-2 ${isMobile ? 'gap-3' : ''}`}>
-                    <h3 className={`font-semibold ${isMobile ? 'text-lg bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent' : ''}`}>
-                      {collection.name}
-                    </h3>
-                    <Badge 
-                      variant="secondary" 
-                      className={`${isMobile 
-                        ? 'bg-gradient-to-r from-primary/20 to-accent/20 text-primary border border-primary/30 rounded-full px-3 py-1 text-xs font-medium animate-pulse' 
-                        : ''
-                      }`}
-                    >
-                      {collection.product_count} product{collection.product_count !== 1 ? 's' : ''}
-                    </Badge>
-                  </div>
-                  {collection.description && (
-                    <p className={`text-sm mb-3 ${isMobile ? 'text-muted-foreground/80 leading-relaxed' : 'text-muted-foreground'}`}>
-                      {collection.description}
-                    </p>
-                  )}
-                  <div className={`flex gap-2 ${isMobile ? 'gap-3' : ''}`}>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => handleEdit(collection)}
-                      className={`${isMobile 
-                        ? 'border-white/30 bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:scale-105 transition-all duration-300 rounded-full flex-1' 
-                        : ''
-                      }`}
-                    >
-                      <Edit className="h-3 w-3 mr-1" />
-                      Edit
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => handleManageProducts(collection)}
-                      className={`${isMobile 
-                        ? 'border-white/30 bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:scale-105 transition-all duration-300 rounded-full flex-1' 
-                        : ''
-                      }`}
-                    >
-                      <Folder className="h-3 w-3 mr-1" />
-                      Products
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="destructive" 
-                      onClick={() => handleDelete(collection)}
-                      className={`${isMobile 
-                        ? 'bg-red-500/20 border-red-300/30 text-red-400 hover:bg-red-500/30 hover:scale-105 transition-all duration-300 rounded-full w-12 h-8 p-0' 
-                        : ''
-                      }`}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          // List View
-          <>
-            <div className="hidden sm:block">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-16">Image</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Products</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="w-32">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredCollections?.map((collection) => (
-                    <TableRow key={collection.id}>
-                      <TableCell>
-                        <div className="w-12 h-12 rounded-md overflow-hidden bg-muted flex items-center justify-center">
-                          {collection.image_url ? (
-                            <img
-                              src={collection.image_url}
-                              alt={collection.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-medium">{collection.name}</TableCell>
-                      <TableCell className="max-w-xs truncate">{collection.description || '-'}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{collection.product_count}</Badge>
-                      </TableCell>
-                      <TableCell>{new Date(collection.created_at).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button size="sm" variant="outline" onClick={() => handleEdit(collection)}>
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => handleManageProducts(collection)}>
-                            <Folder className="h-3 w-3" />
-                          </Button>
-                          <Button size="sm" variant="destructive" onClick={() => handleDelete(collection)}>
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            
-            {/* Mobile List View */}
-            <div className={`sm:hidden space-y-2 ${isMobile ? 'space-y-6 px-2' : ''}`}>
-              {filteredCollections?.map((collection) => (
-                <Card 
-                  key={collection.id} 
-                  className={`${isMobile 
-                    ? 'bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl hover:shadow-glow transition-all duration-500 hover:scale-[1.02] hover:bg-gradient-to-br hover:from-card/90 hover:to-card/50' 
-                    : 'bg-gradient-card shadow-card border border-border/50'
-                  }`}
-                >
-                  <CardContent className={`${isMobile ? 'p-6' : 'p-3'}`}>
-                    <div className={`flex items-start justify-between mb-2 ${isMobile ? 'gap-4' : ''}`}>
-                      <div className="flex-1 min-w-0">
-                        <h3 className={`font-semibold text-sm truncate ${isMobile ? 'text-lg bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent' : ''}`}>
-                          {collection.name}
-                        </h3>
-                        <Badge 
-                          variant="secondary" 
-                          className={`text-xs mt-1 ${isMobile 
-                            ? 'bg-gradient-to-r from-primary/20 to-accent/20 text-primary border border-primary/30 rounded-full px-3 py-1 font-medium animate-pulse' 
-                            : ''
-                          }`}
-                        >
-                          {collection.product_count} product{collection.product_count !== 1 ? 's' : ''}
-                        </Badge>
-                      </div>
-                    </div>
-                    {collection.description && (
-                      <p className={`text-xs mb-3 line-clamp-2 ${isMobile ? 'text-sm text-muted-foreground/80 leading-relaxed' : 'text-muted-foreground'}`}>
-                        {collection.description}
-                      </p>
-                    )}
-                     <div className={`flex gap-1 ${isMobile ? 'gap-2' : ''}`}>
-                       <Button 
-                         size="sm" 
-                         variant="outline" 
-                         onClick={() => handleEdit(collection)} 
-                         className={`${isMobile 
-                           ? 'h-9 px-4 text-sm border-white/30 bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:scale-105 transition-all duration-300 rounded-2xl flex-1' 
-                           : 'h-7 px-2 text-xs'
-                         }`}
-                       >
-                         <Edit className={`${isMobile ? 'h-4 w-4 mr-2' : 'h-3 w-3 mr-1'}`} />
-                         Edit
-                       </Button>
-                       <Button 
-                         size="sm" 
-                         variant="outline" 
-                         onClick={() => handleManageProducts(collection)} 
-                         className={`${isMobile 
-                           ? 'h-9 px-3 text-sm border-white/30 bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:scale-105 transition-all duration-300 rounded-2xl flex-1' 
-                           : 'h-7 px-2 text-xs'
-                         }`}
-                       >
-                         <Folder className={`${isMobile ? 'h-4 w-4 mr-1' : 'h-3 w-3 mr-1'}`} />
-                         <span className={`${isMobile ? 'text-xs' : ''}`}>Products</span>
-                       </Button>
-                       <Button 
-                         size="sm" 
-                         variant="destructive" 
-                         onClick={() => handleDelete(collection)} 
-                         className={`${isMobile 
-                           ? 'h-9 w-12 bg-red-500/20 border-red-300/30 text-red-400 hover:bg-red-500/30 hover:scale-105 transition-all duration-300 rounded-2xl p-0' 
-                           : 'h-7 px-2'
-                         }`}
-                       >
-                         <Trash2 className={`${isMobile ? 'h-4 w-4' : 'h-3 w-3'}`} />
-                       </Button>
-                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </>
-        )}
-
-        {filteredCollections?.length === 0 && !isLoading && (
-          <div className={`text-center py-8 ${isMobile ? 'py-24 px-6' : 'text-gray-500'}`}>
-            {isMobile ? (
-              <div className="space-y-6 animate-fade-in">
-                <div className="w-32 h-32 bg-gradient-to-br from-primary/20 via-accent/20 to-primary-glow/20 rounded-full flex items-center justify-center backdrop-blur-xl border border-white/20 shadow-2xl mx-auto animate-pulse">
-                  <Folder className="h-16 w-16 text-primary animate-bounce" />
-                </div>
-                <div className="space-y-3">
-                  <h3 className="text-2xl font-bold text-gradient bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
-                    {searchQuery ? '🔍 No collections found' : '✨ No collections yet ✨'}
-                  </h3>
-                  <p className="text-base text-muted-foreground leading-relaxed max-w-md mx-auto">
-                    {searchQuery 
-                      ? 'Try a different search term or create a new collection.'
-                      : '🚀 Create your first futuristic collection to organize your products in style.'
-                    }
-                  </p>
-                </div>
-              </div>
-            ) : (
-              searchQuery ? 'No collections match your search.' : 'No collections found. Create your first collection to get started.'
-            )}
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <KpiCard title="Total Collections" value={String(kpis.total)} subtitle="All collections" icon={Folder} />
+          <KpiCard
+            title="Products Assigned"
+            value={String(kpis.productsAssigned)}
+            subtitle="Unique products"
+            icon={Package}
+          />
+          <KpiCard
+            title="Largest Collection"
+            value={String(kpis.largestCount)}
+            subtitle={kpis.largestName}
+            icon={FolderOpen}
+          />
+          <KpiCard title="Empty Collections" value={String(kpis.empty)} subtitle="No products yet" icon={Folder} />
+          <KpiCard
+            title="Avg Products"
+            value={String(kpis.avg)}
+            subtitle="Per collection"
+            icon={TrendingUp}
+          />
+        </div>
+        {showAnalytics && (
+          <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
+            <KpiCard
+              title="Collection Inventory Value"
+              value={formatRon(kpis.totalInventory)}
+              subtitle="Price × stock of assigned products"
+              icon={Wallet}
+            />
+            <KpiCard
+              title="Collection Revenue"
+              value={formatRon(kpis.totalRevenue)}
+              subtitle="From order items of assigned products"
+              icon={TrendingUp}
+            />
           </div>
         )}
+      </section>
 
-        {/* Create Collection Dialog */}
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogContent className={`${isMobile ? 'max-w-[95vw] bg-background/95 backdrop-blur-xl border border-border/50 rounded-3xl shadow-2xl' : ''}`}>
-            <DialogHeader>
-              <DialogTitle>Create New Collection</DialogTitle>
-              <DialogDescription>
-                Create a new product collection with an optional image.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="name">Collection Name</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Enter collection name"
-                />
-              </div>
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Enter collection description"
-                  className="text-base md:text-sm"
-                />
-              </div>
-              <div>
-                <Label>Collection Image</Label>
-                <CollectionImageUpload
-                  currentImageUrl={formData.image_url}
-                  onImageChange={(imageUrl) => setFormData(prev => ({ ...prev, image_url: imageUrl }))}
-                  onImageRemove={() => setFormData(prev => ({ ...prev, image_url: '' }))}
-                />
-              </div>
+      <Collapsible open={showAnalytics} onOpenChange={toggleAnalytics}>
+        <CollapsibleContent className="space-y-4">
+          <Card className="border-border/60">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Top collections by revenue</CardTitle>
+              <CardDescription>Based on order history of assigned products</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {[...collections]
+                .sort((a, b) => b.revenue - a.revenue)
+                .slice(0, 5)
+                .map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className="w-full text-left text-sm flex justify-between gap-2 hover:underline"
+                    onClick={() => setDrawerCollection(c)}
+                  >
+                    <span className="truncate">{c.name}</span>
+                    <span className="text-muted-foreground shrink-0">{formatRon(c.revenue)}</span>
+                  </button>
+                ))}
+              {!collections.some((c) => c.revenue > 0) && (
+                <p className="text-sm text-muted-foreground">No collection revenue yet.</p>
+              )}
+            </CardContent>
+          </Card>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            className="pl-10"
+            placeholder="Search collections…"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setPage(1);
+            }}
+          />
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {filtered.length} collection{filtered.length === 1 ? '' : 's'}
+        </p>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full" />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <Card className="border-dashed border-2">
+          <CardContent className="py-16 flex flex-col items-center text-center gap-4">
+            <div className="rounded-full bg-muted p-4">
+              <FolderOpen className="h-10 w-10 text-muted-foreground" />
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={() => createMutation.mutate(formData)}
-                disabled={!formData.name || createMutation.isPending}
-              >
-                <Save className="h-4 w-4 mr-2" />
+            <div className="space-y-1 max-w-md">
+              <h3 className="text-lg font-semibold">
+                {searchQuery ? 'No collections match your search' : 'Create your first collection'}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {searchQuery
+                  ? 'Try a different name or clear the search.'
+                  : 'Collections help shoppers browse related products — like “Summer Essentials” or “New Arrivals”.'}
+              </p>
+            </div>
+            {!searchQuery && (
+              <Button onClick={() => setIsCreateOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
                 Create Collection
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Edit Collection Dialog */}
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className={`${isMobile ? 'max-w-[95vw] bg-background/95 backdrop-blur-xl border border-border/50 rounded-3xl shadow-2xl' : ''}`}>
-            <DialogHeader>
-              <DialogTitle>Edit Collection</DialogTitle>
-              <DialogDescription>
-                Update collection details and image.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="edit-name">Collection Name</Label>
-                <Input
-                  id="edit-name"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Enter collection name"
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-description">Description</Label>
-                <Textarea
-                  id="edit-description"
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Enter collection description"
-                  className="text-base md:text-sm"
-                />
-              </div>
-              <div>
-                <Label>Collection Image</Label>
-                <CollectionImageUpload
-                  collectionId={selectedCollection?.id}
-                  currentImageUrl={formData.image_url}
-                  onImageChange={(imageUrl) => setFormData(prev => ({ ...prev, image_url: imageUrl }))}
-                  onImageRemove={() => setFormData(prev => ({ ...prev, image_url: '' }))}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={() => updateMutation.mutate(formData)}
-                disabled={!formData.name || updateMutation.isPending}
-              >
-                <Save className="h-4 w-4 mr-2" />
-                Update Collection
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Manage Products Dialog */}
-        <Dialog open={isProductsDialogOpen} onOpenChange={setIsProductsDialogOpen}>
-          <DialogContent className={`max-w-4xl ${isMobile ? 'max-w-[95vw] bg-background/95 backdrop-blur-xl border border-border/50 rounded-3xl shadow-2xl' : ''}`}>
-            <DialogHeader>
-              <DialogTitle>Manage Products in "{selectedCollection?.name}"</DialogTitle>
-              <DialogDescription>
-                Select which products should be included in this collection.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="max-h-96 overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">Include</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead>SKU</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Category</TableHead>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <div className="rounded-lg border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[56px]" />
+                  <TableHead>
+                    <SortHead label="Collection" k="name" />
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <SortHead label="Products" k="product_count" />
+                  </TableHead>
+                  <TableHead className="text-right hidden md:table-cell">
+                    <SortHead label="Inventory" k="inventory_value" />
+                  </TableHead>
+                  <TableHead className="text-right hidden lg:table-cell">
+                    <SortHead label="Revenue" k="revenue" />
+                  </TableHead>
+                  <TableHead className="hidden sm:table-cell">
+                    <SortHead label="Updated" k="updated_at" />
+                  </TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((c) => (
+                  <TableRow
+                    key={c.id}
+                    className="cursor-pointer"
+                    onClick={() => setDrawerCollection(c)}
+                  >
+                    <TableCell>
+                      <div className="h-10 w-10 rounded-md overflow-hidden bg-muted flex items-center justify-center border">
+                        {c.image_url ? (
+                          <img src={c.image_url} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <Folder className="h-4 w-4 text-muted-foreground/50" />
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-medium">{c.name}</div>
+                      {c.description && (
+                        <div className="text-xs text-muted-foreground line-clamp-1 max-w-xs">
+                          {c.description}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      <Badge variant="secondary">{c.product_count}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums hidden md:table-cell">
+                      {formatRon(c.inventory_value)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums hidden lg:table-cell">
+                      {formatRon(c.revenue)}
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
+                      {new Date(c.updated_at).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setDrawerCollection(c)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive"
+                          onClick={() => {
+                            if (confirm(`Delete "${c.name}"?`)) deleteMutation.mutate(c.id);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {collectionProducts?.map((product) => (
-                    <TableRow key={product.id}>
-                      <TableCell>
-                        <Checkbox
-                          checked={product.is_in_collection}
-                          onCheckedChange={(checked) => handleProductToggle(product.id, checked as boolean)}
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium">{product.title}</TableCell>
-                      <TableCell>{product.sku || '-'}</TableCell>
-                      <TableCell>{product.price.toFixed(2)} RON</TableCell>
-                      <TableCell>{product.category || '-'}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            <DialogFooter>
-              <Button onClick={() => setIsProductsDialogOpen(false)}>
-                Close
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">
+              Page {pageSafe} of {totalPages}
+            </p>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={pageSafe <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Previous
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </CardContent>
-    </Card>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={pageSafe >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create collection</DialogTitle>
+            <DialogDescription>You can add products and an image after creating.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Name</Label>
+              <Input
+                value={createForm.name}
+                onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                placeholder="e.g. Summer Essentials"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={createForm.description}
+                onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={!createForm.name.trim() || createMutation.isPending}
+              onClick={() => createMutation.mutate(createForm)}
+            >
+              {createMutation.isPending ? 'Creating…' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <CollectionEditorDrawer
+        collection={drawerCollectionSynced}
+        open={!!drawerCollection}
+        onOpenChange={(o) => {
+          if (!o) setDrawerCollection(null);
+        }}
+        products={products.map((p) => ({
+          id: p.id,
+          title: p.title,
+          sku: p.sku,
+          price: Number(p.price),
+          category: p.category,
+        }))}
+        assignedProductIds={assignedIdsForDrawer}
+        bestSellers={bestSellersForDrawer}
+        onSaved={() => {
+          queryClient.invalidateQueries({ queryKey: ['collections'] });
+          queryClient.invalidateQueries({ queryKey: ['product-collections-map'] });
+        }}
+        onDeleted={(id) => deleteMutation.mutate(id)}
+      />
+    </div>
   );
 };
 

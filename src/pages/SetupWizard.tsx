@@ -273,13 +273,15 @@ const SetupWizard = () => {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <p className="text-sm text-muted-foreground">
-                      To accept card payments, you'll need a Netopia merchant account. Follow these steps:
+                      To accept card payments, create a Netopia merchant account and add these credentials in Store Settings → Payment Provider:
                     </p>
                     
                     <ol className="space-y-2 text-sm list-decimal list-inside">
-                      <li>Create a Netopia merchant account at <a href="https://netopia-payments.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">netopia-payments.com</a></li>
-                      <li>Get your API credentials (POS ID, API Key, Public Key, Signature)</li>
-                      <li>Add them in Store Settings → Payment Provider</li>
+                      <li>Create and activate an account at <a href="https://netopia-payments.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">netopia-payments.com</a></li>
+                      <li><strong>API Key</strong> (required) — Admin → Profile → Security</li>
+                      <li><strong>POS Signature</strong> (required) — Admin → Point of Sale → Technical Settings</li>
+                      <li><strong>Public Key</strong> (optional) — same Technical Settings page; used for IPN verification</li>
+                      <li>Choose Sandbox for testing or Live for production (keys are environment-specific)</li>
                     </ol>
 
                     <div className="flex flex-col gap-2">

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Eye, Package, Truck, X, Receipt, Send, ExternalLink, Edit, Search, CreditCard } from 'lucide-react';
+import { Eye, Package, Truck, X, Receipt, Send, ExternalLink, Edit, Search, CreditCard, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -13,6 +13,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ResponsiveOrderTable } from './ResponsiveOrderTable';
 import { AWBCreationModal } from './AWBCreationModal';
+import { PendingCheckoutsSection } from './PendingCheckoutsSection';
+import { AbandonedCartsSection } from './AbandonedCartsSection';
 
 interface Order {
   id: string;
@@ -21,7 +23,7 @@ interface Order {
   customer_phone: string;
   customer_address: string;
   total: number;
-  payment_status: 'pending' | 'paid' | 'failed' | 'refunded' | 'invoiced';
+  payment_status: 'pending' | 'paid' | 'failed' | 'refunded' | 'invoiced' | 'cash';
   shipping_status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   created_at: string;
   invoice_link?: string;
@@ -136,18 +138,29 @@ const OrderManagement = () => {
     }
   };
 
-  const { data: orders, isLoading, refetch } = useQuery({
+  const { data: orders, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['orders'],
     queryFn: async () => {
+      // Hide legacy unpaid card attempts; checkout sessions never become orders until paid
       const { data, error } = await supabase
         .from('orders')
         .select('*')
+        .or('order_status.is.null,order_status.neq.awaiting_payment')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
       return data as Order[];
     }
   });
+
+  const handleRefreshOrders = async () => {
+    try {
+      await refetch();
+      toast.success('Orders refreshed');
+    } catch {
+      toast.error('Failed to refresh orders');
+    }
+  };
 
   const updateOrderMutation = useMutation({
     mutationFn: async ({ id, field, value }: { id: string; field: string; value: string }) => {
@@ -285,16 +298,22 @@ const OrderManagement = () => {
       const { data, error } = await supabase.functions.invoke('eawb-delivery', {
         body: {
           action: 'cancel_order',
-          orderId: orderId
+          order_id: orderId
         }
       });
 
       if (error) {
-        throw new Error(error.message);
+        let message = error.message;
+        try {
+          const body = await (error as any)?.context?.json?.();
+          if (body?.message) message = body.message;
+          else if (body?.error) message = body.error;
+        } catch (_e) { /* ignore */ }
+        throw new Error(message);
       }
 
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to cancel AWB');
+      if (!data?.success) {
+        throw new Error(data?.message || data?.error || 'Failed to cancel AWB');
       }
 
       toast.success('AWB cancelled successfully');
@@ -343,6 +362,7 @@ const OrderManagement = () => {
   const getStatusBadge = (status: string, type: 'payment' | 'shipping') => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
       pending: 'outline',
+      cash: 'outline',
       processing: 'secondary',
       paid: 'default',
       shipped: 'default',
@@ -381,14 +401,28 @@ const OrderManagement = () => {
   }
 
   return (
-    <Card>
+    <div className="space-y-4">
+      <AbandonedCartsSection />
+      <PendingCheckoutsSection />
+
+      <Card>
       <CardHeader>
         <div className="flex flex-col gap-4">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center gap-3">
             <div>
               <CardTitle>Orders</CardTitle>
               <CardDescription>Manage customer orders and fulfillment</CardDescription>
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleRefreshOrders}
+              disabled={isFetching}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
           </div>
           <div className="relative w-full max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -431,6 +465,7 @@ const OrderManagement = () => {
           </div>
         )}
       </CardContent>
+      </Card>
 
       {selectedOrder && (
         <AWBCreationModal
@@ -471,6 +506,7 @@ const OrderManagement = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="cash">Cash</SelectItem>
                           <SelectItem value="paid">Paid</SelectItem>
                           <SelectItem value="failed">Failed</SelectItem>
                           <SelectItem value="refunded">Refunded</SelectItem>
@@ -768,7 +804,7 @@ const OrderManagement = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </Card>
+    </div>
   );
 };
 

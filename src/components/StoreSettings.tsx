@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Copy, RefreshCw, Eye, Code, Settings, ChevronDown, FileText, CreditCard, Truck } from 'lucide-react';
+import { Copy, RefreshCw, Eye, Code, Settings, ChevronDown, FileText, CreditCard, Truck, HelpCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,11 +10,31 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { EAWBConnectionTest } from './EAWBConnectionTest';
 import { EAWBDiagnosis } from './EAWBDiagnosis';
+
+const NetopiaCredentialHelp = ({ title, children }: { title: string; children: ReactNode }) => (
+  <Popover>
+    <PopoverTrigger asChild>
+      <button
+        type="button"
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+        aria-label={`Where do I find ${title}?`}
+      >
+        <HelpCircle className="h-3.5 w-3.5" />
+        Where do I find this?
+      </button>
+    </PopoverTrigger>
+    <PopoverContent className="w-80 text-sm" align="start">
+      <p className="font-medium mb-1">{title}</p>
+      <div className="text-muted-foreground space-y-1">{children}</div>
+    </PopoverContent>
+  </Popover>
+);
 
 interface Profile {
   id: string;
@@ -35,6 +55,7 @@ interface Profile {
   netpopia_name?: string;
   netpopia_email?: string;
   netpopia_signature?: string;
+  netpopia_public_key?: string;
   netpopia_sandbox?: boolean;
   woot_api_key?: string;
   woot_name?: string;
@@ -45,6 +66,7 @@ interface Profile {
   eawb_phone?: string;
   eawb_address?: string;
   eawb_billing_address_id?: number;
+  eawb_shipping_address_id?: number;
   eawb_default_carrier_id?: number;
   eawb_default_service_id?: number;
   cash_payment_enabled?: boolean;
@@ -69,9 +91,9 @@ const StoreSettings = () => {
   const [providerConfigs, setProviderConfigs] = useState({
     oblio: { api_key: '', name: '', email: '', series_name: '', first_number: '' },
     sameday: { api_key: '', name: '', email: '' },
-    netpopia: { api_key: '', name: '', email: '', signature: '', sandbox: true },
+    netpopia: { api_key: '', name: '', email: '', signature: '', public_key: '', sandbox: true },
     woot: { api_key: '', name: '', email: '' },
-    eawb: { api_key: '', name: '', email: '', phone: '', address: '', billing_address_id: '', default_carrier_id: '', default_service_id: '' }
+    eawb: { api_key: '', name: '', email: '', phone: '', address: '', billing_address_id: '', shipping_address_id: '', default_carrier_id: '', default_service_id: '' }
   });
   const [feeSettings, setFeeSettings] = useState({
     cash_payment_enabled: true,
@@ -81,17 +103,21 @@ const StoreSettings = () => {
   });
   
   // eAWB fetch states
-  const [eawbData, setEawbData] = useState<{ billingAddresses: any[]; carriers: any[]; services: any[] }>({
+  const [eawbData, setEawbData] = useState<{ billingAddresses: any[]; shippingAddresses: any[]; carriers: any[]; services: any[] }>({
     billingAddresses: [],
+    shippingAddresses: [],
     carriers: [],
     services: [],
   });
   const [eawbLoading, setEawbLoading] = useState({
     billingAddresses: false,
+    shippingAddresses: false,
     carriers: false,
     services: false,
   });
+  const [shippingAddressSearch, setShippingAddressSearch] = useState('');
   const [selectedCarrierForServices, setSelectedCarrierForServices] = useState('');
+  const [netopiaTestLoading, setNetopiaTestLoading] = useState(false);
   
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -132,6 +158,7 @@ const StoreSettings = () => {
           name: profile.netpopia_name || '',
           email: profile.netpopia_email || '',
           signature: profile.netpopia_signature || '',
+          public_key: profile.netpopia_public_key || '',
           sandbox: profile.netpopia_sandbox ?? true
         },
         woot: {
@@ -146,6 +173,7 @@ const StoreSettings = () => {
           phone: profile.eawb_phone || '',
           address: profile.eawb_address || '',
           billing_address_id: profile.eawb_billing_address_id?.toString() || '',
+          shipping_address_id: profile.eawb_shipping_address_id?.toString() || '',
           default_carrier_id: profile.eawb_default_carrier_id?.toString() || '',
           default_service_id: profile.eawb_default_service_id?.toString() || ''
         }
@@ -213,6 +241,7 @@ const StoreSettings = () => {
       netpopia_name: providerConfigs.netpopia.name,
       netpopia_email: providerConfigs.netpopia.email,
       netpopia_signature: providerConfigs.netpopia.signature,
+      netpopia_public_key: providerConfigs.netpopia.public_key || null,
       netpopia_sandbox: providerConfigs.netpopia.sandbox,
       woot_api_key: providerConfigs.woot.api_key,
       woot_name: providerConfigs.woot.name,
@@ -223,6 +252,7 @@ const StoreSettings = () => {
       eawb_phone: providerConfigs.eawb.phone,
       eawb_address: providerConfigs.eawb.address,
       eawb_billing_address_id: providerConfigs.eawb.billing_address_id ? parseInt(providerConfigs.eawb.billing_address_id) : null,
+      eawb_shipping_address_id: providerConfigs.eawb.shipping_address_id ? parseInt(providerConfigs.eawb.shipping_address_id) : null,
       eawb_default_carrier_id: providerConfigs.eawb.default_carrier_id ? parseInt(providerConfigs.eawb.default_carrier_id) : null,
       eawb_default_service_id: providerConfigs.eawb.default_service_id ? parseInt(providerConfigs.eawb.default_service_id) : null,
       cash_payment_enabled: feeSettings.cash_payment_enabled,
@@ -232,7 +262,7 @@ const StoreSettings = () => {
     });
   };
 
-  const updateProviderConfig = (provider: 'oblio' | 'sameday' | 'netpopia' | 'woot' | 'eawb', field: 'api_key' | 'name' | 'email' | 'series_name' | 'first_number' | 'signature' | 'sandbox' | 'phone' | 'address' | 'billing_address_id' | 'default_carrier_id' | 'default_service_id', value: string | boolean) => {
+  const updateProviderConfig = (provider: 'oblio' | 'sameday' | 'netpopia' | 'woot' | 'eawb', field: 'api_key' | 'name' | 'email' | 'series_name' | 'first_number' | 'signature' | 'public_key' | 'sandbox' | 'phone' | 'address' | 'billing_address_id' | 'shipping_address_id' | 'default_carrier_id' | 'default_service_id', value: string | boolean) => {
     setProviderConfigs(prev => ({
       ...prev,
       [provider]: {
@@ -240,6 +270,110 @@ const StoreSettings = () => {
         [field]: value
       }
     }));
+  };
+
+  const testNetopiaConnection = async () => {
+    if (!providerConfigs.netpopia.api_key?.trim()) {
+      toast.error('Missing API Key. Add it from Netopia Admin → Profile → Security.');
+      return;
+    }
+    if (!providerConfigs.netpopia.signature?.trim()) {
+      toast.error('Missing POS Signature. Add it from Netopia Admin → Point of Sale → Technical Settings.');
+      return;
+    }
+
+    setNetopiaTestLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('netopia-payment', {
+        body: {
+          action: 'test_connection',
+          api_key: providerConfigs.netpopia.api_key,
+          signature: providerConfigs.netpopia.signature,
+          public_key: providerConfigs.netpopia.public_key || null,
+          sandbox: providerConfigs.netpopia.sandbox,
+        },
+      });
+
+      if (error) {
+        toast.error(error.message || 'Connection test failed.');
+        return;
+      }
+
+      if (data?.success) {
+        toast.success(data.message || 'Netopia connection successful.');
+      } else {
+        toast.error(data?.error || 'Connection test failed.');
+      }
+    } catch (e: any) {
+      toast.error(e?.message || 'Connection test failed.');
+    } finally {
+      setNetopiaTestLoading(false);
+    }
+  };
+
+  const formatShippingAddressLabel = (addr: any) => {
+    const who = addr.company || addr.contact || `Address ${addr.id}`;
+    const place = [addr.locality_name, addr.street_name, addr.street_no].filter(Boolean).join(', ');
+    const suffix = addr.is_default ? ' (default)' : '';
+    return place ? `${who} — ${place}${suffix}` : `${who}${suffix}`;
+  };
+
+  const saveShippingAddressId = (addressId: string) => {
+    updateProviderConfig('eawb', 'shipping_address_id', addressId);
+    updateProfileMutation.mutate({
+      eawb_shipping_address_id: parseInt(addressId, 10)
+    });
+  };
+
+  const fetchEawbShippingAddresses = async () => {
+    if (!providerConfigs.eawb?.api_key) {
+      toast.error('Please enter and save your eAWB API key first');
+      return;
+    }
+
+    setEawbLoading(prev => ({ ...prev, shippingAddresses: true }));
+    setShippingAddressSearch('');
+
+    try {
+      const { data, error } = await supabase.functions.invoke('eawb-delivery', {
+        body: { action: 'fetch_shipping_addresses' }
+      });
+
+      const payload: any = data ?? (error as any)?.context ?? null;
+
+      if (payload?.error === 'NO_SHIPPING_ADDRESS') {
+        setEawbData(prev => ({ ...prev, shippingAddresses: [] }));
+        toast.error('No pickup (shipping) address found in your Europarcel account. Create one in your Europarcel dashboard, then retrieve again.');
+        return;
+      }
+
+      if (error) throw error;
+
+      if (payload?.success) {
+        const list = payload.shipping_addresses || [];
+        setEawbData(prev => ({ ...prev, shippingAddresses: list }));
+
+        if (payload.selected_shipping_address_id) {
+          const selected = list.find((a: any) => Number(a.id) === Number(payload.selected_shipping_address_id));
+          updateProviderConfig('eawb', 'shipping_address_id', String(payload.selected_shipping_address_id));
+          toast.success(
+            selected
+              ? `Pickup address linked: ${formatShippingAddressLabel(selected)}. It will be used for all future AWB generation.`
+              : 'Pickup address linked automatically. It will be used for all future AWB generation.'
+          );
+          queryClient.invalidateQueries({ queryKey: ['profile'] });
+        } else {
+          toast.success(`${list.length} pickup addresses found — please select one`);
+        }
+      } else {
+        throw new Error(payload?.message || payload?.error || 'Failed to fetch pickup addresses');
+      }
+    } catch (error: any) {
+      console.error('Error fetching shipping addresses:', error);
+      toast.error('Failed to fetch pickup addresses: ' + error.message);
+    } finally {
+      setEawbLoading(prev => ({ ...prev, shippingAddresses: false }));
+    }
   };
 
   const fetchEawbBillingAddresses = async () => {
@@ -1031,6 +1165,64 @@ class StoreAPI {
                                       {eawbLoading.billingAddresses ? 'Retrieving...' : 'Retrieve billing address'}
                                     </Button>
                                   </div>
+                                  <div className="space-y-2">
+                                    <Label>Pickup Address</Label>
+                                    {eawbData.shippingAddresses.length > 1 ? (
+                                      <div className="space-y-2">
+                                        <Input
+                                          value={shippingAddressSearch}
+                                          onChange={(e) => setShippingAddressSearch(e.target.value)}
+                                          placeholder="Search pickup addresses..."
+                                        />
+                                        <Select
+                                          value={providerConfigs.eawb?.shipping_address_id || ''}
+                                          onValueChange={saveShippingAddressId}
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select a pickup address" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {eawbData.shippingAddresses
+                                              .filter((addr: any) => {
+                                                if (!shippingAddressSearch.trim()) return true;
+                                                return formatShippingAddressLabel(addr)
+                                                  .toLowerCase()
+                                                  .includes(shippingAddressSearch.trim().toLowerCase());
+                                              })
+                                              .map((addr: any) => (
+                                                <SelectItem key={addr.id} value={String(addr.id)}>
+                                                  {formatShippingAddressLabel(addr)}
+                                                </SelectItem>
+                                              ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    ) : providerConfigs.eawb?.shipping_address_id ? (
+                                      <p className="text-sm text-muted-foreground">
+                                        {(() => {
+                                          const selected = eawbData.shippingAddresses.find(
+                                            (a: any) => String(a.id) === providerConfigs.eawb?.shipping_address_id
+                                          );
+                                          return selected
+                                            ? `${formatShippingAddressLabel(selected)}. This pickup address will be used for all future AWB generation.`
+                                            : `Pickup address #${providerConfigs.eawb.shipping_address_id} linked. It will be used for all future AWB generation.`;
+                                        })()}
+                                      </p>
+                                    ) : (
+                                      <p className="text-sm text-muted-foreground">
+                                        Not linked yet — click the button below to retrieve shipping (pickup) addresses from your Europarcel account. At least one pickup address is required for AWB generation.
+                                      </p>
+                                    )}
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={fetchEawbShippingAddresses}
+                                      disabled={eawbLoading.shippingAddresses}
+                                    >
+                                      {eawbLoading.shippingAddresses ? 'Retrieving...' : 'Retrieve Pickup Addresses'}
+                                    </Button>
+                                  </div>
                                  <div className="grid grid-cols-2 gap-4">
                                    <div className="space-y-2">
                                      <Label htmlFor="eawb-default-carrier">Default Carrier ID</Label>
@@ -1184,72 +1376,91 @@ class StoreAPI {
                         
                         {integrations.payment === 'netpopia' && (
                           <div className="mt-4 space-y-4">
-                            <h4 className="font-medium">Netpopia Configuration</h4>
+                            <h4 className="font-medium">Netopia Payments (API v2)</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Required: API Key and POS Signature. Public Key is optional and used to verify payment notifications (IPN).
+                            </p>
                             <div className="grid gap-4">
                               <div className="space-y-2">
-                                <Label htmlFor="netpopia-api-key">API Key</Label>
+                                <div className="flex items-center justify-between gap-2">
+                                  <Label htmlFor="netpopia-api-key">API Key *</Label>
+                                  <NetopiaCredentialHelp title="API Key">
+                                    <p>In the Netopia admin dashboard, open <strong>Profile → Security</strong> and generate or copy your API Key.</p>
+                                    <p>Sandbox and Live each have their own keys — they are not interchangeable.</p>
+                                  </NetopiaCredentialHelp>
+                                </div>
                                 <Input
                                   id="netpopia-api-key"
                                   type="password"
                                   value={providerConfigs.netpopia.api_key}
                                   onChange={(e) => updateProviderConfig('netpopia', 'api_key', e.target.value)}
-                                  placeholder="Enter your Netpopia API key"
+                                  placeholder="API key from Profile → Security"
                                 />
                               </div>
                               <div className="space-y-2">
-                                <Label htmlFor="netpopia-name">Company Name</Label>
+                                <div className="flex items-center justify-between gap-2">
+                                  <Label htmlFor="netpopia-signature">POS Signature *</Label>
+                                  <NetopiaCredentialHelp title="POS Signature">
+                                    <p>In Netopia admin, open <strong>Point of Sale → Technical Settings</strong> for your store POS and copy the Signature (format like XXXX-XXXX-XXXX-XXXX).</p>
+                                  </NetopiaCredentialHelp>
+                                </div>
                                 <Input
-                                  id="netpopia-name"
-                                  value={providerConfigs.netpopia.name}
-                                  onChange={(e) => updateProviderConfig('netpopia', 'name', e.target.value)}
-                                  placeholder="Enter your company name"
+                                  id="netpopia-signature"
+                                  type="password"
+                                  value={providerConfigs.netpopia.signature}
+                                  onChange={(e) => updateProviderConfig('netpopia', 'signature', e.target.value)}
+                                  placeholder="POS signature from Technical Settings"
+                                  required
                                 />
                               </div>
-                               <div className="space-y-2">
-                                 <Label htmlFor="netpopia-email">Email Address</Label>
-                                 <Input
-                                   id="netpopia-email"
-                                   type="email"
-                                   value={providerConfigs.netpopia.email}
-                                   onChange={(e) => updateProviderConfig('netpopia', 'email', e.target.value)}
-                                   placeholder="Enter your email address"
-                                 />
-                               </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="netpopia-signature">POS Signature *</Label>
-                                  <Input
-                                    id="netpopia-signature"
-                                    type="password"
-                                    value={providerConfigs.netpopia.signature}
-                                    onChange={(e) => updateProviderConfig('netpopia', 'signature', e.target.value)}
-                                    placeholder="Enter your POS signature"
-                                    required
-                                  />
-                                  <p className="text-xs text-muted-foreground">
-                                    Required for payment processing. Found in your Netpopia admin panel.
-                                  </p>
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between gap-2">
+                                  <Label htmlFor="netpopia-public-key">Public Key (optional)</Label>
+                                  <NetopiaCredentialHelp title="Public Key">
+                                    <p>Also found under <strong>Point of Sale → Technical Settings</strong>.</p>
+                                    <p>Paste the certificate/public key PEM used to verify IPN JWT tokens. Existing merchants can leave this empty.</p>
+                                  </NetopiaCredentialHelp>
                                 </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="netpopia-sandbox">Environment</Label>
-                                 <Select
-                                   value={providerConfigs.netpopia.sandbox ? 'sandbox' : 'live'}
-                                   onValueChange={(value) => updateProviderConfig('netpopia', 'sandbox', value === 'sandbox')}
-                                 >
-                                   <SelectTrigger>
-                                     <SelectValue />
-                                   </SelectTrigger>
-                                   <SelectContent>
-                                     <SelectItem value="sandbox">Sandbox (Testing)</SelectItem>
-                                     <SelectItem value="live">Live (Production)</SelectItem>
-                                   </SelectContent>
-                                 </Select>
-                                 <p className="text-xs text-muted-foreground">
-                                   Use sandbox for testing, live for production
-                                 </p>
-                               </div>
-                             </div>
-                           </div>
-                          )}
+                                <Textarea
+                                  id="netpopia-public-key"
+                                  value={providerConfigs.netpopia.public_key || ''}
+                                  onChange={(e) => updateProviderConfig('netpopia', 'public_key', e.target.value)}
+                                  placeholder="-----BEGIN CERTIFICATE----- or -----BEGIN PUBLIC KEY-----"
+                                  className="min-h-[100px] font-mono text-xs"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="netpopia-sandbox">Environment</Label>
+                                <Select
+                                  value={providerConfigs.netpopia.sandbox ? 'sandbox' : 'live'}
+                                  onValueChange={(value) => updateProviderConfig('netpopia', 'sandbox', value === 'sandbox')}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="sandbox">Sandbox (Testing)</SelectItem>
+                                    <SelectItem value="live">Live (Production)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <p className="text-xs text-muted-foreground">
+                                  Use Sandbox credentials only in Sandbox mode, and Live credentials only in Live mode.
+                                </p>
+                              </div>
+                              <div className="pt-1">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={testNetopiaConnection}
+                                  disabled={netopiaTestLoading}
+                                >
+                                  {netopiaTestLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                                  Test Netopia Connection
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </CollapsibleContent>
                   </Collapsible>
@@ -1478,72 +1689,88 @@ class StoreAPI {
                     
                     {integrations.payment === 'netpopia' && (
                       <div className="space-y-4">
-                        <h4 className="font-medium">Netpopia Configuration</h4>
+                        <h4 className="font-medium">Netopia Payments (API v2)</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Required: API Key and POS Signature. Public Key is optional for IPN verification.
+                        </p>
                         <div className="space-y-4">
                           <div className="space-y-2">
-                            <Label htmlFor="mobile-netpopia-api-key">API Key</Label>
+                            <div className="flex items-center justify-between gap-2">
+                              <Label htmlFor="mobile-netpopia-api-key">API Key *</Label>
+                              <NetopiaCredentialHelp title="API Key">
+                                <p>Netopia admin → <strong>Profile → Security</strong>. Sandbox and Live keys are different.</p>
+                              </NetopiaCredentialHelp>
+                            </div>
                             <Input
                               id="mobile-netpopia-api-key"
                               type="password"
                               value={providerConfigs.netpopia.api_key}
                               onChange={(e) => updateProviderConfig('netpopia', 'api_key', e.target.value)}
-                              placeholder="Enter your Netpopia API key"
+                              placeholder="API key from Profile → Security"
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="mobile-netpopia-name">Company Name</Label>
+                            <div className="flex items-center justify-between gap-2">
+                              <Label htmlFor="mobile-netpopia-signature">POS Signature *</Label>
+                              <NetopiaCredentialHelp title="POS Signature">
+                                <p>Netopia admin → <strong>Point of Sale → Technical Settings</strong>.</p>
+                              </NetopiaCredentialHelp>
+                            </div>
                             <Input
-                              id="mobile-netpopia-name"
-                              value={providerConfigs.netpopia.name}
-                              onChange={(e) => updateProviderConfig('netpopia', 'name', e.target.value)}
-                              placeholder="Enter your company name"
+                              id="mobile-netpopia-signature"
+                              type="password"
+                              value={providerConfigs.netpopia.signature}
+                              onChange={(e) => updateProviderConfig('netpopia', 'signature', e.target.value)}
+                              placeholder="POS signature from Technical Settings"
+                              required
                             />
                           </div>
-                           <div className="space-y-2">
-                             <Label htmlFor="mobile-netpopia-email">Email Address</Label>
-                             <Input
-                               id="mobile-netpopia-email"
-                               type="email"
-                               value={providerConfigs.netpopia.email}
-                               onChange={(e) => updateProviderConfig('netpopia', 'email', e.target.value)}
-                               placeholder="Enter your email address"
-                             />
-                           </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="mobile-netpopia-signature">POS Signature *</Label>
-                              <Input
-                                id="mobile-netpopia-signature"
-                                type="password"
-                                value={providerConfigs.netpopia.signature}
-                                onChange={(e) => updateProviderConfig('netpopia', 'signature', e.target.value)}
-                                placeholder="Enter your POS signature"
-                                required
-                              />
-                              <p className="text-xs text-muted-foreground">
-                                Required for payment processing. Found in your Netpopia admin panel.
-                              </p>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <Label htmlFor="mobile-netpopia-public-key">Public Key (optional)</Label>
+                              <NetopiaCredentialHelp title="Public Key">
+                                <p>Same Technical Settings page. Used to verify IPN JWTs. Optional for existing merchants.</p>
+                              </NetopiaCredentialHelp>
                             </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="mobile-netpopia-sandbox">Environment</Label>
-                             <Select
-                               value={providerConfigs.netpopia.sandbox ? 'sandbox' : 'live'}
-                               onValueChange={(value) => updateProviderConfig('netpopia', 'sandbox', value === 'sandbox')}
-                             >
-                               <SelectTrigger>
-                                 <SelectValue />
-                               </SelectTrigger>
-                               <SelectContent className="z-50 bg-background border border-border/50">
-                                 <SelectItem value="sandbox">Sandbox (Testing)</SelectItem>
-                                 <SelectItem value="live">Live (Production)</SelectItem>
-                               </SelectContent>
-                             </Select>
-                             <p className="text-xs text-muted-foreground">
-                               Use sandbox for testing, live for production
-                             </p>
-                           </div>
-                         </div>
-                       </div>
-                     )}
+                            <Textarea
+                              id="mobile-netpopia-public-key"
+                              value={providerConfigs.netpopia.public_key || ''}
+                              onChange={(e) => updateProviderConfig('netpopia', 'public_key', e.target.value)}
+                              placeholder="-----BEGIN CERTIFICATE----- or -----BEGIN PUBLIC KEY-----"
+                              className="min-h-[100px] font-mono text-xs"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="mobile-netpopia-sandbox">Environment</Label>
+                            <Select
+                              value={providerConfigs.netpopia.sandbox ? 'sandbox' : 'live'}
+                              onValueChange={(value) => updateProviderConfig('netpopia', 'sandbox', value === 'sandbox')}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="z-50 bg-background border border-border/50">
+                                <SelectItem value="sandbox">Sandbox (Testing)</SelectItem>
+                                <SelectItem value="live">Live (Production)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                              Sandbox and Live credentials are not interchangeable.
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={testNetopiaConnection}
+                            disabled={netopiaTestLoading}
+                            className="w-full"
+                          >
+                            {netopiaTestLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                            Test Netopia Connection
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </CollapsibleContent>
                 </Collapsible>
 
@@ -1756,6 +1983,64 @@ class StoreAPI {
                                 {eawbLoading.billingAddresses ? 'Retrieving...' : 'Retrieve billing address'}
                               </Button>
                                   </div>
+                            <div className="space-y-2">
+                              <Label>Pickup Address</Label>
+                              {eawbData.shippingAddresses.length > 1 ? (
+                                <div className="space-y-2">
+                                  <Input
+                                    value={shippingAddressSearch}
+                                    onChange={(e) => setShippingAddressSearch(e.target.value)}
+                                    placeholder="Search pickup addresses..."
+                                  />
+                                  <Select
+                                    value={providerConfigs.eawb?.shipping_address_id || ''}
+                                    onValueChange={saveShippingAddressId}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select a pickup address" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {eawbData.shippingAddresses
+                                        .filter((addr: any) => {
+                                          if (!shippingAddressSearch.trim()) return true;
+                                          return formatShippingAddressLabel(addr)
+                                            .toLowerCase()
+                                            .includes(shippingAddressSearch.trim().toLowerCase());
+                                        })
+                                        .map((addr: any) => (
+                                          <SelectItem key={addr.id} value={String(addr.id)}>
+                                            {formatShippingAddressLabel(addr)}
+                                          </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              ) : providerConfigs.eawb?.shipping_address_id ? (
+                                <p className="text-sm text-muted-foreground">
+                                  {(() => {
+                                    const selected = eawbData.shippingAddresses.find(
+                                      (a: any) => String(a.id) === providerConfigs.eawb?.shipping_address_id
+                                    );
+                                    return selected
+                                      ? `${formatShippingAddressLabel(selected)}. This pickup address will be used for all future AWB generation.`
+                                      : `Pickup address #${providerConfigs.eawb.shipping_address_id} linked. It will be used for all future AWB generation.`;
+                                  })()}
+                                </p>
+                              ) : (
+                                <p className="text-sm text-muted-foreground">
+                                  Not linked yet — click the button below to retrieve shipping (pickup) addresses from your Europarcel account. At least one pickup address is required for AWB generation.
+                                </p>
+                              )}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={fetchEawbShippingAddresses}
+                                disabled={eawbLoading.shippingAddresses}
+                              >
+                                {eawbLoading.shippingAddresses ? 'Retrieving...' : 'Retrieve Pickup Addresses'}
+                              </Button>
+                            </div>
                             <div className="grid grid-cols-1 gap-4">
                               <div className="space-y-2">
                                 <Label htmlFor="mobile-eawb-default-carrier">Default Carrier ID</Label>

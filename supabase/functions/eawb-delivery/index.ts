@@ -20,7 +20,20 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { action, order_id, package_details, selected_carrier, selected_service, address_override, carrier_id, city, county } = await req.json();
+    const body = await req.json();
+    const {
+      action,
+      order_id: orderIdFromBody,
+      orderId,
+      package_details,
+      selected_carrier,
+      selected_service,
+      address_override,
+      carrier_id,
+      city,
+      county
+    } = body;
+    const order_id = orderIdFromBody || orderId;
     console.log('Request:', { action, order_id, selected_carrier, selected_service, carrier_id, city, county });
 
     // Get authenticated user
@@ -134,6 +147,108 @@ serve(async (req) => {
         success: true,
         billing_addresses: billingList,
         selected_billing_address_id: savedId
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Fetch shipping (pickup) addresses from eAWB API (GET /addresses/shipping)
+    if (action === 'fetch_shipping_addresses') {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('eawb_api_key')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile?.eawb_api_key) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'MISSING_API_KEY',
+          message: 'eAWB API key not configured'
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      const shippingUrl = `${EAWB_BASE_URL}/addresses/shipping?all=true`;
+      console.log('=== Fetching Shipping (Pickup) Addresses ===');
+      console.log('URL:', shippingUrl);
+
+      const shippingResponse = await fetch(shippingUrl, {
+        method: 'GET',
+        headers: {
+          'X-API-Key': profile.eawb_api_key,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const shippingText = await shippingResponse.text();
+      console.log('Shipping response status:', shippingResponse.status);
+      console.log('Shipping raw response:', shippingText);
+
+      let shippingData: any = null;
+      try {
+        shippingData = JSON.parse(shippingText);
+      } catch (_e) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'EAWB_API_ERROR',
+          message: `eAWB returned a non-JSON response (status ${shippingResponse.status})`,
+          details: shippingText.slice(0, 300)
+        }), {
+          status: 502,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      if (!shippingResponse.ok) {
+        console.error('Shipping addresses fetch failed:', shippingResponse.status, shippingText);
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'FETCH_FAILED',
+          message: shippingData?.message || 'Failed to fetch shipping addresses from eAWB API',
+          details: shippingData,
+          status: shippingResponse.status
+        }), {
+          status: shippingResponse.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      const shippingList = Array.isArray(shippingData?.list)
+        ? shippingData.list
+        : (Array.isArray(shippingData?.data?.list) ? shippingData.data.list : (Array.isArray(shippingData?.data) ? shippingData.data : []));
+
+      console.log('Parsed shipping addresses count:', shippingList.length);
+
+      if (shippingList.length === 0) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'NO_SHIPPING_ADDRESS',
+          message: 'No shipping (pickup) address found in your Europarcel/eAWB account. Please create one in your Europarcel dashboard before generating AWBs.'
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Auto-save only when exactly one shipping address is returned
+      let savedId: number | null = null;
+      if (shippingList.length === 1 && shippingList[0]?.id) {
+        savedId = Number(shippingList[0].id);
+        await supabase
+          .from('profiles')
+          .update({ eawb_shipping_address_id: savedId })
+          .eq('user_id', user.id);
+        console.log('Auto-saved shipping_address_id:', savedId);
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        shipping_addresses: shippingList,
+        selected_shipping_address_id: savedId
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -585,6 +700,23 @@ serve(async (req) => {
         console.log('Using home address:', addressTo);
       }
 
+      // Prefer stored Europarcel shipping (pickup) address ID for sender (address_from)
+      const shippingAddressId: number | null = profile.eawb_shipping_address_id ?? null;
+      const addressFrom = shippingAddressId
+        ? { address_from_id: shippingAddressId }
+        : {
+            country_code: 'RO',
+            county_name: senderParsed.county,
+            locality_name: senderParsed.city,
+            postal_code: senderParsed.postal_code || undefined,
+            contact: profile.eawb_name || profile.store_name || 'Sender',
+            street_name: senderStreet.street_name,
+            street_number: senderStreet.street_number,
+            phone: profile.eawb_phone || '0700000000',
+            email: profile.eawb_email || user.email
+          };
+      console.log('Using address_from:', addressFrom);
+
       // Resolve billing address automatically (never ask the user for an internal ID)
       let billingAddressId: number | null = profile.eawb_billing_address_id ?? null;
       if (!billingAddressId) {
@@ -633,17 +765,7 @@ serve(async (req) => {
         billing_to: { 
           billing_address_id: billingAddressId 
         },
-        address_from: {
-          country_code: 'RO',
-          county_name: senderParsed.county,
-          locality_name: senderParsed.city,
-          postal_code: senderParsed.postal_code || undefined,
-          contact: profile.eawb_name || profile.store_name || 'Sender',
-          street_name: senderStreet.street_name,
-          street_number: senderStreet.street_number,
-          phone: profile.eawb_phone || '0700000000',
-          email: profile.eawb_email || user.email
-        },
+        address_from: addressFrom,
         address_to: addressTo,
         content: {
           parcels_count: 1,
@@ -767,6 +889,123 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
+    }
+
+    // Cancel an existing Europarcel order / AWB
+    if (action === 'cancel_order') {
+      if (!order_id) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'MISSING_ORDER_ID',
+          message: 'Order ID is required to cancel an AWB'
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      const [profileResult, orderResult] = await Promise.all([
+        supabase.from('profiles').select('eawb_api_key').eq('user_id', user.id).single(),
+        supabase.from('orders').select('*').eq('id', order_id).eq('user_id', user.id).single()
+      ]);
+
+      if (profileResult.error || !profileResult.data) {
+        throw new Error('Profile not found');
+      }
+      if (orderResult.error || !orderResult.data) {
+        throw new Error('Order not found');
+      }
+
+      const profile = profileResult.data;
+      const order = orderResult.data;
+
+      if (!profile.eawb_api_key) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'MISSING_API_KEY',
+          message: 'eAWB API key not configured'
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      if (!order.eawb_order_id) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'MISSING_EAWB_ORDER_ID',
+          message: 'This order has no Europarcel order ID, so the AWB cannot be cancelled via the API.'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      if (order.shipping_status === 'cancelled') {
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'AWB is already cancelled',
+          order_id: order.eawb_order_id
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      console.log('Cancelling Europarcel order:', order.eawb_order_id, 'for store order:', order_id);
+
+      const cancelResponse = await fetch(`${EAWB_BASE_URL}/orders/${order.eawb_order_id}`, {
+        method: 'DELETE',
+        headers: {
+          'X-API-Key': profile.eawb_api_key,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const cancelText = await cancelResponse.text();
+      console.log('Cancel response status:', cancelResponse.status, 'body:', cancelText);
+
+      let cancelData: any = null;
+      try {
+        cancelData = JSON.parse(cancelText);
+      } catch (_e) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'EAWB_API_ERROR',
+          message: `eAWB returned a non-JSON response (status ${cancelResponse.status})`,
+          details: cancelText.slice(0, 300)
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      if (!cancelResponse.ok || cancelData?.success === false) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: cancelData?.error || 'CANCEL_FAILED',
+          message: cancelData?.message || 'Failed to cancel AWB with Europarcel',
+          details: cancelData
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({ shipping_status: 'cancelled' })
+        .eq('id', order_id)
+        .eq('user_id', user.id);
+
+      if (updateError) {
+        console.error('Order status update error after cancel:', updateError);
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        order_id: cancelData?.order_id ?? order.eawb_order_id,
+        message: cancelData?.message || 'AWB cancelled successfully'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     return new Response(JSON.stringify({
