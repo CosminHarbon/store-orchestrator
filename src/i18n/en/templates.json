@@ -1,0 +1,70 @@
+{
+  "title": "Templates",
+  "description": "Customize your storefront design",
+  "browseTemplates": "Browse Templates",
+  "customize": "Customize",
+  "customizeShort": "Custom",
+  "storeTemplatesTitle": "Store Templates",
+  "storeTemplatesDesc": "Pre-built storefront templates that connect to your products, orders, and payment systems.",
+  "apiKeyTitle": "Your Store API Key",
+  "apiKeyDesc": "Use this API key to connect templates to your store data",
+  "copied": "Copied!",
+  "featuresLabel": "Features:",
+  "editLive": "Edit Live",
+  "copyUrl": "Copy URL",
+  "templateUrl": "Template URL:",
+  "howToUse": "How to Use Templates",
+  "editable": {
+    "name": "Editable Template",
+    "badge": "Editable",
+    "description": "Fully customizable storefront with live page builder, colors, hero, and content blocks. Edit everything visually.",
+    "features": {
+      "liveEditor": "Live visual editor",
+      "customBlocks": "Custom blocks & layouts",
+      "catalog": "Product catalog & collections",
+      "cartCheckout": "Cart & checkout",
+      "payments": "Netopia + cash payments",
+      "discount": "Discount support",
+      "responsive": "Responsive design"
+    }
+  },
+  "premium": {
+    "name": "Premium",
+    "badge": "Premium",
+    "description": "A polished, conversion-focused storefront — ready to publish. No builder: homepage, catalog, product pages, cart, and checkout are designed for you and powered by your store data.",
+    "features": {
+      "homepage": "Shopify-grade homepage sections",
+      "catalog": "Modern catalog with filters",
+      "productPages": "Premium product pages",
+      "sideCart": "Side-cart drawer",
+      "checkout": "Multi-step checkout",
+      "mobileFirst": "Mobile-first & fast",
+      "publishGo": "Not editable — publish & go"
+    }
+  },
+  "status": {
+    "active": "Active",
+    "comingSoon": "Coming Soon"
+  },
+  "badge": {
+    "editable": "Editable",
+    "predesigned": "Pre-designed"
+  },
+  "action": {
+    "preview": "Preview",
+    "openPublish": "Open / Publish",
+    "openTemplate": "Open Template"
+  },
+  "help": {
+    "step1": "1. Copy your Store API Key from above",
+    "openTemplate": "2. Click \"Open Template\" to view the storefront",
+    "step3": "3. The template will automatically load your products, collections, and settings",
+    "step4": "4. Customers can browse products, add to cart, and complete purchases",
+    "step5": "5. All orders will appear in your Orders tab",
+    "tip": "💡 You can share the template URL with customers or embed it on your website"
+  },
+  "toast": {
+    "apiKeyCopied": "API key copied to clipboard!",
+    "premiumUrlCopied": "Premium store URL copied — share it to publish"
+  }
+}

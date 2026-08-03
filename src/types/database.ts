@@ -231,6 +231,14 @@ export type Database = {
           locker_address: string | null
           locker_id: string | null
           locker_name: string | null
+          locker_deposit_code: string | null
+          awb_label_url: string | null
+          awb_service_name: string | null
+          awb_service_id: number | null
+          awb_carrier_id: number | null
+          awb_shipping_cost: number | null
+          awb_cod_amount: number | null
+          awb_response_extra: Json | null
           order_status: Database["public"]["Enums"]["order_status_enum"] | null
           payment_status: string
           selected_carrier_code: string | null
@@ -265,6 +273,14 @@ export type Database = {
           locker_id?: string | null
           locker_name?: string | null
           locker_address?: string | null
+          locker_deposit_code?: string | null
+          awb_label_url?: string | null
+          awb_service_name?: string | null
+          awb_service_id?: number | null
+          awb_carrier_id?: number | null
+          awb_shipping_cost?: number | null
+          awb_cod_amount?: number | null
+          awb_response_extra?: Json | null
           order_status?: Database["public"]["Enums"]["order_status_enum"] | null
           payment_status?: string
           selected_carrier_code?: string | null
@@ -299,6 +315,14 @@ export type Database = {
           locker_address?: string | null
           locker_id?: string | null
           locker_name?: string | null
+          locker_deposit_code?: string | null
+          awb_label_url?: string | null
+          awb_service_name?: string | null
+          awb_service_id?: number | null
+          awb_carrier_id?: number | null
+          awb_shipping_cost?: number | null
+          awb_cod_amount?: number | null
+          awb_response_extra?: Json | null
           order_status?: Database["public"]["Enums"]["order_status_enum"] | null
           payment_status?: string
           selected_carrier_code?: string | null
@@ -501,6 +525,13 @@ export type Database = {
           eawb_api_key: string | null
           eawb_billing_address_id: number | null
           eawb_shipping_address_id: number | null
+          eawb_pickup_locker_id: string | null
+          eawb_pickup_locker_name: string | null
+          eawb_pickup_locker_address: string | null
+          eawb_pickup_locker_carrier_id: number | null
+          eawb_pickup_locker_carrier_code: string | null
+          eawb_pickup_locker_county: string | null
+          eawb_pickup_locker_city: string | null
           eawb_city: string | null
           eawb_county: string | null
           eawb_customer_id: number | null
@@ -528,6 +559,7 @@ export type Database = {
           oblio_name: string | null
           oblio_series_name: string | null
           payment_provider: string | null
+          preferred_language: string
           sameday_api_key: string | null
           sameday_email: string | null
           sameday_name: string | null
@@ -550,6 +582,13 @@ export type Database = {
           eawb_api_key?: string | null
           eawb_billing_address_id?: number | null
           eawb_shipping_address_id?: number | null
+          eawb_pickup_locker_id?: string | null
+          eawb_pickup_locker_name?: string | null
+          eawb_pickup_locker_address?: string | null
+          eawb_pickup_locker_carrier_id?: number | null
+          eawb_pickup_locker_carrier_code?: string | null
+          eawb_pickup_locker_county?: string | null
+          eawb_pickup_locker_city?: string | null
           eawb_city?: string | null
           eawb_county?: string | null
           eawb_customer_id?: number | null
@@ -577,6 +616,7 @@ export type Database = {
           oblio_name?: string | null
           oblio_series_name?: string | null
           payment_provider?: string | null
+          preferred_language?: string
           sameday_api_key?: string | null
           sameday_email?: string | null
           sameday_name?: string | null
@@ -599,6 +639,13 @@ export type Database = {
           eawb_api_key?: string | null
           eawb_billing_address_id?: number | null
           eawb_shipping_address_id?: number | null
+          eawb_pickup_locker_id?: string | null
+          eawb_pickup_locker_name?: string | null
+          eawb_pickup_locker_address?: string | null
+          eawb_pickup_locker_carrier_id?: number | null
+          eawb_pickup_locker_carrier_code?: string | null
+          eawb_pickup_locker_county?: string | null
+          eawb_pickup_locker_city?: string | null
           eawb_city?: string | null
           eawb_county?: string | null
           eawb_customer_id?: number | null
@@ -626,6 +673,7 @@ export type Database = {
           oblio_name?: string | null
           oblio_series_name?: string | null
           payment_provider?: string | null
+          preferred_language?: string
           sameday_api_key?: string | null
           sameday_email?: string | null
           sameday_name?: string | null
@@ -678,10 +726,14 @@ export type Database = {
           customer_email: string | null
           customer_name: string
           id: string
+          internal_notes: string | null
           is_approved: boolean
+          merchant_replied_at: string | null
+          merchant_reply: string | null
           product_id: string
           rating: number
           review_text: string | null
+          status: string
           updated_at: string
           user_id: string
         }
@@ -690,10 +742,14 @@ export type Database = {
           customer_email?: string | null
           customer_name: string
           id?: string
+          internal_notes?: string | null
           is_approved?: boolean
+          merchant_replied_at?: string | null
+          merchant_reply?: string | null
           product_id: string
           rating: number
           review_text?: string | null
+          status?: string
           updated_at?: string
           user_id: string
         }
@@ -702,10 +758,14 @@ export type Database = {
           customer_email?: string | null
           customer_name?: string
           id?: string
+          internal_notes?: string | null
           is_approved?: boolean
+          merchant_replied_at?: string | null
+          merchant_reply?: string | null
           product_id?: string
           rating?: number
           review_text?: string | null
+          status?: string
           updated_at?: string
           user_id?: string
         }

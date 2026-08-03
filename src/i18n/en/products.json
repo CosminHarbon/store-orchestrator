@@ -1,0 +1,132 @@
+{
+  "title": "Products",
+  "description": "Manage your product catalog",
+  "subtitle": "Catalog performance, inventory health, and product management",
+  "addProduct": "Add Product",
+  "addNewProduct": "Add New Product",
+  "editProduct": "Edit Product",
+  "createProduct": "Create Product",
+  "updateProduct": "Update Product",
+  "collectionsTab": "Collections",
+  "sku": "SKU",
+  "skuRequiredPlaceholder": "Required unique SKU",
+  "stock": "Stock",
+  "lowStockThreshold": "Low stock threshold",
+  "deltaVsPrior": "vs prior",
+  "searchPlaceholder": "Search name, SKU, category...",
+  "manageImages": "Manage Product Images - {{title}}",
+  "section": {
+    "overview": "Overview",
+    "insights": "Product Insights",
+    "analytics": "Product Analytics",
+    "catalog": "Catalog",
+    "recommendations": "Recommendations"
+  },
+  "inventory": {
+    "restockSoon": "Restock soon",
+    "belowThreshold": "Below alert threshold",
+    "basedOnSales": "Based on sales & stock",
+    "allHaveStock": "All products have stock.",
+    "noLowStock": "No low-stock alerts.",
+    "noRecommendations": "No special recommendations right now."
+  },
+  "kpi": {
+    "total": "Total Products",
+    "totalSub": "In your catalog",
+    "active": "Active Products",
+    "activeSub": "In stock",
+    "outOfStock": "Out of Stock",
+    "outOfStockSub": "Need restock",
+    "lowStock": "Low Stock",
+    "lowStockSub": "Below threshold",
+    "inventoryValue": "Inventory Value",
+    "inventoryValueSub": "Price × stock",
+    "avgPrice": "Average Price",
+    "avgPriceSub": "Across catalog",
+    "addedThisMonth": "Added This Month",
+    "addedThisMonthSub": "New listings",
+    "neverSold": "Never Sold",
+    "neverSoldSub": "No order history"
+  },
+  "badge": {
+    "restockSoon": "Restock Soon",
+    "highSelling": "High Selling",
+    "notSelling": "Not Selling"
+  },
+  "view": {
+    "table": "Table view",
+    "grid": "Grid view"
+  },
+  "filter": {
+    "stock": "Stock",
+    "category": "Category",
+    "collection": "Collection",
+    "minPrice": "Min price",
+    "maxPrice": "Max price",
+    "minStock": "Min stock",
+    "maxStock": "Max",
+    "allStock": "All stock",
+    "inStock": "Active / In stock",
+    "lowStock": "Low stock",
+    "outOfStock": "Out of stock",
+    "allCategories": "All categories",
+    "allCollections": "All collections"
+  },
+  "bulk": {
+    "newStock": "New stock",
+    "newPrice": "New price",
+    "duplicate": "Duplicate",
+    "export": "Export",
+    "delete": "Delete",
+    "setStock": "Set stock",
+    "setPrice": "Set price",
+    "setCategory": "Set category",
+    "assign": "Assign"
+  },
+  "empty": {
+    "filtered": "No products match your filters",
+    "createFirst": "Create your first product",
+    "filteredHint": "Try adjusting search or filters.",
+    "createFirstHint": "Add a product to start building your catalog and unlock analytics."
+  },
+  "confirm": {
+    "deleteOne": "Are you sure you want to delete this product?",
+    "deleteSelected": "Delete {{count}} selected product(s)?"
+  },
+  "duplicate": {
+    "copyOf": "Copy of {{title}}"
+  },
+  "field": {
+    "title": "Title",
+    "productName": "Product Name",
+    "description": "Description",
+    "price": "Price",
+    "priceRon": "Price (RON)",
+    "originalPrice": "Original price",
+    "category": "Category",
+    "lowStockAlertThreshold": "Low Stock Alert Threshold",
+    "skuHint": "Every product needs a unique SKU.",
+    "images": "Images",
+    "active": "Active"
+  },
+  "toast": {
+    "created": "Product created successfully",
+    "createFailed": "Failed to create product",
+    "updated": "Product updated successfully",
+    "updateFailed": "Failed to update product",
+    "deleted": "Product deleted successfully",
+    "deleteFailed": "Failed to delete product",
+    "skuRequired": "SKU is required",
+    "skuValidateFailed": "Could not validate SKU",
+    "skuTaken": "This SKU is already used by another product",
+    "exported": "Exported {{count}} products",
+    "duplicated": "Duplicated {{count}} product(s)",
+    "duplicateFailed": "Failed to duplicate products",
+    "selectedDeleted": "Selected products deleted",
+    "selectedDeleteFailed": "Failed to delete selected products",
+    "bulkUpdated": "Products updated",
+    "bulkUpdateFailed": "Bulk update failed",
+    "collectionUpdated": "Collection updated for selected products",
+    "collectionFailed": "Failed to change collection"
+  }
+}

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type ComponentType } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus,
@@ -93,6 +94,7 @@ function KpiCard({
   icon: ComponentType<{ className?: string }>;
   delta?: number;
 }) {
+  const { t: tProducts } = useTranslation('products');
   return (
     <Card className="border-border/60 bg-gradient-to-br from-background to-muted/30 shadow-sm">
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
@@ -114,7 +116,7 @@ function KpiCard({
             )}
           >
             {delta >= 0 ? '+' : ''}
-            {delta.toFixed(1)}% vs prior
+            {delta.toFixed(1)}% {tProducts('deltaVsPrior')}
           </p>
         )}
       </CardContent>
@@ -123,6 +125,8 @@ function KpiCard({
 }
 
 const ProductManagement = () => {
+  const { t: tProducts } = useTranslation('products');
+  const { t: tCommon } = useTranslation('common');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [imageDialogProduct, setImageDialogProduct] = useState<Product | null>(null);
@@ -342,7 +346,7 @@ const ProductManagement = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      toast.success('Product created successfully');
+      toast.success(tProducts('toast.created'));
       const newProduct = data[0];
       if (newProduct) {
         setDrawerProduct(newProduct);
@@ -350,7 +354,7 @@ const ProductManagement = () => {
       resetForm();
     },
     onError: (error) => {
-      toast.error('Failed to create product');
+      toast.error(tProducts('toast.createFailed'));
       console.error(error);
     },
   });
@@ -373,11 +377,11 @@ const ProductManagement = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      toast.success('Product updated successfully');
+      toast.success(tProducts('toast.updated'));
       resetForm();
     },
     onError: (error) => {
-      toast.error('Failed to update product');
+      toast.error(tProducts('toast.updateFailed'));
       console.error(error);
     },
   });
@@ -389,10 +393,10 @@ const ProductManagement = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      toast.success('Product deleted successfully');
+      toast.success(tProducts('toast.deleted'));
     },
     onError: (error) => {
-      toast.error('Failed to delete product');
+      toast.error(tProducts('toast.deleteFailed'));
       console.error(error);
     },
   });
@@ -414,18 +418,18 @@ const ProductManagement = () => {
   const assertUniqueSku = async (sku: string, excludeId?: string) => {
     const trimmed = sku.trim();
     if (!trimmed) {
-      toast.error('SKU is required');
+      toast.error(tProducts('toast.skuRequired'));
       return false;
     }
     let query = supabase.from('products').select('id').eq('sku', trimmed).limit(1);
     if (excludeId) query = query.neq('id', excludeId);
     const { data, error } = await query;
     if (error) {
-      toast.error('Could not validate SKU');
+      toast.error(tProducts('toast.skuValidateFailed'));
       return false;
     }
     if (data?.length) {
-      toast.error('This SKU is already used by another product');
+      toast.error(tProducts('toast.skuTaken'));
       return false;
     }
     return true;
@@ -447,7 +451,7 @@ const ProductManagement = () => {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this product?')) {
+    if (confirm(tProducts('confirm.deleteOne'))) {
       deleteProductMutation.mutate(id);
       setSelectedIds((prev) => {
         const next = new Set(prev);
@@ -539,7 +543,7 @@ const ProductManagement = () => {
     a.download = `products-export-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success(`Exported ${rows.length} products`);
+    toast.success(tProducts('toast.exported', { count: rows.length }));
   };
 
   const duplicateSelected = async () => {
@@ -547,7 +551,7 @@ const ProductManagement = () => {
     try {
       const userId = (await supabase.auth.getUser()).data.user?.id;
       const payload = selectedProducts.map((p) => ({
-        title: `Copy of ${p.title}`,
+        title: tProducts('duplicate.copyOf', { title: p.title }),
         description: p.description,
         price: p.price,
         category: p.category,
@@ -561,16 +565,16 @@ const ProductManagement = () => {
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['products'] });
       setSelectedIds(new Set());
-      toast.success(`Duplicated ${payload.length} product${payload.length === 1 ? '' : 's'}`);
+      toast.success(tProducts('toast.duplicated', { count: payload.length }));
     } catch (e) {
       console.error(e);
-      toast.error('Failed to duplicate products');
+      toast.error(tProducts('toast.duplicateFailed'));
     }
   };
 
   const deleteSelected = async () => {
     if (!selectedProducts.length) return;
-    if (!confirm(`Delete ${selectedProducts.length} selected product(s)?`)) return;
+    if (!confirm(tProducts('confirm.deleteSelected', { count: selectedProducts.length }))) return;
     try {
       const { error } = await supabase
         .from('products')
@@ -582,10 +586,10 @@ const ProductManagement = () => {
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['products'] });
       setSelectedIds(new Set());
-      toast.success('Selected products deleted');
+      toast.success(tProducts('toast.selectedDeleted'));
     } catch (e) {
       console.error(e);
-      toast.error('Failed to delete selected products');
+      toast.error(tProducts('toast.selectedDeleteFailed'));
     }
   };
 
@@ -601,10 +605,10 @@ const ProductManagement = () => {
         );
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      toast.success('Products updated');
+      toast.success(tProducts('toast.bulkUpdated'));
     } catch (e) {
       console.error(e);
-      toast.error('Bulk update failed');
+      toast.error(tProducts('toast.bulkUpdateFailed'));
     }
   };
 
@@ -621,10 +625,10 @@ const ProductManagement = () => {
       });
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['product-collections-map'] });
-      toast.success('Collection updated for selected products');
+      toast.success(tProducts('toast.collectionUpdated'));
     } catch (e) {
       console.error(e);
-      toast.error('Failed to change collection');
+      toast.error(tProducts('toast.collectionFailed'));
     }
   };
 
@@ -657,21 +661,21 @@ const ProductManagement = () => {
             className="flex items-center gap-2 rounded-xl data-[state=active]:bg-primary-dark data-[state=active]:text-white transition-all duration-200 hover:bg-muted/50"
           >
             <Package className="h-4 w-4" />
-            Products
+            {tProducts('title')}
           </TabsTrigger>
           <TabsTrigger
             value="collections"
             className="flex items-center gap-2 rounded-xl data-[state=active]:bg-primary-dark data-[state=active]:text-white transition-all duration-200 hover:bg-muted/50"
           >
             <Folder className="h-4 w-4" />
-            Collections
+            {tProducts('collectionsTab')}
           </TabsTrigger>
           <TabsTrigger
             value="discounts"
             className="flex items-center gap-2 rounded-xl data-[state=active]:bg-primary-dark data-[state=active]:text-white transition-all duration-200 hover:bg-muted/50"
           >
             <Percent className="h-4 w-4" />
-            Discounts
+            {tCommon('nav.discounts')}
           </TabsTrigger>
         </TabsList>
 
@@ -679,30 +683,30 @@ const ProductManagement = () => {
           {/* Header */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-xl font-semibold tracking-tight">Products</h2>
+              <h2 className="text-xl font-semibold tracking-tight">{tProducts('title')}</h2>
               <p className="text-sm text-muted-foreground">
-                Catalog performance, inventory health, and product management
+                {tProducts('subtitle')}
               </p>
             </div>
             <div className="flex items-center gap-2">
               <Button type="button" variant="outline" size="sm" onClick={exportSelected}>
                 <Download className="h-4 w-4 mr-2" />
-                Export
+                {tCommon('export')}
               </Button>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button onClick={() => resetForm()} size="sm">
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Product
+                    {tProducts('addProduct')}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-md w-[calc(100vw-2rem)] sm:w-full max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>{editingProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
+                    <DialogTitle>{editingProduct ? tProducts('editProduct') : tProducts('addNewProduct')}</DialogTitle>
                   </DialogHeader>
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="title">Product Name</Label>
+                      <Label htmlFor="title">{tProducts('field.productName')}</Label>
                       <Input
                         id="title"
                         value={formData.title}
@@ -711,7 +715,7 @@ const ProductManagement = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="description">Description</Label>
+                      <Label htmlFor="description">{tProducts('field.description')}</Label>
                       <Textarea
                         id="description"
                         value={formData.description}
@@ -721,7 +725,7 @@ const ProductManagement = () => {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="price">Price (RON)</Label>
+                        <Label htmlFor="price">{tProducts('field.priceRon')}</Label>
                         <Input
                           id="price"
                           type="number"
@@ -732,7 +736,7 @@ const ProductManagement = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="stock">Stock</Label>
+                        <Label htmlFor="stock">{tProducts('stock')}</Label>
                         <Input
                           id="stock"
                           type="number"
@@ -743,7 +747,7 @@ const ProductManagement = () => {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="low_stock_threshold">Low Stock Alert Threshold</Label>
+                      <Label htmlFor="low_stock_threshold">{tProducts('field.lowStockAlertThreshold')}</Label>
                       <Input
                         id="low_stock_threshold"
                         type="number"
@@ -754,7 +758,7 @@ const ProductManagement = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="category">Category</Label>
+                      <Label htmlFor="category">{tProducts('field.category')}</Label>
                       <Input
                         id="category"
                         value={formData.category}
@@ -763,17 +767,17 @@ const ProductManagement = () => {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="sku">
-                        SKU <span className="text-destructive">*</span>
+                        {tProducts('sku')} <span className="text-destructive">*</span>
                       </Label>
                       <Input
                         id="sku"
                         value={formData.sku}
                         onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                        placeholder="Required unique SKU"
+                        placeholder={tProducts('skuRequiredPlaceholder')}
                         required
                       />
                       <p className="text-xs text-muted-foreground">
-                        Every product needs a unique SKU.
+                        {tProducts('field.skuHint')}
                       </p>
                     </div>
                     <div className="flex gap-3 pt-2">
@@ -782,10 +786,10 @@ const ProductManagement = () => {
                         disabled={createProductMutation.isPending || updateProductMutation.isPending}
                         className="flex-1"
                       >
-                        {editingProduct ? 'Update' : 'Create'} Product
+                        {editingProduct ? tProducts('updateProduct') : tProducts('createProduct')}
                       </Button>
                       <Button type="button" variant="outline" onClick={resetForm}>
-                        Cancel
+                        {tCommon('cancel')}
                       </Button>
                     </div>
                   </form>
@@ -798,7 +802,7 @@ const ProductManagement = () => {
           <section className="space-y-3">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                Overview
+                {tProducts('section.overview')}
               </h3>
               <Button
                 type="button"
@@ -807,7 +811,7 @@ const ProductManagement = () => {
                 onClick={() => toggleAnalytics(!showAnalytics)}
               >
                 <BarChart3 className="h-4 w-4 mr-2" />
-                {showAnalytics ? 'Hide Analytics' : 'Show Analytics'}
+                {showAnalytics ? tCommon('hideAnalytics') : tCommon('showAnalytics')}
                 <ChevronDown
                   className={cn('h-4 w-4 ml-1 transition-transform', showAnalytics && 'rotate-180')}
                 />
@@ -815,58 +819,58 @@ const ProductManagement = () => {
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <KpiCard
-              title="Total Products"
+              title={tProducts('kpi.total')}
               value={String(analytics.kpis.totalProducts)}
-              subtitle="In your catalog"
+              subtitle={tProducts('kpi.totalSub')}
               icon={Package}
               delta={analytics.deltas.totalProducts}
             />
             <KpiCard
-              title="Active Products"
+              title={tProducts('kpi.active')}
               value={String(analytics.kpis.activeProducts)}
-              subtitle="In stock"
+              subtitle={tProducts('kpi.activeSub')}
               icon={Boxes}
             />
             <KpiCard
-              title="Out of Stock"
+              title={tProducts('kpi.outOfStock')}
               value={String(analytics.kpis.outOfStock)}
-              subtitle="Need restock"
+              subtitle={tProducts('kpi.outOfStockSub')}
               icon={AlertTriangle}
             />
             <KpiCard
-              title="Low Stock"
+              title={tProducts('kpi.lowStock')}
               value={String(analytics.kpis.lowStock)}
-              subtitle="Below threshold"
+              subtitle={tProducts('kpi.lowStockSub')}
               icon={AlertTriangle}
             />
             </div>
             {showAnalytics && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <KpiCard
-              title="Inventory Value"
+              title={tProducts('kpi.inventoryValue')}
               value={formatRon(analytics.kpis.inventoryValue)}
-              subtitle="Price × stock"
+              subtitle={tProducts('kpi.inventoryValueSub')}
               icon={Wallet}
             />
             <KpiCard
-              title="Average Price"
+              title={tProducts('kpi.avgPrice')}
               value={formatRon(analytics.kpis.averagePrice)}
-              subtitle="Across catalog"
+              subtitle={tProducts('kpi.avgPriceSub')}
               icon={Tag}
             />
             <KpiCard
-              title="Added This Month"
+              title={tProducts('kpi.addedThisMonth')}
               value={String(analytics.kpis.addedThisMonth)}
-              subtitle="New listings"
+              subtitle={tProducts('kpi.addedThisMonthSub')}
               icon={TrendingUp}
               delta={analytics.deltas.addedThisMonth}
             />
             <KpiCard
-              title="Never Sold"
+              title={tProducts('kpi.neverSold')}
               value={String(
                 catalogProducts.filter((p) => analytics.metricsById[p.id]?.unitsSold === 0).length
               )}
-              subtitle="No order history"
+              subtitle={tProducts('kpi.neverSoldSub')}
               icon={Package}
             />
               </div>
@@ -879,7 +883,7 @@ const ProductManagement = () => {
           <section className="space-y-3">
             <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
               <Lightbulb className="h-4 w-4" />
-              Product Insights
+              {tProducts('section.insights')}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
               {analytics.insights.map((insight) => (
@@ -888,7 +892,7 @@ const ProductManagement = () => {
                   className="border-border/60 bg-gradient-to-br from-muted/40 via-background to-background"
                 >
                   <CardContent className="pt-4 pb-4 flex gap-3 items-start">
-                    <div className="rounded-full bg-amber-100 p-1.5 mt-0.5">
+                    <div className="rounded-full bg-amber-500/15 p-1.5 mt-0.5">
                       <Lightbulb className="h-3.5 w-3.5 text-amber-700" />
                     </div>
                     <p className="text-sm leading-relaxed">{insight}</p>
@@ -902,8 +906,8 @@ const ProductManagement = () => {
           <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <Card className="border-border/60">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Out of Stock</CardTitle>
-                <CardDescription>Restock soon</CardDescription>
+                <CardTitle className="text-base">{tProducts('kpi.outOfStock')}</CardTitle>
+                <CardDescription>{tProducts('inventory.restockSoon')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 {inventoryHealth.out.slice(0, 5).map((p) => (
@@ -918,14 +922,14 @@ const ProductManagement = () => {
                   </button>
                 ))}
                 {!inventoryHealth.out.length && (
-                  <p className="text-sm text-muted-foreground">All products have stock.</p>
+                  <p className="text-sm text-muted-foreground">{tProducts('inventory.allHaveStock')}</p>
                 )}
               </CardContent>
             </Card>
             <Card className="border-border/60">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Low Stock</CardTitle>
-                <CardDescription>Below alert threshold</CardDescription>
+                <CardTitle className="text-base">{tProducts('kpi.lowStock')}</CardTitle>
+                <CardDescription>{tProducts('inventory.belowThreshold')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 {inventoryHealth.low.slice(0, 5).map((p) => (
@@ -936,18 +940,18 @@ const ProductManagement = () => {
                     onClick={() => handleProductClick(products!.find((x) => x.id === p.id)!)}
                   >
                     <span className="truncate">{p.title}</span>
-                    <Badge className="bg-amber-100 text-amber-900 border-0">{p.stock}</Badge>
+                    <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-0">{p.stock}</Badge>
                   </button>
                 ))}
                 {!inventoryHealth.low.length && (
-                  <p className="text-sm text-muted-foreground">No low-stock alerts.</p>
+                  <p className="text-sm text-muted-foreground">{tProducts('inventory.noLowStock')}</p>
                 )}
               </CardContent>
             </Card>
             <Card className="border-border/60">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Recommendations</CardTitle>
-                <CardDescription>Based on sales & stock</CardDescription>
+                <CardTitle className="text-base">{tProducts('section.recommendations')}</CardTitle>
+                <CardDescription>{tProducts('inventory.basedOnSales')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
                 {catalogProducts
@@ -960,10 +964,10 @@ const ProductManagement = () => {
                     const rec = analytics.metricsById[p.id]?.recommendation;
                     const label =
                       rec === 'restock_soon'
-                        ? 'Restock Soon'
+                        ? tProducts('badge.restockSoon')
                         : rec === 'high_selling'
-                          ? 'High Selling'
-                          : 'Not Selling';
+                          ? tProducts('badge.highSelling')
+                          : tProducts('badge.notSelling');
                     return (
                       <div key={p.id} className="flex justify-between gap-2">
                         <span className="truncate">{p.title}</span>
@@ -977,7 +981,7 @@ const ProductManagement = () => {
                   ['high_selling', 'not_selling', 'restock_soon'].includes(
                     analytics.metricsById[p.id]?.recommendation || ''
                   )
-                ) && <p className="text-muted-foreground">No special recommendations right now.</p>}
+                ) && <p className="text-muted-foreground">{tProducts('inventory.noRecommendations')}</p>}
               </CardContent>
             </Card>
           </section>
@@ -985,7 +989,7 @@ const ProductManagement = () => {
           {/* Charts */}
           <section className="space-y-3">
             <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-              Product Analytics
+              {tProducts('section.analytics')}
             </h3>
             <Suspense
               fallback={
@@ -1010,17 +1014,17 @@ const ProductManagement = () => {
           <section className="space-y-3">
             <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
               <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                Catalog
+                {tProducts('section.catalog')}
               </h3>
               <ToggleGroup
                 type="single"
                 value={viewMode}
                 onValueChange={(value: 'grid' | 'list') => value && setViewMode(value)}
               >
-                <ToggleGroupItem value="list" aria-label="Table view" className="rounded-xl">
+                <ToggleGroupItem value="list" aria-label={tProducts('view.table')} className="rounded-xl">
                   <List className="h-4 w-4" />
                 </ToggleGroupItem>
-                <ToggleGroupItem value="grid" aria-label="Grid view" className="rounded-xl">
+                <ToggleGroupItem value="grid" aria-label={tProducts('view.grid')} className="rounded-xl">
                   <Grid className="h-4 w-4" />
                 </ToggleGroupItem>
               </ToggleGroup>
@@ -1031,7 +1035,7 @@ const ProductManagement = () => {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search name, SKU, category..."
+                    placeholder={tProducts('searchPlaceholder')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10"
@@ -1043,34 +1047,34 @@ const ProductManagement = () => {
                     onValueChange={(v) => setStockFilter(v as 'all' | ProductStockStatus)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Stock" />
+                      <SelectValue placeholder={tProducts('filter.stock')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All stock</SelectItem>
-                      <SelectItem value="in_stock">Active / In stock</SelectItem>
-                      <SelectItem value="low_stock">Low stock</SelectItem>
-                      <SelectItem value="out_of_stock">Out of stock</SelectItem>
+                      <SelectItem value="all">{tProducts('filter.allStock')}</SelectItem>
+                      <SelectItem value="in_stock">{tProducts('filter.inStock')}</SelectItem>
+                      <SelectItem value="low_stock">{tProducts('filter.lowStock')}</SelectItem>
+                      <SelectItem value="out_of_stock">{tProducts('filter.outOfStock')}</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Category" />
+                      <SelectValue placeholder={tProducts('filter.category')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All categories</SelectItem>
+                      <SelectItem value="all">{tProducts('filter.allCategories')}</SelectItem>
                       {categories.map((c) => (
                         <SelectItem key={c} value={c}>
-                          {c}
+                          {c === 'Uncategorized' ? tCommon('uncategorized') : c}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   <Select value={collectionFilter} onValueChange={setCollectionFilter}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Collection" />
+                      <SelectValue placeholder={tProducts('filter.collection')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All collections</SelectItem>
+                      <SelectItem value="all">{tProducts('filter.allCollections')}</SelectItem>
                       {(collections || []).map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {c.name}
@@ -1080,26 +1084,26 @@ const ProductManagement = () => {
                   </Select>
                   <Input
                     type="number"
-                    placeholder="Min price"
+                    placeholder={tProducts('filter.minPrice')}
                     value={priceMin}
                     onChange={(e) => setPriceMin(e.target.value)}
                   />
                   <Input
                     type="number"
-                    placeholder="Max price"
+                    placeholder={tProducts('filter.maxPrice')}
                     value={priceMax}
                     onChange={(e) => setPriceMax(e.target.value)}
                   />
                   <div className="flex gap-2">
                     <Input
                       type="number"
-                      placeholder="Min stock"
+                      placeholder={tProducts('filter.minStock')}
                       value={stockMin}
                       onChange={(e) => setStockMin(e.target.value)}
                     />
                     <Input
                       type="number"
-                      placeholder="Max"
+                      placeholder={tProducts('filter.maxStock')}
                       value={stockMax}
                       onChange={(e) => setStockMax(e.target.value)}
                     />
@@ -1108,22 +1112,22 @@ const ProductManagement = () => {
 
                 {selectedIds.size > 0 && (
                   <div className="flex flex-col gap-2 rounded-lg border bg-muted/20 p-3">
-                    <div className="text-sm font-medium">{selectedIds.size} selected</div>
+                    <div className="text-sm font-medium">{tCommon('selected', { count: selectedIds.size })}</div>
                     <div className="flex flex-wrap gap-2">
                       <Button size="sm" variant="outline" onClick={duplicateSelected}>
-                        <Copy className="h-3.5 w-3.5 mr-1" /> Duplicate
+                        <Copy className="h-3.5 w-3.5 mr-1" /> {tProducts('bulk.duplicate')}
                       </Button>
                       <Button size="sm" variant="outline" onClick={exportSelected}>
-                        <Download className="h-3.5 w-3.5 mr-1" /> Export
+                        <Download className="h-3.5 w-3.5 mr-1" /> {tProducts('bulk.export')}
                       </Button>
                       <Button size="sm" variant="destructive" onClick={deleteSelected}>
-                        <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                        <Trash2 className="h-3.5 w-3.5 mr-1" /> {tProducts('bulk.delete')}
                       </Button>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                       <div className="flex gap-2">
                         <Input
-                          placeholder="New stock"
+                          placeholder={tProducts('bulk.newStock')}
                           value={bulkStock}
                           onChange={(e) => setBulkStock(e.target.value)}
                         />
@@ -1137,12 +1141,12 @@ const ProductManagement = () => {
                             )
                           }
                         >
-                          Set stock
+                          {tProducts('bulk.setStock')}
                         </Button>
                       </div>
                       <div className="flex gap-2">
                         <Input
-                          placeholder="New price"
+                          placeholder={tProducts('bulk.newPrice')}
                           value={bulkPrice}
                           onChange={(e) => setBulkPrice(e.target.value)}
                         />
@@ -1156,12 +1160,12 @@ const ProductManagement = () => {
                             )
                           }
                         >
-                          Set price
+                          {tProducts('bulk.setPrice')}
                         </Button>
                       </div>
                       <div className="flex gap-2">
                         <Input
-                          placeholder="Category"
+                          placeholder={tProducts('field.category')}
                           value={bulkCategory}
                           onChange={(e) => setBulkCategory(e.target.value)}
                         />
@@ -1175,13 +1179,13 @@ const ProductManagement = () => {
                             )
                           }
                         >
-                          Set category
+                          {tProducts('bulk.setCategory')}
                         </Button>
                       </div>
                       <div className="flex gap-2">
                         <Select value={bulkCollectionId} onValueChange={setBulkCollectionId}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Collection" />
+                            <SelectValue placeholder={tProducts('filter.collection')} />
                           </SelectTrigger>
                           <SelectContent>
                             {(collections || []).map((c) => (
@@ -1192,7 +1196,7 @@ const ProductManagement = () => {
                           </SelectContent>
                         </Select>
                         <Button size="sm" variant="secondary" onClick={assignCollection}>
-                          Assign
+                          {tProducts('bulk.assign')}
                         </Button>
                       </div>
                     </div>
@@ -1206,19 +1210,19 @@ const ProductManagement = () => {
                     <div>
                       <p className="font-medium text-foreground">
                         {searchQuery || stockFilter !== 'all'
-                          ? 'No products match your filters'
-                          : 'Create your first product'}
+                          ? tProducts('empty.filtered')
+                          : tProducts('empty.createFirst')}
                       </p>
                       <p className="text-sm max-w-md mx-auto mt-1">
                         {searchQuery || stockFilter !== 'all'
-                          ? 'Try adjusting search or filters.'
-                          : 'Add a product to start building your catalog and unlock analytics.'}
+                          ? tProducts('empty.filteredHint')
+                          : tProducts('empty.createFirstHint')}
                       </p>
                     </div>
                     {!searchQuery && stockFilter === 'all' && (
                       <Button onClick={() => setIsDialogOpen(true)}>
                         <Plus className="h-4 w-4 mr-2" />
-                        Add Product
+                        {tProducts('addProduct')}
                       </Button>
                     )}
                   </div>
@@ -1264,7 +1268,7 @@ const ProductManagement = () => {
               }}
             >
               <Plus className="h-5 w-5 mr-2" />
-              Add Product
+              {tProducts('addProduct')}
             </Button>
           </div>
         </TabsContent>
@@ -1286,7 +1290,7 @@ const ProductManagement = () => {
         >
           <DialogContent className="max-w-4xl">
             <DialogHeader>
-              <DialogTitle>Manage Product Images - {imageDialogProduct.title}</DialogTitle>
+              <DialogTitle>{tProducts('manageImages', { title: imageDialogProduct.title })}</DialogTitle>
             </DialogHeader>
             <ProductImageUpload
               productId={imageDialogProduct.id}

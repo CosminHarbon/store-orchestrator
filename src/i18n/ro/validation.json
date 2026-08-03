@@ -1,0 +1,14 @@
+{
+  "required": "Acest câmp este obligatoriu.",
+  "email": "Te rugăm să introduci o adresă de email validă.",
+  "phone": "Te rugăm să introduci un număr de telefon valid.",
+  "minLength": "Trebuie să aibă cel puțin {{min}} caractere.",
+  "maxLength": "Trebuie să aibă cel mult {{max}} caractere.",
+  "min": "Trebuie să fie cel puțin {{min}}.",
+  "max": "Trebuie să fie cel mult {{max}}.",
+  "invalid": "Valoare invalidă.",
+  "passwordMin": "Parola trebuie să aibă cel puțin {{min}} caractere.",
+  "passwordsMatch": "Parolele trebuie să coincidă.",
+  "fillRequired": "Te rugăm să completezi toate câmpurile obligatorii.",
+  "selectOption": "Te rugăm să selectezi o opțiune."
+}

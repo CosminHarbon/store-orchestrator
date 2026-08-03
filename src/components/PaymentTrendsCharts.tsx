@@ -16,12 +16,15 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { PaymentAnalytics } from '@/lib/paymentAnalytics';
 import { formatRon } from '@/lib/paymentAnalytics';
+import { chartTooltipStyle, useChartTheme } from '@/hooks/useChartTheme';
 
 interface PaymentTrendsChartsProps {
   trends: PaymentAnalytics['trends'];
 }
 
 export default function PaymentTrendsCharts({ trends }: PaymentTrendsChartsProps) {
+  const theme = useChartTheme();
+  const tip = chartTooltipStyle(theme);
   const hasData = useMemo(() => trends.some((t) => t.revenue > 0 || t.orders > 0), [trends]);
 
   if (!hasData) {
@@ -40,6 +43,8 @@ export default function PaymentTrendsCharts({ trends }: PaymentTrendsChartsProps
     );
   }
 
+  const axis = { fontSize: 11, fill: theme.axis };
+
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
       <Card>
@@ -52,18 +57,18 @@ export default function PaymentTrendsCharts({ trends }: PaymentTrendsChartsProps
             <AreaChart data={trends}>
               <defs>
                 <linearGradient id="revFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(160 60% 40%)" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="hsl(160 60% 40%)" stopOpacity={0.02} />
+                  <stop offset="0%" stopColor={theme.c2} stopOpacity={0.35} />
+                  <stop offset="100%" stopColor={theme.c2} stopOpacity={0.02} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border/60" />
-              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} width={48} />
-              <Tooltip formatter={(v: number) => formatRon(v)} />
+              <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
+              <XAxis dataKey="label" tick={axis} />
+              <YAxis tick={axis} width={48} />
+              <Tooltip contentStyle={tip} formatter={(v: number) => formatRon(v)} />
               <Area
                 type="monotone"
                 dataKey="revenue"
-                stroke="hsl(160 60% 35%)"
+                stroke={theme.c2}
                 fill="url(#revFill)"
                 strokeWidth={2}
                 name="Revenue"
@@ -81,11 +86,11 @@ export default function PaymentTrendsCharts({ trends }: PaymentTrendsChartsProps
         <CardContent className="h-[260px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={trends}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border/60" />
-              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={32} />
-              <Tooltip />
-              <Bar dataKey="orders" fill="hsl(215 50% 45%)" radius={[4, 4, 0, 0]} name="Orders" />
+              <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
+              <XAxis dataKey="label" tick={axis} />
+              <YAxis allowDecimals={false} tick={axis} width={32} />
+              <Tooltip contentStyle={tip} />
+              <Bar dataKey="orders" fill={theme.c3} radius={[4, 4, 0, 0]} name="Orders" />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
@@ -99,25 +104,27 @@ export default function PaymentTrendsCharts({ trends }: PaymentTrendsChartsProps
         <CardContent className="h-[260px]">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={trends}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border/60" />
-              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} width={48} />
-              <Tooltip formatter={(v: number) => formatRon(v)} />
-              <Legend />
+              <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
+              <XAxis dataKey="label" tick={axis} />
+              <YAxis tick={axis} width={48} />
+              <Tooltip contentStyle={tip} formatter={(v: number) => formatRon(v)} />
+              <Legend wrapperStyle={{ color: theme.axis }} />
               <Area
                 type="monotone"
                 dataKey="cardRevenue"
                 stackId="1"
-                stroke="hsl(215 55% 45%)"
-                fill="hsl(215 55% 45% / 0.35)"
+                stroke={theme.c3}
+                fill={theme.c3}
+                fillOpacity={0.35}
                 name="Card"
               />
               <Area
                 type="monotone"
                 dataKey="cashRevenue"
                 stackId="1"
-                stroke="hsl(32 80% 45%)"
-                fill="hsl(32 80% 45% / 0.35)"
+                stroke={theme.c4}
+                fill={theme.c4}
+                fillOpacity={0.35}
                 name="Cash"
               />
             </AreaChart>
@@ -133,14 +140,14 @@ export default function PaymentTrendsCharts({ trends }: PaymentTrendsChartsProps
         <CardContent className="h-[260px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={trends}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border/60" />
-              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-              <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} width={36} unit="%" />
-              <Tooltip formatter={(v: number) => `${Number(v).toFixed(1)}%`} />
+              <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
+              <XAxis dataKey="label" tick={axis} />
+              <YAxis domain={[0, 100]} tick={axis} width={36} unit="%" />
+              <Tooltip contentStyle={tip} formatter={(v: number) => `${Number(v).toFixed(1)}%`} />
               <Line
                 type="monotone"
                 dataKey="successRate"
-                stroke="hsl(160 55% 38%)"
+                stroke={theme.c2}
                 strokeWidth={2}
                 dot={false}
                 name="Success %"

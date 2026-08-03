@@ -1,0 +1,218 @@
+{
+  "tab": {
+    "storeSettings": "Store Settings",
+    "integrations": "Integrations"
+  },
+  "loading": "Loading settings...",
+  "profileNotFound": "Profile not found",
+  "appearance": {
+    "title": "Appearance",
+    "desc": "Choose Light, Dark, or System. Your preference is saved on this device."
+  },
+  "language": {
+    "title": "Language",
+    "desc": "Choose the language for the merchant dashboard and storefront checkout. Your preference is saved to your profile.",
+    "ro": "Romanian",
+    "en": "English",
+    "saved": "Language updated",
+    "saveFailed": "Failed to save language preference"
+  },
+  "store": {
+    "title": "Store Settings",
+    "desc": "Configure your store information and API access",
+    "name": "Store Name",
+    "namePlaceholder": "Enter store name",
+    "apiKey": "Store API Key",
+    "apiKeyHelp": "This key is used to authenticate API requests from your website. Keep it secure!"
+  },
+  "integration": {
+    "title": "Website Integration",
+    "desc": "Copy this code to integrate with your website",
+    "viewCode": "View Integration Code",
+    "dialogTitle": "Website Integration Code",
+    "copyCode": "Copy Code"
+  },
+  "services": {
+    "title": "Service Integrations",
+    "desc": "Connect your store with invoicing, shipping, and payment providers"
+  },
+  "section": {
+    "invoicing": "Invoicing",
+    "invoicingSub": "Oblio.eu Integration",
+    "delivery": "Delivery",
+    "deliverySubEawb": "eAWB.ro Integration",
+    "deliverySubSameday": "Sameday Integration",
+    "payment": "Payment",
+    "paymentSub": "Netopia Integration"
+  },
+  "label": {
+    "invoicingProvider": "Invoicing Provider",
+    "shippingProvider": "Shipping Provider",
+    "paymentProcessor": "Payment Processor",
+    "oblioEmail": "Oblio Email Address",
+    "apiSecretKey": "API Secret Key",
+    "invoiceSeries": "Invoice Series",
+    "firstInvoiceNumber": "First Invoice Number",
+    "companyName": "Company Name",
+    "apiKey": "API Key",
+    "apiKeyRequired": "API Key *",
+    "email": "Email Address",
+    "phone": "Phone Number",
+    "pickupAddress": "Pickup Address",
+    "billingAddress": "Billing Address",
+    "defaultCarrierId": "Default Carrier ID",
+    "defaultServiceId": "Default Service ID",
+    "posSignature": "POS Signature *",
+    "publicKey": "Public Key (optional)",
+    "environment": "Environment"
+  },
+  "env": {
+    "sandbox": "Sandbox (Testing)",
+    "live": "Live (Production)"
+  },
+  "config": {
+    "oblio": "Oblio.eu Configuration",
+    "sameday": "Sameday Configuration",
+    "woot": "Woot.ro Configuration",
+    "carrierService": "Carrier & Service Configuration",
+    "netopia": "Netopia Payments (API v2)",
+    "eawb": "eAWB / Europarcel"
+  },
+  "select": {
+    "invoicing": "Select invoicing provider",
+    "shipping": "Select shipping provider",
+    "payment": "Select payment processor",
+    "billingAddress": "Select a billing address",
+    "pickupAddress": "Select a pickup address",
+    "defaultCarrier": "Select default carrier",
+    "defaultService": "Select default service"
+  },
+  "fees": {
+    "title": "Payment & Delivery Fees",
+    "desc": "Configure additional fees for cash payments and delivery options",
+    "enableCash": "Enable Cash Payments",
+    "enableCashHelp": "Allow customers to pay with cash on delivery",
+    "cashFee": "Cash Payment Fee (RON)",
+    "cashFeeHelp": "Additional fee for cash on delivery (0 for free)",
+    "homeDelivery": "Home Delivery Fee (RON)",
+    "homeDeliveryHelp": "Fee for home delivery",
+    "lockerDelivery": "Locker Delivery Fee (RON)",
+    "lockerDeliveryHelp": "Fee for locker delivery"
+  },
+  "help": {
+    "invoicingAuto": "Handles automatic invoice generation for your orders",
+    "paymentOnline": "Processes online payments from your customers"
+  },
+  "saveIntegrationSettings": "Save Integration Settings",
+  "setup": {
+    "title": "Store Setup Wizard",
+    "subtitle": "Let's get your store configured in just a few steps",
+    "stepOf": "Step {{current}} of {{total}}",
+    "welcome": {
+      "heading": "Welcome! 🎉",
+      "description": "We're excited to help you set up your online store. This wizard will guide you through configuring payments, shipping, invoicing, and customizing your storefront.",
+      "videoTitle": "Quick Start Video",
+      "videoDesc": "Watch this 5-minute tutorial to understand the setup process",
+      "watchTutorial": "Watch Setup Tutorial"
+    },
+    "store": {
+      "title": "Store Information",
+      "subtitle": "Let's start with your store name",
+      "nameLabel": "Store Name",
+      "namePlaceholder": "My Amazing Store",
+      "nameHelp": "This will appear on your storefront and in customer communications",
+      "footerNote": "Once you add your store name, you can configure other settings anytime from the dashboard",
+      "saveAndComplete": "Save & Complete Setup"
+    },
+    "payment": {
+      "title": "Payment Setup",
+      "subtitle": "Configure Netopia for card payments",
+      "configTitle": "Netopia Configuration",
+      "intro": "To accept card payments, create a Netopia merchant account and add these credentials in Store Settings → Payment Provider:",
+      "step1Prefix": "Create and activate an account at",
+      "step2": "API Key (required) — Admin → Profile → Security",
+      "step3": "POS Signature (required) — Admin → Point of Sale → Technical Settings",
+      "step4": "Public Key (optional) — same Technical Settings page; used for IPN verification",
+      "step5": "Choose Sandbox for testing or Live for production (keys are environment-specific)",
+      "openWebsite": "Open Netopia Website"
+    },
+    "shipping": {
+      "title": "Shipping Setup",
+      "subtitle": "Configure eAWB.ro for shipping",
+      "configTitle": "eAWB.ro Configuration",
+      "intro": "eAWB.ro provides integrated shipping with multiple carriers. Here's how to set it up:",
+      "step1Prefix": "Create an account at",
+      "step2": "Get your API key from your account settings",
+      "step3": "Configure your billing address and default carrier",
+      "step4": "Add credentials in Store Settings → Shipping Provider",
+      "openWebsite": "Open eAWB Website"
+    },
+    "invoicing": {
+      "title": "Invoicing Setup",
+      "subtitle": "Configure Oblio.eu for automatic invoicing",
+      "configTitle": "Oblio.eu Configuration",
+      "intro": "Oblio.eu automates invoice generation for your orders. Setup steps:",
+      "step1Prefix": "Create an Oblio account at",
+      "step2": "Get your API key from account settings",
+      "step3": "Configure your invoice series name and first number",
+      "step4": "Add credentials in Store Settings → Invoicing Provider",
+      "openWebsite": "Open Oblio Website"
+    },
+    "template": {
+      "title": "Storefront Design",
+      "subtitle": "Customize your store's appearance",
+      "configTitle": "Template Customization",
+      "intro": "Make your store unique by customizing:",
+      "item1": "Colors, fonts, and branding",
+      "item2": "Hero section with custom images",
+      "item3": "Layout and product display styles",
+      "item4": "Logo and store identity",
+      "openDesigner": "Open Template Designer"
+    },
+    "complete": {
+      "heading": "You're All Set! 🎊",
+      "description": "Your store is ready to go! You can always update your settings later from the Store Settings page.",
+      "nextStepsTitle": "Next Steps",
+      "step1": "Add your first products",
+      "step2": "Create collections to organize products",
+      "step3": "Test your checkout process",
+      "step4": "Share your store link with customers"
+    },
+    "buttons": {
+      "skipSetup": "Skip Setup",
+      "getStarted": "Get Started",
+      "skipForNow": "Skip for Now",
+      "configureInSettings": "Configure in Settings Now",
+      "completeSetup": "Complete Setup"
+    },
+    "toast": {
+      "completeFailed": "Failed to complete setup",
+      "completeSuccess": "Setup completed! Welcome to your store.",
+      "storeNameRequired": "Please enter a store name",
+      "storeNameSaveFailed": "Failed to save store name",
+      "storeNameSaved": "Store name saved! Setup complete."
+    }
+  },
+  "toast": {
+    "updated": "Settings updated successfully",
+    "updateFailed": "Failed to update settings",
+    "missingApiKey": "Missing API Key. Add it from Netopia Admin → Profile → Security.",
+    "missingPosSignature": "Missing POS Signature. Add it from Netopia Admin → Point of Sale → Technical Settings.",
+    "connectionFailed": "Connection test failed.",
+    "netopiaOk": "Netopia connection successful.",
+    "eawbKeyFirst": "Please enter and save your eAWB API key first",
+    "eawbKeyEnter": "Please enter your eAWB API key first",
+    "noPickupAddress": "No pickup (shipping) address found in your Europarcel account. Create one in your Europarcel dashboard, then retrieve again.",
+    "pickupAddressesFound": "{{count}} pickup addresses found — please select one",
+    "fetchPickupFailed": "Failed to fetch pickup addresses: {{message}}",
+    "noBillingAddress": "No billing address found in your Europarcel/eAWB account. Please create one in your Europarcel dashboard.",
+    "billingLinked": "Billing address linked automatically",
+    "billingAddressesFound": "{{count}} billing addresses found — please select one",
+    "fetchBillingFailed": "Failed to fetch billing addresses: {{message}}",
+    "selectCarrierFirst": "Please select a carrier first",
+    "carriersFetched": "Carriers fetched successfully",
+    "fetchCarriersFailed": "Failed to fetch carriers: {{message}}",
+    "servicesFetched": "Services fetched successfully",
+    "fetchServicesFailed": "Failed to fetch services: {{message}}"
+  }
+}

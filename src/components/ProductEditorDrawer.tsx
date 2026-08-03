@@ -27,6 +27,13 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatRon, type ProductMetrics } from '@/lib/productAnalytics';
+import {
+  normalizeReviewStatus,
+  relativeTime,
+  statusBadgeClass,
+  type ReviewRow,
+  type ReviewStatus,
+} from '@/lib/reviewAnalytics';
 import { cn } from '@/lib/utils';
 
 export interface EditorProduct {
@@ -166,6 +173,47 @@ export function ProductEditorDrawer({
       if (error) throw error;
       return data as Array<{ discount_id: string }>;
     },
+  });
+
+  const { data: productReviews = [], isLoading: reviewsLoading } = useQuery({
+    queryKey: ['product-reviews-admin', product?.id],
+    enabled: !!product?.id && open,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('product_id', product!.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []).map((r) => ({
+        ...r,
+        status: normalizeReviewStatus(r as Partial<ReviewRow>),
+      })) as ReviewRow[];
+    },
+  });
+
+  const reviewStats = useMemo(() => {
+    const total = productReviews.length;
+    const avg = total === 0 ? 0 : productReviews.reduce((s, r) => s + r.rating, 0) / total;
+    const pending = productReviews.filter((r) => r.status === 'pending').length;
+    const approved = productReviews.filter((r) => r.status === 'approved').length;
+    return { total, avg, pending, approved };
+  }, [productReviews]);
+
+  const moderateProductReview = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: ReviewStatus }) => {
+      const { error } = await supabase
+        .from('reviews')
+        .update({ status, is_approved: status === 'approved' })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['product-reviews-admin', product?.id] });
+      queryClient.invalidateQueries({ queryKey: ['reviews'] });
+      toast.success('Review updated');
+    },
+    onError: () => toast.error('Failed to update review'),
   });
 
   useEffect(() => {
@@ -649,6 +697,14 @@ export function ProductEditorDrawer({
                   <TabsTrigger value="inventory">Inventory</TabsTrigger>
                   <TabsTrigger value="organization">Organization</TabsTrigger>
                   <TabsTrigger value="performance">Performance</TabsTrigger>
+                  <TabsTrigger value="reviews">
+                    Reviews
+                    {reviewStats.pending > 0 ? (
+                      <span className="ml-1.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 text-[10px] px-1.5 py-0.5 tabular-nums">
+                        {reviewStats.pending}
+                      </span>
+                    ) : null}
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="general" className="space-y-4 mt-4">
@@ -845,6 +901,97 @@ export function ProductEditorDrawer({
                       ))}
                     </div>
                   ) : null}
+                </TabsContent>
+
+                <TabsContent value="reviews" className="space-y-4 mt-4">
+                  <div className="grid grid-cols-3 gap-2 text-sm">
+                    <div className="rounded-lg border bg-card/50 p-3">
+                      <div className="text-xs text-muted-foreground uppercase tracking-wide">Average</div>
+                      <div className="mt-1 flex items-center gap-1.5 font-semibold tabular-nums">
+                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                        {reviewStats.total ? reviewStats.avg.toFixed(1) : '—'}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border bg-card/50 p-3">
+                      <div className="text-xs text-muted-foreground uppercase tracking-wide">Total</div>
+                      <div className="mt-1 font-semibold tabular-nums">{reviewStats.total}</div>
+                    </div>
+                    <div className="rounded-lg border bg-card/50 p-3">
+                      <div className="text-xs text-muted-foreground uppercase tracking-wide">Pending</div>
+                      <div className="mt-1 font-semibold tabular-nums">{reviewStats.pending}</div>
+                    </div>
+                  </div>
+
+                  {reviewsLoading ? (
+                    <p className="text-sm text-muted-foreground">Loading reviews…</p>
+                  ) : productReviews.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No reviews for this product yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {productReviews.slice(0, 12).map((r) => {
+                        const st = normalizeReviewStatus(r);
+                        return (
+                          <div key={r.id} className="rounded-lg border p-3 space-y-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-sm font-medium truncate">{r.customer_name}</span>
+                                  <Badge className={statusBadgeClass(st)}>
+                                    {st.charAt(0).toUpperCase() + st.slice(1)}
+                                  </Badge>
+                                </div>
+                                <div className="flex gap-0.5 mt-1">
+                                  {[1, 2, 3, 4, 5].map((s) => (
+                                    <Star
+                                      key={s}
+                                      className={cn(
+                                        'h-3 w-3',
+                                        s <= r.rating
+                                          ? 'fill-amber-400 text-amber-400'
+                                          : 'text-muted-foreground/30'
+                                      )}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                              <span className="text-[11px] text-muted-foreground shrink-0">
+                                {relativeTime(r.created_at)}
+                              </span>
+                            </div>
+                            {r.review_text && (
+                              <p className="text-sm text-muted-foreground line-clamp-3">{r.review_text}</p>
+                            )}
+                            {st === 'pending' && (
+                              <div className="flex gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={moderateProductReview.isPending}
+                                  onClick={() =>
+                                    moderateProductReview.mutate({ id: r.id, status: 'approved' })
+                                  }
+                                >
+                                  Approve
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  disabled={moderateProductReview.isPending}
+                                  onClick={() =>
+                                    moderateProductReview.mutate({ id: r.id, status: 'rejected' })
+                                  }
+                                >
+                                  Reject
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
 

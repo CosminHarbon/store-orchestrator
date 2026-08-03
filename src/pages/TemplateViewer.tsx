@@ -1,5 +1,8 @@
 import { useSearchParams, useParams } from "react-router-dom";
+import { lazy, Suspense } from "react";
 import EnhancedElementarTemplate from "@/components/templates/EnhancedElementarTemplate";
+
+const PremiumTemplate = lazy(() => import("@/components/templates/premium/PremiumTemplate"));
 
 const TemplateViewer = () => {
   const [searchParams] = useSearchParams();
@@ -26,6 +29,20 @@ const TemplateViewer = () => {
 
   if (templateKey === "elementar") {
     return <EnhancedElementarTemplate apiKey={apiKey} editMode={editMode} />;
+  }
+
+  if (templateKey === "premium") {
+    return (
+      <Suspense
+        fallback={
+          <div className="min-h-screen flex items-center justify-center bg-background">
+            <p className="text-sm text-muted-foreground animate-pulse">Loading Premium storefront…</p>
+          </div>
+        }
+      >
+        <PremiumTemplate apiKey={apiKey} />
+      </Suspense>
+    );
   }
 
   return (

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -27,6 +28,8 @@ import {
 type Step = 'welcome' | 'store' | 'payment' | 'shipping' | 'invoicing' | 'template' | 'complete';
 
 const SetupWizard = () => {
+  const { t } = useTranslation('settings');
+  const { t: tCommon } = useTranslation('common');
   const [currentStep, setCurrentStep] = useState<Step>('welcome');
   const [loading, setLoading] = useState(false);
   const [storeName, setStoreName] = useState('');
@@ -69,9 +72,9 @@ const SetupWizard = () => {
       .eq('user_id', user.id);
     
     if (error) {
-      toast.error('Failed to complete setup');
+      toast.error(t('setup.toast.completeFailed'));
     } else {
-      toast.success('Setup completed! Welcome to your store.');
+      toast.success(t('setup.toast.completeSuccess'));
       navigate('/app');
     }
     setLoading(false);
@@ -92,7 +95,7 @@ const SetupWizard = () => {
 
   const updateStoreName = async () => {
     if (!user || !storeName.trim()) {
-      toast.error('Please enter a store name');
+      toast.error(t('setup.toast.storeNameRequired'));
       return;
     }
     
@@ -106,9 +109,9 @@ const SetupWizard = () => {
       .eq('user_id', user.id);
     
     if (error) {
-      toast.error('Failed to save store name');
+      toast.error(t('setup.toast.storeNameSaveFailed'));
     } else {
-      toast.success('Store name saved! Setup complete.');
+      toast.success(t('setup.toast.storeNameSaved'));
       navigate('/app');
     }
     setLoading(false);
@@ -154,15 +157,15 @@ const SetupWizard = () => {
           </Button>
           <div className="flex items-center gap-3 mb-4">
             {getStepIcon(currentStep)}
-            <CardTitle className="text-2xl">Store Setup Wizard</CardTitle>
+            <CardTitle className="text-2xl">{t('setup.title')}</CardTitle>
           </div>
           <CardDescription>
-            Let's get your store configured in just a few steps
+            {t('setup.subtitle')}
           </CardDescription>
           <div className="mt-4">
             <Progress value={progress} className="h-2" />
             <p className="text-xs text-muted-foreground mt-2">
-              Step {currentStepIndex + 1} of {steps.length}
+              {t('setup.stepOf', { current: currentStepIndex + 1, total: steps.length })}
             </p>
           </div>
         </CardHeader>
@@ -175,10 +178,9 @@ const SetupWizard = () => {
                 <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
                   <Sparkles className="h-10 w-10 text-primary" />
                 </div>
-                <h2 className="text-3xl font-bold">Welcome! 🎉</h2>
+                <h2 className="text-3xl font-bold">{t('setup.welcome.heading')}</h2>
                 <p className="text-muted-foreground max-w-md mx-auto">
-                  We're excited to help you set up your online store. This wizard will guide you through 
-                  configuring payments, shipping, invoicing, and customizing your storefront.
+                  {t('setup.welcome.description')}
                 </p>
                 
                 {/* Video Tutorial Card */}
@@ -186,17 +188,17 @@ const SetupWizard = () => {
                   <CardHeader>
                     <div className="flex items-center gap-2">
                       <Video className="h-5 w-5 text-primary" />
-                      <CardTitle className="text-lg">Quick Start Video</CardTitle>
+                      <CardTitle className="text-lg">{t('setup.welcome.videoTitle')}</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <p className="text-sm text-muted-foreground">
-                      Watch this 5-minute tutorial to understand the setup process
+                      {t('setup.welcome.videoDesc')}
                     </p>
                     <Button variant="outline" className="w-full" asChild>
                       <a href="https://www.youtube.com/watch?v=YOUR_VIDEO_ID" target="_blank" rel="noopener noreferrer">
                         <Video className="h-4 w-4 mr-2" />
-                        Watch Setup Tutorial
+                        {t('setup.welcome.watchTutorial')}
                         <ExternalLink className="h-4 w-4 ml-2" />
                       </a>
                     </Button>
@@ -205,10 +207,10 @@ const SetupWizard = () => {
 
                 <div className="flex gap-3 justify-center pt-4">
                   <Button variant="outline" onClick={skipSetup}>
-                    Skip Setup
+                    {t('setup.buttons.skipSetup')}
                   </Button>
                   <Button onClick={nextStep}>
-                    Get Started
+                    {t('setup.buttons.getStarted')}
                     <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>
                 </div>
@@ -219,37 +221,37 @@ const SetupWizard = () => {
             <TabsContent value="store" className="space-y-6">
               <div className="space-y-4">
                 <div className="text-center space-y-2">
-                  <h2 className="text-2xl font-bold">Store Information</h2>
+                  <h2 className="text-2xl font-bold">{t('setup.store.title')}</h2>
                   <p className="text-muted-foreground">
-                    Let's start with your store name
+                    {t('setup.store.subtitle')}
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="store-name">Store Name</Label>
+                  <Label htmlFor="store-name">{t('setup.store.nameLabel')}</Label>
                   <Input
                     id="store-name"
-                    placeholder="My Amazing Store"
+                    placeholder={t('setup.store.namePlaceholder')}
                     value={storeName}
                     onChange={(e) => setStoreName(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    This will appear on your storefront and in customer communications
+                    {t('setup.store.nameHelp')}
                   </p>
                 </div>
 
                 <div className="flex gap-3 pt-4">
                   <Button variant="outline" onClick={prevStep}>
                     <ChevronLeft className="h-4 w-4 mr-2" />
-                    Back
+                    {tCommon('back')}
                   </Button>
                   <Button onClick={updateStoreName} disabled={loading} className="flex-1">
-                    Save & Complete Setup
+                    {t('setup.store.saveAndComplete')}
                     <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>
                 </div>
                 <p className="text-xs text-center text-muted-foreground">
-                  Once you add your store name, you can configure other settings anytime from the dashboard
+                  {t('setup.store.footerNote')}
                 </p>
               </div>
             </TabsContent>
@@ -258,9 +260,9 @@ const SetupWizard = () => {
             <TabsContent value="payment" className="space-y-6">
               <div className="space-y-4">
                 <div className="text-center space-y-2">
-                  <h2 className="text-2xl font-bold">Payment Setup</h2>
+                  <h2 className="text-2xl font-bold">{t('setup.payment.title')}</h2>
                   <p className="text-muted-foreground">
-                    Configure Netopia for card payments
+                    {t('setup.payment.subtitle')}
                   </p>
                 </div>
 
@@ -268,32 +270,32 @@ const SetupWizard = () => {
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <CreditCard className="h-5 w-5" />
-                      Netopia Configuration
+                      {t('setup.payment.configTitle')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <p className="text-sm text-muted-foreground">
-                      To accept card payments, create a Netopia merchant account and add these credentials in Store Settings → Payment Provider:
+                      {t('setup.payment.intro')}
                     </p>
                     
                     <ol className="space-y-2 text-sm list-decimal list-inside">
-                      <li>Create and activate an account at <a href="https://netopia-payments.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">netopia-payments.com</a></li>
-                      <li><strong>API Key</strong> (required) — Admin → Profile → Security</li>
-                      <li><strong>POS Signature</strong> (required) — Admin → Point of Sale → Technical Settings</li>
-                      <li><strong>Public Key</strong> (optional) — same Technical Settings page; used for IPN verification</li>
-                      <li>Choose Sandbox for testing or Live for production (keys are environment-specific)</li>
+                      <li>{t('setup.payment.step1Prefix')} <a href="https://netopia-payments.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">netopia-payments.com</a></li>
+                      <li>{t('setup.payment.step2')}</li>
+                      <li>{t('setup.payment.step3')}</li>
+                      <li>{t('setup.payment.step4')}</li>
+                      <li>{t('setup.payment.step5')}</li>
                     </ol>
 
                     <div className="flex flex-col gap-2">
                       <Button variant="outline" asChild>
                         <a href="https://netopia-payments.com" target="_blank" rel="noopener noreferrer">
                           <ExternalLink className="h-4 w-4 mr-2" />
-                          Open Netopia Website
+                          {t('setup.payment.openWebsite')}
                         </a>
                       </Button>
                       <Button variant="outline" onClick={() => navigate('/app')}>
                         <ExternalLink className="h-4 w-4 mr-2" />
-                        Configure in Settings Now
+                        {t('setup.buttons.configureInSettings')}
                       </Button>
                     </div>
                   </CardContent>
@@ -302,13 +304,13 @@ const SetupWizard = () => {
                 <div className="flex gap-3">
                   <Button variant="outline" onClick={prevStep}>
                     <ChevronLeft className="h-4 w-4 mr-2" />
-                    Back
+                    {tCommon('back')}
                   </Button>
                   <Button variant="ghost" onClick={nextStep}>
-                    Skip for Now
+                    {t('setup.buttons.skipForNow')}
                   </Button>
                   <Button onClick={nextStep} className="flex-1">
-                    Continue
+                    {tCommon('continue')}
                     <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>
                 </div>
@@ -319,9 +321,9 @@ const SetupWizard = () => {
             <TabsContent value="shipping" className="space-y-6">
               <div className="space-y-4">
                 <div className="text-center space-y-2">
-                  <h2 className="text-2xl font-bold">Shipping Setup</h2>
+                  <h2 className="text-2xl font-bold">{t('setup.shipping.title')}</h2>
                   <p className="text-muted-foreground">
-                    Configure eAWB.ro for shipping
+                    {t('setup.shipping.subtitle')}
                   </p>
                 </div>
 
@@ -329,31 +331,31 @@ const SetupWizard = () => {
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Truck className="h-5 w-5" />
-                      eAWB.ro Configuration
+                      {t('setup.shipping.configTitle')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <p className="text-sm text-muted-foreground">
-                      eAWB.ro provides integrated shipping with multiple carriers. Here's how to set it up:
+                      {t('setup.shipping.intro')}
                     </p>
                     
                     <ol className="space-y-2 text-sm list-decimal list-inside">
-                      <li>Create an account at <a href="https://www.eawb.ro" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">eawb.ro</a></li>
-                      <li>Get your API key from your account settings</li>
-                      <li>Configure your billing address and default carrier</li>
-                      <li>Add credentials in Store Settings → Shipping Provider</li>
+                      <li>{t('setup.shipping.step1Prefix')} <a href="https://www.eawb.ro" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">eawb.ro</a></li>
+                      <li>{t('setup.shipping.step2')}</li>
+                      <li>{t('setup.shipping.step3')}</li>
+                      <li>{t('setup.shipping.step4')}</li>
                     </ol>
 
                     <div className="flex flex-col gap-2">
                       <Button variant="outline" asChild>
                         <a href="https://www.eawb.ro" target="_blank" rel="noopener noreferrer">
                           <ExternalLink className="h-4 w-4 mr-2" />
-                          Open eAWB Website
+                          {t('setup.shipping.openWebsite')}
                         </a>
                       </Button>
                       <Button variant="outline" onClick={() => navigate('/app')}>
                         <ExternalLink className="h-4 w-4 mr-2" />
-                        Configure in Settings Now
+                        {t('setup.buttons.configureInSettings')}
                       </Button>
                     </div>
                   </CardContent>
@@ -362,13 +364,13 @@ const SetupWizard = () => {
                 <div className="flex gap-3">
                   <Button variant="outline" onClick={prevStep}>
                     <ChevronLeft className="h-4 w-4 mr-2" />
-                    Back
+                    {tCommon('back')}
                   </Button>
                   <Button variant="ghost" onClick={nextStep}>
-                    Skip for Now
+                    {t('setup.buttons.skipForNow')}
                   </Button>
                   <Button onClick={nextStep} className="flex-1">
-                    Continue
+                    {tCommon('continue')}
                     <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>
                 </div>
@@ -379,9 +381,9 @@ const SetupWizard = () => {
             <TabsContent value="invoicing" className="space-y-6">
               <div className="space-y-4">
                 <div className="text-center space-y-2">
-                  <h2 className="text-2xl font-bold">Invoicing Setup</h2>
+                  <h2 className="text-2xl font-bold">{t('setup.invoicing.title')}</h2>
                   <p className="text-muted-foreground">
-                    Configure Oblio.eu for automatic invoicing
+                    {t('setup.invoicing.subtitle')}
                   </p>
                 </div>
 
@@ -389,31 +391,31 @@ const SetupWizard = () => {
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <FileText className="h-5 w-5" />
-                      Oblio.eu Configuration
+                      {t('setup.invoicing.configTitle')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <p className="text-sm text-muted-foreground">
-                      Oblio.eu automates invoice generation for your orders. Setup steps:
+                      {t('setup.invoicing.intro')}
                     </p>
                     
                     <ol className="space-y-2 text-sm list-decimal list-inside">
-                      <li>Create an Oblio account at <a href="https://www.oblio.eu" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">oblio.eu</a></li>
-                      <li>Get your API key from account settings</li>
-                      <li>Configure your invoice series name and first number</li>
-                      <li>Add credentials in Store Settings → Invoicing Provider</li>
+                      <li>{t('setup.invoicing.step1Prefix')} <a href="https://www.oblio.eu" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">oblio.eu</a></li>
+                      <li>{t('setup.invoicing.step2')}</li>
+                      <li>{t('setup.invoicing.step3')}</li>
+                      <li>{t('setup.invoicing.step4')}</li>
                     </ol>
 
                     <div className="flex flex-col gap-2">
                       <Button variant="outline" asChild>
                         <a href="https://www.oblio.eu" target="_blank" rel="noopener noreferrer">
                           <ExternalLink className="h-4 w-4 mr-2" />
-                          Open Oblio Website
+                          {t('setup.invoicing.openWebsite')}
                         </a>
                       </Button>
                       <Button variant="outline" onClick={() => navigate('/app')}>
                         <ExternalLink className="h-4 w-4 mr-2" />
-                        Configure in Settings Now
+                        {t('setup.buttons.configureInSettings')}
                       </Button>
                     </div>
                   </CardContent>
@@ -422,13 +424,13 @@ const SetupWizard = () => {
                 <div className="flex gap-3">
                   <Button variant="outline" onClick={prevStep}>
                     <ChevronLeft className="h-4 w-4 mr-2" />
-                    Back
+                    {tCommon('back')}
                   </Button>
                   <Button variant="ghost" onClick={nextStep}>
-                    Skip for Now
+                    {t('setup.buttons.skipForNow')}
                   </Button>
                   <Button onClick={nextStep} className="flex-1">
-                    Continue
+                    {tCommon('continue')}
                     <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>
                 </div>
@@ -439,9 +441,9 @@ const SetupWizard = () => {
             <TabsContent value="template" className="space-y-6">
               <div className="space-y-4">
                 <div className="text-center space-y-2">
-                  <h2 className="text-2xl font-bold">Storefront Design</h2>
+                  <h2 className="text-2xl font-bold">{t('setup.template.title')}</h2>
                   <p className="text-muted-foreground">
-                    Customize your store's appearance
+                    {t('setup.template.subtitle')}
                   </p>
                 </div>
 
@@ -449,24 +451,24 @@ const SetupWizard = () => {
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Palette className="h-5 w-5" />
-                      Template Customization
+                      {t('setup.template.configTitle')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <p className="text-sm text-muted-foreground">
-                      Make your store unique by customizing:
+                      {t('setup.template.intro')}
                     </p>
                     
                     <ul className="space-y-2 text-sm list-disc list-inside">
-                      <li>Colors, fonts, and branding</li>
-                      <li>Hero section with custom images</li>
-                      <li>Layout and product display styles</li>
-                      <li>Logo and store identity</li>
+                      <li>{t('setup.template.item1')}</li>
+                      <li>{t('setup.template.item2')}</li>
+                      <li>{t('setup.template.item3')}</li>
+                      <li>{t('setup.template.item4')}</li>
                     </ul>
 
                     <Button variant="outline" className="w-full" onClick={() => navigate('/')}>
                       <Palette className="h-4 w-4 mr-2" />
-                      Open Template Designer
+                      {t('setup.template.openDesigner')}
                     </Button>
                   </CardContent>
                 </Card>
@@ -474,13 +476,13 @@ const SetupWizard = () => {
                 <div className="flex gap-3">
                   <Button variant="outline" onClick={prevStep}>
                     <ChevronLeft className="h-4 w-4 mr-2" />
-                    Back
+                    {tCommon('back')}
                   </Button>
                   <Button variant="ghost" onClick={nextStep}>
-                    Skip for Now
+                    {t('setup.buttons.skipForNow')}
                   </Button>
                   <Button onClick={nextStep} className="flex-1">
-                    Continue
+                    {tCommon('continue')}
                     <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>
                 </div>
@@ -493,31 +495,31 @@ const SetupWizard = () => {
                 <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto">
                   <CheckCircle2 className="h-10 w-10 text-green-500" />
                 </div>
-                <h2 className="text-3xl font-bold">You're All Set! 🎊</h2>
+                <h2 className="text-3xl font-bold">{t('setup.complete.heading')}</h2>
                 <p className="text-muted-foreground max-w-md mx-auto">
-                  Your store is ready to go! You can always update your settings later from the Store Settings page.
+                  {t('setup.complete.description')}
                 </p>
 
                 <Card className="border-primary/20 bg-primary/5">
                   <CardHeader>
-                    <CardTitle className="text-lg">Next Steps</CardTitle>
+                    <CardTitle className="text-lg">{t('setup.complete.nextStepsTitle')}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm text-left">
-                    <p>✅ Add your first products</p>
-                    <p>✅ Create collections to organize products</p>
-                    <p>✅ Test your checkout process</p>
-                    <p>✅ Share your store link with customers</p>
+                    <p>✅ {t('setup.complete.step1')}</p>
+                    <p>✅ {t('setup.complete.step2')}</p>
+                    <p>✅ {t('setup.complete.step3')}</p>
+                    <p>✅ {t('setup.complete.step4')}</p>
                   </CardContent>
                 </Card>
 
                 <div className="flex gap-3 justify-center pt-4">
                   <Button variant="outline" onClick={prevStep}>
                     <ChevronLeft className="h-4 w-4 mr-2" />
-                    Back
+                    {tCommon('back')}
                   </Button>
                   <Button onClick={completeSetup} disabled={loading} size="lg">
                     <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Complete Setup
+                    {t('setup.buttons.completeSetup')}
                   </Button>
                 </div>
               </div>

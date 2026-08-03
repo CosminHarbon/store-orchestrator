@@ -41,6 +41,7 @@ interface ExtendedCustomization {
   product_card_style: string;
   show_collection_images: boolean;
   show_hero_section: boolean;
+  show_reviews?: boolean;
   navbar_style: string;
   footer_text: string;
   gradient_enabled: boolean;
@@ -519,6 +520,13 @@ export const LiveTemplateEditor = ({
               <Switch 
                 checked={customization.show_collection_images} 
                 onCheckedChange={(v) => updateCustomization({ show_collection_images: v })} 
+              />
+            </div>
+            <div className="flex items-center justify-between pt-2">
+              <Label className="text-xs">Show Reviews</Label>
+              <Switch
+                checked={customization.show_reviews !== false}
+                onCheckedChange={(v) => updateCustomization({ show_reviews: v })}
               />
             </div>
           </Section>

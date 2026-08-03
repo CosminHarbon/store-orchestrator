@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { Copy, Search, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,7 +27,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatRon } from '@/lib/paymentAnalytics';
 import { cn } from '@/lib/utils';
-import { differenceInDays, format, isAfter, isBefore, parseISO } from 'date-fns';
+import { formatShortDate } from '@/i18n/format';
+import { differenceInDays, isAfter, isBefore, parseISO } from 'date-fns';
 
 export type DiscountLifecycle = 'active' | 'scheduled' | 'expired';
 
@@ -94,11 +96,11 @@ export function deriveDiscountStatus(
 export function statusBadgeClass(status: DiscountLifecycle) {
   switch (status) {
     case 'active':
-      return 'bg-emerald-100 text-emerald-800 border-0';
+      return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-0';
     case 'scheduled':
-      return 'bg-sky-100 text-sky-800 border-0';
+      return 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border-0';
     case 'expired':
-      return 'bg-slate-100 text-slate-700 border-0';
+      return 'bg-muted text-muted-foreground border-0';
   }
 }
 
@@ -113,6 +115,8 @@ export function DiscountEditorDrawer({
   onDeleted,
   onDuplicated,
 }: DiscountEditorDrawerProps) {
+  const { t } = useTranslation('discounts');
+  const { t: tCommon } = useTranslation('common');
   const queryClient = useQueryClient();
   const [form, setForm] = useState<FormState | null>(null);
   const [baseline, setBaseline] = useState<FormState | null>(null);
@@ -170,10 +174,10 @@ export function DiscountEditorDrawer({
     if (!form?.end_date) return null;
     const end = parseISO(form.end_date);
     const days = differenceInDays(end, new Date());
-    if (days < 0) return 'Expired';
-    if (days === 0) return 'Ends today';
-    return `${days} day${days === 1 ? '' : 's'} until expiry`;
-  }, [form?.end_date]);
+    if (days < 0) return t('editor.expired');
+    if (days === 0) return t('editor.endsToday');
+    return t('editor.endsInDays', { count: days });
+  }, [form?.end_date, t]);
 
   const assignedProducts = useMemo(
     () => products.filter((p) => selectedIds.includes(p.id)),
@@ -202,12 +206,12 @@ export function DiscountEditorDrawer({
   const save = async () => {
     if (!discount || !form) return;
     if (!form.name.trim()) {
-      toast.error('Discount name is required');
+      toast.error(t('editor.nameRequired'));
       return;
     }
     const value = parseFloat(form.discount_value);
     if (!Number.isFinite(value) || value < 0) {
-      toast.error('Enter a valid discount value');
+      toast.error(t('editor.invalidValue'));
       return;
     }
     setSaving(true);
@@ -241,11 +245,11 @@ export function DiscountEditorDrawer({
       queryClient.invalidateQueries({ queryKey: ['product-discounts'] });
       setBaseline({ ...form, name: form.name.trim(), discount_value: String(value) });
       setBaselineIds([...selectedIds]);
-      toast.success('Discount saved');
+      toast.success(t('editor.saved'));
       onSaved();
     } catch (e: any) {
       console.error(e);
-      toast.error(e?.message || 'Failed to save discount');
+      toast.error(e?.message || t('editor.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -267,7 +271,7 @@ export function DiscountEditorDrawer({
           onOpenChange(true);
           return;
         }
-        if (isDirty && !confirm('You have unsaved changes. Discard them?')) return;
+        if (isDirty && !confirm(t('editor.unsavedConfirm'))) return;
         onOpenChange(false);
       }}
     >
@@ -276,14 +280,14 @@ export function DiscountEditorDrawer({
           <div className="min-w-0">
             <SheetHeader className="text-left space-y-1">
               <SheetTitle className="truncate flex items-center gap-2">
-                {form.name || 'Discount'}
+                {form.name || t('editor.title')}
                 <Badge className={statusBadgeClass(liveStatus)}>
-                  {liveStatus.charAt(0).toUpperCase() + liveStatus.slice(1)}
+                  {t(`status.${liveStatus}`)}
                 </Badge>
               </SheetTitle>
               <SheetDescription>
-                {selectedIds.length} products
-                {isDirty ? ' · Unsaved changes' : ''}
+                {t('editor.productsCount', { count: selectedIds.length })}
+                {isDirty ? t('editor.unsavedSuffix') : ''}
               </SheetDescription>
             </SheetHeader>
           </div>
@@ -292,7 +296,7 @@ export function DiscountEditorDrawer({
               type="button"
               size="icon"
               variant="ghost"
-              title="Duplicate"
+              title={t('editor.duplicate')}
               onClick={() => onDuplicated(discount.id)}
             >
               <Copy className="h-4 w-4" />
@@ -306,15 +310,15 @@ export function DiscountEditorDrawer({
         <div className="flex-1 overflow-y-auto p-4 pb-28 space-y-4">
           <Tabs defaultValue="general">
             <TabsList className="w-full justify-start overflow-x-auto">
-              <TabsTrigger value="general">General</TabsTrigger>
-              <TabsTrigger value="products">Products</TabsTrigger>
-              <TabsTrigger value="schedule">Schedule</TabsTrigger>
-              {performance && <TabsTrigger value="performance">Performance</TabsTrigger>}
+              <TabsTrigger value="general">{t('editor.tabs.general')}</TabsTrigger>
+              <TabsTrigger value="products">{t('editor.tabs.products')}</TabsTrigger>
+              <TabsTrigger value="schedule">{t('editor.tabs.schedule')}</TabsTrigger>
+              {performance && <TabsTrigger value="performance">{t('editor.tabs.performance')}</TabsTrigger>}
             </TabsList>
 
             <TabsContent value="general" className="space-y-4 mt-4">
               <div className="space-y-2">
-                <Label>Discount name</Label>
+                <Label>{t('editor.discountName')}</Label>
                 <Input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -322,7 +326,7 @@ export function DiscountEditorDrawer({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Type</Label>
+                  <Label>{t('createDialog.discountType')}</Label>
                   <Select
                     value={form.discount_type}
                     onValueChange={(v: 'percentage' | 'fixed_amount') =>
@@ -333,14 +337,14 @@ export function DiscountEditorDrawer({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="percentage">Percentage (%)</SelectItem>
-                      <SelectItem value="fixed_amount">Fixed amount (RON)</SelectItem>
+                      <SelectItem value="percentage">{t('type.percentage')}</SelectItem>
+                      <SelectItem value="fixed_amount">{t('type.amountRon')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>
-                    {form.discount_type === 'percentage' ? 'Percentage' : 'Amount (RON)'}
+                    {form.discount_type === 'percentage' ? t('type.percentage') : t('type.amountRon')}
                   </Label>
                   <Input
                     type="number"
@@ -353,7 +357,7 @@ export function DiscountEditorDrawer({
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Description</Label>
+                <Label>{t('createDialog.descriptionLabel')}</Label>
                 <Textarea
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -367,14 +371,14 @@ export function DiscountEditorDrawer({
                     setForm({ ...form, is_active: checked === true })
                   }
                 />
-                Mark as active (when within schedule)
+                {t('editor.markActiveWhenScheduled')}
               </label>
             </TabsContent>
 
             <TabsContent value="products" className="space-y-4 mt-4">
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <Label>Assigned products ({assignedProducts.length})</Label>
+                  <Label>{t('editor.assignedProducts', { count: assignedProducts.length })}</Label>
                   {assignedProducts.length > 0 && (
                     <Button
                       type="button"
@@ -382,13 +386,13 @@ export function DiscountEditorDrawer({
                       variant="outline"
                       onClick={() => setSelectedIds([])}
                     >
-                      Remove all
+                      {t('editor.removeAll')}
                     </Button>
                   )}
                 </div>
                 <div className="rounded-md border max-h-40 overflow-y-auto divide-y">
                   {assignedProducts.length === 0 && (
-                    <p className="p-3 text-sm text-muted-foreground">No products assigned yet.</p>
+                    <p className="p-3 text-sm text-muted-foreground">{t('editor.noProductsAssigned')}</p>
                   )}
                   {assignedProducts.map((p) => (
                     <div key={p.id} className="flex items-center justify-between gap-2 p-2 text-sm">
@@ -413,12 +417,12 @@ export function DiscountEditorDrawer({
               </div>
 
               <div className="space-y-2">
-                <Label>Add products</Label>
+                <Label>{t('editor.addProducts')}</Label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     className="pl-10"
-                    placeholder="Search products…"
+                    placeholder={t('editor.searchProducts')}
                     value={productSearch}
                     onChange={(e) => setProductSearch(e.target.value)}
                   />
@@ -434,7 +438,7 @@ export function DiscountEditorDrawer({
                       setPickerSelection(new Set());
                     }}
                   >
-                    Add selected ({pickerSelection.size})
+                    {t('editor.addSelected', { count: pickerSelection.size })}
                   </Button>
                   <Button
                     type="button"
@@ -444,7 +448,7 @@ export function DiscountEditorDrawer({
                       setPickerSelection(new Set(searchableProducts.slice(0, 50).map((p) => p.id)))
                     }
                   >
-                    Select visible
+                    {t('editor.selectVisible')}
                   </Button>
                 </div>
                 <div className="rounded-md border max-h-56 overflow-y-auto divide-y">
@@ -473,7 +477,7 @@ export function DiscountEditorDrawer({
                     </label>
                   ))}
                   {!searchableProducts.length && (
-                    <p className="p-3 text-sm text-muted-foreground">No matching products to add.</p>
+                    <p className="p-3 text-sm text-muted-foreground">{t('editor.noMatchingProducts')}</p>
                   )}
                 </div>
               </div>
@@ -482,7 +486,7 @@ export function DiscountEditorDrawer({
             <TabsContent value="schedule" className="space-y-4 mt-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Start date</Label>
+                  <Label>{t('createDialog.startDate')}</Label>
                   <Input
                     type="date"
                     value={form.start_date}
@@ -490,7 +494,7 @@ export function DiscountEditorDrawer({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>End date</Label>
+                  <Label>{t('createDialog.endDate')}</Label>
                   <Input
                     type="date"
                     value={form.end_date}
@@ -500,31 +504,31 @@ export function DiscountEditorDrawer({
               </div>
               <div className="rounded-md border bg-muted/20 p-3 space-y-2 text-sm">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-muted-foreground">Current status</span>
+                  <span className="text-muted-foreground">{t('editor.currentStatus')}</span>
                   <Badge className={statusBadgeClass(liveStatus)}>
-                    {liveStatus.charAt(0).toUpperCase() + liveStatus.slice(1)}
+                    {t(`status.${liveStatus}`)}
                   </Badge>
                 </div>
                 {expiryCountdown && (
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-muted-foreground">Countdown</span>
+                    <span className="text-muted-foreground">{t('editor.countdown')}</span>
                     <span className="font-medium">{expiryCountdown}</span>
                   </div>
                 )}
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-muted-foreground">Starts</span>
+                  <span className="text-muted-foreground">{t('editor.starts')}</span>
                   <span>
                     {form.start_date
-                      ? format(parseISO(form.start_date), 'MMM d, yyyy')
-                      : '—'}
+                      ? formatShortDate(form.start_date)
+                      : tCommon('dash')}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-muted-foreground">Ends</span>
+                  <span className="text-muted-foreground">{t('editor.ends')}</span>
                   <span>
                     {form.end_date
-                      ? format(parseISO(form.end_date), 'MMM d, yyyy')
-                      : 'No end date'}
+                      ? formatShortDate(form.end_date)
+                      : t('editor.noEndDate')}
                   </span>
                 </div>
               </div>
@@ -533,14 +537,13 @@ export function DiscountEditorDrawer({
             {performance && (
               <TabsContent value="performance" className="space-y-3 mt-4">
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <Stat label="Products on discount" value={String(selectedIds.length)} />
-                  <Stat label="Units sold" value={String(performance.units)} />
-                  <Stat label="Orders (est.)" value={String(performance.orders)} />
-                  <Stat label="Revenue (est.)" value={formatRon(performance.revenue)} />
+                  <Stat label={t('editor.productsOnDiscount')} value={String(selectedIds.length)} />
+                  <Stat label={t('editor.unitsSold')} value={String(performance.units)} />
+                  <Stat label={t('editor.ordersEst')} value={String(performance.orders)} />
+                  <Stat label={t('editor.revenueEst')} value={formatRon(performance.revenue)} />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Estimates are based on order items for products currently assigned to this
-                  discount.
+                  {t('editor.performanceNote')}
                 </p>
               </TabsContent>
             )}
@@ -553,18 +556,18 @@ export function DiscountEditorDrawer({
               onClick={() => onDuplicated(discount.id)}
             >
               <Copy className="h-4 w-4 mr-2" />
-              Duplicate
+              {t('editor.duplicate')}
             </Button>
             <Button
               type="button"
               variant="destructive"
               onClick={() => {
-                if (!confirm(`Delete "${discount.name}"?`)) return;
+                if (!confirm(t('confirmDelete'))) return;
                 onDeleted(discount.id);
               }}
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              Delete
+              {t('editor.delete')}
             </Button>
           </div>
         </div>
@@ -576,14 +579,14 @@ export function DiscountEditorDrawer({
           )}
         >
           <p className="text-sm text-muted-foreground">
-            {isDirty ? 'You have unsaved changes' : 'All changes saved'}
+            {isDirty ? t('editor.unsavedChanges') : t('editor.allSaved')}
           </p>
           <div className="flex gap-2">
             <Button type="button" variant="outline" disabled={!isDirty || saving} onClick={discard}>
-              Discard
+              {tCommon('discardChanges')}
             </Button>
             <Button type="button" disabled={!isDirty || saving} onClick={() => void save()}>
-              {saving ? 'Saving…' : 'Save'}
+              {saving ? t('editor.saving') : tCommon('save')}
             </Button>
           </div>
         </div>

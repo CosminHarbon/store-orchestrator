@@ -1,0 +1,118 @@
+{
+  "title": "Clienți",
+  "description": "Gestionează relațiile cu clienții",
+  "subtitle": "Analitice CRM și relații cu clienții magazinului tău",
+  "searchPlaceholder": "Caută nume, email, telefon sau ID comandă...",
+  "empty": "Nu s-au găsit clienți",
+  "errorLoading": "Eroare la încărcarea clienților: {{message}}",
+  "deltaVsPriorPeriod": "față de perioada anterioară",
+  "deltaVsPrior": "față de perioada anterioară",
+  "clearSegmentFilter": "Șterge filtrul de segment",
+  "segmentRevenue": "{{amount}} venit",
+  "segmentAvg": "Medie {{amount}}",
+  "ordersCount": "{{count}} comenzi",
+  "showing": "Afișare {{from}}–{{to}} din {{total}}",
+  "days": "{{count}} zile",
+  "section": {
+    "overview": "Prezentare generală",
+    "insights": "Informații clienți",
+    "segments": "Segmente clienți",
+    "charts": "Creștere și grafice",
+    "directory": "Director clienți",
+    "profile": "Profil",
+    "statistics": "Statistici",
+    "recentOrders": "Comenzi recente",
+    "activityTimeline": "Cronologie activitate"
+  },
+  "granularity": {
+    "daily": "Zilnic",
+    "weekly": "Săptămânal",
+    "monthly": "Lunar"
+  },
+  "kpi": {
+    "total": "Total clienți",
+    "totalSub": "Emailuri unice cu comenzi",
+    "new": "Clienți noi",
+    "newSub": "Prima comandă în perioadă",
+    "returning": "Recurenți",
+    "returningSub": "2+ comenzi lifetime",
+    "active": "Activi",
+    "activeSub": "Au cumpărat în ultimele 30 zile",
+    "growth": "Creștere clienți",
+    "growthSub": "Creștere față de perioada anterioară",
+    "avgLtv": "Valoare medie pe viață",
+    "avgLtvSub": "Cheltuieli per client",
+    "avgOrders": "Medie comenzi / client",
+    "avgOrdersSub": "Număr comenzi lifetime",
+    "avgSpend": "Medie cheltuieli / client",
+    "avgSpendSub": "La fel ca LTV deocamdată"
+  },
+  "filter": {
+    "segment": "Segment",
+    "payment": "Plată",
+    "orders": "Comenzi",
+    "status": "Status",
+    "minSpend": "Cheltuieli min",
+    "maxSpend": "Cheltuieli max",
+    "allSegments": "Toate segmentele",
+    "allMethods": "Toate metodele",
+    "anyOrderCount": "Orice număr de comenzi",
+    "oneOrder": "1 comandă",
+    "twoToFourOrders": "2–4 comenzi",
+    "fivePlusOrders": "5+ comenzi",
+    "allStatuses": "Toate statusurile"
+  },
+  "table": {
+    "customer": "Client",
+    "contact": "Contact",
+    "orders": "Comenzi",
+    "spent": "Cheltuit",
+    "aov": "AOV",
+    "lastOrder": "Ultima comandă",
+    "since": "Din",
+    "segment": "Segment",
+    "status": "Status"
+  },
+  "segment": {
+    "vip": "VIP",
+    "loyal": "Loial",
+    "returning": "Recurent",
+    "new": "Nou",
+    "one_time": "O singură dată",
+    "high_value": "Valoare ridicată",
+    "at_risk": "Cu risc",
+    "inactive": "Inactiv"
+  },
+  "paymentStatus": {
+    "paid": "Plătit",
+    "failed": "Eșuat",
+    "refunded": "Rambursat"
+  },
+  "detail": {
+    "phone": "Telefon",
+    "customerSince": "Client din",
+    "totalOrders": "Total comenzi",
+    "totalRevenue": "Venit total",
+    "averageOrder": "Comandă medie",
+    "lifetimeValue": "Valoare pe viață",
+    "productsPurchased": "Produse cumpărate",
+    "favoritePayment": "Metodă de plată preferată",
+    "favoriteCategories": "Categorii preferate",
+    "avgDaysBetween": "Zile medii între comenzi",
+    "lastPurchase": "Ultima cumpărare",
+    "daysSinceLast": "Zile de la ultima cumpărare"
+  },
+  "timeline": {
+    "customerCreated": "Client creat",
+    "orderPlaced": "Comandă plasată · {{amount}}",
+    "paymentCompleted": "Plată finalizată",
+    "refundRecorded": "Rambursare înregistrată",
+    "lastActivity": "Ultima activitate"
+  },
+  "payment": {
+    "cash": "Numerar",
+    "card": "Card"
+  },
+  "emptyFiltered": "Niciun client nu corespunde filtrelor",
+  "emptyFilteredHint": "Încearcă să ștergi căutarea sau filtrele. Clienții apar automat când plasează prima comandă."
+}

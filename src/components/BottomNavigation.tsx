@@ -1,6 +1,7 @@
-import { Package, ShoppingCart, Users, BarChart3, Home, Settings } from "lucide-react";
+import { Package, ShoppingCart, Users, BarChart3, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface BottomNavigationProps {
   activeTab: string;
@@ -8,12 +9,14 @@ interface BottomNavigationProps {
 }
 
 export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationProps) {
+  const { t } = useTranslation('common');
+
   const navItems = [
-    { id: 'dashboard', icon: Home, label: 'Home' },
-    { id: 'products', icon: Package, label: 'Products' },
-    { id: 'orders', icon: ShoppingCart, label: 'Orders' },
-    { id: 'customers', icon: Users, label: 'Customers' },
-    { id: 'payments', icon: BarChart3, label: 'Analytics' },
+    { id: 'dashboard', icon: Home, labelKey: 'nav.home' },
+    { id: 'products', icon: Package, labelKey: 'nav.products' },
+    { id: 'orders', icon: ShoppingCart, labelKey: 'nav.orders' },
+    { id: 'customers', icon: Users, labelKey: 'nav.customers' },
+    { id: 'payments', icon: BarChart3, labelKey: 'nav.analytics' },
   ];
 
   return (
@@ -51,7 +54,7 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
                 "text-xs font-medium leading-none transition-colors duration-200",
                 isActive && "text-primary"
               )}>
-                {item.label}
+                {t(item.labelKey)}
               </span>
             </Button>
           );

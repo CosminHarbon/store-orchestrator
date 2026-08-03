@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,8 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const Index = () => {
+  const { t } = useTranslation('dashboard');
+  const { t: tCommon } = useTranslation('common');
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -161,7 +164,7 @@ const Index = () => {
         periodOrders: periodOrderCount,
         pendingOrders: periodPendingOrders,
         lowStockProducts,
-        storeName: profileRes.data?.store_name || 'My Store',
+        storeName: profileRes.data?.store_name,
         todayOrders: todayNewOrders,
         todayRevenue: todayRevenue
       };
@@ -174,7 +177,7 @@ const Index = () => {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-2">
           <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-sm text-muted-foreground">Loading your store...</p>
+          <p className="text-sm text-muted-foreground">{t('loadingStore')}</p>
         </div>
       </div>
     );
@@ -197,17 +200,17 @@ const Index = () => {
               {isMobile && (
                 <div className="flex items-center gap-2 mb-2">
                   <Sparkles className="h-5 w-5 text-primary/70" />
-                  <span className="text-foreground/80 font-medium">Your Store</span>
+                  <span className="text-foreground/80 font-medium">{t('yourStore')}</span>
                 </div>
               )}
               <p className={`text-sm mb-1 ${isMobile ? 'text-muted-foreground' : 'text-white/80'}`}>
-                {isMobile ? 'Period Revenue' : 'Period Revenue'}
+                {t('periodRevenue')}
               </p>
               <h1 className={`text-3xl md:text-4xl font-bold ${isMobile ? 'text-foreground' : ''}`}>
-                {stats?.totalRevenue?.toFixed(2) || '0.00'} RON
+                {stats?.totalRevenue?.toFixed(2) || '0.00'} {tCommon('ron')}
               </h1>
               <p className={`text-sm mt-1 ${isMobile ? 'text-muted-foreground' : 'text-white/80'}`}>
-                {stats?.periodOrders || 0} orders in selected period
+                {t('ordersInPeriod', { count: stats?.periodOrders || 0 })}
               </p>
             </div>
             <div className="flex flex-col items-end gap-2">
@@ -226,7 +229,7 @@ const Index = () => {
                 }`}
               onClick={() => setActiveTab('payments')}
             >
-              {isMobile ? 'Analytics' : '+ View Analytics'}
+              {isMobile ? t('viewAnalyticsShort') : t('viewAnalytics')}
             </Button>
             </div>
           </div>
@@ -247,11 +250,11 @@ const Index = () => {
           }`}
         >
           <div className="flex items-center gap-3 mb-2">
-            <div className={`p-2 rounded-lg ${isMobile ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50'}`}>
-              <Package className={`h-4 w-4 ${isMobile ? 'text-blue-500/80' : 'text-blue-600'}`} />
+            <div className={`p-2 rounded-lg ${'bg-blue-500/10 border border-blue-500/20'}`}>
+              <Package className={`h-4 w-4 ${'text-blue-500'}`} />
             </div>
             <div>
-              <p className={`text-xs ${isMobile ? 'text-muted-foreground' : 'text-muted-foreground'}`}>Products</p>
+              <p className={`text-xs ${isMobile ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{t('kpi.products')}</p>
               <p className={`text-lg font-semibold ${isMobile ? 'text-foreground' : ''}`}>
                 {stats?.totalProducts || 0}
               </p>
@@ -267,11 +270,11 @@ const Index = () => {
           }`}
         >
           <div className="flex items-center gap-3 mb-2">
-            <div className={`p-2 rounded-lg ${isMobile ? 'bg-green-500/10 border border-green-500/20' : 'bg-green-50'}`}>
-              <ShoppingCart className={`h-4 w-4 ${isMobile ? 'text-green-500/80' : 'text-green-600'}`} />
+            <div className={`p-2 rounded-lg ${'bg-green-500/10 border border-green-500/20'}`}>
+              <ShoppingCart className={`h-4 w-4 ${'text-green-500'}`} />
             </div>
             <div>
-              <p className={`text-xs ${isMobile ? 'text-muted-foreground' : 'text-muted-foreground'}`}>Orders</p>
+              <p className={`text-xs ${isMobile ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{t('kpi.orders')}</p>
               <p className={`text-lg font-semibold ${isMobile ? 'text-foreground' : ''}`}>
                 {stats?.totalOrders || 0}
               </p>
@@ -287,11 +290,11 @@ const Index = () => {
           }`}
         >
           <div className="flex items-center gap-3 mb-2">
-            <div className={`p-2 rounded-lg ${isMobile ? 'bg-orange-500/10 border border-orange-500/20' : 'bg-orange-50'}`}>
-              <Clock className={`h-4 w-4 ${isMobile ? 'text-orange-500/80' : 'text-orange-600'}`} />
+            <div className={`p-2 rounded-lg ${'bg-orange-500/10 border border-orange-500/20'}`}>
+              <Clock className={`h-4 w-4 ${'text-orange-500'}`} />
             </div>
             <div>
-              <p className={`text-xs ${isMobile ? 'text-muted-foreground' : 'text-muted-foreground'}`}>Pending</p>
+              <p className={`text-xs ${isMobile ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{t('kpi.pending')}</p>
               <p className={`text-lg font-semibold ${isMobile ? 'text-foreground' : ''}`}>
                 {stats?.pendingOrders || 0}
               </p>
@@ -307,11 +310,11 @@ const Index = () => {
           }`}
         >
           <div className="flex items-center gap-3 mb-2">
-            <div className={`p-2 rounded-lg ${isMobile ? 'bg-red-500/10 border border-red-500/20' : 'bg-red-50'}`}>
-              <TrendingUp className={`h-4 w-4 ${isMobile ? 'text-red-500/80' : 'text-red-600'}`} />
+            <div className={`p-2 rounded-lg ${'bg-red-500/10 border border-red-500/20'}`}>
+              <TrendingUp className={`h-4 w-4 ${'text-red-500'}`} />
             </div>
             <div>
-              <p className={`text-xs ${isMobile ? 'text-muted-foreground' : 'text-muted-foreground'}`}>Low Stock</p>
+              <p className={`text-xs ${isMobile ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{t('kpi.lowStock')}</p>
               <p className={`text-lg font-semibold ${isMobile ? 'text-foreground' : ''}`}>
                 {stats?.lowStockProducts || 0}
               </p>
@@ -327,17 +330,17 @@ const Index = () => {
       }`}>
         <h3 className={`font-semibold text-lg mb-3 ${isMobile ? 'text-foreground flex items-center gap-2' : ''}`}>
           {isMobile && <Zap className="h-5 w-5 text-primary/60" />}
-          Today's Overview
+          {t('todayOverview')}
         </h3>
         <div className="space-y-3">
           <div className={`flex items-center justify-between py-2 border-b ${isMobile ? 'border-border/20' : 'border-border/20'}`}>
             <div className="flex items-center gap-3">
-              <div className={`p-1.5 rounded-lg ${isMobile ? 'bg-green-500/10 border border-green-500/20' : 'bg-green-50'}`}>
-                <ShoppingCart className={`h-4 w-4 ${isMobile ? 'text-green-500/80' : 'text-green-600'}`} />
+              <div className={`p-1.5 rounded-lg ${'bg-green-500/10 border border-green-500/20'}`}>
+                <ShoppingCart className={`h-4 w-4 ${'text-green-500'}`} />
               </div>
               <div>
-                <p className={`text-sm font-medium`}>New Orders</p>
-                <p className={`text-xs text-muted-foreground`}>Last 24 hours</p>
+                <p className={`text-sm font-medium`}>{t('newOrders')}</p>
+                <p className={`text-xs text-muted-foreground`}>{t('last24Hours')}</p>
               </div>
             </div>
             <span className={`text-sm font-semibold`}>{stats?.todayOrders || 0}</span>
@@ -345,29 +348,29 @@ const Index = () => {
           
           <div className={`flex items-center justify-between py-2 border-b ${isMobile ? 'border-border/20' : 'border-border/20'}`}>
             <div className="flex items-center gap-3">
-              <div className={`p-1.5 rounded-lg ${isMobile ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50'}`}>
-                <DollarSign className={`h-4 w-4 ${isMobile ? 'text-blue-500/80' : 'text-blue-600'}`} />
+              <div className={`p-1.5 rounded-lg ${'bg-blue-500/10 border border-blue-500/20'}`}>
+                <DollarSign className={`h-4 w-4 ${'text-blue-500'}`} />
               </div>
               <div>
-                <p className={`text-sm font-medium`}>Today's Sales</p>
-                <p className={`text-xs text-muted-foreground`}>Revenue generated</p>
+                <p className={`text-sm font-medium`}>{t('todaysSales')}</p>
+                <p className={`text-xs text-muted-foreground`}>{t('revenueGenerated')}</p>
               </div>
             </div>
-            <span className={`text-sm font-semibold`}>{(stats?.todayRevenue || 0).toFixed(2)} RON</span>
+            <span className={`text-sm font-semibold`}>{(stats?.todayRevenue || 0).toFixed(2)} {tCommon('ron')}</span>
           </div>
           
           {stats?.lowStockProducts > 0 && (
             <div className="flex items-center justify-between py-2">
               <div className="flex items-center gap-3">
-                <div className={`p-1.5 rounded-lg ${isMobile ? 'bg-orange-500/10 border border-orange-500/20' : 'bg-orange-50'}`}>
-                  <Package className={`h-4 w-4 ${isMobile ? 'text-orange-500/80' : 'text-orange-600'}`} />
+                <div className={`p-1.5 rounded-lg ${'bg-orange-500/10 border border-orange-500/20'}`}>
+                  <Package className={`h-4 w-4 ${'text-orange-500'}`} />
                 </div>
                 <div>
-                  <p className={`text-sm font-medium ${isMobile ? 'text-orange-500/80' : 'text-orange-600'}`}>Low Stock Alert</p>
-                  <p className={`text-xs text-muted-foreground`}>Products need restocking</p>
+                  <p className={`text-sm font-medium ${'text-orange-500'}`}>{t('lowStockAlert')}</p>
+                  <p className={`text-xs text-muted-foreground`}>{t('productsNeedRestocking')}</p>
                 </div>
               </div>
-              <span className={`text-sm font-semibold ${isMobile ? 'text-orange-500/80' : 'text-orange-600'}`}>{stats?.lowStockProducts}</span>
+              <span className={`text-sm font-semibold ${'text-orange-500'}`}>{stats?.lowStockProducts}</span>
             </div>
           )}
         </div>
@@ -377,7 +380,7 @@ const Index = () => {
       <div className={`space-y-3`}>
         <h3 className={`font-semibold text-lg px-1 ${isMobile ? 'text-foreground flex items-center gap-2' : ''}`}>
           {isMobile && <Star className="h-5 w-5 text-primary/60" />}
-          Quick Actions
+          {t('quickActions')}
         </h3>
         
         <div className="space-y-3">
@@ -390,15 +393,15 @@ const Index = () => {
             onClick={() => setActiveTab('settings')}
           >
             <div className="flex items-center gap-4">
-              <div className={`p-2 rounded-lg ${isMobile ? 'bg-purple-500/10 border border-purple-500/20' : 'bg-purple-50'}`}>
-                <Settings className={`h-5 w-5 ${isMobile ? 'text-purple-500/80' : 'text-purple-600'}`} />
+              <div className={`p-2 rounded-lg ${'bg-purple-500/10 border border-purple-500/20'}`}>
+                <Settings className={`h-5 w-5 ${'text-purple-500'}`} />
               </div>
               <div className="text-left">
                 <p className={`font-medium`}>
-                  Settings
+                  {t('action.settings')}
                 </p>
                 <p className={`text-xs text-muted-foreground`}>
-                  Configure store and integrations
+                  {t('action.settingsDesc')}
                 </p>
               </div>
             </div>
@@ -413,15 +416,15 @@ const Index = () => {
             onClick={() => setActiveTab('customers')}
           >
             <div className="flex items-center gap-4">
-              <div className={`p-2 rounded-lg ${isMobile ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50'}`}>
-                <Users className={`h-5 w-5 ${isMobile ? 'text-blue-500/80' : 'text-blue-600'}`} />
+              <div className={`p-2 rounded-lg ${'bg-blue-500/10 border border-blue-500/20'}`}>
+                <Users className={`h-5 w-5 ${'text-blue-500'}`} />
               </div>
               <div className="text-left">
                 <p className={`font-medium`}>
-                  Customers
+                  {t('action.customers')}
                 </p>
                 <p className={`text-xs text-muted-foreground`}>
-                  Manage customer relationships
+                  {t('action.customersDesc')}
                 </p>
               </div>
             </div>
@@ -436,15 +439,15 @@ const Index = () => {
             onClick={() => setActiveTab('templates')}
           >
             <div className="flex items-center gap-4">
-              <div className={`p-2 rounded-lg ${isMobile ? 'bg-pink-500/10 border border-pink-500/20' : 'bg-pink-50'}`}>
-                <Sparkles className={`h-5 w-5 ${isMobile ? 'text-pink-500/80' : 'text-pink-600'}`} />
+              <div className={`p-2 rounded-lg ${'bg-pink-500/10 border border-pink-500/20'}`}>
+                <Sparkles className={`h-5 w-5 ${'text-pink-500'}`} />
               </div>
               <div className="text-left">
                 <p className={`font-medium`}>
-                  Templates
+                  {t('action.templates')}
                 </p>
                 <p className={`text-xs text-muted-foreground`}>
-                  Customize your storefront design
+                  {t('action.templatesDesc')}
                 </p>
               </div>
             </div>
@@ -525,7 +528,7 @@ const Index = () => {
         <div className="flex-1 flex flex-col min-w-0">
           <MobileHeader 
             userEmail={user.email || undefined} 
-            storeName={stats?.storeName}
+            storeName={stats?.storeName || t('defaultStoreName')}
             onTabChange={handleTabChange}
           />
           
@@ -553,20 +556,20 @@ const Index = () => {
         <AlertDialog open={showUnsavedWarning} onOpenChange={setShowUnsavedWarning}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Unsaved Stock Changes</AlertDialogTitle>
+              <AlertDialogTitle>{t('unsavedStockTitle')}</AlertDialogTitle>
               <AlertDialogDescription>
-                You have unsaved stock changes. Would you like to save them before leaving?
+                {t('unsavedStockDesc')}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col sm:flex-row gap-2">
               <AlertDialogCancel onClick={() => setShowUnsavedWarning(false)}>
-                Cancel
+                {tCommon('cancel')}
               </AlertDialogCancel>
               <Button variant="destructive" onClick={handleDiscardAndNavigate}>
-                Discard Changes
+                {tCommon('discardChanges')}
               </Button>
               <AlertDialogAction onClick={handleSaveAndNavigate}>
-                Save & Continue
+                {tCommon('saveAndContinue')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

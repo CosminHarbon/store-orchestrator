@@ -1,0 +1,118 @@
+{
+  "title": "Customers",
+  "description": "Manage customer relationships",
+  "subtitle": "CRM analytics and customer relationships for your store",
+  "searchPlaceholder": "Search name, email, phone, or order ID...",
+  "empty": "No customers found",
+  "errorLoading": "Error loading customers: {{message}}",
+  "deltaVsPriorPeriod": "vs prior period",
+  "deltaVsPrior": "vs prior",
+  "clearSegmentFilter": "Clear segment filter",
+  "segmentRevenue": "{{amount}} revenue",
+  "segmentAvg": "Avg {{amount}}",
+  "ordersCount": "{{count}} orders",
+  "showing": "Showing {{from}}–{{to}} of {{total}}",
+  "days": "{{count}} days",
+  "section": {
+    "overview": "Overview",
+    "insights": "Customer Insights",
+    "segments": "Customer Segments",
+    "charts": "Growth & Charts",
+    "directory": "Customer Directory",
+    "profile": "Profile",
+    "statistics": "Statistics",
+    "recentOrders": "Recent Orders",
+    "activityTimeline": "Activity Timeline"
+  },
+  "granularity": {
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "monthly": "Monthly"
+  },
+  "kpi": {
+    "total": "Total Customers",
+    "totalSub": "Unique emails with orders",
+    "new": "New Customers",
+    "newSub": "First order in period",
+    "returning": "Returning",
+    "returningSub": "2+ lifetime orders",
+    "active": "Active",
+    "activeSub": "Purchased in last 30 days",
+    "growth": "Customer Growth",
+    "growthSub": "Roster growth vs prior",
+    "avgLtv": "Avg Lifetime Value",
+    "avgLtvSub": "Spend per customer",
+    "avgOrders": "Avg Orders / Customer",
+    "avgOrdersSub": "Lifetime order count",
+    "avgSpend": "Avg Spend / Customer",
+    "avgSpendSub": "Same as LTV for now"
+  },
+  "filter": {
+    "segment": "Segment",
+    "payment": "Payment",
+    "orders": "Orders",
+    "status": "Status",
+    "minSpend": "Min spend",
+    "maxSpend": "Max spend",
+    "allSegments": "All segments",
+    "allMethods": "All methods",
+    "anyOrderCount": "Any order count",
+    "oneOrder": "1 order",
+    "twoToFourOrders": "2–4 orders",
+    "fivePlusOrders": "5+ orders",
+    "allStatuses": "All statuses"
+  },
+  "table": {
+    "customer": "Customer",
+    "contact": "Contact",
+    "orders": "Orders",
+    "spent": "Spent",
+    "aov": "AOV",
+    "lastOrder": "Last Order",
+    "since": "Since",
+    "segment": "Segment",
+    "status": "Status"
+  },
+  "segment": {
+    "vip": "VIP",
+    "loyal": "Loyal",
+    "returning": "Returning",
+    "new": "New",
+    "one_time": "One-time",
+    "high_value": "High Value",
+    "at_risk": "At Risk",
+    "inactive": "Inactive"
+  },
+  "paymentStatus": {
+    "paid": "Paid",
+    "failed": "Failed",
+    "refunded": "Refunded"
+  },
+  "detail": {
+    "phone": "Phone",
+    "customerSince": "Customer since",
+    "totalOrders": "Total orders",
+    "totalRevenue": "Total revenue",
+    "averageOrder": "Average order",
+    "lifetimeValue": "Lifetime value",
+    "productsPurchased": "Products purchased",
+    "favoritePayment": "Favorite payment",
+    "favoriteCategories": "Favorite categories",
+    "avgDaysBetween": "Avg days between orders",
+    "lastPurchase": "Last purchase",
+    "daysSinceLast": "Days since last purchase"
+  },
+  "timeline": {
+    "customerCreated": "Customer created",
+    "orderPlaced": "Order placed · {{amount}}",
+    "paymentCompleted": "Payment completed",
+    "refundRecorded": "Refund recorded",
+    "lastActivity": "Last activity"
+  },
+  "payment": {
+    "cash": "Cash",
+    "card": "Card"
+  },
+  "emptyFiltered": "No customers match your filters",
+  "emptyFilteredHint": "Try clearing search or filters. Customers appear automatically when they place their first order."
+}

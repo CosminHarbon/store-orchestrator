@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown, Eye, RefreshCw, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { formatDateTime } from '@/i18n/format';
+import type { TFunction } from 'i18next';
 
 export interface AbandonedCartItem {
   product_id?: string | null;
@@ -39,8 +42,8 @@ export interface AbandonedCartRow {
   customer_county: string | null;
 }
 
-function itemTitle(item: AbandonedCartItem) {
-  return item.title || item.product_title || 'Item';
+function itemTitle(item: AbandonedCartItem, fallback: string) {
+  return item.title || item.product_title || fallback;
 }
 
 function itemPrice(item: AbandonedCartItem) {
@@ -51,24 +54,32 @@ function itemQty(item: AbandonedCartItem) {
   return Number(item.quantity ?? 1);
 }
 
-function formatAbandonedAgo(lastActivityAt: string, nowMs: number): string {
+function formatAbandonedAgo(lastActivityAt: string, nowMs: number, t: TFunction<'orders'>): string {
   const diffMs = Math.max(0, nowMs - new Date(lastActivityAt).getTime());
   const minutes = Math.floor(diffMs / 60000);
-  if (minutes < 1) return 'Abandoned just now';
-  if (minutes < 60) return `Abandoned ${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  if (minutes < 1) return t('abandoned.ago.justNow');
+  if (minutes < 60) return t('abandoned.ago.minutes', { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `Abandoned ${hours} hour${hours === 1 ? '' : 's'} ago`;
+  if (hours < 24) return t('abandoned.ago.hours', { count: hours });
   const days = Math.floor(hours / 24);
-  if (days === 1) return 'Abandoned yesterday';
-  return `Abandoned ${days} days ago`;
+  if (days === 1) return t('abandoned.ago.yesterday');
+  return t('abandoned.ago.days', { count: days });
 }
 
 export function AbandonedCartsSection() {
+  const { t } = useTranslation('orders');
+  const { t: tCommon } = useTranslation('common');
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [nowMs, setNowMs] = useState(Date.now());
   const [selected, setSelected] = useState<AbandonedCartRow | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+
+  const dash = tCommon('dash');
+  const ron = tCommon('ron');
+  const itemFallback = t('abandoned.item');
+
+  const formatMoney = (amount: number) => `${Number(amount).toFixed(2)} ${ron}`;
 
   const { data: carts = [], isLoading, isFetching, refetch } = useQuery({
     queryKey: ['abandoned-carts'],
@@ -123,9 +134,9 @@ export function AbandonedCartsSection() {
   const handleRefresh = async () => {
     try {
       await refetch();
-      toast.success('Abandoned carts refreshed');
+      toast.success(t('abandoned.toast.refreshed'));
     } catch {
-      toast.error('Failed to refresh abandoned carts');
+      toast.error(t('abandoned.toast.refreshFailed'));
     }
   };
 
@@ -149,12 +160,11 @@ export function AbandonedCartsSection() {
                   />
                   <div>
                     <CardTitle className="text-base flex items-center gap-2">
-                      {activeCount > 0 ? `Abandoned Carts (${activeCount})` : 'Abandoned Carts'}
+                      {activeCount > 0
+                        ? t('abandoned.titleCount', { count: activeCount })
+                        : t('abandoned.title')}
                     </CardTitle>
-                    <CardDescription>
-                      Customers who started checkout but never pressed Place Order. Separate from
-                      Pending Card Payments.
-                    </CardDescription>
+                    <CardDescription>{t('abandoned.description')}</CardDescription>
                   </div>
                 </button>
               </CollapsibleTrigger>
@@ -166,7 +176,7 @@ export function AbandonedCartsSection() {
                 disabled={isFetching}
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-                Refresh
+                {t('abandoned.refresh')}
               </Button>
             </div>
           </CardHeader>
@@ -174,22 +184,20 @@ export function AbandonedCartsSection() {
           <CollapsibleContent>
             <CardContent className="pt-0">
               {isLoading ? (
-                <p className="text-sm text-muted-foreground py-4">Loading abandoned carts...</p>
+                <p className="text-sm text-muted-foreground py-4">{t('abandoned.loading')}</p>
               ) : carts.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4">
-                  No abandoned carts right now.
-                </p>
+                <p className="text-sm text-muted-foreground py-4">{t('abandoned.empty')}</p>
               ) : (
                 <div className="overflow-x-auto rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Customer</TableHead>
-                        <TableHead className="hidden md:table-cell">Contact</TableHead>
-                        <TableHead className="hidden lg:table-cell">Products</TableHead>
-                        <TableHead>Total</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="hidden sm:table-cell">Last activity</TableHead>
+                        <TableHead>{t('abandoned.table.customer')}</TableHead>
+                        <TableHead className="hidden md:table-cell">{t('abandoned.table.contact')}</TableHead>
+                        <TableHead className="hidden lg:table-cell">{t('abandoned.table.products')}</TableHead>
+                        <TableHead>{t('abandoned.table.total')}</TableHead>
+                        <TableHead>{t('abandoned.table.status')}</TableHead>
+                        <TableHead className="hidden sm:table-cell">{t('abandoned.table.lastActivity')}</TableHead>
                         <TableHead className="w-[70px]" />
                       </TableRow>
                     </TableHeader>
@@ -197,7 +205,7 @@ export function AbandonedCartsSection() {
                       {carts.map((cart) => {
                         const cartItems = Array.isArray(cart.items) ? cart.items : [];
                         const productSummary = cartItems
-                          .map((i) => `${itemTitle(i)} ×${itemQty(i)}`)
+                          .map((i) => `${itemTitle(i, itemFallback)} ×${itemQty(i)}`)
                           .join(', ');
                         const isExpired = cart.status === 'expired';
 
@@ -208,33 +216,33 @@ export function AbandonedCartsSection() {
                             onClick={() => handleView(cart)}
                           >
                             <TableCell>
-                              <div className="font-medium">{cart.customer_name || '—'}</div>
+                              <div className="font-medium">{cart.customer_name || dash}</div>
                               <div className="text-xs text-muted-foreground md:hidden">
-                                {cart.customer_email || '—'}
+                                {cart.customer_email || dash}
                               </div>
                             </TableCell>
                             <TableCell className="hidden md:table-cell text-sm">
-                              <div>{cart.customer_email || '—'}</div>
-                              <div className="text-muted-foreground">{cart.customer_phone || '—'}</div>
+                              <div>{cart.customer_email || dash}</div>
+                              <div className="text-muted-foreground">{cart.customer_phone || dash}</div>
                             </TableCell>
                             <TableCell
                               className="hidden lg:table-cell text-sm max-w-[240px] truncate"
                               title={productSummary}
                             >
-                              {productSummary || '—'}
+                              {productSummary || dash}
                             </TableCell>
                             <TableCell className="font-medium whitespace-nowrap">
-                              {Number(cart.estimated_total || cart.cart_subtotal || 0).toFixed(2)} RON
+                              {formatMoney(Number(cart.estimated_total || cart.cart_subtotal || 0))}
                             </TableCell>
                             <TableCell>
                               <Badge variant={isExpired ? 'outline' : 'secondary'}>
-                                {isExpired ? 'Expired' : 'Abandoned'}
+                                {isExpired ? t('abandoned.status.expired') : t('abandoned.status.abandoned')}
                               </Badge>
                             </TableCell>
                             <TableCell className="hidden sm:table-cell text-sm">
-                              <div>{formatAbandonedAgo(cart.last_activity_at, nowMs)}</div>
+                              <div>{formatAbandonedAgo(cart.last_activity_at, nowMs, t)}</div>
                               <div className="text-xs text-muted-foreground">
-                                {new Date(cart.last_activity_at).toLocaleString()}
+                                {formatDateTime(cart.last_activity_at)}
                               </div>
                             </TableCell>
                             <TableCell>
@@ -246,7 +254,7 @@ export function AbandonedCartsSection() {
                                   e.stopPropagation();
                                   handleView(cart);
                                 }}
-                                aria-label="View abandoned cart"
+                                aria-label={t('abandoned.viewAria')}
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
@@ -268,7 +276,7 @@ export function AbandonedCartsSection() {
           <DialogHeader>
             <DialogTitle className="text-lg md:text-xl flex items-center gap-2">
               <ShoppingCart className="h-5 w-5" />
-              Abandoned Cart Details
+              {t('abandoned.detailsTitle')}
             </DialogTitle>
           </DialogHeader>
 
@@ -277,75 +285,76 @@ export function AbandonedCartsSection() {
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div>
                   <p className="font-mono text-sm text-muted-foreground">
-                    Cart #{selected.id.slice(-8)}
+                    {t('abandoned.cartId', { id: selected.id.slice(-8) })}
                   </p>
                   <p className="text-lg font-semibold">
-                    {Number(selected.estimated_total || selected.cart_subtotal || 0).toFixed(2)} RON
+                    {formatMoney(Number(selected.estimated_total || selected.cart_subtotal || 0))}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Badge variant={selected.status === 'expired' ? 'outline' : 'secondary'}>
-                    {selected.status === 'expired' ? 'Expired' : 'Abandoned'}
+                    {selected.status === 'expired'
+                      ? t('abandoned.status.expired')
+                      : t('abandoned.status.abandoned')}
                   </Badge>
                   {selected.payment_method && (
                     <Badge variant="outline" className="capitalize">
                       {selected.payment_method}
                     </Badge>
                   )}
-                  <Badge variant="outline">{formatAbandonedAgo(selected.last_activity_at, nowMs)}</Badge>
+                  <Badge variant="outline">{formatAbandonedAgo(selected.last_activity_at, nowMs, t)}</Badge>
                 </div>
               </div>
 
               <p className="text-sm text-muted-foreground rounded-md border bg-muted/30 px-3 py-2">
-                This customer never pressed Place Order. No Checkout Session or Order exists yet.
-                Invoice, AWB and fulfilment are unavailable.
+                {t('abandoned.notice')}
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Customer Information</CardTitle>
+                    <CardTitle className="text-base">{t('abandoned.customerInfo')}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
-                    <div><strong>Name:</strong> {selected.customer_name || '—'}</div>
-                    <div><strong>Email:</strong> {selected.customer_email || '—'}</div>
-                    <div><strong>Phone:</strong> {selected.customer_phone || '—'}</div>
-                    <div><strong>Address:</strong> {selected.customer_address || '—'}</div>
+                    <div><strong>{t('abandoned.field.name')}:</strong> {selected.customer_name || dash}</div>
+                    <div><strong>{t('abandoned.field.email')}:</strong> {selected.customer_email || dash}</div>
+                    <div><strong>{t('abandoned.field.phone')}:</strong> {selected.customer_phone || dash}</div>
+                    <div><strong>{t('abandoned.field.address')}:</strong> {selected.customer_address || dash}</div>
                     {(selected.customer_city || selected.customer_county) && (
                       <div>
-                        <strong>Location:</strong>{' '}
+                        <strong>{t('abandoned.field.location')}:</strong>{' '}
                         {[selected.customer_city, selected.customer_county].filter(Boolean).join(', ')}
                       </div>
                     )}
                     {selected.delivery_type && (
-                      <div><strong>Delivery:</strong> {selected.delivery_type}</div>
+                      <div><strong>{t('abandoned.field.delivery')}:</strong> {selected.delivery_type}</div>
                     )}
                     {selected.locker_name && (
-                      <div><strong>Locker:</strong> {selected.locker_name}</div>
+                      <div><strong>{t('abandoned.field.locker')}:</strong> {selected.locker_name}</div>
                     )}
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Cart Activity</CardTitle>
+                    <CardTitle className="text-base">{t('abandoned.cartActivity')}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
                     <div>
-                      <strong>Last activity:</strong>{' '}
-                      {new Date(selected.last_activity_at).toLocaleString()}
+                      <strong>{t('abandoned.field.lastActivity')}:</strong>{' '}
+                      {formatDateTime(selected.last_activity_at)}
                     </div>
                     <div>
-                      <strong>Started:</strong> {new Date(selected.created_at).toLocaleString()}
+                      <strong>{t('abandoned.field.started')}:</strong> {formatDateTime(selected.created_at)}
                     </div>
-                    <div><strong>Checkout step:</strong> {selected.checkout_step}</div>
+                    <div><strong>{t('abandoned.field.checkoutStep')}:</strong> {selected.checkout_step}</div>
                     <div>
-                      <strong>Payment preference:</strong>{' '}
-                      {selected.payment_method || '—'}
+                      <strong>{t('abandoned.field.paymentPreference')}:</strong>{' '}
+                      {selected.payment_method || dash}
                     </div>
                     <div>
-                      <strong>Estimated total:</strong>{' '}
-                      {Number(selected.estimated_total || 0).toFixed(2)} RON
+                      <strong>{t('abandoned.field.estimatedTotal')}:</strong>{' '}
+                      {formatMoney(Number(selected.estimated_total || 0))}
                     </div>
                   </CardContent>
                 </Card>
@@ -353,28 +362,26 @@ export function AbandonedCartsSection() {
 
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Cart Items</CardTitle>
+                  <CardTitle className="text-base">{t('abandoned.cartItems')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="hidden md:block">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Product</TableHead>
-                          <TableHead>Price</TableHead>
-                          <TableHead>Quantity</TableHead>
-                          <TableHead>Total</TableHead>
+                          <TableHead>{t('table.product')}</TableHead>
+                          <TableHead>{t('table.price')}</TableHead>
+                          <TableHead>{t('table.quantity')}</TableHead>
+                          <TableHead>{t('table.total')}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {items.map((item, idx) => (
-                          <TableRow key={`${itemTitle(item)}-${idx}`}>
-                            <TableCell>{itemTitle(item)}</TableCell>
-                            <TableCell>{itemPrice(item).toFixed(2)} RON</TableCell>
+                          <TableRow key={`${itemTitle(item, itemFallback)}-${idx}`}>
+                            <TableCell>{itemTitle(item, itemFallback)}</TableCell>
+                            <TableCell>{formatMoney(itemPrice(item))}</TableCell>
                             <TableCell>{itemQty(item)}</TableCell>
-                            <TableCell>
-                              {(itemPrice(item) * itemQty(item)).toFixed(2)} RON
-                            </TableCell>
+                            <TableCell>{formatMoney(itemPrice(item) * itemQty(item))}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -382,18 +389,18 @@ export function AbandonedCartsSection() {
                   </div>
                   <div className="md:hidden space-y-3">
                     {items.map((item, idx) => (
-                      <div key={`${itemTitle(item)}-${idx}`} className="border rounded-md p-3 text-sm">
-                        <div className="font-medium">{itemTitle(item)}</div>
+                      <div key={`${itemTitle(item, itemFallback)}-${idx}`} className="border rounded-md p-3 text-sm">
+                        <div className="font-medium">{itemTitle(item, itemFallback)}</div>
                         <div className="text-muted-foreground">
-                          {itemQty(item)} × {itemPrice(item).toFixed(2)} RON ={' '}
-                          {(itemPrice(item) * itemQty(item)).toFixed(2)} RON
+                          {itemQty(item)} × {formatMoney(itemPrice(item))} ={' '}
+                          {formatMoney(itemPrice(item) * itemQty(item))}
                         </div>
                       </div>
                     ))}
                   </div>
                   <div className="flex justify-end mt-4 pt-3 border-t">
                     <span className="text-lg font-semibold">
-                      {Number(selected.estimated_total || selected.cart_subtotal || 0).toFixed(2)} RON
+                      {formatMoney(Number(selected.estimated_total || selected.cart_subtotal || 0))}
                     </span>
                   </div>
                 </CardContent>

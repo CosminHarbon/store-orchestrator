@@ -1,0 +1,151 @@
+/* Premium template design tokens — scoped under .premium-store */
+.premium-store {
+  --prem-bg: #f6f4f1;
+  --prem-surface: #ffffff;
+  --prem-ink: #141414;
+  --prem-muted: #6e6a64;
+  --prem-line: rgba(20, 20, 20, 0.08);
+  --prem-accent: #1c2b24;
+  --prem-accent-soft: #e8efe9;
+  --prem-sale: #a33b2b;
+  --prem-radius: 1rem;
+  --prem-radius-sm: 0.625rem;
+  --prem-shadow: 0 18px 50px rgba(20, 20, 20, 0.08);
+  --prem-font-display: "Cormorant Garamond", "Times New Roman", serif;
+  --prem-font-body: "DM Sans", system-ui, sans-serif;
+  --prem-image-bg: #ebe7e1;
+  background: var(--prem-bg);
+  color: var(--prem-ink);
+  font-family: var(--prem-font-body);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.dark .premium-store {
+  --prem-bg: #0b0f14;
+  --prem-surface: #141a22;
+  --prem-ink: #f3f4f6;
+  --prem-muted: #9ca3af;
+  --prem-line: rgba(255, 255, 255, 0.08);
+  --prem-accent: #8b9d8f;
+  --prem-accent-soft: #1a2420;
+  --prem-sale: #f07167;
+  --prem-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  --prem-image-bg: #1c2430;
+}
+
+.premium-store * {
+  box-sizing: border-box;
+}
+
+.premium-store h1,
+.premium-store h2,
+.premium-store h3,
+.premium-store .prem-display {
+  font-family: var(--prem-font-display);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.premium-store .prem-container {
+  width: min(1200px, calc(100% - 2rem));
+  margin-inline: auto;
+}
+
+.premium-store .prem-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: none;
+  border-radius: 999px;
+  padding: 0.85rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: transform 0.25s ease, opacity 0.25s ease, background 0.25s ease;
+}
+
+.premium-store .prem-btn:active {
+  transform: scale(0.98);
+}
+
+.premium-store .prem-btn-primary {
+  background: var(--prem-ink);
+  color: #fff;
+}
+
+.premium-store .prem-btn-primary:hover {
+  opacity: 0.88;
+}
+
+.premium-store .prem-btn-ghost {
+  background: transparent;
+  color: var(--prem-ink);
+  border: 1px solid var(--prem-line);
+}
+
+.premium-store .prem-btn-ghost:hover {
+  background: rgba(20, 20, 20, 0.04);
+}
+
+.premium-store .prem-fade-up {
+  animation: premFadeUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes premFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.premium-store .prem-skeleton {
+  background: linear-gradient(90deg, #eceae6 25%, #f7f5f2 50%, #eceae6 75%);
+  background-size: 200% 100%;
+  animation: premShimmer 1.2s infinite linear;
+  border-radius: var(--prem-radius-sm);
+}
+
+@keyframes premShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.premium-store .prem-rail {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 0.5rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.premium-store .prem-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.premium-store .prem-rail > * {
+  scroll-snap-align: start;
+  flex: 0 0 auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .premium-store .prem-fade-up,
+  .premium-store .prem-skeleton,
+  .premium-store .prem-btn {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -337,6 +337,106 @@ serve(async (req) => {
       });
     }
 
+    if (action === 'validate_pickup_locker') {
+      const lockerId = body.locker_id || body.fixed_location_id;
+      if (!lockerId) {
+        return new Response(JSON.stringify({
+          success: false,
+          exists: false,
+          error: 'MISSING_LOCKER_ID',
+          message: 'locker_id is required'
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('eawb_api_key')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile?.eawb_api_key) {
+        return new Response(JSON.stringify({
+          success: false,
+          exists: false,
+          error: 'MISSING_API_KEY',
+          message: 'eAWB API key not configured'
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      try {
+        const resp = await fetch(
+          `${EAWB_BASE_URL}/locations/fixedlocations/${encodeURIComponent(String(lockerId))}`,
+          {
+            method: 'GET',
+            headers: {
+              'X-API-Key': profile.eawb_api_key,
+              'Accept': 'application/json'
+            }
+          }
+        );
+        const raw = await resp.json();
+        if (!resp.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            exists: false,
+            error: 'NOT_FOUND',
+            message: 'Saved pickup locker no longer exists or is unavailable. Please select another one.',
+            details: raw
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        const lockerRaw = Array.isArray(raw) ? raw[0] : (raw?.data || raw);
+        if (!lockerRaw || lockerRaw.is_active === false) {
+          return new Response(JSON.stringify({
+            success: false,
+            exists: false,
+            error: 'INACTIVE',
+            message: 'Saved pickup locker is inactive. Please select another one.'
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          exists: true,
+          locker: {
+            id: lockerRaw.id || lockerId,
+            name: lockerRaw.name || lockerRaw.locker_name || '',
+            address: lockerRaw.address || '',
+            city: lockerRaw.locality_name || lockerRaw.city || '',
+            county: lockerRaw.county_name || lockerRaw.county || '',
+            carrier_id: lockerRaw.carrier_id ?? null,
+            carrier_name: lockerRaw.carrier_name || '',
+            allows_drop_off: lockerRaw.allows_drop_off ?? null,
+            is_active: lockerRaw.is_active !== false,
+          }
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (err: any) {
+        return new Response(JSON.stringify({
+          success: false,
+          exists: false,
+          error: 'VALIDATE_FAILED',
+          message: err?.message || 'Failed to validate pickup locker'
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     if (action === 'calculate_prices') {
       // Delegate to eawb-quoting function
       const quotingResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/eawb-quoting`, {
@@ -672,13 +772,21 @@ serve(async (req) => {
       let addressTo: any;
       if (isLockerDelivery && isLockerService) {
         // For locker delivery, use fixed_location_id with locality info and street placeholders
+        const lockerLocality =
+          order.customer_city ||
+          recipientParsed.city ||
+          '';
+        const lockerCounty =
+          (!isBadCounty(order.customer_county) ? order.customer_county : null) ||
+          recipientParsed.county ||
+          '';
         addressTo = {
           country_code: 'RO',
           fixed_location_id: Number(order.locker_id),
-          locality_name: recipientParsed.city,
-          county_name: recipientParsed.county,
-          street_name: lockerStreet.street_name,
-          street_number: lockerStreet.street_number,
+          locality_name: lockerLocality,
+          county_name: lockerCounty,
+          street_name: lockerStreet.street_name || 'Locker',
+          street_number: lockerStreet.street_number || '1',
           contact: order.customer_name,
           phone: order.customer_phone || '0700000000',
           email: order.customer_email
@@ -700,25 +808,57 @@ serve(async (req) => {
         console.log('Using home address:', addressTo);
       }
 
-      // Prefer stored Europarcel shipping (pickup) address ID for sender (address_from)
+      // Prefer merchant default pickup locker for locker-from services (3 & 4).
+      // Otherwise keep existing Pickup Address / structured address logic.
+      const serviceIdNum = Number(selected_service);
+      const needsPickupLocker = serviceIdNum === 3 || serviceIdNum === 4;
+      const savedPickupLockerId = profile.eawb_pickup_locker_id
+        ? Number(profile.eawb_pickup_locker_id)
+        : null;
+      const lockerCarrierMatches =
+        !profile.eawb_pickup_locker_carrier_id ||
+        !selected_carrier ||
+        Number(profile.eawb_pickup_locker_carrier_id) === Number(selected_carrier);
+
       const shippingAddressId: number | null = profile.eawb_shipping_address_id ?? null;
-      const addressFrom = shippingAddressId
-        ? { address_from_id: shippingAddressId }
-        : {
-            country_code: 'RO',
-            county_name: senderParsed.county,
-            locality_name: senderParsed.city,
-            postal_code: senderParsed.postal_code || undefined,
-            contact: profile.eawb_name || profile.store_name || 'Sender',
-            street_name: senderStreet.street_name,
-            street_number: senderStreet.street_number,
-            phone: profile.eawb_phone || '0700000000',
-            email: profile.eawb_email || user.email
-          };
-      console.log('Using address_from:', addressFrom);
+
+      let addressFrom: any;
+      if (needsPickupLocker && savedPickupLockerId && lockerCarrierMatches) {
+        const lockerStreet = profile.eawb_pickup_locker_address
+          ? extractStreetInfo(profile.eawb_pickup_locker_address)
+          : { street_name: 'Locker', street_number: '1' };
+        addressFrom = {
+          country_code: 'RO',
+          fixed_location_id: savedPickupLockerId,
+          locality_name: profile.eawb_pickup_locker_city || senderParsed.city || '',
+          county_name: profile.eawb_pickup_locker_county || senderParsed.county || '',
+          street_name: lockerStreet.street_name || 'Locker',
+          street_number: lockerStreet.street_number || '1',
+          contact: profile.eawb_name || profile.store_name || 'Sender',
+          phone: profile.eawb_phone || '0700000000',
+          email: profile.eawb_email || user.email
+        };
+        console.log('Using default pickup locker for address_from:', addressFrom);
+      } else {
+        addressFrom = shippingAddressId
+          ? { address_from_id: shippingAddressId }
+          : {
+              country_code: 'RO',
+              county_name: senderParsed.county,
+              locality_name: senderParsed.city,
+              postal_code: senderParsed.postal_code || undefined,
+              contact: profile.eawb_name || profile.store_name || 'Sender',
+              street_name: senderStreet.street_name,
+              street_number: senderStreet.street_number,
+              phone: profile.eawb_phone || '0700000000',
+              email: profile.eawb_email || user.email
+            };
+        console.log('Using address_from (pickup address):', addressFrom);
+      }
 
       // Resolve billing address automatically (never ask the user for an internal ID)
       let billingAddressId: number | null = profile.eawb_billing_address_id ?? null;
+      let billingAddressRow: any = null;
       if (!billingAddressId) {
         console.log('No stored billing_address_id, fetching from eAWB...');
         const bResp = await fetch(`${EAWB_BASE_URL}/addresses/billing?all=true`, {
@@ -739,6 +879,7 @@ serve(async (req) => {
         const pick = bList.length === 1 ? bList[0] : bList.find((a: any) => a.is_default);
         if (pick?.id) {
           billingAddressId = Number(pick.id);
+          billingAddressRow = pick;
           await supabase
             .from('profiles')
             .update({ eawb_billing_address_id: billingAddressId })
@@ -757,6 +898,95 @@ serve(async (req) => {
             error: 'NO_BILLING_ADDRESS',
             message: 'No billing address found in your Europarcel/eAWB account. Please create one in your Europarcel dashboard.'
           }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      }
+
+      // Cash on Delivery / pay-at-locker → official eAWB bank_repayment_* fields
+      // (NOT the non-documented "cod_amount" key previously used)
+      const isCod =
+        String(order.payment_status || '').toLowerCase() === 'cash' ||
+        String(order.payment_method || '').toLowerCase() === 'cash';
+      const manualCodAmount = Number(package_details?.cod_amount || 0);
+      const codAmount = isCod
+        ? Number(order.total || 0)
+        : (manualCodAmount > 0 ? manualCodAmount : 0);
+      const needsCod = codAmount > 0;
+
+      let bankIban: string | null = null;
+      let bankHolder: string | null = null;
+
+      if (needsCod) {
+        // Prefer Europarcel account profile IBAN (official CustomerProfile.bank_iban)
+        try {
+          const profileResp = await fetch(`${EAWB_BASE_URL}/account/profile`, {
+            method: 'GET',
+            headers: {
+              'X-API-Key': profile.eawb_api_key,
+              'Accept': 'application/json'
+            }
+          });
+          const profileJson = await profileResp.json();
+          const acct = profileJson?.data || profileJson;
+          bankIban = acct?.bank_iban || null;
+          bankHolder = acct?.bank_holder || acct?.name || null;
+          console.log('Account profile IBAN present:', !!bankIban);
+        } catch (e) {
+          console.warn('Failed to fetch account profile for IBAN', e);
+        }
+
+        // Fallback: billing address IBAN
+        if (!bankIban) {
+          try {
+            if (!billingAddressRow && billingAddressId) {
+              const bResp = await fetch(`${EAWB_BASE_URL}/addresses/billing?all=true`, {
+                method: 'GET',
+                headers: {
+                  'X-API-Key': profile.eawb_api_key,
+                  'Accept': 'application/json'
+                }
+              });
+              const bJson = await bResp.json();
+              const bList = Array.isArray(bJson?.list)
+                ? bJson.list
+                : (Array.isArray(bJson?.data?.list) ? bJson.data.list : (Array.isArray(bJson?.data) ? bJson.data : []));
+              billingAddressRow = bList.find((a: any) => Number(a.id) === Number(billingAddressId)) || bList[0];
+            }
+            bankIban = billingAddressRow?.bank_iban || null;
+            bankHolder = bankHolder || billingAddressRow?.bank_holder || billingAddressRow?.company || billingAddressRow?.contact || null;
+          } catch (e) {
+            console.warn('Failed to resolve billing IBAN', e);
+          }
+        }
+
+        if (!codAmount || codAmount <= 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'COD_AMOUNT_INVALID',
+            message: 'Cash on Delivery amount is missing or zero. Fix the order total (or COD amount) before generating an AWB.'
+          }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        if (!bankIban || String(bankIban).trim().length < 15) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'COD_IBAN_MISSING',
+            message: 'Cash on Delivery requires a bank IBAN on your Europarcel account (or billing address). Add bank_iban in your Europarcel dashboard, then try again. Without it the parcel would be shipped without collection.'
+          }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      }
+
+      const extraPayload: Record<string, unknown> = {
+        parcel_content: package_details.contents || 'Goods',
+        declared_value: package_details.declared_value || order.total,
+        internal_identifier: String(order.id).slice(0, 100),
+      };
+
+      if (needsCod && bankIban) {
+        extraPayload.bank_repayment_amount = Number(codAmount.toFixed(2));
+        extraPayload.bank_repayment_currency = 'RON';
+        extraPayload.bank_iban = String(bankIban).trim();
+        if (bankHolder && String(bankHolder).trim().length >= 5) {
+          extraPayload.bank_holder = String(bankHolder).trim().slice(0, 70);
         }
       }
 
@@ -783,11 +1013,7 @@ serve(async (req) => {
             }
           }]
         },
-        extra: {
-          parcel_content: package_details.contents || 'Goods',
-          declared_value: package_details.declared_value || order.total,
-          ...(package_details.cod_amount && { cod_amount: package_details.cod_amount })
-        },
+        extra: extraPayload,
         service: {
           currency: 'RON',
           payment_type: 1,
@@ -803,7 +1029,13 @@ serve(async (req) => {
         service_id: Number(selected_service)
       };
 
-      console.log('Creating AWB with request:', JSON.stringify(awbRequest, null, 2));
+      console.log('Creating AWB with request:', JSON.stringify({
+        ...awbRequest,
+        extra: {
+          ...extraPayload,
+          bank_iban: bankIban ? '[REDACTED]' : undefined
+        }
+      }, null, 2));
 
       // Create AWB using the correct orders endpoint
       const response = await fetch(`${EAWB_BASE_URL}/orders`, {
@@ -837,13 +1069,67 @@ serve(async (req) => {
 
       if (response.ok && responseData.data && responseData.data.awb_number) {
         const awbData = responseData.data;
+
+        // Extract locker deposit / drop-off code only from official response fields
+        const depositCode = (() => {
+          const keys = [
+            'locker_deposit_code', 'deposit_code', 'drop_off_code', 'dropoff_code',
+            'handover_code', 'shipment_code', 'parcel_code', 'locker_pin', 'pin_code',
+            'pin', 'easybox_code', 'client_code', 'pickup_code', 'locker_code',
+            'parcel_pin', 'drop_code'
+          ];
+          const bags = [awbData, awbData.extra].filter(Boolean);
+          for (const bag of bags) {
+            if (typeof bag !== 'object') continue;
+            for (const key of keys) {
+              const v = (bag as any)[key];
+              if (v != null && String(v).trim()) return String(v).trim();
+            }
+          }
+          return null;
+        })();
+
+        // Secure label PDF link (GET /orders/label-link/{awb})
+        let labelUrl: string | null = null;
+        try {
+          const labelResp = await fetch(
+            `${EAWB_BASE_URL}/orders/label-link/${encodeURIComponent(String(awbData.awb_number))}`,
+            {
+              method: 'GET',
+              headers: {
+                'X-API-Key': profile.eawb_api_key,
+                'Accept': 'application/json'
+              }
+            }
+          );
+          const labelJson = await labelResp.json();
+          labelUrl = labelJson?.download_url || labelJson?.data?.download_url || null;
+        } catch (e) {
+          console.warn('Failed to fetch AWB label link', e);
+        }
+
+        const shippingCost =
+          awbData.price?.total ??
+          awbData.price?.amount ??
+          null;
         
         // Update order with AWB details
         const updateData: any = {
           awb_number: awbData.awb_number,
           shipping_status: 'shipped',
-          eawb_order_id: awbData.order_id
+          eawb_order_id: awbData.order_id,
+          awb_service_name: awbData.service_name || null,
+          awb_service_id: awbData.service_id != null ? Number(awbData.service_id) : Number(selected_service) || null,
+          awb_carrier_id: awbData.carrier_id != null ? Number(awbData.carrier_id) : Number(selected_carrier) || null,
+          awb_shipping_cost: shippingCost != null ? Number(shippingCost) : null,
+          awb_cod_amount: needsCod ? Number(codAmount.toFixed(2)) : null,
+          locker_deposit_code: depositCode,
+          awb_response_extra: awbData.extra && typeof awbData.extra === 'object' ? awbData.extra : null,
         };
+
+        if (labelUrl) {
+          updateData.awb_label_url = labelUrl;
+        }
 
         if (awbData.track_url) {
           updateData.tracking_url = awbData.track_url;
@@ -874,6 +1160,11 @@ serve(async (req) => {
           tracking_url: awbData.track_url,
           estimated_delivery_date: awbData.estimated_delivery_date,
           carrier_name: awbData.carrier,
+          service_name: awbData.service_name || null,
+          label_url: labelUrl,
+          locker_deposit_code: depositCode,
+          cod_amount: needsCod ? Number(codAmount.toFixed(2)) : null,
+          shipping_cost: shippingCost != null ? Number(shippingCost) : null,
           message: 'AWB created successfully'
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -1003,6 +1294,99 @@ serve(async (req) => {
         success: true,
         order_id: cancelData?.order_id ?? order.eawb_order_id,
         message: cancelData?.message || 'AWB cancelled successfully'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (action === 'get_label_link') {
+      const awbNumber = body.awb_number || body.awb;
+      const targetOrderId = order_id;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('eawb_api_key')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile?.eawb_api_key) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'MISSING_API_KEY',
+          message: 'eAWB API key not configured'
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      let awb = awbNumber ? String(awbNumber) : '';
+      if (!awb && targetOrderId) {
+        const { data: ord } = await supabase
+          .from('orders')
+          .select('awb_number, awb_label_url')
+          .eq('id', targetOrderId)
+          .eq('user_id', user.id)
+          .single();
+        if (ord?.awb_label_url && !body.refresh) {
+          return new Response(JSON.stringify({
+            success: true,
+            download_url: ord.awb_label_url,
+            awb: ord.awb_number,
+            cached: true
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        awb = ord?.awb_number || '';
+      }
+
+      if (!awb) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'MISSING_AWB',
+          message: 'AWB number is required to generate a label link'
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      const labelResp = await fetch(
+        `${EAWB_BASE_URL}/orders/label-link/${encodeURIComponent(awb)}`,
+        {
+          method: 'GET',
+          headers: {
+            'X-API-Key': profile.eawb_api_key,
+            'Accept': 'application/json'
+          }
+        }
+      );
+      const labelJson = await labelResp.json();
+      if (!labelResp.ok) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'LABEL_LINK_FAILED',
+          message: labelJson?.message || 'Failed to generate AWB label link',
+          details: labelJson
+        }), {
+          status: labelResp.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      const downloadUrl = labelJson?.download_url || labelJson?.data?.download_url || null;
+      if (downloadUrl && targetOrderId) {
+        await supabase
+          .from('orders')
+          .update({ awb_label_url: downloadUrl })
+          .eq('id', targetOrderId)
+          .eq('user_id', user.id);
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        download_url: downloadUrl,
+        awb: labelJson?.awb || awb,
+        format: labelJson?.format || labelJson?.data?.format || 'pdf'
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });

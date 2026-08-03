@@ -1,0 +1,132 @@
+{
+  "title": "Produse",
+  "description": "Gestionează catalogul de produse",
+  "subtitle": "Performanță catalog, sănătate inventar și gestionare produse",
+  "addProduct": "Adaugă produs",
+  "addNewProduct": "Adaugă produs nou",
+  "editProduct": "Editează produs",
+  "createProduct": "Creează produs",
+  "updateProduct": "Actualizează produs",
+  "collectionsTab": "Colecții",
+  "sku": "SKU",
+  "skuRequiredPlaceholder": "SKU unic obligatoriu",
+  "stock": "Stoc",
+  "lowStockThreshold": "Prag stoc redus",
+  "deltaVsPrior": "față de perioada anterioară",
+  "searchPlaceholder": "Caută nume, SKU, categorie...",
+  "manageImages": "Gestionează imaginile produsului - {{title}}",
+  "section": {
+    "overview": "Prezentare generală",
+    "insights": "Informații produse",
+    "analytics": "Analitice produse",
+    "catalog": "Catalog",
+    "recommendations": "Recomandări"
+  },
+  "inventory": {
+    "restockSoon": "Reaprovizionează curând",
+    "belowThreshold": "Sub pragul de alertă",
+    "basedOnSales": "Pe baza vânzărilor și stocului",
+    "allHaveStock": "Toate produsele au stoc.",
+    "noLowStock": "Nicio alertă de stoc redus.",
+    "noRecommendations": "Nicio recomandare specială momentan."
+  },
+  "kpi": {
+    "total": "Total produse",
+    "totalSub": "În catalog",
+    "active": "Produse active",
+    "activeSub": "În stoc",
+    "outOfStock": "Fără stoc",
+    "outOfStockSub": "Necesită reaprovizionare",
+    "lowStock": "Stoc redus",
+    "lowStockSub": "Sub prag",
+    "inventoryValue": "Valoare inventar",
+    "inventoryValueSub": "Preț × stoc",
+    "avgPrice": "Preț mediu",
+    "avgPriceSub": "În catalog",
+    "addedThisMonth": "Adăugate luna aceasta",
+    "addedThisMonthSub": "Listări noi",
+    "neverSold": "Niciodată vândute",
+    "neverSoldSub": "Fără istoric comenzi"
+  },
+  "badge": {
+    "restockSoon": "Reaprovizionează curând",
+    "highSelling": "Vânzări ridicate",
+    "notSelling": "Nu se vinde"
+  },
+  "view": {
+    "table": "Vizualizare tabel",
+    "grid": "Vizualizare grilă"
+  },
+  "filter": {
+    "stock": "Stoc",
+    "category": "Categorie",
+    "collection": "Colecție",
+    "minPrice": "Preț min",
+    "maxPrice": "Preț max",
+    "minStock": "Stoc min",
+    "maxStock": "Max",
+    "allStock": "Tot stocul",
+    "inStock": "Active / În stoc",
+    "lowStock": "Stoc redus",
+    "outOfStock": "Fără stoc",
+    "allCategories": "Toate categoriile",
+    "allCollections": "Toate colecțiile"
+  },
+  "bulk": {
+    "newStock": "Stoc nou",
+    "newPrice": "Preț nou",
+    "duplicate": "Duplică",
+    "export": "Exportă",
+    "delete": "Șterge",
+    "setStock": "Setează stoc",
+    "setPrice": "Setează preț",
+    "setCategory": "Setează categorie",
+    "assign": "Asignează"
+  },
+  "empty": {
+    "filtered": "Niciun produs nu corespunde filtrelor",
+    "createFirst": "Creează primul produs",
+    "filteredHint": "Încearcă să ajustezi căutarea sau filtrele.",
+    "createFirstHint": "Adaugă un produs pentru a construi catalogul și a debloca analiticele."
+  },
+  "confirm": {
+    "deleteOne": "Sigur vrei să ștergi acest produs?",
+    "deleteSelected": "Ștergi {{count}} produs(e) selectat(e)?"
+  },
+  "duplicate": {
+    "copyOf": "Copie a {{title}}"
+  },
+  "field": {
+    "title": "Titlu",
+    "productName": "Nume produs",
+    "description": "Descriere",
+    "price": "Preț",
+    "priceRon": "Preț (RON)",
+    "originalPrice": "Preț original",
+    "category": "Categorie",
+    "lowStockAlertThreshold": "Prag alertă stoc redus",
+    "skuHint": "Fiecare produs necesită un SKU unic.",
+    "images": "Imagini",
+    "active": "Activ"
+  },
+  "toast": {
+    "created": "Produs creat cu succes",
+    "createFailed": "Crearea produsului a eșuat",
+    "updated": "Produs actualizat cu succes",
+    "updateFailed": "Actualizarea produsului a eșuat",
+    "deleted": "Produs șters cu succes",
+    "deleteFailed": "Ștergerea produsului a eșuat",
+    "skuRequired": "SKU-ul este obligatoriu",
+    "skuValidateFailed": "Nu s-a putut valida SKU-ul",
+    "skuTaken": "Acest SKU este deja folosit de alt produs",
+    "exported": "Au fost exportate {{count}} produse",
+    "duplicated": "Au fost duplicate {{count}} produs(e)",
+    "duplicateFailed": "Duplicarea produselor a eșuat",
+    "selectedDeleted": "Produsele selectate au fost șterse",
+    "selectedDeleteFailed": "Ștergerea produselor selectate a eșuat",
+    "bulkUpdated": "Produsele au fost actualizate",
+    "bulkUpdateFailed": "Actualizarea în masă a eșuat",
+    "collectionUpdated": "Colecția a fost actualizată pentru produsele selectate",
+    "collectionFailed": "Schimbarea colecției a eșuat"
+  }
+}

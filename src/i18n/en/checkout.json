@@ -1,0 +1,138 @@
+{
+  "title": "Checkout",
+  "backToBag": "← Back to bag",
+  "backToCart": "Back to cart",
+  "contactInfo": "Contact Information",
+  "completeOrder": "Complete Order",
+  "payNow": "Pay Now",
+  "continueShopping": "Continue Shopping",
+  "loadingExperience": "Loading your experience...",
+  "steps": {
+    "customer": "Customer",
+    "delivery": "Delivery",
+    "payment": "Payment",
+    "review": "Review"
+  },
+  "field": {
+    "fullName": "Full name *",
+    "email": "Email *",
+    "phone": "Phone",
+    "street": "Street *",
+    "number": "Number *",
+    "numberShort": "No.",
+    "block": "Block",
+    "apartment": "Apartment",
+    "apt": "Apt"
+  },
+  "placeholder": {
+    "fullName": "Full Name *",
+    "email": "Email *",
+    "phone": "Phone",
+    "street": "Street *",
+    "number": "Number *",
+    "discount": "Discount code"
+  },
+  "delivery": {
+    "home": "Home delivery",
+    "locker": "Locker",
+    "homeDelivery": "Home Delivery",
+    "lockerDelivery": "Locker Delivery",
+    "eta": "Estimated delivery 1–3 business days after dispatch.",
+    "selectLocker": "Select a locker",
+    "changeLocker": "Change locker",
+    "locateMe": "Locate me",
+    "chooseCarrier": "Choose a carrier..."
+  },
+  "payment": {
+    "method": "Payment Method",
+    "cardNetopia": "Card (Netopia)",
+    "cardSecure": "Secure online payment",
+    "cardAtLocker": "Card at locker",
+    "card": "Card",
+    "cashOnDelivery": "Cash on delivery",
+    "cash": "Cash",
+    "cashWithFee": "+ {{fee}} fee",
+    "payAtLockerFee": "Pay with card when collecting · + {{fee}} fee",
+    "payAtLocker": "Pay with card when collecting your parcel",
+    "noExtraFee": "No extra fee",
+    "fee": "Payment Fee"
+  },
+  "summary": {
+    "title": "Order summary",
+    "qty": "Qty {{count}}",
+    "subtotal": "Subtotal",
+    "shipping": "Shipping",
+    "delivery": "Delivery",
+    "deliveryFee": "Delivery Fee",
+    "lockerCardFee": "Locker card fee",
+    "cashFee": "Cash fee",
+    "total": "Total"
+  },
+  "action": {
+    "back": "Back",
+    "continue": "Continue",
+    "viewCart": "View Cart",
+    "addToCart": "Add to Cart",
+    "outOfStock": "Out of Stock",
+    "proceedCheckout": "Proceed to Checkout",
+    "placeOrder": "Place order",
+    "placingOrder": "Placing order…",
+    "payAmount": "Pay {{amount}}",
+    "shopNow": "Shop now"
+  },
+  "cart": {
+    "title": "Shopping Cart",
+    "yourBag": "Your bag",
+    "empty": "Your cart is empty",
+    "items": "{{count}} items",
+    "shippingAtCheckout": "Shipping calculated at checkout",
+    "youMayAlsoLike": "You may also like",
+    "checkout": "Checkout",
+    "close": "Close cart"
+  },
+  "review": {
+    "paymentPrefix": "Payment:"
+  },
+  "catalog": {
+    "title": "Catalog",
+    "search": "Search products...",
+    "allCollections": "All collections",
+    "filters": "Filters"
+  },
+  "product": {
+    "reviews": "Reviews",
+    "writeReview": "Write a review",
+    "related": "Related products",
+    "inStock": "In stock",
+    "onlyLeft": "Only {{count}} left"
+  },
+  "toast": {
+    "added": "{{title}} added to cart",
+    "addedAnother": "Added another {{title}} to cart",
+    "removed": "{{title}} removed from cart",
+    "updatedInCart": "Updated {{title}} in cart",
+    "cartEmpty": "Your cart is empty",
+    "orderSuccessLocker": "Order created successfully! Pay by card at the locker.",
+    "orderSuccessCash": "Order created successfully! You will pay cash on delivery.",
+    "paymentVerifyShort": "Payment verification in progress. You will receive confirmation shortly.",
+    "paymentVerifyCharged": "Error verifying payment. Please contact support if you were charged.",
+    "outOfStock": "Product is out of stock",
+    "maxStock": "Maximum stock ({{stock}}) reached",
+    "fillRequired": "Please fill in all required fields",
+    "invalidEmail": "Please enter a valid email address",
+    "fillAddress": "Please fill in address details",
+    "selectLocker": "Please select a locker",
+    "paymentSuccess": "Payment successful! Thank you for your order.",
+    "paymentVerifying": "Payment verification in progress. Please check your email for order confirmation.",
+    "paymentVerifyError": "Error verifying payment. Please contact support with your order details.",
+    "paymentInitFailed": "Failed to initiate payment. Please contact support.",
+    "paymentSetupFailed": "Payment setup failed. Please contact support.",
+    "createOrderFailed": "Failed to create order",
+    "createOrderRetry": "Failed to create order. Please try again.",
+    "loadStoreFailed": "Failed to load store data",
+    "loadProductsFailed": "Failed to load products",
+    "discountApplied": "Discount applied",
+    "discountInvalid": "Invalid discount code"
+  },
+  "rights": "All rights reserved."
+}

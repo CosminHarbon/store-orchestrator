@@ -397,7 +397,7 @@ serve(async (req) => {
     }
 
     const shippingAddressId: number | null = profile.eawb_shipping_address_id ?? null;
-    const addressFrom = shippingAddressId
+    const addressFromHome = shippingAddressId
       ? { address_from_id: shippingAddressId }
       : {
           country_code: 'RO',
@@ -410,7 +410,31 @@ serve(async (req) => {
           phone: profile.eawb_phone || '0700000000',
           email: profile.eawb_email || user.email
         };
-    console.log('Using address_from:', addressFrom);
+
+    const savedPickupLockerId = profile.eawb_pickup_locker_id
+      ? Number(profile.eawb_pickup_locker_id)
+      : null;
+    const pickupLockerStreet = profile.eawb_pickup_locker_address
+      ? extractStreetInfo(profile.eawb_pickup_locker_address)
+      : { street_name: 'Locker', street_number: '1' };
+    const addressFromLocker = savedPickupLockerId
+      ? {
+          country_code: 'RO',
+          fixed_location_id: savedPickupLockerId,
+          locality_name: profile.eawb_pickup_locker_city || senderParsed.city || '',
+          county_name: profile.eawb_pickup_locker_county || senderParsed.county || '',
+          street_name: pickupLockerStreet.street_name || 'Locker',
+          street_number: pickupLockerStreet.street_number || '1',
+          contact: profile.eawb_name || profile.store_name || 'Sender',
+          phone: profile.eawb_phone || '0700000000',
+          email: profile.eawb_email || user.email
+        }
+      : null;
+
+    console.log('Using address_from (home pickup):', addressFromHome);
+    if (addressFromLocker) {
+      console.log('Default pickup locker available for services 3/4:', addressFromLocker);
+    }
 
     const parcelsCount = Math.max(1, Number(package_details.parcels || 1));
     const totalWeightInput = Number(package_details.weight || 1);
@@ -450,7 +474,7 @@ serve(async (req) => {
 
     const basePayload = {
       billing_to: { billing_address_id: billingAddressId },
-      address_from: addressFrom,
+      address_from: addressFromHome,
       address_to: {
         country_code: 'RO',
         county_name: recipientParsed.county,
@@ -526,6 +550,25 @@ serve(async (req) => {
           continue;
         }
 
+        // Services 3/4 require merchant pickup locker — skip when not configured (fall back to quoting home-from only)
+        const needsFromLocker = serviceId === 3 || serviceId === 4;
+        if (needsFromLocker && !addressFromLocker) {
+          console.log(`Skipping service ${service.name} (ID: ${serviceId}) — no default pickup locker configured`);
+          continue;
+        }
+
+        // Prefer matching carrier for pickup locker when set
+        if (
+          needsFromLocker &&
+          profile.eawb_pickup_locker_carrier_id &&
+          Number(profile.eawb_pickup_locker_carrier_id) !== Number(carrier.id)
+        ) {
+          console.log(
+            `Skipping service ${service.name} for carrier ${carrier.name} — pickup locker is for a different carrier`
+          );
+          continue;
+        }
+
         quoteRequests.push({
           mapping: {
             carrier_id: carrier.id,
@@ -536,6 +579,7 @@ serve(async (req) => {
           },
           payload: {
             ...basePayload,
+            address_from: needsFromLocker && addressFromLocker ? addressFromLocker : addressFromHome,
             carrier_id: carrier.id,
             service_id: serviceId
           }

@@ -1,0 +1,33 @@
+{
+  "loadingStore": "Loading your store...",
+  "defaultStoreName": "My Store",
+  "yourStore": "Your Store",
+  "periodRevenue": "Period Revenue",
+  "ordersInPeriod": "{{count}} orders in selected period",
+  "viewAnalytics": "+ View Analytics",
+  "viewAnalyticsShort": "Analytics",
+  "kpi": {
+    "products": "Products",
+    "orders": "Orders",
+    "pending": "Pending",
+    "lowStock": "Low Stock"
+  },
+  "todayOverview": "Today's Overview",
+  "newOrders": "New Orders",
+  "last24Hours": "Last 24 hours",
+  "todaysSales": "Today's Sales",
+  "revenueGenerated": "Revenue generated",
+  "lowStockAlert": "Low Stock Alert",
+  "productsNeedRestocking": "Products need restocking",
+  "quickActions": "Quick Actions",
+  "action": {
+    "settings": "Settings",
+    "settingsDesc": "Configure store and integrations",
+    "customers": "Customers",
+    "customersDesc": "Manage customer relationships",
+    "templates": "Templates",
+    "templatesDesc": "Customize your storefront design"
+  },
+  "unsavedStockTitle": "Unsaved Stock Changes",
+  "unsavedStockDesc": "You have unsaved stock changes. Would you like to save them before leaving?"
+}

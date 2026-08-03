@@ -1,4 +1,5 @@
 import { lazy, Suspense, useMemo, useState, type ComponentType } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowDownRight,
@@ -40,7 +41,6 @@ import {
 } from '@/components/ui/sheet';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/DateRangeFilter';
 import {
-  SEGMENT_LABELS,
   buildCustomerAnalytics,
   filterCustomers,
   formatPct,
@@ -51,6 +51,7 @@ import {
   type RawCustomerOrder,
 } from '@/lib/customerAnalytics';
 import { cn } from '@/lib/utils';
+import { formatShortDate } from '@/i18n/format';
 
 const CustomerTrendsCharts = lazy(() => import('@/components/CustomerTrendsCharts'));
 
@@ -65,11 +66,12 @@ type SortKey =
   | 'firstOrderDate';
 
 function DeltaBadge({ value }: { value: number }) {
+  const { t: tCustomers } = useTranslation('customers');
   if (!Number.isFinite(value) || Math.abs(value) < 0.05) {
     return (
       <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
         <Minus className="h-3 w-3" />
-        vs prior period
+        {tCustomers('deltaVsPriorPeriod')}
       </span>
     );
   }
@@ -83,7 +85,7 @@ function DeltaBadge({ value }: { value: number }) {
     >
       {up ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
       {up ? '+' : ''}
-      {value.toFixed(1)}% vs prior
+      {value.toFixed(1)}% {tCustomers('deltaVsPrior')}
     </span>
   );
 }
@@ -127,45 +129,47 @@ function initials(name: string) {
   return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
 }
 
-function segmentBadge(segment: CustomerSegment) {
+function segmentBadge(segment: CustomerSegment, label: string) {
   const styles: Record<CustomerSegment, string> = {
-    vip: 'bg-amber-100 text-amber-900 hover:bg-amber-100',
-    loyal: 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100',
-    returning: 'bg-sky-100 text-sky-800 hover:bg-sky-100',
-    new: 'bg-violet-100 text-violet-800 hover:bg-violet-100',
-    one_time: 'bg-slate-100 text-slate-700 hover:bg-slate-100',
-    high_value: 'bg-teal-100 text-teal-800 hover:bg-teal-100',
-    at_risk: 'bg-orange-100 text-orange-800 hover:bg-orange-100',
-    inactive: 'bg-rose-100 text-rose-800 hover:bg-rose-100',
+    vip: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20',
+    loyal: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20',
+    returning: 'bg-sky-500/15 text-sky-700 dark:text-sky-300 hover:bg-sky-500/20',
+    new: 'bg-violet-500/15 text-violet-700 dark:text-violet-300 hover:bg-violet-500/20',
+    one_time: 'bg-muted text-muted-foreground hover:bg-muted',
+    high_value: 'bg-teal-500/15 text-teal-700 dark:text-teal-300 hover:bg-teal-500/20',
+    at_risk: 'bg-orange-500/15 text-orange-700 dark:text-orange-300 hover:bg-orange-500/20',
+    inactive: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 hover:bg-rose-500/20',
   };
   return (
-    <Badge className={cn('border-0', styles[segment])}>{SEGMENT_LABELS[segment]}</Badge>
+    <Badge className={cn('border-0', styles[segment])}>{label}</Badge>
   );
 }
 
-function statusBadge(status: 'active' | 'inactive') {
+function statusBadge(status: 'active' | 'inactive', activeLabel: string, inactiveLabel: string) {
   return status === 'active' ? (
-    <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-0">Active</Badge>
+    <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 border-0">{activeLabel}</Badge>
   ) : (
-    <Badge className="bg-slate-200 text-slate-700 hover:bg-slate-200 border-0">Inactive</Badge>
+    <Badge className="bg-muted text-muted-foreground hover:bg-muted border-0">{inactiveLabel}</Badge>
   );
 }
 
-function paymentBadge(status: string) {
+function paymentBadge(status: string, labels: { paid: string; cash: string; failed: string; refunded: string }) {
   if (status === 'paid' || status === 'invoiced') {
-    return <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-0">Paid</Badge>;
+    return <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 border-0">{labels.paid}</Badge>;
   }
   if (status === 'cash') {
-    return <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100 border-0">Cash</Badge>;
+    return <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 border-0">{labels.cash}</Badge>;
   }
-  if (status === 'failed') return <Badge variant="destructive">Failed</Badge>;
+  if (status === 'failed') return <Badge variant="destructive">{labels.failed}</Badge>;
   if (status === 'refunded') {
-    return <Badge className="bg-slate-200 text-slate-700 hover:bg-slate-200 border-0">Refunded</Badge>;
+    return <Badge className="bg-muted text-muted-foreground hover:bg-muted border-0">{labels.refunded}</Badge>;
   }
   return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-0">{status}</Badge>;
 }
 
 const CustomerManagement = () => {
+  const { t: tCustomers } = useTranslation('customers');
+  const { t: tCommon } = useTranslation('common');
   const { dateRange, setDateRange, preset, setPreset } = useDateRangeFilter('30days');
   const [granularity, setGranularity] = useState<GrowthGranularity>('daily');
   const [searchQuery, setSearchQuery] = useState('');
@@ -269,6 +273,14 @@ const CustomerManagement = () => {
     }
   };
 
+  const segmentLabel = (segment: CustomerSegment) => tCustomers(`segment.${segment}`);
+  const paymentLabels = {
+    paid: tCustomers('paymentStatus.paid'),
+    cash: tCustomers('payment.cash'),
+    failed: tCustomers('paymentStatus.failed'),
+    refunded: tCustomers('paymentStatus.refunded'),
+  };
+
   if (isLoading || !analytics) {
     return (
       <div className="space-y-6">
@@ -297,7 +309,7 @@ const CustomerManagement = () => {
     return (
       <Card>
         <CardContent className="p-6">
-          <p className="text-destructive">Error loading customers: {(error as Error).message}</p>
+          <p className="text-destructive">{tCustomers('errorLoading', { message: (error as Error).message })}</p>
         </CardContent>
       </Card>
     );
@@ -308,9 +320,9 @@ const CustomerManagement = () => {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight">Customers</h2>
+          <h2 className="text-xl font-semibold tracking-tight">{tCustomers('title')}</h2>
           <p className="text-sm text-muted-foreground">
-            CRM analytics and customer relationships for your store
+            {tCustomers('subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -322,7 +334,7 @@ const CustomerManagement = () => {
             disabled={isFetching}
           >
             <RefreshCw className={cn('h-4 w-4 mr-2', isFetching && 'animate-spin')} />
-            Refresh
+            {tCommon('refresh')}
           </Button>
           <DateRangeFilter
             dateRange={dateRange}
@@ -339,58 +351,58 @@ const CustomerManagement = () => {
       {/* KPIs */}
       <section className="space-y-3">
         <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Overview
+          {tCustomers('section.overview')}
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
           <KpiCard
-            title="Total Customers"
+            title={tCustomers('kpi.total')}
             value={String(analytics.kpis.totalCustomers)}
-            subtitle="Unique emails with orders"
+            subtitle={tCustomers('kpi.totalSub')}
             icon={Users}
             delta={analytics.deltas.totalCustomers}
           />
           <KpiCard
-            title="New Customers"
+            title={tCustomers('kpi.new')}
             value={String(analytics.kpis.newCustomers)}
-            subtitle="First order in period"
+            subtitle={tCustomers('kpi.newSub')}
             icon={UserPlus}
             delta={analytics.deltas.newCustomers}
           />
           <KpiCard
-            title="Returning"
+            title={tCustomers('kpi.returning')}
             value={String(analytics.kpis.returningCustomers)}
-            subtitle="2+ lifetime orders"
+            subtitle={tCustomers('kpi.returningSub')}
             icon={Repeat}
           />
           <KpiCard
-            title="Active"
+            title={tCustomers('kpi.active')}
             value={String(analytics.kpis.activeCustomers)}
-            subtitle="Purchased in last 30 days"
+            subtitle={tCustomers('kpi.activeSub')}
             icon={UserCheck}
             delta={analytics.deltas.activeCustomers}
           />
           <KpiCard
-            title="Customer Growth"
+            title={tCustomers('kpi.growth')}
             value={formatPct(analytics.kpis.growthPct)}
-            subtitle="Roster growth vs prior"
+            subtitle={tCustomers('kpi.growthSub')}
             icon={TrendingUp}
           />
           <KpiCard
-            title="Avg Lifetime Value"
+            title={tCustomers('kpi.avgLtv')}
             value={formatRon(analytics.kpis.averageLtv)}
-            subtitle="Spend per customer"
+            subtitle={tCustomers('kpi.avgLtvSub')}
             icon={Wallet}
           />
           <KpiCard
-            title="Avg Orders / Customer"
+            title={tCustomers('kpi.avgOrders')}
             value={analytics.kpis.averageOrdersPerCustomer.toFixed(1)}
-            subtitle="Lifetime order count"
+            subtitle={tCustomers('kpi.avgOrdersSub')}
             icon={ShoppingBag}
           />
           <KpiCard
-            title="Avg Spend / Customer"
+            title={tCustomers('kpi.avgSpend')}
             value={formatRon(analytics.kpis.averageSpendPerCustomer)}
-            subtitle="Same as LTV for now"
+            subtitle={tCustomers('kpi.avgSpendSub')}
             icon={Activity}
           />
         </div>
@@ -400,7 +412,7 @@ const CustomerManagement = () => {
       <section className="space-y-3">
         <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <Lightbulb className="h-4 w-4" />
-          Customer Insights
+          {tCustomers('section.insights')}
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
           {analytics.insights.map((insight) => (
@@ -423,11 +435,11 @@ const CustomerManagement = () => {
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            Customer Segments
+            {tCustomers('section.segments')}
           </h3>
           {segmentFilter !== 'all' && (
             <Button variant="ghost" size="sm" onClick={() => setSegmentFilter('all')}>
-              Clear segment filter
+              {tCustomers('clearSegmentFilter')}
             </Button>
           )}
         </div>
@@ -447,13 +459,13 @@ const CustomerManagement = () => {
                   : 'border-border/60 hover:bg-muted/30'
               )}
             >
-              <div className="mb-2">{segmentBadge(seg.key)}</div>
+              <div className="mb-2">{segmentBadge(seg.key, segmentLabel(seg.key))}</div>
               <div className="text-2xl font-semibold tabular-nums">{seg.count}</div>
               <div className="text-xs text-muted-foreground mt-1">
-                {formatRon(seg.revenue)} revenue
+                {tCustomers('segmentRevenue', { amount: formatRon(seg.revenue) })}
               </div>
               <div className="text-xs text-muted-foreground">
-                Avg {formatRon(seg.averageSpend)}
+                {tCustomers('segmentAvg', { amount: formatRon(seg.averageSpend) })}
               </div>
             </button>
           ))}
@@ -464,7 +476,7 @@ const CustomerManagement = () => {
       <section className="space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            Growth & Charts
+            {tCustomers('section.charts')}
           </h3>
           <Select
             value={granularity}
@@ -474,9 +486,9 @@ const CustomerManagement = () => {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="daily">Daily</SelectItem>
-              <SelectItem value="weekly">Weekly</SelectItem>
-              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="daily">{tCustomers('granularity.daily')}</SelectItem>
+              <SelectItem value="weekly">{tCustomers('granularity.weekly')}</SelectItem>
+              <SelectItem value="monthly">{tCustomers('granularity.monthly')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -500,14 +512,14 @@ const CustomerManagement = () => {
       {/* Filters + Table */}
       <section className="space-y-3">
         <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Customer Directory
+          {tCustomers('section.directory')}
         </h3>
         <Card className="border-border/60">
           <CardHeader className="pb-3 space-y-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search name, email, phone, or order ID..."
+                placeholder={tCustomers('searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -525,13 +537,13 @@ const CustomerManagement = () => {
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Segment" />
+                  <SelectValue placeholder={tCustomers('filter.segment')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All segments</SelectItem>
-                  {(Object.keys(SEGMENT_LABELS) as CustomerSegment[]).map((key) => (
+                  <SelectItem value="all">{tCustomers('filter.allSegments')}</SelectItem>
+                  {(['vip', 'loyal', 'returning', 'new', 'one_time', 'high_value', 'at_risk', 'inactive'] as CustomerSegment[]).map((key) => (
                     <SelectItem key={key} value={key}>
-                      {SEGMENT_LABELS[key]}
+                      {segmentLabel(key)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -544,12 +556,12 @@ const CustomerManagement = () => {
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Payment" />
+                  <SelectValue placeholder={tCustomers('filter.payment')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All methods</SelectItem>
-                  <SelectItem value="card">Card</SelectItem>
-                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="all">{tCustomers('filter.allMethods')}</SelectItem>
+                  <SelectItem value="card">{tCustomers('payment.card')}</SelectItem>
+                  <SelectItem value="cash">{tCustomers('payment.cash')}</SelectItem>
                 </SelectContent>
               </Select>
               <Select
@@ -560,13 +572,13 @@ const CustomerManagement = () => {
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Orders" />
+                  <SelectValue placeholder={tCustomers('filter.orders')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Any order count</SelectItem>
-                  <SelectItem value="1">1 order</SelectItem>
-                  <SelectItem value="2-4">2–4 orders</SelectItem>
-                  <SelectItem value="5+">5+ orders</SelectItem>
+                  <SelectItem value="all">{tCustomers('filter.anyOrderCount')}</SelectItem>
+                  <SelectItem value="1">{tCustomers('filter.oneOrder')}</SelectItem>
+                  <SelectItem value="2-4">{tCustomers('filter.twoToFourOrders')}</SelectItem>
+                  <SelectItem value="5+">{tCustomers('filter.fivePlusOrders')}</SelectItem>
                 </SelectContent>
               </Select>
               <Select
@@ -577,17 +589,17 @@ const CustomerManagement = () => {
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Status" />
+                  <SelectValue placeholder={tCustomers('filter.status')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="all">{tCustomers('filter.allStatuses')}</SelectItem>
+                  <SelectItem value="active">{tCommon('active')}</SelectItem>
+                  <SelectItem value="inactive">{tCommon('inactive')}</SelectItem>
                 </SelectContent>
               </Select>
               <Input
                 type="number"
-                placeholder="Min spend"
+                placeholder={tCustomers('filter.minSpend')}
                 value={spendMin}
                 onChange={(e) => {
                   setSpendMin(e.target.value);
@@ -596,7 +608,7 @@ const CustomerManagement = () => {
               />
               <Input
                 type="number"
-                placeholder="Max spend"
+                placeholder={tCustomers('filter.maxSpend')}
                 value={spendMax}
                 onChange={(e) => {
                   setSpendMax(e.target.value);
@@ -609,10 +621,9 @@ const CustomerManagement = () => {
             {filtered.length === 0 ? (
               <div className="text-center py-14 text-muted-foreground space-y-2">
                 <Users className="h-12 w-12 mx-auto opacity-40" />
-                <p className="font-medium text-foreground">No customers match your filters</p>
+                <p className="font-medium text-foreground">{tCustomers('emptyFiltered')}</p>
                 <p className="text-sm max-w-md mx-auto">
-                  Try clearing search or filters. Customers appear automatically when they place
-                  their first order.
+                  {tCustomers('emptyFilteredHint')}
                 </p>
               </div>
             ) : (
@@ -623,37 +634,37 @@ const CustomerManagement = () => {
                       <TableRow>
                         <TableHead>
                           <button type="button" onClick={() => toggleSort('name')}>
-                            Customer
+                            {tCustomers('table.customer')}
                           </button>
                         </TableHead>
-                        <TableHead>Contact</TableHead>
+                        <TableHead>{tCustomers('table.contact')}</TableHead>
                         <TableHead>
                           <button type="button" onClick={() => toggleSort('totalOrders')}>
-                            Orders
+                            {tCustomers('table.orders')}
                           </button>
                         </TableHead>
                         <TableHead>
                           <button type="button" onClick={() => toggleSort('totalSpent')}>
-                            Spent
+                            {tCustomers('table.spent')}
                           </button>
                         </TableHead>
                         <TableHead>
                           <button type="button" onClick={() => toggleSort('averageOrderValue')}>
-                            AOV
+                            {tCustomers('table.aov')}
                           </button>
                         </TableHead>
                         <TableHead>
                           <button type="button" onClick={() => toggleSort('lastOrderDate')}>
-                            Last Order
+                            {tCustomers('table.lastOrder')}
                           </button>
                         </TableHead>
                         <TableHead>
                           <button type="button" onClick={() => toggleSort('firstOrderDate')}>
-                            Since
+                            {tCustomers('table.since')}
                           </button>
                         </TableHead>
-                        <TableHead>Segment</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead>{tCustomers('table.segment')}</TableHead>
+                        <TableHead>{tCustomers('table.status')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -690,13 +701,13 @@ const CustomerManagement = () => {
                             {formatRon(customer.averageOrderValue)}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                            {new Date(customer.lastOrderDate).toLocaleDateString()}
+                            {formatShortDate(customer.lastOrderDate)}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                            {new Date(customer.firstOrderDate).toLocaleDateString()}
+                            {formatShortDate(customer.firstOrderDate)}
                           </TableCell>
-                          <TableCell>{segmentBadge(customer.primarySegment)}</TableCell>
-                          <TableCell>{statusBadge(customer.status)}</TableCell>
+                          <TableCell>{segmentBadge(customer.primarySegment, segmentLabel(customer.primarySegment))}</TableCell>
+                          <TableCell>{statusBadge(customer.status, tCommon('active'), tCommon('inactive'))}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -728,13 +739,13 @@ const CustomerManagement = () => {
                             {formatRon(customer.totalSpent)}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {customer.totalOrders} orders
+                            {tCustomers('ordersCount', { count: customer.totalOrders })}
                           </div>
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2 mt-3">
-                        {segmentBadge(customer.primarySegment)}
-                        {statusBadge(customer.status)}
+                        {segmentBadge(customer.primarySegment, segmentLabel(customer.primarySegment))}
+                        {statusBadge(customer.status, tCommon('active'), tCommon('inactive'))}
                       </div>
                     </button>
                   ))}
@@ -742,8 +753,11 @@ const CustomerManagement = () => {
 
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4">
                   <p className="text-sm text-muted-foreground">
-                    Showing {(pageSafe - 1) * PAGE_SIZE + 1}–
-                    {Math.min(pageSafe * PAGE_SIZE, filtered.length)} of {filtered.length}
+                    {tCustomers('showing', {
+                      from: (pageSafe - 1) * PAGE_SIZE + 1,
+                      to: Math.min(pageSafe * PAGE_SIZE, filtered.length),
+                      total: filtered.length,
+                    })}
                   </p>
                   <div className="flex gap-2 justify-center">
                     <Button
@@ -752,7 +766,7 @@ const CustomerManagement = () => {
                       disabled={pageSafe <= 1}
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                     >
-                      Previous
+                      {tCommon('previous')}
                     </Button>
                     <Button
                       variant="outline"
@@ -760,7 +774,7 @@ const CustomerManagement = () => {
                       disabled={pageSafe >= totalPages}
                       onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     >
-                      Next
+                      {tCommon('next')}
                     </Button>
                   </div>
                 </div>
@@ -788,63 +802,63 @@ const CustomerManagement = () => {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {segmentBadge(selected.primarySegment)}
-                  {statusBadge(selected.status)}
+                  {segmentBadge(selected.primarySegment, segmentLabel(selected.primarySegment))}
+                  {statusBadge(selected.status, tCommon('active'), tCommon('inactive'))}
                 </div>
               </SheetHeader>
 
               <div className="mt-6 space-y-6">
                 <section>
-                  <h4 className="text-sm font-medium mb-3">Profile</h4>
+                  <h4 className="text-sm font-medium mb-3">{tCustomers('section.profile')}</h4>
                   <div className="grid grid-cols-2 gap-3 text-sm">
-                    <Stat label="Phone" value={selected.phone || '—'} />
+                    <Stat label={tCustomers('detail.phone')} value={selected.phone || '—'} />
                     <Stat
-                      label="Customer since"
-                      value={new Date(selected.firstOrderDate).toLocaleDateString()}
+                      label={tCustomers('detail.customerSince')}
+                      value={formatShortDate(selected.firstOrderDate)}
                     />
-                    <Stat label="Total orders" value={String(selected.totalOrders)} />
-                    <Stat label="Total revenue" value={formatRon(selected.totalSpent)} />
-                    <Stat label="Average order" value={formatRon(selected.averageOrderValue)} />
-                    <Stat label="Lifetime value" value={formatRon(selected.totalSpent)} />
+                    <Stat label={tCustomers('detail.totalOrders')} value={String(selected.totalOrders)} />
+                    <Stat label={tCustomers('detail.totalRevenue')} value={formatRon(selected.totalSpent)} />
+                    <Stat label={tCustomers('detail.averageOrder')} value={formatRon(selected.averageOrderValue)} />
+                    <Stat label={tCustomers('detail.lifetimeValue')} value={formatRon(selected.totalSpent)} />
                   </div>
                 </section>
 
                 <section>
-                  <h4 className="text-sm font-medium mb-3">Statistics</h4>
+                  <h4 className="text-sm font-medium mb-3">{tCustomers('section.statistics')}</h4>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <Stat
-                      label="Products purchased"
+                      label={tCustomers('detail.productsPurchased')}
                       value={String(selected.totalProductsPurchased)}
                     />
                     <Stat
-                      label="Favorite payment"
+                      label={tCustomers('detail.favoritePayment')}
                       value={selected.favoritePaymentMethod}
                     />
                     <Stat
-                      label="Favorite categories"
+                      label={tCustomers('detail.favoriteCategories')}
                       value={selected.favoriteCategories.join(', ') || '—'}
                     />
                     <Stat
-                      label="Avg days between orders"
+                      label={tCustomers('detail.avgDaysBetween')}
                       value={
                         selected.avgDaysBetweenOrders == null
                           ? '—'
-                          : `${Math.round(selected.avgDaysBetweenOrders)} days`
+                          : tCustomers('days', { count: Math.round(selected.avgDaysBetweenOrders) })
                       }
                     />
                     <Stat
-                      label="Last purchase"
-                      value={new Date(selected.lastOrderDate).toLocaleDateString()}
+                      label={tCustomers('detail.lastPurchase')}
+                      value={formatShortDate(selected.lastOrderDate)}
                     />
                     <Stat
-                      label="Days since last purchase"
+                      label={tCustomers('detail.daysSinceLast')}
                       value={String(selected.daysSinceLastOrder)}
                     />
                   </div>
                 </section>
 
                 <section>
-                  <h4 className="text-sm font-medium mb-3">Recent Orders</h4>
+                  <h4 className="text-sm font-medium mb-3">{tCustomers('section.recentOrders')}</h4>
                   <div className="space-y-2">
                     {selected.orders.slice(0, 8).map((order) => (
                       <div key={order.id} className="rounded-lg border p-3 text-sm">
@@ -860,7 +874,7 @@ const CustomerManagement = () => {
                               {formatRon(Number(order.total))}
                             </div>
                             <div className="flex gap-1 justify-end mt-1">
-                              {paymentBadge(order.payment_status)}
+                              {paymentBadge(order.payment_status, paymentLabels)}
                             </div>
                           </div>
                         </div>
@@ -870,18 +884,18 @@ const CustomerManagement = () => {
                 </section>
 
                 <section>
-                  <h4 className="text-sm font-medium mb-3">Activity Timeline</h4>
+                  <h4 className="text-sm font-medium mb-3">{tCustomers('section.activityTimeline')}</h4>
                   <div className="space-y-3 border-l pl-4 ml-1">
                     <TimelineItem
-                      title="Customer created"
+                      title={tCustomers('timeline.customerCreated')}
                       detail={new Date(selected.firstOrderDate).toLocaleString()}
                     />
                     {selected.orders.slice(0, 6).map((order) => (
                       <TimelineItem
                         key={`tl-${order.id}`}
-                        title={`Order placed · ${formatRon(Number(order.total))}`}
+                        title={tCustomers('timeline.orderPlaced', { amount: formatRon(Number(order.total)) })}
                         detail={`${new Date(order.created_at).toLocaleString()} · ${
-                          order.payment_status === 'cash' ? 'Cash' : 'Card'
+                          order.payment_status === 'cash' ? tCustomers('payment.cash') : tCustomers('payment.card')
                         }`}
                       />
                     ))}
@@ -891,7 +905,7 @@ const CustomerManagement = () => {
                       .map((order) => (
                         <TimelineItem
                           key={`pay-${order.id}`}
-                          title="Payment completed"
+                          title={tCustomers('timeline.paymentCompleted')}
                           detail={`Order #${order.id.slice(-8)} · ${order.payment_status}`}
                         />
                       ))}
@@ -900,12 +914,12 @@ const CustomerManagement = () => {
                       .map((order) => (
                         <TimelineItem
                           key={`ref-${order.id}`}
-                          title="Refund recorded"
+                          title={tCustomers('timeline.refundRecorded')}
                           detail={`Order #${order.id.slice(-8)}`}
                         />
                       ))}
                     <TimelineItem
-                      title="Last activity"
+                      title={tCustomers('timeline.lastActivity')}
                       detail={new Date(selected.lastOrderDate).toLocaleString()}
                     />
                   </div>

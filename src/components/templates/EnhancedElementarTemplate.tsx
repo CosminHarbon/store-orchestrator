@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,14 +10,20 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatPrice } from "@/lib/discountUtils";
-import LockerMapSelector from "./LockerMapSelector";
 import { Skeleton } from "@/components/ui/skeleton";
 import LiveTemplateEditor from "./LiveTemplateEditor";
 import BlockRenderer from "./BlockRenderer";
 import type { TemplateBlock } from "./BlockEditor";
 import { supabase } from "@/integrations/supabase/client";
-import { ROMANIA_LOCATIONS, ROMANIA_COUNTIES } from "@/lib/romaniaLocations";
 import { useAbandonedCartAutosave } from "@/hooks/useAbandonedCartAutosave";
+import { useTheme } from "next-themes";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { StorefrontReviewForm } from "@/components/templates/StorefrontReviewForm";
+import { fetchStoreReviews } from "@/lib/storefront/api";
+import type { StorefrontReview } from "@/lib/storefront/types";
+import { LockerPicker } from "@/components/lockers/LockerPicker";
+import { AddressLocalityFields } from "@/components/address/AddressLocalityFields";
+import { applyStorefrontLanguage } from "@/i18n/LanguageProvider";
 
 interface Product {
   id: string;
@@ -68,6 +75,7 @@ interface ExtendedCustomization {
   footer_text: string;
   gradient_enabled: boolean;
   animation_style: string;
+  show_reviews?: boolean;
 }
 
 interface EnhancedElementarTemplateProps {
@@ -101,11 +109,14 @@ const defaultCustomization: ExtendedCustomization = {
   footer_text: 'All rights reserved.',
   gradient_enabled: true,
   animation_style: 'smooth',
+  show_reviews: true,
 };
 
 const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElementarTemplateProps) => {
+  const { t } = useTranslation("checkout");
   const [products, setProducts] = useState<Product[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
+  const [reviews, setReviews] = useState<StorefrontReview[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [view, setView] = useState<"home" | "product" | "cart" | "checkout">("home");
@@ -148,26 +159,43 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
   const SUPABASE_URL = "https://mkkqbekhvcnwcheegjpy.supabase.co";
   const API_BASE = `${SUPABASE_URL}/functions/v1/store-api`;
 
+  const { resolvedTheme } = useTheme();
+
+  // Soft dark remapping when merchant still uses default light palette
+  const colors = useMemo(() => {
+    if (resolvedTheme !== 'dark') return customization;
+    const bg = (customization.background_color || '').toUpperCase();
+    if (bg !== '#FFFFFF' && bg !== '#FFF') return customization;
+    return {
+      ...customization,
+      background_color: '#0B0F14',
+      text_color: (customization.text_color || '').toUpperCase() === '#000000' ? '#F3F4F6' : customization.text_color,
+      secondary_color: '#161B22',
+      accent_color: '#9CA3AF',
+      primary_color: (customization.primary_color || '').toUpperCase() === '#000000' ? '#A78BFA' : customization.primary_color,
+    };
+  }, [customization, resolvedTheme]);
+
   // Dynamic CSS variables based on customization
   const cssVariables = useMemo(() => ({
-    '--template-primary': customization.primary_color,
-    '--template-background': customization.background_color,
-    '--template-text': customization.text_color,
-    '--template-accent': customization.accent_color,
-    '--template-secondary': customization.secondary_color,
-    '--template-font': customization.font_family,
-    '--template-heading-font': customization.heading_font,
-  } as React.CSSProperties), [customization]);
+    '--template-primary': colors.primary_color,
+    '--template-background': colors.background_color,
+    '--template-text': colors.text_color,
+    '--template-accent': colors.accent_color,
+    '--template-secondary': colors.secondary_color,
+    '--template-font': colors.font_family,
+    '--template-heading-font': colors.heading_font,
+  } as React.CSSProperties), [colors]);
 
   // Animation classes based on style
   const animationClass = useMemo(() => {
-    switch (customization.animation_style) {
+    switch (colors.animation_style) {
       case 'dynamic': return 'transition-all duration-500 ease-out';
       case 'minimal': return 'transition-all duration-200';
       case 'none': return '';
       default: return 'transition-all duration-300 ease-in-out';
     }
-  }, [customization.animation_style]);
+  }, [colors.animation_style]);
 
   // Fetch blocks from database
   const fetchBlocks = async (userId: string) => {
@@ -223,6 +251,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
             fetchBlocks(data.user_id);
           }
         }
+        void applyStorefrontLanguage(data.preferred_language);
         if (data.cash_payment_enabled !== undefined) {
           setFeeSettings({
             cash_payment_enabled: data.cash_payment_enabled,
@@ -257,7 +286,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
           if (statusData.payment_status === 'completed' || statusData.payment_status === 'paid') {
             setCart([]);
             setView('home');
-            toast.success('Payment successful! Thank you for your order.');
+            toast.success(t("toast.paymentSuccess"));
             setLoading(false);
             return;
           }
@@ -270,7 +299,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
             if (data.order?.payment_status === 'paid') {
               setCart([]);
               setView('home');
-              toast.success('Payment successful! Thank you for your order.');
+              toast.success(t("toast.paymentSuccess"));
               setLoading(false);
               return;
             }
@@ -281,11 +310,11 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
         attempts++;
       }
 
-      toast.info('Payment verification in progress. You will receive confirmation shortly.');
+      toast.info(t("toast.paymentVerifyShort"));
       setView('home');
     } catch (error) {
       console.error('Error checking payment:', error);
-      toast.error('Error verifying payment. Please contact support if you were charged.');
+      toast.error(t("toast.paymentVerifyCharged"));
       setView('home');
     } finally {
       setLoading(false);
@@ -297,10 +326,13 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
       setLoading(true);
       const headers = { "X-API-Key": apiKey };
 
-      const [productsRes, collectionsRes] = await Promise.all([
+      const [productsRes, collectionsRes, reviewsList] = await Promise.all([
         fetch(`${API_BASE}/products`, { headers }),
         fetch(`${API_BASE}/collections`, { headers }),
+        fetchStoreReviews(apiKey).catch(() => [] as StorefrontReview[]),
       ]);
+
+      setReviews(reviewsList);
 
       if (productsRes.ok) {
         const productsData = await productsRes.json();
@@ -336,7 +368,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
       
     } catch (error) {
       console.error("Error fetching data:", error);
-      toast.error("Failed to load store data");
+      toast.error(t("toast.loadStoreFailed"));
     } finally {
       setLoading(false);
     }
@@ -351,16 +383,16 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
             ? { ...item, quantity: item.quantity + 1 }
             : item
         ));
-        toast.success(`Added another ${product.title} to cart`);
+        toast.success(t("toast.addedAnother", { title: product.title }));
       } else {
-        toast.error(`Maximum stock (${product.stock}) reached`);
+        toast.error(t("toast.maxStock", { stock: product.stock }));
       }
     } else {
       if (product.stock > 0) {
         setCart([...cart, { product, quantity: 1 }]);
-        toast.success(`${product.title} added to cart`);
+        toast.success(t("toast.added", { title: product.title }));
       } else {
-        toast.error("Product is out of stock");
+        toast.error(t("toast.outOfStock"));
       }
     }
   };
@@ -373,7 +405,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
       return;
     }
     if (newQuantity > item.product.stock) {
-      toast.error(`Maximum stock (${item.product.stock}) reached`);
+      toast.error(t("toast.maxStock", { stock: item.product.stock }));
       return;
     }
     setCart(cart.map((item) =>
@@ -385,7 +417,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
     const item = cart.find((item) => item.product.id === productId);
     setCart(cart.filter((item) => item.product.id !== productId));
     if (item) {
-      toast.success(`${item.product.title} removed from cart`);
+      toast.success(t("toast.removed", { title: item.product.title }));
     }
   };
 
@@ -446,24 +478,24 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
 
   const handleCheckout = async () => {
     if (!checkoutForm.name || !checkoutForm.email) {
-      toast.error("Please fill in all required fields");
+      toast.error(t("toast.fillRequired"));
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(checkoutForm.email)) {
-      toast.error("Please enter a valid email address");
+      toast.error(t("toast.invalidEmail"));
       return;
     }
 
     if (checkoutForm.delivery_type === "home") {
       if (!checkoutForm.city || !checkoutForm.county || !checkoutForm.street) {
-        toast.error("Please fill in address details");
+        toast.error(t("toast.fillAddress"));
         return;
       }
     } else {
       if (!checkoutForm.selected_carrier_code || !checkoutForm.locker_id) {
-        toast.error("Please select a locker");
+        toast.error(t("toast.selectLocker"));
         return;
       }
     }
@@ -475,7 +507,9 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
         customer_phone: checkoutForm.phone || null,
         customer_address: checkoutForm.delivery_type === "home"
           ? `${checkoutForm.street} ${checkoutForm.street_number}${checkoutForm.block ? `, Block ${checkoutForm.block}` : ""}${checkoutForm.apartment ? `, Apt ${checkoutForm.apartment}` : ""}, ${checkoutForm.city}, ${checkoutForm.county}`
-          : checkoutForm.locker_address,
+          : [checkoutForm.locker_name, checkoutForm.locker_address, checkoutForm.city, checkoutForm.county]
+              .filter(Boolean)
+              .join(", "),
         customer_city: checkoutForm.city,
         customer_county: checkoutForm.county,
         customer_street: checkoutForm.street,
@@ -511,24 +545,28 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
         window.location.href = result.payment_url;
       } else if (response.ok && paymentMethod === 'cash') {
         markConvertedLocally();
-        toast.success("Order created successfully! You will pay cash on delivery.");
+        toast.success(
+          checkoutForm.delivery_type === 'locker'
+            ? t("toast.orderSuccessLocker")
+            : t("toast.orderSuccessCash")
+        );
         setCart([]);
         setView("home");
       } else {
-        toast.error(result.error || "Failed to create order");
+        toast.error(result.error || t("toast.createOrderFailed"));
       }
     } catch (error) {
       console.error("Error creating order:", error);
-      toast.error("Failed to create order. Please try again.");
+      toast.error(t("toast.createOrderRetry"));
     }
   };
 
   // Get button styles based on configuration
   const getButtonStyles = (variant: 'primary' | 'secondary' = 'primary') => {
-    const base = `${customization.border_radius} font-medium ${animationClass}`;
+    const base = `${colors.border_radius} font-medium ${animationClass}`;
     
     if (variant === 'primary') {
-      switch (customization.button_style) {
+      switch (colors.button_style) {
         case 'outline':
           return `${base} border-2 bg-transparent hover:bg-[var(--template-primary)] hover:text-white`;
         case 'ghost':
@@ -547,7 +585,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
 
   // Get navbar styles
   const getNavbarStyles = () => {
-    switch (customization.navbar_style) {
+    switch (colors.navbar_style) {
       case 'solid':
         return 'bg-[var(--template-background)] border-b';
       case 'glass':
@@ -565,13 +603,13 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
         className="min-h-screen flex items-center justify-center"
         style={{ 
           ...cssVariables,
-          backgroundColor: customization.background_color,
-          fontFamily: customization.font_family
+          backgroundColor: colors.background_color,
+          fontFamily: colors.font_family
         }}
       >
         <div className="flex flex-col items-center gap-4">
-          <Package className="h-16 w-16 animate-spin" style={{ color: customization.primary_color }} />
-          <p className="text-sm font-light animate-pulse" style={{ color: customization.text_color }}>
+          <Package className="h-16 w-16 animate-spin" style={{ color: colors.primary_color }} />
+          <p className="text-sm font-light animate-pulse" style={{ color: colors.text_color }}>
             Loading your experience...
           </p>
         </div>
@@ -582,11 +620,11 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
   const Header = () => (
     <header 
       className={`sticky top-0 z-50 ${getNavbarStyles()} ${animationClass}`}
-      style={{ borderColor: `${customization.primary_color}20` }}
+      style={{ borderColor: `${colors.primary_color}20` }}
     >
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          <button className="p-2 hover:opacity-70 rounded-lg" style={{ color: customization.text_color }}>
+          <button className="p-2 hover:opacity-70 rounded-lg" style={{ color: colors.text_color }}>
             <Menu className="h-5 w-5" />
           </button>
 
@@ -594,26 +632,27 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
             onClick={() => { setView("home"); setSelectedCollection(null); }}
             className={`absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2 ${animationClass} hover:scale-105`}
           >
-            {customization.logo_url ? (
-              <img src={customization.logo_url} alt={customization.store_name} className="h-8 w-auto" />
+            {colors.logo_url ? (
+              <img src={colors.logo_url} alt={colors.store_name} className="h-8 w-auto" />
             ) : (
               <span 
                 className="text-xl font-light tracking-widest"
-                style={{ color: customization.primary_color, fontFamily: customization.heading_font }}
+                style={{ color: colors.primary_color, fontFamily: colors.heading_font }}
               >
-                {customization.store_name}
+                {colors.store_name}
               </span>
             )}
           </button>
 
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             {editMode && (
               <button
                 onClick={() => setShowEditor(!showEditor)}
-                className={`p-2 ${customization.border_radius} ${animationClass}`}
+                className={`p-2 ${colors.border_radius} ${animationClass}`}
                 style={{ 
-                  backgroundColor: showEditor ? customization.primary_color : 'transparent',
-                  color: showEditor ? customization.background_color : customization.text_color
+                  backgroundColor: showEditor ? colors.primary_color : 'transparent',
+                  color: showEditor ? colors.background_color : colors.text_color
                 }}
               >
                 <Edit3 className="h-5 w-5" />
@@ -623,13 +662,13 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
             <button
               onClick={() => setView("cart")}
               className={`relative p-2 ${animationClass} hover:opacity-70`}
-              style={{ color: customization.text_color }}
+              style={{ color: colors.text_color }}
             >
               <ShoppingCart className="h-5 w-5" />
               {cartItemCount > 0 && (
                 <span 
                   className="absolute -top-1 -right-1 h-5 w-5 rounded-full flex items-center justify-center text-xs font-medium animate-pulse"
-                  style={{ backgroundColor: customization.primary_color, color: customization.background_color }}
+                  style={{ backgroundColor: colors.primary_color, color: colors.background_color }}
                 >
                   {cartItemCount}
                 </span>
@@ -643,6 +682,11 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
 
   const ProductCard = ({ product, index }: { product: Product; index: number }) => {
     const isWishlisted = wishlist.includes(product.id);
+    const productReviews = reviews.filter((r) => r.product_id === product.id);
+    const avgRating =
+      productReviews.length > 0
+        ? productReviews.reduce((s, r) => s + r.rating, 0) / productReviews.length
+        : 0;
     
     return (
       <div
@@ -651,10 +695,10 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
         onClick={() => { setSelectedProduct(product); setView("product"); }}
       >
         <div 
-          className={`relative ${customization.border_radius} overflow-hidden ${animationClass}`}
+          className={`relative ${colors.border_radius} overflow-hidden ${animationClass}`}
           style={{ 
-            backgroundColor: customization.secondary_color,
-            border: `1px solid ${customization.primary_color}20`
+            backgroundColor: colors.secondary_color,
+            border: `1px solid ${colors.primary_color}20`
           }}
         >
           <div className="aspect-square overflow-hidden">
@@ -668,10 +712,10 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
           {/* Wishlist button */}
           <button
             onClick={(e) => { e.stopPropagation(); toggleWishlist(product.id); }}
-            className={`absolute top-3 right-3 p-2 ${customization.border_radius} ${animationClass}`}
+            className={`absolute top-3 right-3 p-2 ${colors.border_radius} ${animationClass}`}
             style={{ 
-              backgroundColor: `${customization.background_color}90`,
-              color: isWishlisted ? '#ef4444' : customization.text_color
+              backgroundColor: `${colors.background_color}90`,
+              color: isWishlisted ? '#ef4444' : colors.text_color
             }}
           >
             <Heart className={`h-4 w-4 ${isWishlisted ? 'fill-current' : ''}`} />
@@ -680,8 +724,8 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
           {/* Quick add button */}
           <button
             onClick={(e) => { e.stopPropagation(); addToCart(product); }}
-            className={`absolute bottom-3 right-3 p-2 ${customization.border_radius} ${animationClass} opacity-0 group-hover:opacity-100`}
-            style={{ backgroundColor: customization.primary_color, color: customization.background_color }}
+            className={`absolute bottom-3 right-3 p-2 ${colors.border_radius} ${animationClass} opacity-0 group-hover:opacity-100`}
+            style={{ backgroundColor: colors.primary_color, color: colors.background_color }}
           >
             <Plus className="h-4 w-4" />
           </button>
@@ -689,26 +733,40 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
           <div className="p-4 space-y-2">
             <h3 
               className="font-semibold text-sm line-clamp-2"
-              style={{ color: customization.text_color, fontFamily: customization.heading_font }}
+              style={{ color: colors.text_color, fontFamily: colors.heading_font }}
             >
               {product.title}
             </h3>
+
+            {customization.show_reviews !== false && productReviews.length > 0 && (
+              <div className="flex items-center gap-1">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`h-3 w-3 ${i < Math.round(avgRating) ? 'fill-amber-400 text-amber-400' : 'opacity-25'}`}
+                  />
+                ))}
+                <span className="text-[11px] ml-1" style={{ color: colors.accent_color }}>
+                  ({productReviews.length})
+                </span>
+              </div>
+            )}
             
             <div className="flex items-center justify-between">
-              <p className="text-lg font-bold" style={{ color: customization.primary_color }}>
+              <p className="text-lg font-bold" style={{ color: colors.primary_color }}>
                 {formatPrice(product.price)}
               </p>
               
               {product.stock > 0 ? (
                 <span 
-                  className={`text-xs px-2 py-1 ${customization.border_radius}`}
-                  style={{ backgroundColor: customization.secondary_color, color: customization.accent_color }}
+                  className={`text-xs px-2 py-1 ${colors.border_radius}`}
+                  style={{ backgroundColor: colors.secondary_color, color: colors.accent_color }}
                 >
                   {product.stock < 5 ? `Only ${product.stock} left` : 'In Stock'}
                 </span>
               ) : (
                 <span 
-                  className={`text-xs px-2 py-1 ${customization.border_radius}`}
+                  className={`text-xs px-2 py-1 ${colors.border_radius}`}
                   style={{ backgroundColor: '#ef444420', color: '#ef4444' }}
                 >
                   Out of Stock
@@ -727,9 +785,9 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
       className="min-h-screen"
       style={{ 
         ...cssVariables,
-        backgroundColor: customization.background_color,
-        color: customization.text_color,
-        fontFamily: customization.font_family
+        backgroundColor: colors.background_color,
+        color: colors.text_color,
+        fontFamily: colors.font_family
       }}
     >
       {/* Live Editor Panel */}
@@ -747,33 +805,33 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
           <Header />
           
           {/* Hero Section */}
-          {customization.show_hero_section && (
+          {colors.show_hero_section && (
             <section 
               className="relative min-h-[80vh] flex items-center justify-center overflow-hidden"
               style={{
-                backgroundImage: customization.hero_image_url ? `url(${customization.hero_image_url})` : undefined,
+                backgroundImage: colors.hero_image_url ? `url(${colors.hero_image_url})` : undefined,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
               }}
             >
               {/* Gradient Overlay */}
-              {customization.gradient_enabled && (
+              {colors.gradient_enabled && (
                 <>
                   <div 
                     className="absolute inset-0 bg-gradient-to-br opacity-90"
                     style={{
-                      background: customization.hero_image_url 
-                        ? `linear-gradient(to bottom, ${customization.background_color}80, ${customization.background_color})`
-                        : `linear-gradient(135deg, ${customization.background_color}, ${customization.secondary_color})`
+                      background: colors.hero_image_url 
+                        ? `linear-gradient(to bottom, ${colors.background_color}80, ${colors.background_color})`
+                        : `linear-gradient(135deg, ${colors.background_color}, ${colors.secondary_color})`
                     }}
                   />
                   <div 
                     className="absolute top-20 left-10 w-72 h-72 rounded-full blur-3xl animate-pulse"
-                    style={{ backgroundColor: `${customization.primary_color}30` }}
+                    style={{ backgroundColor: `${colors.primary_color}30` }}
                   />
                   <div 
                     className="absolute bottom-20 right-10 w-96 h-96 rounded-full blur-3xl animate-pulse"
-                    style={{ backgroundColor: `${customization.accent_color}20`, animationDelay: '0.7s' }}
+                    style={{ backgroundColor: `${colors.accent_color}20`, animationDelay: '0.7s' }}
                   />
                 </>
               )}
@@ -785,14 +843,14 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
               }`}>
                 <div className="max-w-4xl mx-auto space-y-8">
                   <div 
-                    className={`inline-flex items-center gap-2 px-4 py-2 ${customization.border_radius} backdrop-blur-sm mb-4`}
+                    className={`inline-flex items-center gap-2 px-4 py-2 ${colors.border_radius} backdrop-blur-sm mb-4`}
                     style={{ 
-                      backgroundColor: `${customization.primary_color}10`,
-                      border: `1px solid ${customization.primary_color}20`
+                      backgroundColor: `${colors.primary_color}10`,
+                      border: `1px solid ${colors.primary_color}20`
                     }}
                   >
-                    <Sparkles className="h-4 w-4 animate-pulse" style={{ color: customization.primary_color }} />
-                    <span className="text-sm font-medium" style={{ color: customization.primary_color }}>
+                    <Sparkles className="h-4 w-4 animate-pulse" style={{ color: colors.primary_color }} />
+                    <span className="text-sm font-medium" style={{ color: colors.primary_color }}>
                       New Collection Available
                     </span>
                   </div>
@@ -800,18 +858,18 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
                   <h1 
                     className={`text-5xl md:text-7xl font-bold leading-tight ${animationClass}`}
                     style={{ 
-                      fontFamily: customization.heading_font,
-                      color: customization.text_color
+                      fontFamily: colors.heading_font,
+                      color: colors.text_color
                     }}
                   >
-                    {customization.hero_title}
+                    {colors.hero_title}
                   </h1>
                   
                   <p 
                     className="text-xl md:text-2xl font-light max-w-2xl mx-auto"
-                    style={{ color: customization.accent_color }}
+                    style={{ color: colors.accent_color }}
                   >
-                    {customization.hero_subtitle}
+                    {colors.hero_subtitle}
                   </p>
                   
                   <div className="flex flex-wrap gap-4 justify-center">
@@ -822,7 +880,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
                       }}
                       className={`px-8 py-4 ${getButtonStyles('primary')} flex items-center gap-2`}
                     >
-                      {customization.hero_button_text}
+                      {colors.hero_button_text}
                       <Zap className="h-4 w-4" />
                     </button>
                     
@@ -839,17 +897,17 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
           )}
 
           {/* Collections Section */}
-          {collections.length > 0 && customization.show_collection_images && (
+          {collections.length > 0 && colors.show_collection_images && (
             <section className="py-24">
               <div className="container mx-auto px-4">
                 <div className="text-center mb-16 space-y-4">
                   <h2 
                     className="text-4xl font-bold tracking-tight"
-                    style={{ fontFamily: customization.heading_font }}
+                    style={{ fontFamily: colors.heading_font }}
                   >
                     Explore Collections
                   </h2>
-                  <p style={{ color: customization.accent_color }}>Curated selections for every style</p>
+                  <p style={{ color: colors.accent_color }}>Curated selections for every style</p>
                 </div>
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -861,7 +919,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
                         const productsSection = document.getElementById('products-section');
                         productsSection?.scrollIntoView({ behavior: 'smooth' });
                       }}
-                      className={`group relative aspect-square overflow-hidden ${customization.border_radius} ${animationClass}`}
+                      className={`group relative aspect-square overflow-hidden ${colors.border_radius} ${animationClass}`}
                       style={{ animationDelay: `${index * 0.1}s` }}
                     >
                       <img
@@ -871,7 +929,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
                       />
                       <div 
                         className="absolute inset-0 opacity-80 group-hover:opacity-90 transition-opacity"
-                        style={{ background: `linear-gradient(to top, ${customization.primary_color}cc, transparent)` }}
+                        style={{ background: `linear-gradient(to top, ${colors.primary_color}cc, transparent)` }}
                       />
                       <div className="absolute inset-0 flex items-end justify-center p-6">
                         <div className="text-center space-y-2">
@@ -893,30 +951,30 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
               <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-12">
                 <h2 
                   className="text-4xl font-bold tracking-tight"
-                  style={{ fontFamily: customization.heading_font }}
+                  style={{ fontFamily: colors.heading_font }}
                 >
                   Featured Products
                 </h2>
                 
                 <div className="flex items-center gap-4">
                   {/* View Toggle */}
-                  <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: customization.secondary_color }}>
+                  <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: colors.secondary_color }}>
                     <button
                       onClick={() => setViewMode('grid')}
-                      className={`p-2 ${customization.border_radius} ${animationClass}`}
+                      className={`p-2 ${colors.border_radius} ${animationClass}`}
                       style={{ 
-                        backgroundColor: viewMode === 'grid' ? customization.primary_color : 'transparent',
-                        color: viewMode === 'grid' ? customization.background_color : customization.text_color
+                        backgroundColor: viewMode === 'grid' ? colors.primary_color : 'transparent',
+                        color: viewMode === 'grid' ? colors.background_color : colors.text_color
                       }}
                     >
                       <Grid3X3 className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => setViewMode('list')}
-                      className={`p-2 ${customization.border_radius} ${animationClass}`}
+                      className={`p-2 ${colors.border_radius} ${animationClass}`}
                       style={{ 
-                        backgroundColor: viewMode === 'list' ? customization.primary_color : 'transparent',
-                        color: viewMode === 'list' ? customization.background_color : customization.text_color
+                        backgroundColor: viewMode === 'list' ? colors.primary_color : 'transparent',
+                        color: viewMode === 'list' ? colors.background_color : colors.text_color
                       }}
                     >
                       <List className="h-4 w-4" />
@@ -927,11 +985,11 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as any)}
-                    className={`px-4 py-2 ${customization.border_radius} text-sm font-medium ${animationClass}`}
+                    className={`px-4 py-2 ${colors.border_radius} text-sm font-medium ${animationClass}`}
                     style={{ 
-                      backgroundColor: customization.secondary_color,
-                      color: customization.text_color,
-                      border: `1px solid ${customization.primary_color}20`
+                      backgroundColor: colors.secondary_color,
+                      color: colors.text_color,
+                      border: `1px solid ${colors.primary_color}20`
                     }}
                   >
                     <option value="default">✨ Featured</option>
@@ -944,8 +1002,8 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
 
               {sortedProducts.length === 0 ? (
                 <div className="text-center py-20">
-                  <Package className="h-16 w-16 mx-auto mb-4 opacity-50" style={{ color: customization.accent_color }} />
-                  <p className="text-lg" style={{ color: customization.accent_color }}>No products found</p>
+                  <Package className="h-16 w-16 mx-auto mb-4 opacity-50" style={{ color: colors.accent_color }} />
+                  <p className="text-lg" style={{ color: colors.accent_color }}>No products found</p>
                 </div>
               ) : (
                 <div className={viewMode === 'grid' 
@@ -959,6 +1017,57 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
               )}
             </div>
           </section>
+
+          {/* Customer Reviews */}
+          {customization.show_reviews !== false && reviews.length > 0 && (
+            <section className="py-24" style={{ backgroundColor: colors.secondary_color }}>
+              <div className="container mx-auto px-4">
+                <div className="text-center mb-12 space-y-3">
+                  <h2
+                    className="text-4xl font-bold tracking-tight"
+                    style={{ fontFamily: colors.heading_font }}
+                  >
+                    What customers say
+                  </h2>
+                  <p style={{ color: colors.accent_color }}>
+                    Real reviews from people who shopped here
+                  </p>
+                </div>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {reviews.slice(0, 6).map((r) => (
+                    <blockquote
+                      key={r.id}
+                      className={`p-6 ${colors.border_radius} ${animationClass}`}
+                      style={{
+                        backgroundColor: colors.background_color,
+                        border: `1px solid ${colors.primary_color}15`,
+                      }}
+                    >
+                      <div className="flex gap-0.5 mb-3">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`h-3.5 w-3.5 ${i < r.rating ? 'fill-amber-400 text-amber-400' : 'opacity-25'}`}
+                          />
+                        ))}
+                      </div>
+                      <p className="text-sm leading-relaxed min-h-[3rem]" style={{ color: colors.text_color }}>
+                        {r.comment || 'Great experience shopping here.'}
+                      </p>
+                      {r.merchant_reply && (
+                        <p className="mt-3 text-xs border-l-2 pl-3" style={{ borderColor: colors.primary_color, color: colors.accent_color }}>
+                          Store: {r.merchant_reply}
+                        </p>
+                      )}
+                      <footer className="mt-4 text-xs font-medium" style={{ color: colors.accent_color }}>
+                        {r.customer_name}
+                      </footer>
+                    </blockquote>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* Custom Blocks Section */}
           {blocks.filter(b => b.is_visible).length > 0 && (
@@ -975,17 +1084,17 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
           {/* Footer */}
           <footer 
             className="py-16 border-t"
-            style={{ borderColor: `${customization.primary_color}20`, backgroundColor: customization.secondary_color }}
+            style={{ borderColor: `${colors.primary_color}20`, backgroundColor: colors.secondary_color }}
           >
             <div className="container mx-auto px-4 text-center">
               <div className="max-w-2xl mx-auto space-y-6">
                 <div className="flex items-center justify-center gap-2 mb-4">
-                  <Sparkles className="h-5 w-5 animate-pulse" style={{ color: customization.primary_color }} />
-                  <span className="text-xl font-bold tracking-wider">{customization.store_name}</span>
-                  <Sparkles className="h-5 w-5 animate-pulse" style={{ color: customization.primary_color }} />
+                  <Sparkles className="h-5 w-5 animate-pulse" style={{ color: colors.primary_color }} />
+                  <span className="text-xl font-bold tracking-wider">{colors.store_name}</span>
+                  <Sparkles className="h-5 w-5 animate-pulse" style={{ color: colors.primary_color }} />
                 </div>
-                <p className="text-sm" style={{ color: customization.accent_color }}>
-                  © {new Date().getFullYear()} {customization.store_name}. {customization.footer_text}
+                <p className="text-sm" style={{ color: colors.accent_color }}>
+                  © {new Date().getFullYear()} {colors.store_name}. {colors.footer_text}
                 </p>
               </div>
             </div>
@@ -999,15 +1108,15 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
           <div className="container mx-auto px-4 py-12">
             <button
               onClick={() => setView("home")}
-              className={`inline-flex items-center gap-2 mb-8 px-4 py-2 ${customization.border_radius} ${animationClass}`}
-              style={{ backgroundColor: customization.secondary_color }}
+              className={`inline-flex items-center gap-2 mb-8 px-4 py-2 ${colors.border_radius} ${animationClass}`}
+              style={{ backgroundColor: colors.secondary_color }}
             >
               <ArrowLeft className="h-4 w-4" />
               Back to products
             </button>
 
             <div className="grid md:grid-cols-2 gap-12 items-start">
-              <div className={`${customization.border_radius} overflow-hidden`} style={{ backgroundColor: customization.secondary_color }}>
+              <div className={`${colors.border_radius} overflow-hidden`} style={{ backgroundColor: colors.secondary_color }}>
                 <img
                   src={selectedProduct.image || "/placeholder.svg"}
                   alt={selectedProduct.title}
@@ -1019,17 +1128,17 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
                 <div className="space-y-4">
                   <h1 
                     className="text-4xl md:text-5xl font-bold tracking-tight"
-                    style={{ fontFamily: customization.heading_font }}
+                    style={{ fontFamily: colors.heading_font }}
                   >
                     {selectedProduct.title}
                   </h1>
-                  <p className="text-3xl font-bold" style={{ color: customization.primary_color }}>
+                  <p className="text-3xl font-bold" style={{ color: colors.primary_color }}>
                     {formatPrice(selectedProduct.price)}
                   </p>
                 </div>
                 
                 {selectedProduct.description && (
-                  <p className="text-lg leading-relaxed" style={{ color: customization.accent_color }}>
+                  <p className="text-lg leading-relaxed" style={{ color: colors.accent_color }}>
                     {selectedProduct.description}
                   </p>
                 )}
@@ -1037,14 +1146,14 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
                 <div className="flex items-center gap-3">
                   {selectedProduct.stock > 0 ? (
                     <span 
-                      className={`text-sm px-3 py-1 ${customization.border_radius}`}
-                      style={{ backgroundColor: customization.secondary_color }}
+                      className={`text-sm px-3 py-1 ${colors.border_radius}`}
+                      style={{ backgroundColor: colors.secondary_color }}
                     >
                       ✓ {selectedProduct.stock} in stock
                     </span>
                   ) : (
                     <span 
-                      className={`text-sm px-3 py-1 ${customization.border_radius}`}
+                      className={`text-sm px-3 py-1 ${colors.border_radius}`}
                       style={{ backgroundColor: '#ef444420', color: '#ef4444' }}
                     >
                       Out of stock
@@ -1055,10 +1164,10 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
                 <div className="flex gap-4">
                   <button
                     onClick={() => toggleWishlist(selectedProduct.id)}
-                    className={`p-4 ${customization.border_radius} ${animationClass}`}
+                    className={`p-4 ${colors.border_radius} ${animationClass}`}
                     style={{ 
-                      backgroundColor: customization.secondary_color,
-                      color: wishlist.includes(selectedProduct.id) ? '#ef4444' : customization.text_color
+                      backgroundColor: colors.secondary_color,
+                      color: wishlist.includes(selectedProduct.id) ? '#ef4444' : colors.text_color
                     }}
                   >
                     <Heart className={`h-6 w-6 ${wishlist.includes(selectedProduct.id) ? 'fill-current' : ''}`} />
@@ -1069,10 +1178,73 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
                     disabled={selectedProduct.stock === 0}
                     className={`flex-1 py-4 ${getButtonStyles('primary')} flex items-center justify-center gap-2 disabled:opacity-50`}
                   >
-                    {selectedProduct.stock === 0 ? "Out of Stock" : "Add to Cart"}
+                    {selectedProduct.stock === 0 ? t("action.outOfStock") : t("action.addToCart")}
                     {selectedProduct.stock > 0 && <ShoppingCart className="h-5 w-5" />}
                   </button>
                 </div>
+
+                {customization.show_reviews !== false && (() => {
+                  const productReviews = reviews.filter((r) => r.product_id === selectedProduct.id);
+                  const avg =
+                    productReviews.length > 0
+                      ? productReviews.reduce((s, r) => s + r.rating, 0) / productReviews.length
+                      : 0;
+                  return (
+                    <div className="space-y-4 pt-6 border-t" style={{ borderColor: `${colors.accent_color}33` }}>
+                      <div className="flex items-end justify-between gap-3">
+                        <h3 className="text-xl font-semibold" style={{ fontFamily: colors.heading_font }}>
+                          Reviews
+                        </h3>
+                        {productReviews.length > 0 && (
+                          <p className="text-sm tabular-nums" style={{ color: colors.accent_color }}>
+                            {avg.toFixed(1)} · {productReviews.length} review{productReviews.length === 1 ? '' : 's'}
+                          </p>
+                        )}
+                      </div>
+                      {productReviews.length === 0 ? (
+                        <p className="text-sm" style={{ color: colors.accent_color }}>
+                          No reviews yet — be the first.
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {productReviews.slice(0, 8).map((r) => (
+                            <div key={r.id} className="space-y-1">
+                              <div className="flex items-center gap-1">
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                  <Star
+                                    key={i}
+                                    className={`h-3.5 w-3.5 ${i < r.rating ? 'fill-amber-400 text-amber-400' : 'opacity-30'}`}
+                                  />
+                                ))}
+                                <span className="ml-2 text-sm font-medium">{r.customer_name}</span>
+                              </div>
+                              {r.comment && (
+                                <p className="text-sm" style={{ color: colors.accent_color }}>{r.comment}</p>
+                              )}
+                              {r.merchant_reply && (
+                                <div
+                                  className="ml-2 pl-3 border-l text-sm"
+                                  style={{ borderColor: `${colors.accent_color}44`, color: colors.accent_color }}
+                                >
+                                  <span className="text-xs font-medium" style={{ color: colors.text_color }}>
+                                    Store reply
+                                  </span>
+                                  <p className="mt-0.5">{r.merchant_reply}</p>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <StorefrontReviewForm
+                        apiKey={apiKey}
+                        productId={selectedProduct.id}
+                        productTitle={selectedProduct.title}
+                        className="bg-transparent"
+                      />
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -1085,21 +1257,21 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
           <div className="container mx-auto px-4 py-12 max-w-5xl">
             <h1 
               className="text-4xl font-bold mb-12 tracking-tight flex items-center gap-3"
-              style={{ fontFamily: customization.heading_font }}
+              style={{ fontFamily: colors.heading_font }}
             >
-              <ShoppingCart className="h-10 w-10" style={{ color: customization.primary_color }} />
-              Shopping Cart
+              <ShoppingCart className="h-10 w-10" style={{ color: colors.primary_color }} />
+              {t("cart.title")}
             </h1>
 
             {cart.length === 0 ? (
               <div className="text-center py-20">
-                <ShoppingCart className="h-16 w-16 mx-auto mb-4 opacity-50" style={{ color: customization.accent_color }} />
-                <p className="text-xl mb-4" style={{ color: customization.accent_color }}>Your cart is empty</p>
+                <ShoppingCart className="h-16 w-16 mx-auto mb-4 opacity-50" style={{ color: colors.accent_color }} />
+                <p className="text-xl mb-4" style={{ color: colors.accent_color }}>{t("cart.empty")}</p>
                 <button
                   onClick={() => setView("home")}
                   className={`px-6 py-3 ${getButtonStyles('primary')}`}
                 >
-                  Start Shopping
+                  {t("action.shopNow")}
                 </button>
               </div>
             ) : (
@@ -1108,31 +1280,31 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
                   {cart.map((item) => (
                     <div 
                       key={item.product.id}
-                      className={`flex gap-4 p-4 ${customization.border_radius}`}
-                      style={{ backgroundColor: customization.secondary_color }}
+                      className={`flex gap-4 p-4 ${colors.border_radius}`}
+                      style={{ backgroundColor: colors.secondary_color }}
                     >
                       <img
                         src={item.product.image || "/placeholder.svg"}
                         alt={item.product.title}
-                        className={`w-24 h-24 object-cover ${customization.border_radius}`}
+                        className={`w-24 h-24 object-cover ${colors.border_radius}`}
                       />
                       <div className="flex-1">
                         <h3 className="font-semibold">{item.product.title}</h3>
-                        <p style={{ color: customization.primary_color }}>{formatPrice(item.product.price)}</p>
+                        <p style={{ color: colors.primary_color }}>{formatPrice(item.product.price)}</p>
                         
                         <div className="flex items-center gap-2 mt-2">
                           <button
                             onClick={() => updateCartQuantity(item.product.id, item.quantity - 1)}
-                            className={`p-1 ${customization.border_radius}`}
-                            style={{ backgroundColor: customization.background_color }}
+                            className={`p-1 ${colors.border_radius}`}
+                            style={{ backgroundColor: colors.background_color }}
                           >
                             <Minus className="h-4 w-4" />
                           </button>
                           <span className="w-8 text-center">{item.quantity}</span>
                           <button
                             onClick={() => updateCartQuantity(item.product.id, item.quantity + 1)}
-                            className={`p-1 ${customization.border_radius}`}
-                            style={{ backgroundColor: customization.background_color }}
+                            className={`p-1 ${colors.border_radius}`}
+                            style={{ backgroundColor: colors.background_color }}
                           >
                             <Plus className="h-4 w-4" />
                           </button>
@@ -1149,31 +1321,31 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
                 </div>
 
                 <div 
-                  className={`p-6 ${customization.border_radius} h-fit sticky top-24`}
-                  style={{ backgroundColor: customization.secondary_color }}
+                  className={`p-6 ${colors.border_radius} h-fit sticky top-24`}
+                  style={{ backgroundColor: colors.secondary_color }}
                 >
-                  <h3 className="font-semibold text-lg mb-4">Order Summary</h3>
+                  <h3 className="font-semibold text-lg mb-4">{t("summary.title")}</h3>
                   <div className="space-y-2 mb-4">
                     <div className="flex justify-between">
-                      <span style={{ color: customization.accent_color }}>Subtotal</span>
+                      <span style={{ color: colors.accent_color }}>{t("summary.subtotal")}</span>
                       <span>{formatPrice(cartTotal)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span style={{ color: customization.accent_color }}>Delivery</span>
+                      <span style={{ color: colors.accent_color }}>{t("summary.delivery")}</span>
                       <span>{formatPrice(deliveryFee)}</span>
                     </div>
                   </div>
-                  <div className="border-t pt-4 mb-6" style={{ borderColor: `${customization.primary_color}20` }}>
+                  <div className="border-t pt-4 mb-6" style={{ borderColor: `${colors.primary_color}20` }}>
                     <div className="flex justify-between text-lg font-semibold">
-                      <span>Total</span>
-                      <span style={{ color: customization.primary_color }}>{formatPrice(orderTotal)}</span>
+                      <span>{t("summary.total")}</span>
+                      <span style={{ color: colors.primary_color }}>{formatPrice(orderTotal)}</span>
                     </div>
                   </div>
                   <button
                     onClick={() => setView("checkout")}
                     className={`w-full py-4 ${getButtonStyles('primary')}`}
                   >
-                    Proceed to Checkout
+                    {t("action.proceedCheckout")}
                   </button>
                 </div>
               </div>
@@ -1188,157 +1360,160 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
           <div className="container mx-auto px-4 py-12 max-w-4xl">
             <button
               onClick={() => setView("cart")}
-              className={`inline-flex items-center gap-2 mb-8 px-4 py-2 ${customization.border_radius}`}
-              style={{ backgroundColor: customization.secondary_color }}
+              className={`inline-flex items-center gap-2 mb-8 px-4 py-2 ${colors.border_radius}`}
+              style={{ backgroundColor: colors.secondary_color }}
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to cart
+              {t("backToCart")}
             </button>
 
             <h1 
               className="text-4xl font-bold mb-12"
-              style={{ fontFamily: customization.heading_font }}
+              style={{ fontFamily: colors.heading_font }}
             >
-              Checkout
+              {t("title")}
             </h1>
 
             <div className="grid md:grid-cols-2 gap-8">
               {/* Contact Info */}
-              <div className={`p-6 ${customization.border_radius}`} style={{ backgroundColor: customization.secondary_color }}>
-                <h2 className="text-xl font-semibold mb-4">Contact Information</h2>
+              <div className={`p-6 ${colors.border_radius}`} style={{ backgroundColor: colors.secondary_color }}>
+                <h2 className="text-xl font-semibold mb-4">{t("contactInfo")}</h2>
                 <div className="space-y-4">
                   <input
                     type="text"
-                    placeholder="Full Name *"
+                    placeholder={t("placeholder.fullName")}
                     value={checkoutForm.name}
                     onChange={(e) => setCheckoutForm({ ...checkoutForm, name: e.target.value })}
-                    className={`w-full p-3 ${customization.border_radius}`}
-                    style={{ backgroundColor: customization.background_color, border: `1px solid ${customization.primary_color}20` }}
+                    className={`w-full p-3 ${colors.border_radius}`}
+                    style={{ backgroundColor: colors.background_color, border: `1px solid ${colors.primary_color}20` }}
                   />
                   <input
                     type="email"
-                    placeholder="Email *"
+                    placeholder={t("placeholder.email")}
                     value={checkoutForm.email}
                     onChange={(e) => setCheckoutForm({ ...checkoutForm, email: e.target.value })}
-                    className={`w-full p-3 ${customization.border_radius}`}
-                    style={{ backgroundColor: customization.background_color, border: `1px solid ${customization.primary_color}20` }}
+                    className={`w-full p-3 ${colors.border_radius}`}
+                    style={{ backgroundColor: colors.background_color, border: `1px solid ${colors.primary_color}20` }}
                   />
                   <input
                     type="tel"
-                    placeholder="Phone"
+                    placeholder={t("placeholder.phone")}
                     value={checkoutForm.phone}
                     onChange={(e) => setCheckoutForm({ ...checkoutForm, phone: e.target.value })}
-                    className={`w-full p-3 ${customization.border_radius}`}
-                    style={{ backgroundColor: customization.background_color, border: `1px solid ${customization.primary_color}20` }}
+                    className={`w-full p-3 ${colors.border_radius}`}
+                    style={{ backgroundColor: colors.background_color, border: `1px solid ${colors.primary_color}20` }}
                   />
                 </div>
               </div>
 
               {/* Delivery */}
-              <div className={`p-6 ${customization.border_radius}`} style={{ backgroundColor: customization.secondary_color }}>
-                <h2 className="text-xl font-semibold mb-4">Delivery</h2>
+              <div className={`p-6 ${colors.border_radius}`} style={{ backgroundColor: colors.secondary_color }}>
+                <h2 className="text-xl font-semibold mb-4">{t("steps.delivery")}</h2>
                 <div className="space-y-4">
                   <div className="flex gap-4">
                     <button
                       onClick={() => setCheckoutForm({ ...checkoutForm, delivery_type: "home" })}
-                      className={`flex-1 p-4 ${customization.border_radius} flex items-center gap-2 ${animationClass}`}
+                      className={`flex-1 p-4 ${colors.border_radius} flex items-center gap-2 ${animationClass}`}
                       style={{ 
-                        backgroundColor: checkoutForm.delivery_type === "home" ? customization.primary_color : customization.background_color,
-                        color: checkoutForm.delivery_type === "home" ? customization.background_color : customization.text_color,
-                        border: `1px solid ${customization.primary_color}20`
+                        backgroundColor: checkoutForm.delivery_type === "home" ? colors.primary_color : colors.background_color,
+                        color: checkoutForm.delivery_type === "home" ? colors.background_color : colors.text_color,
+                        border: `1px solid ${colors.primary_color}20`
                       }}
                     >
                       <HomeIcon className="h-5 w-5" />
-                      Home
+                      {t("delivery.home")}
                     </button>
                     <button
                       onClick={() => setCheckoutForm({ ...checkoutForm, delivery_type: "locker" })}
-                      className={`flex-1 p-4 ${customization.border_radius} flex items-center gap-2 ${animationClass}`}
+                      className={`flex-1 p-4 ${colors.border_radius} flex items-center gap-2 ${animationClass}`}
                       style={{ 
-                        backgroundColor: checkoutForm.delivery_type === "locker" ? customization.primary_color : customization.background_color,
-                        color: checkoutForm.delivery_type === "locker" ? customization.background_color : customization.text_color,
-                        border: `1px solid ${customization.primary_color}20`
+                        backgroundColor: checkoutForm.delivery_type === "locker" ? colors.primary_color : colors.background_color,
+                        color: checkoutForm.delivery_type === "locker" ? colors.background_color : colors.text_color,
+                        border: `1px solid ${colors.primary_color}20`
                       }}
                     >
                       <MapPin className="h-5 w-5" />
-                      Locker
+                      {t("delivery.locker")}
                     </button>
                   </div>
 
                   {checkoutForm.delivery_type === "home" && (
                     <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
-                        <select
-                          value={checkoutForm.county}
-                          onChange={(e) => setCheckoutForm({ ...checkoutForm, county: e.target.value, city: "" })}
-                          className={`p-3 ${customization.border_radius}`}
-                          style={{ backgroundColor: customization.background_color, color: customization.text_color, border: `1px solid ${customization.primary_color}20` }}
-                        >
-                          <option value="">Select County *</option>
-                          {ROMANIA_COUNTIES.map((c) => (
-                            <option key={c} value={c}>{c}</option>
-                          ))}
-                        </select>
-                        <select
-                          value={checkoutForm.city}
-                          onChange={(e) => setCheckoutForm({ ...checkoutForm, city: e.target.value })}
-                          disabled={!checkoutForm.county}
-                          className={`p-3 ${customization.border_radius} disabled:opacity-50`}
-                          style={{ backgroundColor: customization.background_color, color: customization.text_color, border: `1px solid ${customization.primary_color}20` }}
-                        >
-                          <option value="">Select City *</option>
-                          {(ROMANIA_LOCATIONS[checkoutForm.county] || []).map((city) => (
-                            <option key={city} value={city}>{city}</option>
-                          ))}
-                        </select>
-                      </div>
+                      <AddressLocalityFields
+                        apiKey={apiKey}
+                        county={checkoutForm.county}
+                        city={checkoutForm.city}
+                        onCountyChange={(county) =>
+                          setCheckoutForm({ ...checkoutForm, county, city: "" })
+                        }
+                        onLocalityChange={(loc) =>
+                          setCheckoutForm({
+                            ...checkoutForm,
+                            city: loc.name,
+                            county: loc.county || checkoutForm.county,
+                          })
+                        }
+                      />
                       <input
-                        placeholder="Street *"
+                        placeholder={t("placeholder.street")}
                         value={checkoutForm.street}
                         onChange={(e) => setCheckoutForm({ ...checkoutForm, street: e.target.value })}
-                        className={`w-full p-3 ${customization.border_radius}`}
-                        style={{ backgroundColor: customization.background_color, border: `1px solid ${customization.primary_color}20` }}
+                        className={`w-full p-3 ${colors.border_radius}`}
+                        style={{ backgroundColor: colors.background_color, border: `1px solid ${colors.primary_color}20` }}
                       />
                       <div className="grid grid-cols-3 gap-3">
                         <input
-                          placeholder="Number"
+                          placeholder={t("field.numberShort")}
                           value={checkoutForm.street_number}
                           onChange={(e) => setCheckoutForm({ ...checkoutForm, street_number: e.target.value })}
-                          className={`p-3 ${customization.border_radius}`}
-                          style={{ backgroundColor: customization.background_color, border: `1px solid ${customization.primary_color}20` }}
+                          className={`p-3 ${colors.border_radius}`}
+                          style={{ backgroundColor: colors.background_color, border: `1px solid ${colors.primary_color}20` }}
                         />
                         <input
-                          placeholder="Block"
+                          placeholder={t("field.block")}
                           value={checkoutForm.block}
                           onChange={(e) => setCheckoutForm({ ...checkoutForm, block: e.target.value })}
-                          className={`p-3 ${customization.border_radius}`}
-                          style={{ backgroundColor: customization.background_color, border: `1px solid ${customization.primary_color}20` }}
+                          className={`p-3 ${colors.border_radius}`}
+                          style={{ backgroundColor: colors.background_color, border: `1px solid ${colors.primary_color}20` }}
                         />
                         <input
-                          placeholder="Apt"
+                          placeholder={t("field.apt")}
                           value={checkoutForm.apartment}
                           onChange={(e) => setCheckoutForm({ ...checkoutForm, apartment: e.target.value })}
-                          className={`p-3 ${customization.border_radius}`}
-                          style={{ backgroundColor: customization.background_color, border: `1px solid ${customization.primary_color}20` }}
+                          className={`p-3 ${colors.border_radius}`}
+                          style={{ backgroundColor: colors.background_color, border: `1px solid ${colors.primary_color}20` }}
                         />
                       </div>
                     </div>
                   )}
 
-                  {checkoutForm.delivery_type === "locker" && mapboxToken && (
-                    <LockerMapSelector
+                  {checkoutForm.delivery_type === "locker" && (
+                    <LockerPicker
                       apiKey={apiKey}
-                      mapboxToken={mapboxToken}
-                      carrierId={6}
-                      carrierName="Sameday"
+                      mapboxToken={mapboxToken || undefined}
                       carrierCode="sameday"
-                      onLockerSelect={(locker) => {
+                      carrierName="Sameday"
+                      value={{
+                        locker_id: checkoutForm.locker_id,
+                        locker_name: checkoutForm.locker_name,
+                        locker_address: checkoutForm.locker_address,
+                        city: checkoutForm.city,
+                        county: checkoutForm.county,
+                      }}
+                      onSelect={(locker) => {
                         setCheckoutForm({
                           ...checkoutForm,
-                          selected_carrier_code: "sameday",
-                          locker_id: locker.id,
-                          locker_name: locker.name,
+                          delivery_type: "locker",
+                          selected_carrier_code: locker.carrier_code || "sameday",
+                          locker_id: locker.fixed_location_id,
+                          locker_name: locker.locker_name,
                           locker_address: locker.address,
+                          city: locker.locality,
+                          county: locker.county,
+                          street: "",
+                          street_number: "",
+                          block: "",
+                          apartment: "",
                         });
                       }}
                     />
@@ -1347,41 +1522,41 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
               </div>
 
               {/* Payment */}
-              <div className={`p-6 ${customization.border_radius}`} style={{ backgroundColor: customization.secondary_color }}>
-                <h2 className="text-xl font-semibold mb-4">Payment Method</h2>
+              <div className={`p-6 ${colors.border_radius}`} style={{ backgroundColor: colors.secondary_color }}>
+                <h2 className="text-xl font-semibold mb-4">{t("payment.method")}</h2>
                 <div className="flex gap-4">
                   <button
                     onClick={() => setPaymentMethod("card")}
-                    className={`flex-1 p-4 ${customization.border_radius} flex items-center gap-2 ${animationClass}`}
+                    className={`flex-1 p-4 ${colors.border_radius} flex items-center gap-2 ${animationClass}`}
                     style={{ 
-                      backgroundColor: paymentMethod === "card" ? customization.primary_color : customization.background_color,
-                      color: paymentMethod === "card" ? customization.background_color : customization.text_color,
-                      border: `1px solid ${customization.primary_color}20`
+                      backgroundColor: paymentMethod === "card" ? colors.primary_color : colors.background_color,
+                      color: paymentMethod === "card" ? colors.background_color : colors.text_color,
+                      border: `1px solid ${colors.primary_color}20`
                     }}
                   >
                     <CreditCard className="h-5 w-5" />
-                    Card
+                    {t("payment.card")}
                   </button>
                   {feeSettings.cash_payment_enabled && (
                     <button
                       onClick={() => setPaymentMethod("cash")}
-                      className={`flex-1 p-4 ${customization.border_radius} flex items-center gap-2 ${animationClass}`}
+                      className={`flex-1 p-4 ${colors.border_radius} flex items-center gap-2 ${animationClass}`}
                       style={{ 
-                        backgroundColor: paymentMethod === "cash" ? customization.primary_color : customization.background_color,
-                        color: paymentMethod === "cash" ? customization.background_color : customization.text_color,
-                        border: `1px solid ${customization.primary_color}20`
+                        backgroundColor: paymentMethod === "cash" ? colors.primary_color : colors.background_color,
+                        color: paymentMethod === "cash" ? colors.background_color : colors.text_color,
+                        border: `1px solid ${colors.primary_color}20`
                       }}
                     >
                       <Truck className="h-5 w-5" />
-                      Cash
+                      {checkoutForm.delivery_type === "locker" ? t("payment.cardAtLocker") : t("payment.cash")}
                     </button>
                   )}
                 </div>
               </div>
 
               {/* Order Summary */}
-              <div className={`p-6 ${customization.border_radius}`} style={{ backgroundColor: customization.secondary_color }}>
-                <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
+              <div className={`p-6 ${colors.border_radius}`} style={{ backgroundColor: colors.secondary_color }}>
+                <h2 className="text-xl font-semibold mb-4">{t("summary.title")}</h2>
                 <div className="space-y-2 mb-4">
                   {cart.map((item) => (
                     <div key={item.product.id} className="flex justify-between text-sm">
@@ -1389,34 +1564,34 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
                       <span>{formatPrice(item.product.price * item.quantity)}</span>
                     </div>
                   ))}
-                  <div className="border-t pt-2 mt-2" style={{ borderColor: `${customization.primary_color}20` }}>
+                  <div className="border-t pt-2 mt-2" style={{ borderColor: `${colors.primary_color}20` }}>
                     <div className="flex justify-between">
-                      <span style={{ color: customization.accent_color }}>Subtotal</span>
+                      <span style={{ color: colors.accent_color }}>{t("summary.subtotal")}</span>
                       <span>{formatPrice(cartTotal)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span style={{ color: customization.accent_color }}>Delivery</span>
+                      <span style={{ color: colors.accent_color }}>{t("summary.delivery")}</span>
                       <span>{formatPrice(deliveryFee)}</span>
                     </div>
                     {paymentFee > 0 && (
                       <div className="flex justify-between">
-                        <span style={{ color: customization.accent_color }}>Payment Fee</span>
+                        <span style={{ color: colors.accent_color }}>{t("payment.fee")}</span>
                         <span>{formatPrice(paymentFee)}</span>
                       </div>
                     )}
                   </div>
                 </div>
-                <div className="border-t pt-4 mb-6" style={{ borderColor: `${customization.primary_color}20` }}>
+                <div className="border-t pt-4 mb-6" style={{ borderColor: `${colors.primary_color}20` }}>
                   <div className="flex justify-between text-xl font-bold">
-                    <span>Total</span>
-                    <span style={{ color: customization.primary_color }}>{formatPrice(orderTotal)}</span>
+                    <span>{t("summary.total")}</span>
+                    <span style={{ color: colors.primary_color }}>{formatPrice(orderTotal)}</span>
                   </div>
                 </div>
                 <button
                   onClick={handleCheckout}
                   className={`w-full py-4 ${getButtonStyles('primary')}`}
                 >
-                  {paymentMethod === 'card' ? 'Pay Now' : 'Place Order'}
+                  {paymentMethod === 'card' ? t("payNow") : t("action.placeOrder")}
                 </button>
               </div>
             </div>

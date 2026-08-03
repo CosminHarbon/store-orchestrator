@@ -1,0 +1,95 @@
+{
+  "title": "Plăți",
+  "description": "Analitice și statistici plăți",
+  "subtitle": "Venituri, conversie și sănătatea plăților magazinului tău",
+  "funnel": {
+    "ordersCreated": "Comenzi create",
+    "paymentStarted": "Plată începută",
+    "paymentCompleted": "Plată finalizată",
+    "paymentFailed": "Plată eșuată",
+    "abandonedPayment": "Plată abandonată"
+  },
+  "stat": {
+    "highestOrder": "Cea mai mare comandă",
+    "lowestOrder": "Cea mai mică comandă",
+    "aov": "Valoare medie comandă",
+    "median": "Valoare mediană comandă",
+    "mostUsedMethod": "Metoda de plată cea mai folosită",
+    "conversionRate": "Rată conversie plăți",
+    "pendingCount": "Plăți în așteptare",
+    "expiredSessions": "Sesiuni checkout expirate",
+    "successfulCard": "Plăți card reușite",
+    "cancelledCard": "Plăți card anulate",
+    "avgTimeToPay": "Timp mediu până la plată (card)",
+    "minutes": "{{count}} min"
+  },
+  "kpi": {
+    "totalRevenue": "Venit total",
+    "totalRevenueSub": "Comenzi finalizate",
+    "totalOrders": "Total comenzi",
+    "totalOrdersSub": "În perioada selectată",
+    "aov": "Valoare medie comandă",
+    "aovSub": "Per comandă finalizată",
+    "successRate": "Rată de succes",
+    "pendingCard": "Card în așteptare",
+    "failed": "Plăți eșuate",
+    "failedSub": "Încercări eșuate sau anulate",
+    "refunded": "Rambursate",
+    "successRateSub": "Finalizate vs eșuate/expirate"
+  },
+  "section": {
+    "methodBreakdown": "Defalcare metodă de plată",
+    "methodBreakdownDesc": "Cum preferă clienții să plătească",
+    "revenueBreakdown": "Defalcare venituri",
+    "revenueBreakdownDesc": "De unde provin banii tăi",
+    "funnel": "Pâlnie de plată",
+    "funnelDesc": "Parcurs de la începutul checkout-ului până la rezultat",
+    "analytics": "Analitice plăți",
+    "analyticsDesc": "Statistici detaliate de performanță",
+    "recent": "Plăți recente",
+    "recentDesc": "Ultimele comenzi finalizate și cu numerar",
+    "pendingLive": "Plăți card în așteptare (live)"
+  },
+  "table": {
+    "customer": "Client",
+    "order": "Comandă",
+    "method": "Metodă",
+    "status": "Status",
+    "amount": "Sumă",
+    "date": "Dată"
+  },
+  "empty": {
+    "noPayments": "Nicio plată în această perioadă"
+  },
+  "funnelOfStarted": "{{pct}} din începute",
+  "paymentStatus": {
+    "paid": "Plătit",
+    "cash": "Numerar",
+    "pending": "În așteptare",
+    "failed": "Eșuat",
+    "refunded": "Rambursat",
+    "cancelled": "Anulat"
+  },
+  "labels": {
+    "orders": "comenzi",
+    "revenue": "venit",
+    "aov": "VMC"
+  },
+  "breakdown": {
+    "cardRevenue": "Venit din card",
+    "cashRevenue": "Venit din numerar",
+    "pendingRevenue": "Venit în așteptare",
+    "refundedRevenue": "Venit rambursat",
+    "cancelledRevenue": "Venit anulat"
+  },
+  "method": {
+    "cash": "Numerar",
+    "card": "Card"
+  },
+  "chart": {
+    "revenue": "Venit",
+    "orders": "Comenzi",
+    "byMethod": "După metodă de plată",
+    "overTime": "În timp"
+  }
+}

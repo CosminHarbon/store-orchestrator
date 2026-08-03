@@ -249,6 +249,41 @@ async function convertAbandonedCart(
   }
 }
 
+/** Normalize eAWB locality payloads (search + getLocalities + postal reverse). */
+function normalizeEawbLocality(l: any, fallbackCounty = '') {
+  const name = String(
+    l?.name || l?.locality_name || l?.locality || ''
+  ).trim()
+  const county = String(
+    l?.county || l?.county_name || fallbackCounty || ''
+  ).trim()
+  const nameAndCounty = String(
+    l?.name_and_county || (name && county ? `${name}, ${county}` : name)
+  ).trim()
+  const commune = String(
+    l?.commune || l?.commune_name || l?.parent_name || l?.administrative_area || ''
+  ).trim() || null
+  const postal = l?.postal_code || l?.zip || l?.zip_code || null
+
+  // Heuristic: if name_and_county has 3+ comma parts, middle may be commune
+  let inferredCommune = commune
+  if (!inferredCommune && nameAndCounty.includes(',')) {
+    const parts = nameAndCounty.split(',').map((p: string) => p.trim()).filter(Boolean)
+    if (parts.length >= 3) inferredCommune = parts[1]
+  }
+
+  return {
+    id: l?.id ?? l?.locality_id ?? null,
+    name: name || nameAndCounty,
+    county,
+    county_code: l?.county_code ? String(l.county_code) : null,
+    name_and_county: nameAndCounty,
+    commune: inferredCommune,
+    postal_code: postal ? String(postal) : null,
+    street_name: l?.street_name ? String(l.street_name) : null,
+  }
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -339,6 +374,7 @@ Deno.serve(async (req) => {
           JSON.stringify({
             user_id: userId,
             store_name: profile.store_name || 'My Store',
+            preferred_language: profile.preferred_language || 'ro',
             mapbox_token: mapboxToken,
             // Payment configuration
             payment: {
@@ -867,16 +903,31 @@ Deno.serve(async (req) => {
             const refererUrl = req.headers.get('referer') || '';
             let returnUrl = '';
 
+            // Prefer the template path from the Referer so Premium / future templates
+            // return to the same storefront after Netopia (Elementar stays default).
+            const resolveTemplatePath = () => {
+              try {
+                if (!refererUrl) return '/templates/elementar';
+                const refererUrlObj = new URL(refererUrl);
+                const match = refererUrlObj.pathname.match(/\/templates\/([^/?#]+)/i);
+                if (match?.[1]) return `/templates/${match[1].toLowerCase()}`;
+              } catch {
+                /* ignore */
+              }
+              return '/templates/elementar';
+            };
+            const templatePath = resolveTemplatePath();
+
             if (refererUrl) {
               try {
                 const refererUrlObj = new URL(refererUrl);
                 const apiKeyFromReferer = refererUrlObj.searchParams.get('api_key') || apiKey;
-                returnUrl = `${refererUrlObj.origin}/templates/elementar?api_key=${apiKeyFromReferer}&payment_status=checking&checkout_session_id=${session.id}`;
+                returnUrl = `${refererUrlObj.origin}${templatePath}?api_key=${apiKeyFromReferer}&payment_status=checking&checkout_session_id=${session.id}`;
               } catch {
-                returnUrl = `${req.headers.get('origin') || ''}/templates/elementar?api_key=${apiKey}&payment_status=checking&checkout_session_id=${session.id}`;
+                returnUrl = `${req.headers.get('origin') || ''}${templatePath}?api_key=${apiKey}&payment_status=checking&checkout_session_id=${session.id}`;
               }
             } else {
-              returnUrl = `${req.headers.get('origin') || ''}/templates/elementar?api_key=${apiKey}&payment_status=checking&checkout_session_id=${session.id}`;
+              returnUrl = `${req.headers.get('origin') || ''}${templatePath}?api_key=${apiKey}&payment_status=checking&checkout_session_id=${session.id}`;
             }
 
             const { data: netopiaResponse, error: netopiaError } = await supabase.functions.invoke(
@@ -1315,8 +1366,9 @@ Deno.serve(async (req) => {
           const carrierCode = url.searchParams.get('carrier_code')
           const locality = url.searchParams.get('locality_name') || url.searchParams.get('city')
           const county = url.searchParams.get('county_name') || url.searchParams.get('county')
+          const localityId = url.searchParams.get('locality_id')
 
-          console.log('Lockers request:', { carrierCode, locality, county })
+          console.log('Lockers request:', { carrierCode, locality, county, localityId })
 
           if (!carrierCode) {
             return new Response(
@@ -1328,6 +1380,26 @@ Deno.serve(async (req) => {
               { 
                 status: 400, 
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          }
+
+          // Require a locality filter — never download all Romanian lockers
+          const hasLocalityId = !!localityId && String(localityId).trim().length > 0
+          const hasLocalityName = !!locality && locality.trim().length >= 2
+          const hasCounty = !!county && county.trim().length >= 2
+
+          if (!hasLocalityId && !(hasLocalityName && hasCounty) && !hasCounty) {
+            return new Response(
+              JSON.stringify({
+                success: false,
+                error: 'MISSING_LOCATION_FILTER',
+                message:
+                  'Provide locality_id, or county_name, or locality_name + county_name before fetching lockers.',
+              }),
+              {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
               }
             )
           }
@@ -1382,9 +1454,10 @@ Deno.serve(async (req) => {
             const lockerParams = new URLSearchParams({
               carrier_id: carrier.id.toString()
             })
-            // Add optional filters only if provided
-            if (locality) lockerParams.append('locality_name', locality)
-            if (county) lockerParams.append('county_name', county)
+            // Official filters only
+            if (hasLocalityId) lockerParams.append('locality_id', String(localityId).trim())
+            if (hasLocalityName) lockerParams.append('locality_name', locality!.trim())
+            if (hasCounty) lockerParams.append('county_name', county!.trim())
 
             const countryCode = 'RO' // Romania
             console.log(`Fetching lockers from Europarcel for country: ${countryCode}, carrier: ${carrier.code}, params:`, lockerParams.toString())
@@ -1432,12 +1505,18 @@ Deno.serve(async (req) => {
                 id: locker.id || locker.locker_id || locker.code,
                 name: locker.name || locker.locker_name || locker.address,
                 address: locker.address || locker.street || `${locker.locality_name || ''}, ${locker.county_name || ''}`.trim(),
-                city: locker.locality_name || locker.city || locality,
-                county: locker.county_name || locker.county || county,
+                city: locker.locality_name || locker.city || locality || '',
+                county: locker.county_name || locker.county || county || '',
                 latitude: locker.coordinates?.lat || locker.lat || locker.latitude,
                 longitude: locker.coordinates?.long || locker.lng || locker.longitude,
-                carrier_id: carrier.id,
-                available: locker.is_active !== false
+                carrier_id: locker.carrier_id || carrier.id,
+                carrier_name: locker.carrier_name || carrier.name,
+                available: locker.is_active !== false,
+                is_active: locker.is_active !== false,
+                allows_drop_off: locker.allows_drop_off ?? null,
+                payment_type: locker.payment_type ?? null,
+                schedule: locker.schedule ?? null,
+                fixed_location_type: locker.fixed_location_type ?? null,
               }))
               .filter((locker: any) => {
                 // Filter out lockers without valid coordinates
@@ -1706,6 +1785,375 @@ Deno.serve(async (req) => {
           );
         }
         break;
+      }
+
+      case 'counties': {
+        if (req.method === 'GET') {
+          const { data: profileRow, error: profileErr } = await supabase
+            .from('profiles')
+            .select('eawb_api_key')
+            .eq('user_id', userId)
+            .single()
+
+          if (profileErr || !profileRow?.eawb_api_key) {
+            return new Response(
+              JSON.stringify({
+                success: false,
+                error: 'MISSING_API_KEY',
+                message: 'eAWB API key not configured. Please configure it in Store Settings.',
+              }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+
+          try {
+            const response = await fetch(
+              'https://api.europarcel.com/api/public/locations/counties?country_code=RO',
+              {
+                method: 'GET',
+                headers: {
+                  'X-API-Key': profileRow.eawb_api_key,
+                  'X-CSRF-TOKEN': profileRow.eawb_api_key,
+                  Accept: 'application/json',
+                },
+              }
+            )
+            const raw = await response.json()
+            if (!response.ok) {
+              return new Response(
+                JSON.stringify({
+                  success: false,
+                  error: 'API_ERROR',
+                  message: 'Failed to fetch counties from eAWB',
+                  details: raw,
+                }),
+                { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              )
+            }
+
+            const list = Array.isArray(raw) ? raw : raw?.data || []
+            const counties = list.map((c: any) => ({
+              id: c.id ?? c.county_id ?? null,
+              code: String(c.code || c.county_code || ''),
+              name: String(c.name || c.county_name || ''),
+            })).filter((c: any) => c.name)
+
+            return new Response(
+              JSON.stringify({ success: true, counties, count: counties.length }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          } catch (error) {
+            return new Response(
+              JSON.stringify({
+                success: false,
+                error: 'FETCH_ERROR',
+                message: error instanceof Error ? error.message : 'Failed to fetch counties',
+              }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+        }
+        break
+      }
+
+      case 'localities': {
+        if (req.method === 'GET') {
+          const countyParam = (url.searchParams.get('county') || url.searchParams.get('county_code') || '').trim()
+          if (!countyParam) {
+            return new Response(
+              JSON.stringify({
+                success: false,
+                error: 'MISSING_COUNTY',
+                message: 'county (or county_code) is required',
+              }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+
+          const { data: profileRow, error: profileErr } = await supabase
+            .from('profiles')
+            .select('eawb_api_key')
+            .eq('user_id', userId)
+            .single()
+
+          if (profileErr || !profileRow?.eawb_api_key) {
+            return new Response(
+              JSON.stringify({
+                success: false,
+                error: 'MISSING_API_KEY',
+                message: 'eAWB API key not configured. Please configure it in Store Settings.',
+              }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+
+          try {
+            const eawbHeaders = {
+              'X-API-Key': profileRow.eawb_api_key,
+              'X-CSRF-TOKEN': profileRow.eawb_api_key,
+              Accept: 'application/json',
+            }
+
+            // Resolve county name → official county_code (eAWB requires code, not display name)
+            let countyCode = countyParam
+            let countyName = countyParam
+            const looksLikeCode = /^[A-Za-z]{1,3}$/.test(countyParam) && countyParam.length <= 3
+
+            if (!looksLikeCode) {
+              const countiesRes = await fetch(
+                'https://api.europarcel.com/api/public/locations/counties?country_code=RO',
+                { method: 'GET', headers: eawbHeaders }
+              )
+              const countiesRaw = await countiesRes.json()
+              const countiesList = Array.isArray(countiesRaw) ? countiesRaw : countiesRaw?.data || []
+              const norm = (s: string) =>
+                String(s || '')
+                  .toLowerCase()
+                  .normalize('NFD')
+                  .replace(/[\u0300-\u036f]/g, '')
+                  .replace(/ș|ş/g, 's')
+                  .replace(/ț|ţ/g, 't')
+                  .trim()
+              const target = norm(countyParam)
+              const matched = countiesList.find((c: any) => {
+                const name = norm(c.name || c.county_name || '')
+                const code = String(c.code || c.county_code || '').toLowerCase()
+                return name === target || code === countyParam.toLowerCase()
+              })
+              if (matched) {
+                countyCode = String(matched.code || matched.county_code || countyParam)
+                countyName = String(matched.name || matched.county_name || countyParam)
+              }
+            }
+
+            const params = new URLSearchParams({
+              country_code: 'RO',
+              county_code: countyCode,
+            })
+            const response = await fetch(
+              `https://api.europarcel.com/api/public/locations/localities?${params.toString()}`,
+              { method: 'GET', headers: eawbHeaders }
+            )
+            const raw = await response.json()
+            if (!response.ok) {
+              return new Response(
+                JSON.stringify({
+                  success: false,
+                  error: 'API_ERROR',
+                  message: 'Failed to fetch localities from eAWB',
+                  details: raw,
+                }),
+                { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              )
+            }
+
+            const list = Array.isArray(raw) ? raw : raw?.data || []
+            const localities = list.map((l: any) => normalizeEawbLocality(l, countyName))
+
+            return new Response(
+              JSON.stringify({
+                success: true,
+                county: countyName,
+                county_code: countyCode,
+                localities,
+                count: localities.length,
+              }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          } catch (error) {
+            return new Response(
+              JSON.stringify({
+                success: false,
+                error: 'FETCH_ERROR',
+                message: error instanceof Error ? error.message : 'Failed to fetch localities',
+              }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+        }
+        break
+      }
+
+      case 'localities-search': {
+        if (req.method === 'GET') {
+          const q = (url.searchParams.get('q') || url.searchParams.get('search') || '').trim()
+          const perPageRaw = Number(url.searchParams.get('per_page') || '50')
+          const perPage = [15, 50, 100, 200].includes(perPageRaw) ? perPageRaw : 50
+
+          if (q.length < 2) {
+            return new Response(
+              JSON.stringify({
+                success: false,
+                error: 'MISSING_QUERY',
+                message: 'q must be at least 2 characters',
+              }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+
+          const { data: profileRow, error: profileErr } = await supabase
+            .from('profiles')
+            .select('eawb_api_key')
+            .eq('user_id', userId)
+            .single()
+
+          if (profileErr || !profileRow?.eawb_api_key) {
+            return new Response(
+              JSON.stringify({
+                success: false,
+                error: 'MISSING_API_KEY',
+                message: 'eAWB API key not configured. Please configure it in Store Settings.',
+              }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+
+          try {
+            const encoded = encodeURIComponent(q)
+            const response = await fetch(
+              `https://api.europarcel.com/api/public/search/localities/RO/${encoded}?per_page=${perPage}`,
+              {
+                method: 'GET',
+                headers: {
+                  'X-API-Key': profileRow.eawb_api_key,
+                  'X-CSRF-TOKEN': profileRow.eawb_api_key,
+                  Accept: 'application/json',
+                },
+              }
+            )
+            const raw = await response.json()
+            if (!response.ok) {
+              return new Response(
+                JSON.stringify({
+                  success: false,
+                  error: 'API_ERROR',
+                  message: 'Failed to search localities from eAWB',
+                  details: raw,
+                }),
+                { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              )
+            }
+
+            const list = Array.isArray(raw) ? raw : raw?.data || []
+            const localities = list.map((l: any) => normalizeEawbLocality(l))
+
+            return new Response(
+              JSON.stringify({
+                success: true,
+                localities,
+                count: localities.length,
+                meta: raw?.meta || null,
+              }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          } catch (error) {
+            return new Response(
+              JSON.stringify({
+                success: false,
+                error: 'FETCH_ERROR',
+                message: error instanceof Error ? error.message : 'Failed to search localities',
+              }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+        }
+        break
+      }
+
+      case 'postal-lookup': {
+        if (req.method === 'GET') {
+          const postal = (url.searchParams.get('postal_code') || url.searchParams.get('q') || '').trim()
+          if (postal.length < 4) {
+            return new Response(
+              JSON.stringify({
+                success: false,
+                error: 'MISSING_POSTAL',
+                message: 'postal_code is required',
+              }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+
+          const { data: profileRow, error: profileErr } = await supabase
+            .from('profiles')
+            .select('eawb_api_key')
+            .eq('user_id', userId)
+            .single()
+
+          if (profileErr || !profileRow?.eawb_api_key) {
+            return new Response(
+              JSON.stringify({
+                success: false,
+                error: 'MISSING_API_KEY',
+                message: 'eAWB API key not configured.',
+              }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+
+          try {
+            const response = await fetch(
+              `https://api.europarcel.com/api/public/search/postal-code-reverse/RO/${encodeURIComponent(postal)}`,
+              {
+                method: 'GET',
+                headers: {
+                  'X-API-Key': profileRow.eawb_api_key,
+                  'X-CSRF-TOKEN': profileRow.eawb_api_key,
+                  Accept: 'application/json',
+                },
+              }
+            )
+            const raw = await response.json()
+            if (!response.ok) {
+              return new Response(
+                JSON.stringify({
+                  success: false,
+                  error: 'API_ERROR',
+                  message: 'Failed to lookup postal code',
+                  details: raw,
+                }),
+                { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              )
+            }
+
+            const list = Array.isArray(raw) ? raw : raw?.data || []
+            const localities = list.map((l: any) =>
+              normalizeEawbLocality({
+                id: l.locality_id ?? l.id,
+                name: l.locality_name || l.name,
+                name_and_county: l.name_and_county,
+                county: l.county_name || l.county,
+                county_code: l.county_code,
+                postal_code: postal,
+                street_name: l.street_name,
+              })
+            )
+
+            // Deduplicate by locality id
+            const seen = new Set<string>()
+            const unique = localities.filter((l: any) => {
+              const key = String(l.id || l.name)
+              if (seen.has(key)) return false
+              seen.add(key)
+              return true
+            })
+
+            return new Response(
+              JSON.stringify({ success: true, localities: unique, count: unique.length }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          } catch (error) {
+            return new Response(
+              JSON.stringify({
+                success: false,
+                error: 'FETCH_ERROR',
+                message: error instanceof Error ? error.message : 'Postal lookup failed',
+              }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+        }
+        break
       }
 
       case 'carriers': {
@@ -2047,10 +2495,35 @@ Deno.serve(async (req) => {
         if (req.method === 'GET') {
           // Get product_id from query params (optional)
           const productId = url.searchParams.get('product_id');
+
+          // Respect storefront visibility toggle
+          const { data: customization } = await supabase
+            .from('template_customization')
+            .select('show_reviews')
+            .eq('user_id', userId)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          const showReviews = customization?.show_reviews ?? true;
+          if (!showReviews) {
+            return new Response(
+              JSON.stringify({
+                reviews: [],
+                total_reviews: 0,
+                average_rating: 0,
+                reviews_enabled: false,
+              }),
+              {
+                status: 200,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              }
+            );
+          }
           
           let query = supabase
             .from('reviews')
-            .select('*')
+            .select('id, product_id, customer_name, rating, review_text, merchant_reply, merchant_replied_at, created_at, is_approved, status')
             .eq('user_id', userId)
             .eq('is_approved', true)
             .order('created_at', { ascending: false });
@@ -2072,16 +2545,17 @@ Deno.serve(async (req) => {
             );
           }
 
-          // Calculate average rating
-          const avgRating = reviews.length > 0
-            ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+          const list = reviews || [];
+          const avgRating = list.length > 0
+            ? list.reduce((sum, r) => sum + r.rating, 0) / list.length
             : 0;
 
           return new Response(
             JSON.stringify({ 
-              reviews,
-              total_reviews: reviews.length,
-              average_rating: parseFloat(avgRating.toFixed(1))
+              reviews: list,
+              total_reviews: list.length,
+              average_rating: parseFloat(avgRating.toFixed(1)),
+              reviews_enabled: true,
             }),
             { 
               status: 200, 
@@ -2119,7 +2593,7 @@ Deno.serve(async (req) => {
           // Verify product belongs to this store
           const { data: product, error: productError } = await supabase
             .from('products')
-            .select('id')
+            .select('id, title')
             .eq('id', product_id)
             .eq('user_id', userId)
             .single();
@@ -2139,11 +2613,12 @@ Deno.serve(async (req) => {
             .insert({
               product_id,
               user_id: userId,
-              customer_name,
+              customer_name: String(customer_name).trim(),
               customer_email: customer_email || null,
               rating: parseInt(rating),
               review_text: review_text || null,
-              is_approved: false // Pending by default, owner must approve
+              status: 'pending',
+              is_approved: false,
             })
             .select()
             .single();
@@ -2159,8 +2634,30 @@ Deno.serve(async (req) => {
             );
           }
 
+          try {
+            await supabase.functions.invoke('push-notification', {
+              body: {
+                action: 'send',
+                user_ids: [userId],
+                title: '⭐ New review pending',
+                message: `${customer_name} left a ${rating}★ review on ${product.title}`,
+                notification_type: 'review',
+                data: {
+                  review_id: review.id,
+                  product_id,
+                  rating: String(rating),
+                },
+              },
+            });
+          } catch (pushError) {
+            console.error('Failed to send review push notification:', pushError);
+          }
+
           return new Response(
-            JSON.stringify({ review, message: 'Review submitted successfully' }),
+            JSON.stringify({
+              review,
+              message: 'Review submitted successfully and is pending approval',
+            }),
             { 
               status: 201, 
               headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -2211,7 +2708,7 @@ Deno.serve(async (req) => {
 
           const { data: reviews, error } = await supabase
             .from('reviews')
-            .select('id, customer_name, rating, review_text, created_at')
+            .select('id, customer_name, rating, review_text, merchant_reply, merchant_replied_at, created_at')
             .eq('product_id', productId)
             .eq('user_id', userId)
             .eq('is_approved', true)
@@ -2228,14 +2725,15 @@ Deno.serve(async (req) => {
             );
           }
 
-          const avgRating = reviews.length > 0
-            ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+          const list = reviews || [];
+          const avgRating = list.length > 0
+            ? list.reduce((sum, r) => sum + r.rating, 0) / list.length
             : 0;
 
           return new Response(
             JSON.stringify({ 
-              reviews,
-              total_reviews: reviews.length,
+              reviews: list,
+              total_reviews: list.length,
               average_rating: parseFloat(avgRating.toFixed(1)),
               reviews_enabled: true
             }),

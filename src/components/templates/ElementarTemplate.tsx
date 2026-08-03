@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, Plus, Minus, X, Package, Truck, CreditCard, ArrowLeft, MapPin, Home as HomeIcon, Search, Menu, Sparkles, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { calculateProductPrice, formatPrice, formatDiscount } from "@/lib/discountUtils";
-import LockerMapSelector from "./LockerMapSelector";
+import { LockerPicker } from "@/components/lockers/LockerPicker";
+import { AddressLocalityFields } from "@/components/address/AddressLocalityFields";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ROMANIA_LOCATIONS, ROMANIA_COUNTIES } from "@/lib/romaniaLocations";
+import { applyStorefrontLanguage } from "@/i18n/LanguageProvider";
 
 interface Product {
   id: string;
@@ -50,6 +52,7 @@ interface ElementarTemplateProps {
 }
 
 const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
+  const { t } = useTranslation("checkout");
   const [products, setProducts] = useState<Product[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -80,14 +83,6 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
     locker_delivery_fee: 0
   });
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash'>('card');
-
-  const carrierIdMap: { [key: string]: number } = {
-    "sameday": 6,
-    "fan": 3,
-    "gls": 4,
-    "dpd": 2,
-    "cargus": 1
-  };
 
   const [checkoutForm, setCheckoutForm] = useState({
     name: "",
@@ -140,6 +135,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
         if (data.customization) {
           setCustomization(data.customization);
         }
+        void applyStorefrontLanguage(data.preferred_language);
         if (data.cash_payment_enabled !== undefined) {
           setFeeSettings({
             cash_payment_enabled: data.cash_payment_enabled,
@@ -192,7 +188,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
         
         setProducts(mappedProducts);
       } else {
-        toast.error(`Failed to load products`);
+        toast.error(t("toast.loadProductsFailed"));
         setProducts([]);
       }
 
@@ -204,7 +200,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
       
     } catch (error) {
       console.error("Error fetching data:", error);
-      toast.error("Failed to load store data");
+      toast.error(t("toast.loadStoreFailed"));
     } finally {
       setLoading(false);
     }
@@ -224,16 +220,16 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
               : item
           )
         );
-        toast.success(`Added another ${product.title} to cart`);
+        toast.success(t("toast.addedAnother", { title: product.title }));
       } else {
-        toast.error(`Maximum stock (${product.stock}) reached`);
+        toast.error(t("toast.maxStock", { stock: product.stock }));
       }
     } else {
       if (product.stock > 0) {
         setCart([...cart, { product, quantity: 1 }]);
-        toast.success(`${product.title} added to cart`);
+        toast.success(t("toast.added", { title: product.title }));
       } else {
-        toast.error("Product is out of stock");
+        toast.error(t("toast.outOfStock"));
       }
     }
   };
@@ -248,7 +244,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
     }
 
     if (newQuantity > item.product.stock) {
-      toast.error(`Maximum stock (${item.product.stock}) reached`);
+      toast.error(t("toast.maxStock", { stock: item.product.stock }));
       return;
     }
 
@@ -263,7 +259,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
     const item = cart.find((item) => item.product.id === productId);
     setCart(cart.filter((item) => item.product.id !== productId));
     if (item) {
-      toast.success(`${item.product.title} removed from cart`);
+      toast.success(t("toast.removed", { title: item.product.title }));
     }
   };
 
@@ -320,7 +316,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
               locker_name: "",
               locker_address: "",
             });
-            toast.success("Payment successful! Thank you for your order.");
+            toast.success(t("toast.paymentSuccess"));
             setLoading(false);
             return;
           }
@@ -335,7 +331,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
             if (data.order?.payment_status === 'paid') {
               setView("home");
               setCart([]);
-              toast.success("Payment successful! Thank you for your order.");
+              toast.success(t("toast.paymentSuccess"));
               setLoading(false);
               return;
             }
@@ -346,11 +342,11 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
         attempts++;
       }
       
-      toast.info("Payment verification in progress. Please check your email for order confirmation.");
+      toast.info(t("toast.paymentVerifying"));
       setView("home");
     } catch (error) {
       console.error("Error checking payment:", error);
-      toast.error("Error verifying payment. Please contact support with your order details.");
+      toast.error(t("toast.paymentVerifyError"));
       setView("home");
     } finally {
       setLoading(false);
@@ -359,25 +355,25 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
 
   const handleCheckout = async () => {
     if (!checkoutForm.name || !checkoutForm.email) {
-      toast.error("Please fill in all required fields");
+      toast.error(t("toast.fillRequired"));
       return;
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(checkoutForm.email)) {
-      toast.error("Please enter a valid email address");
+      toast.error(t("toast.invalidEmail"));
       return;
     }
 
     if (checkoutForm.delivery_type === "home") {
       if (!checkoutForm.city || !checkoutForm.county || !checkoutForm.street) {
-        toast.error("Please fill in address details");
+        toast.error(t("toast.fillAddress"));
         return;
       }
     } else {
       if (!checkoutForm.selected_carrier_code || !checkoutForm.locker_id) {
-        toast.error("Please select a locker");
+        toast.error(t("toast.selectLocker"));
         return;
       }
     }
@@ -394,7 +390,9 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
               }${
                 checkoutForm.apartment ? `, Apt ${checkoutForm.apartment}` : ""
               }, ${checkoutForm.city}, ${checkoutForm.county}`
-            : checkoutForm.locker_address,
+            : [checkoutForm.locker_name, checkoutForm.locker_address, checkoutForm.city, checkoutForm.county]
+                .filter(Boolean)
+                .join(", "),
         customer_city: checkoutForm.city,
         customer_county: checkoutForm.county,
         customer_street: checkoutForm.street,
@@ -432,21 +430,25 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
         window.location.href = result.payment_url;
       } else if (response.ok && result.error) {
         // Order created but payment initiation failed
-        toast.error(result.error || "Failed to initiate payment. Please contact support.");
+        toast.error(result.error || t("toast.paymentInitFailed"));
       } else if (response.ok && paymentMethod === 'cash') {
-        // Cash payment - order created successfully without payment URL
-        toast.success("Order created successfully! You will pay cash on delivery.");
+        // Cash / card-at-locker — order created successfully without payment URL
+        toast.success(
+          checkoutForm.delivery_type === 'locker'
+            ? t("toast.orderSuccessLocker")
+            : t("toast.orderSuccessCash")
+        );
         setCart([]);
         setView("home");
       } else if (response.ok) {
         // This shouldn't happen for card payments
-        toast.error("Payment setup failed. Please contact support.");
+        toast.error(t("toast.paymentSetupFailed"));
       } else {
-        toast.error(result.error || "Failed to create order");
+        toast.error(result.error || t("toast.createOrderFailed"));
       }
     } catch (error) {
       console.error("Error creating order:", error);
-      toast.error("Failed to create order. Please try again.");
+      toast.error(t("toast.createOrderRetry"));
     }
   };
 
@@ -487,7 +489,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
               <Sparkles className="h-16 w-16 text-primary/30" />
             </div>
           </div>
-          <p className="text-sm font-light text-muted-foreground animate-pulse">Loading your experience...</p>
+          <p className="text-sm font-light text-muted-foreground animate-pulse">{t("loadingExperience")}</p>
         </div>
       </div>
     );
@@ -848,7 +850,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                 className="group relative w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-primary/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 <span className="relative z-10 flex items-center justify-center gap-2">
-                  {selectedProduct.stock === 0 ? "Out of Stock" : "Add to Cart"}
+                  {selectedProduct.stock === 0 ? t("action.outOfStock") : t("action.addToCart")}
                   {selectedProduct.stock > 0 && <ShoppingCart className="h-5 w-5" />}
                 </span>
                 {selectedProduct.stock > 0 && (
@@ -877,7 +879,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
         <div className="container mx-auto px-4 py-12 max-w-5xl">
           <h1 className="text-4xl font-bold mb-12 tracking-tight flex items-center gap-3">
             <ShoppingCart className="h-10 w-10 text-primary" />
-            Shopping Cart
+            {t("cart.title")}
           </h1>
 
           {cart.length === 0 ? (
@@ -885,13 +887,13 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
               <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-primary/10 mb-6">
                 <ShoppingCart className="h-12 w-12 text-primary/30" />
               </div>
-              <h2 className="text-2xl font-semibold mb-4">Your cart is empty</h2>
-              <p className="text-muted-foreground mb-8">Start adding some amazing products!</p>
+              <h2 className="text-2xl font-semibold mb-4">{t("cart.empty")}</h2>
+              <p className="text-muted-foreground mb-8">{t("continueShopping")}</p>
               <button
                 onClick={() => setView("home")}
                 className="px-8 py-4 bg-primary text-primary-foreground rounded-xl font-semibold hover:scale-105 transition-all shadow-lg hover:shadow-primary/50"
               >
-                Start Shopping
+                {t("action.shopNow")}
               </button>
             </div>
           ) : (
@@ -960,27 +962,27 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                 <div className="p-6 bg-card border border-border rounded-2xl shadow-xl">
                   <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
                     <Package className="h-6 w-6 text-primary" />
-                    Order Summary
+                    {t("summary.title")}
                   </h2>
                   
                   <div className="space-y-4 mb-6">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Subtotal</span>
+                      <span className="text-muted-foreground">{t("summary.subtotal")}</span>
                       <span className="font-semibold">{formatPrice(cartTotal)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Delivery ({checkoutForm.delivery_type})</span>
+                      <span className="text-muted-foreground">{t("summary.delivery")}</span>
                       <span className="font-semibold">{formatPrice(deliveryFee)}</span>
                     </div>
                     {paymentFee > 0 && (
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Payment Fee</span>
+                        <span className="text-muted-foreground">{t("payment.fee")}</span>
                         <span className="font-semibold">{formatPrice(paymentFee)}</span>
                       </div>
                     )}
                     <div className="h-px bg-border" />
                     <div className="flex justify-between text-lg">
-                      <span className="font-bold">Total</span>
+                      <span className="font-bold">{t("summary.total")}</span>
                       <span className="font-bold text-primary">{formatPrice(orderTotal)}</span>
                     </div>
                   </div>
@@ -990,7 +992,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                     className="group relative w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold hover:scale-105 transition-all shadow-lg hover:shadow-primary/50"
                   >
                     <span className="relative z-10 flex items-center justify-center gap-2">
-                      Proceed to Checkout
+                      {t("action.proceedCheckout")}
                       <CreditCard className="h-5 w-5" />
                     </span>
                     <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-primary/50 to-accent/50 opacity-0 group-hover:opacity-100 transition-opacity blur" />
@@ -1000,7 +1002,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                     onClick={() => setView("home")}
                     className="w-full mt-3 py-3 bg-background/50 backdrop-blur-sm border border-border rounded-xl font-medium hover:bg-background transition-all"
                   >
-                    Continue Shopping
+                    {t("continueShopping")}
                   </button>
                 </div>
               </div>
@@ -1022,12 +1024,12 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
             className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-lg bg-background/50 backdrop-blur-sm border border-border hover:bg-background transition-all hover:scale-105"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span>Back to cart</span>
+            <span>{t("backToCart")}</span>
           </button>
 
           <h1 className="text-4xl font-bold mb-12 tracking-tight flex items-center gap-3">
             <CreditCard className="h-10 w-10 text-primary" />
-            Checkout
+            {t("title")}
           </h1>
 
           <div className="grid lg:grid-cols-2 gap-8">
@@ -1035,12 +1037,12 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
               <div className="p-6 bg-card border border-border rounded-2xl shadow-xl">
                 <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
                   <Package className="h-5 w-5 text-primary" />
-                  Contact Information
+                  {t("contactInfo")}
                 </h2>
                 <div className="space-y-4">
                   <input
                     type="text"
-                    placeholder="Full Name *"
+                    placeholder={t("placeholder.fullName")}
                     value={checkoutForm.name}
                     onChange={(e) =>
                       setCheckoutForm({ ...checkoutForm, name: e.target.value })
@@ -1049,7 +1051,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                   />
                   <input
                     type="email"
-                    placeholder="Email *"
+                    placeholder={t("placeholder.email")}
                     value={checkoutForm.email}
                     onChange={(e) =>
                       setCheckoutForm({ ...checkoutForm, email: e.target.value })
@@ -1060,7 +1062,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                   />
                   <input
                     type="tel"
-                    placeholder="Phone"
+                    placeholder={t("placeholder.phone")}
                     value={checkoutForm.phone}
                     onChange={(e) =>
                       setCheckoutForm({ ...checkoutForm, phone: e.target.value })
@@ -1073,7 +1075,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
               <div className="p-6 bg-card border border-border rounded-2xl shadow-xl">
                 <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
                   <Truck className="h-5 w-5 text-primary" />
-                  Delivery
+                  {t("steps.delivery")}
                 </h2>
                 <div className="grid grid-cols-2 gap-3 mb-6">
                   <button
@@ -1087,7 +1089,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                     }`}
                   >
                     <HomeIcon className="h-6 w-6" />
-                    <span className="font-medium text-sm">Home Delivery</span>
+                    <span className="font-medium text-sm">{t("delivery.homeDelivery")}</span>
                   </button>
                   <button
                     onClick={() =>
@@ -1100,41 +1102,31 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                     }`}
                   >
                     <MapPin className="h-6 w-6" />
-                    <span className="font-medium text-sm">Locker Delivery</span>
+                    <span className="font-medium text-sm">{t("delivery.lockerDelivery")}</span>
                   </button>
                 </div>
 
                 {checkoutForm.delivery_type === "home" ? (
                   <div className="space-y-4">
-                    <select
-                      value={checkoutForm.county}
-                      onChange={(e) =>
-                        setCheckoutForm({ ...checkoutForm, county: e.target.value, city: "" })
+                    <AddressLocalityFields
+                      apiKey={apiKey}
+                      county={checkoutForm.county}
+                      city={checkoutForm.city}
+                      onCountyChange={(county) =>
+                        setCheckoutForm({ ...checkoutForm, county, city: "" })
                       }
-                      className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                    >
-                      <option value="">Select County *</option>
-                      {ROMANIA_COUNTIES.map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                    <select
-                      value={checkoutForm.city}
-                      onChange={(e) =>
-                        setCheckoutForm({ ...checkoutForm, city: e.target.value })
+                      onLocalityChange={(loc) =>
+                        setCheckoutForm({
+                          ...checkoutForm,
+                          city: loc.name,
+                          county: loc.county || checkoutForm.county,
+                        })
                       }
-                      disabled={!checkoutForm.county}
-                      className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all disabled:opacity-50"
-                    >
-                      <option value="">Select City *</option>
-                      {(ROMANIA_LOCATIONS[checkoutForm.county] || []).map((city) => (
-                        <option key={city} value={city}>{city}</option>
-                      ))}
-                    </select>
+                    />
                     <div className="grid grid-cols-2 gap-4">
                       <input
                         type="text"
-                        placeholder="Street *"
+                        placeholder={t("placeholder.street")}
                         value={checkoutForm.street}
                         onChange={(e) =>
                           setCheckoutForm({ ...checkoutForm, street: e.target.value })
@@ -1143,7 +1135,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                       />
                       <input
                         type="text"
-                        placeholder="Number *"
+                        placeholder={t("placeholder.number")}
                         value={checkoutForm.street_number}
                         onChange={(e) =>
                           setCheckoutForm({
@@ -1157,7 +1149,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                     <div className="grid grid-cols-2 gap-4">
                       <input
                         type="text"
-                        placeholder="Block"
+                        placeholder={t("field.block")}
                         value={checkoutForm.block}
                         onChange={(e) =>
                           setCheckoutForm({ ...checkoutForm, block: e.target.value })
@@ -1166,7 +1158,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                       />
                       <input
                         type="text"
-                        placeholder="Apartment"
+                        placeholder={t("field.apartment")}
                         value={checkoutForm.apartment}
                         onChange={(e) =>
                           setCheckoutForm({
@@ -1190,7 +1182,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                       }
                       className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                     >
-                      <option value="">Choose a carrier...</option>
+                      <option value="">{t("delivery.chooseCarrier")}</option>
                       <option value="cargus">Cargus</option>
                       <option value="dpd">DPD</option>
                       <option value="fan">FAN Courier</option>
@@ -1198,26 +1190,28 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                       <option value="sameday">Sameday</option>
                     </select>
 
-                  {checkoutForm.selected_carrier_code && mapboxToken && apiKey && (
-                      <LockerMapSelector
-                        carrierId={carrierIdMap[checkoutForm.selected_carrier_code]}
-                        carrierName={checkoutForm.selected_carrier_code.toUpperCase()}
+                  {checkoutForm.selected_carrier_code && apiKey && (
+                      <LockerPicker
                         carrierCode={checkoutForm.selected_carrier_code}
+                        carrierName={checkoutForm.selected_carrier_code.toUpperCase()}
                         apiKey={apiKey}
-                        mapboxToken={mapboxToken}
-                        onLockerSelect={(locker) => {
-                          // Parse city and county from address if included
-                          const addressParts = locker.address.split(',');
-                          const city = addressParts.length > 1 ? addressParts[addressParts.length - 2]?.trim() : "";
-                          const county = addressParts.length > 2 ? addressParts[addressParts.length - 1]?.trim() : "";
-                          
+                        mapboxToken={mapboxToken || undefined}
+                        value={{
+                          locker_id: checkoutForm.locker_id,
+                          locker_name: checkoutForm.locker_name,
+                          locker_address: checkoutForm.locker_address,
+                          city: checkoutForm.city,
+                          county: checkoutForm.county,
+                        }}
+                        onSelect={(locker) => {
                           setCheckoutForm({
                             ...checkoutForm,
-                            locker_id: locker.id,
-                            locker_name: locker.name,
+                            selected_carrier_code: locker.carrier_code || checkoutForm.selected_carrier_code,
+                            locker_id: locker.fixed_location_id,
+                            locker_name: locker.locker_name,
                             locker_address: locker.address,
-                            city: city,
-                            county: county,
+                            city: locker.locality,
+                            county: locker.county,
                           });
                         }}
                       />
@@ -1230,12 +1224,12 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
             <div>
               <div className="border p-6" style={{ borderColor: `${customization.text_color}20` }}>
                 <h2 className="text-xl font-semibold mb-6" style={{ color: customization.text_color }}>
-                  Order Summary
+                  {t("summary.title")}
                 </h2>
                 
                 {/* Payment Method */}
                 <div className="mb-6">
-                  <h3 className="text-sm font-medium mb-3" style={{ color: customization.text_color }}>Payment Method</h3>
+                  <h3 className="text-sm font-medium mb-3" style={{ color: customization.text_color }}>{t("payment.method")}</h3>
                   <div className="flex gap-3">
                     <button
                       onClick={() => setPaymentMethod('card')}
@@ -1245,7 +1239,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                         backgroundColor: paymentMethod === 'card' ? `${customization.primary_color}10` : 'transparent'
                       }}
                     >
-                      Card
+                      {t("payment.card")}
                     </button>
                     {feeSettings.cash_payment_enabled && (
                       <button
@@ -1256,7 +1250,9 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                           backgroundColor: paymentMethod === 'cash' ? `${customization.primary_color}10` : 'transparent'
                         }}
                       >
-                        Cash {feeSettings.cash_payment_fee > 0 && `(+${formatPrice(feeSettings.cash_payment_fee)})`}
+                        {checkoutForm.delivery_type === 'locker'
+                          ? t("payment.cardAtLocker")
+                          : `${t("payment.cash")}${feeSettings.cash_payment_fee > 0 ? ` (+${formatPrice(feeSettings.cash_payment_fee)})` : ''}`}
                       </button>
                     )}
                   </div>
@@ -1276,21 +1272,21 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                 </div>
                 <div className="border-t pt-4 space-y-2" style={{ borderColor: `${customization.text_color}20` }}>
                   <div className="flex justify-between text-sm">
-                    <span style={{ color: customization.accent_color }}>Subtotal</span>
+                    <span style={{ color: customization.accent_color }}>{t("summary.subtotal")}</span>
                     <span style={{ color: customization.text_color }}>{formatPrice(cartTotal)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span style={{ color: customization.accent_color }}>Delivery Fee</span>
+                    <span style={{ color: customization.accent_color }}>{t("summary.deliveryFee")}</span>
                     <span style={{ color: customization.text_color }}>{formatPrice(deliveryFee)}</span>
                   </div>
                   {paymentFee > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span style={{ color: customization.accent_color }}>Payment Fee</span>
+                      <span style={{ color: customization.accent_color }}>{t("payment.fee")}</span>
                       <span style={{ color: customization.text_color }}>{formatPrice(paymentFee)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-xl font-bold pt-2 border-t" style={{ borderColor: `${customization.text_color}20` }}>
-                    <span style={{ color: customization.text_color }}>Total</span>
+                    <span style={{ color: customization.text_color }}>{t("summary.total")}</span>
                     <span style={{ color: customization.text_color }}>
                       {formatPrice(orderTotal)}
                     </span>
@@ -1304,7 +1300,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                     color: customization.background_color,
                   }}
                 >
-                  Complete Order
+                  {t("completeOrder")}
                 </button>
               </div>
             </div>

@@ -1,0 +1,33 @@
+{
+  "loadingStore": "Se încarcă magazinul...",
+  "defaultStoreName": "Magazinul meu",
+  "yourStore": "Magazinul tău",
+  "periodRevenue": "Venit pe perioadă",
+  "ordersInPeriod": "{{count}} comenzi în perioada selectată",
+  "viewAnalytics": "+ Vezi analitice",
+  "viewAnalyticsShort": "Analitice",
+  "kpi": {
+    "products": "Produse",
+    "orders": "Comenzi",
+    "pending": "În așteptare",
+    "lowStock": "Stoc redus"
+  },
+  "todayOverview": "Privire de ansamblu azi",
+  "newOrders": "Comenzi noi",
+  "last24Hours": "Ultimele 24 de ore",
+  "todaysSales": "Vânzări azi",
+  "revenueGenerated": "Venit generat",
+  "lowStockAlert": "Alertă stoc redus",
+  "productsNeedRestocking": "Produse care necesită reaprovizionare",
+  "quickActions": "Acțiuni rapide",
+  "action": {
+    "settings": "Setări",
+    "settingsDesc": "Configurează magazinul și integrările",
+    "customers": "Clienți",
+    "customersDesc": "Gestionează relațiile cu clienții",
+    "templates": "Șabloane",
+    "templatesDesc": "Personalizează designul magazinului"
+  },
+  "unsavedStockTitle": "Modificări de stoc nesalvate",
+  "unsavedStockDesc": "Ai modificări de stoc nesalvate. Vrei să le salvezi înainte de a pleca?"
+}

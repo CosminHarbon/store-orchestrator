@@ -1,0 +1,16 @@
+{
+  "title": "Analytics",
+  "description": "Store performance insights",
+  "overview": "Overview",
+  "insights": "Insights",
+  "trends": "Trends",
+  "revenue": "Revenue",
+  "orders": "Orders",
+  "customers": "Customers",
+  "conversion": "Conversion",
+  "noData": "No data for this period",
+  "noDataYet": "No data yet.",
+  "comparePrevious": "vs previous period",
+  "comparePreviousShort": "vs prior period",
+  "comparePreviousPct": "{{value}}% vs prior"
+}

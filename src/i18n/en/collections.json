@@ -1,0 +1,62 @@
+{
+  "title": "Collections",
+  "description": "Organize products into collections",
+  "subtitle": "Group products into curated collections for your storefront.",
+  "createCollection": "Create Collection",
+  "section": {
+    "overview": "Overview"
+  },
+  "searchPlaceholder": "Search collections…",
+  "count_one": "{{count}} collection",
+  "count_other": "{{count}} collections",
+  "pageOf": "Page {{page}} of {{total}}",
+  "kpi": {
+    "total": "Total Collections",
+    "totalSub": "All collections",
+    "productsAssigned": "Products Assigned",
+    "productsAssignedSub": "Unique products",
+    "largest": "Largest Collection",
+    "empty": "Empty Collections",
+    "emptySub": "No products yet",
+    "avgProducts": "Avg Products",
+    "avgProductsSub": "Per collection",
+    "inventoryValue": "Collection Inventory Value",
+    "inventoryValueSub": "Price × stock of assigned products",
+    "revenue": "Collection Revenue",
+    "revenueSub": "From order items of assigned products"
+  },
+  "analytics": {
+    "topByRevenue": "Top collections by revenue",
+    "topByRevenueDesc": "Based on order history of assigned products",
+    "noRevenueYet": "No collection revenue yet."
+  },
+  "empty": {
+    "search": "No collections match your search",
+    "createFirst": "Create your first collection",
+    "searchHint": "Try a different name or clear the search.",
+    "createFirstHint": "Collections help shoppers browse related products — like \"Summer Essentials\" or \"New Arrivals\"."
+  },
+  "table": {
+    "collection": "Collection",
+    "products": "Products",
+    "inventory": "Inventory",
+    "revenue": "Revenue",
+    "updated": "Updated"
+  },
+  "createDialog": {
+    "title": "Create collection",
+    "description": "You can add products and an image after creating.",
+    "namePlaceholder": "e.g. Summer Essentials"
+  },
+  "confirm": {
+    "delete": "Delete \"{{name}}\"?"
+  },
+  "create": "Create",
+  "creating": "Creating…",
+  "toast": {
+    "created": "Collection created",
+    "createFailed": "Failed to create collection: {{message}}",
+    "deleted": "Collection deleted",
+    "deleteFailed": "Failed to delete collection: {{message}}"
+  }
+}

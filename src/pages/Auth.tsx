@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,8 +11,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Capacitor } from '@capacitor/core';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD_LENGTH = 6;
 
 const Auth = () => {
+  const { t } = useTranslation('auth');
+  const { t: tValidation } = useTranslation('validation');
   const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -38,17 +45,51 @@ const Auth = () => {
     }
   }, [user, navigate]);
 
+  const validateEmail = (value: string) => {
+    if (!value.trim()) {
+      return tValidation('required');
+    }
+    if (!EMAIL_PATTERN.test(value)) {
+      return tValidation('email');
+    }
+    return '';
+  };
+
+  const validatePassword = (value: string) => {
+    if (!value) {
+      return tValidation('required');
+    }
+    if (value.length < MIN_PASSWORD_LENGTH) {
+      return tValidation('passwordMin', { min: MIN_PASSWORD_LENGTH });
+    }
+    return '';
+  };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    const emailError = validateEmail(email);
+    if (emailError) {
+      setError(emailError);
+      setLoading(false);
+      return;
+    }
+
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      setError(passwordError);
+      setLoading(false);
+      return;
+    }
 
     const { error } = await signIn(email, password);
     
     if (error) {
       setError(error.message);
     } else {
-      toast.success('Successfully signed in!');
+      toast.success(t('toast.signedIn'));
       navigate('/app');
     }
     
@@ -60,16 +101,30 @@ const Auth = () => {
     setLoading(true);
     setError('');
 
+    const emailError = validateEmail(email);
+    if (emailError) {
+      setError(emailError);
+      setLoading(false);
+      return;
+    }
+
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      setError(passwordError);
+      setLoading(false);
+      return;
+    }
+
     const { error } = await signUp(email, password);
     
     if (error) {
       if (error.message.includes('User already registered')) {
-        setError('An account with this email already exists. Please sign in instead.');
+        setError(t('error.alreadyRegistered'));
       } else {
         setError(error.message);
       }
     } else {
-      toast.success('Account created! Please check your email to confirm, then sign in.');
+      toast.success(t('toast.accountCreated'));
       // Clear the form and switch to sign in tab
       setPassword('');
       setError('');
@@ -84,6 +139,13 @@ const Auth = () => {
     setLoading(true);
     setError('');
 
+    const emailError = validateEmail(resetEmail);
+    if (emailError) {
+      setError(emailError);
+      setLoading(false);
+      return;
+    }
+
     const redirectUrl = 'https://www.speedvendors.com/auth/callback';
     
     const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
@@ -93,7 +155,7 @@ const Auth = () => {
     if (error) {
       setError(error.message);
     } else {
-      toast.success('Password reset email sent! Check your inbox.');
+      toast.success(t('toast.resetSent'));
       setShowResetPassword(false);
       setResetEmail('');
     }
@@ -102,26 +164,29 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 relative">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <img src="/logo.png" alt="Store Logo" className="h-20 w-20 object-contain" />
           </div>
-          <CardTitle className="text-2xl font-bold">Speed Vendors</CardTitle>
+          <CardTitle className="text-2xl font-bold">{t('title')}</CardTitle>
           <CardDescription>
-            {showResetPassword ? 'Reset your password' : 'Sign in to manage your online store'}
+            {showResetPassword ? t('resetSubtitle') : t('subtitle')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {showResetPassword ? (
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="reset-email">Email</Label>
+                <Label htmlFor="reset-email">{t('field.email')}</Label>
                 <Input
                   id="reset-email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder={t('placeholder.email')}
                   value={resetEmail}
                   onChange={(e) => setResetEmail(e.target.value)}
                   required
@@ -133,7 +198,7 @@ const Auth = () => {
                 </Alert>
               )}
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Sending...' : 'Send Reset Link'}
+                {loading ? t('action.sending') : t('action.sendReset')}
               </Button>
               <Button
                 type="button"
@@ -144,35 +209,35 @@ const Auth = () => {
                   setError('');
                 }}
               >
-                Back to Sign In
+                {t('action.backToSignIn')}
               </Button>
             </form>
           ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              <TabsTrigger value="signin">{t('tab.signIn')}</TabsTrigger>
+              <TabsTrigger value="signup">{t('tab.signUp')}</TabsTrigger>
             </TabsList>
             
             <TabsContent value="signin">
               <form onSubmit={handleSignIn} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signin-email">Email</Label>
+                  <Label htmlFor="signin-email">{t('field.email')}</Label>
                   <Input
                     id="signin-email"
                     type="email"
-                    placeholder="Enter your email"
+                    placeholder={t('placeholder.email')}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signin-password">Password</Label>
+                  <Label htmlFor="signin-password">{t('field.password')}</Label>
                   <Input
                     id="signin-password"
                     type="password"
-                    placeholder="Enter your password"
+                    placeholder={t('placeholder.password')}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -184,7 +249,7 @@ const Auth = () => {
                   </Alert>
                 )}
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Signing In...' : 'Sign In'}
+                  {loading ? t('action.signingIn') : t('action.signIn')}
                 </Button>
                 <Button
                   type="button"
@@ -195,7 +260,7 @@ const Auth = () => {
                     setError('');
                   }}
                 >
-                  Forgot password?
+                  {t('action.forgotPassword')}
                 </Button>
               </form>
             </TabsContent>
@@ -203,26 +268,26 @@ const Auth = () => {
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
+                  <Label htmlFor="signup-email">{t('field.email')}</Label>
                   <Input
                     id="signup-email"
                     type="email"
-                    placeholder="Enter your email"
+                    placeholder={t('placeholder.email')}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password</Label>
+                  <Label htmlFor="signup-password">{t('field.password')}</Label>
                   <Input
                     id="signup-password"
                     type="password"
-                    placeholder="Create a password"
+                    placeholder={t('placeholder.createPassword')}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    minLength={6}
+                    minLength={MIN_PASSWORD_LENGTH}
                   />
                 </div>
                 {error && (
@@ -231,7 +296,7 @@ const Auth = () => {
                   </Alert>
                 )}
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Creating Account...' : 'Create Account'}
+                  {loading ? t('action.creatingAccount') : t('action.createAccount')}
                 </Button>
               </form>
             </TabsContent>

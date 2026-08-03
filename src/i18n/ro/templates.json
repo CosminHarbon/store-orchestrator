@@ -1,0 +1,70 @@
+{
+  "title": "Șabloane",
+  "description": "Personalizează designul magazinului",
+  "browseTemplates": "Răsfoiește șabloane",
+  "customize": "Personalizează",
+  "customizeShort": "Custom",
+  "storeTemplatesTitle": "Șabloane magazin",
+  "storeTemplatesDesc": "Șabloane de magazin predefinite, conectate la produsele, comenzile și sistemele de plată.",
+  "apiKeyTitle": "Cheia API a magazinului",
+  "apiKeyDesc": "Folosește această cheie API pentru a conecta șabloanele la datele magazinului",
+  "copied": "Copiat!",
+  "featuresLabel": "Funcționalități:",
+  "editLive": "Editează live",
+  "copyUrl": "Copiază URL",
+  "templateUrl": "URL șablon:",
+  "howToUse": "Cum folosești șabloanele",
+  "editable": {
+    "name": "Șablon editabil",
+    "badge": "Editabil",
+    "description": "Magazin complet personalizabil cu builder live, culori, hero și blocuri de conținut. Editezi tot vizual.",
+    "features": {
+      "liveEditor": "Editor vizual live",
+      "customBlocks": "Blocuri și layout-uri personalizate",
+      "catalog": "Catalog produse și colecții",
+      "cartCheckout": "Coș și checkout",
+      "payments": "Netopia + plăți numerar",
+      "discount": "Suport reduceri",
+      "responsive": "Design responsive"
+    }
+  },
+  "premium": {
+    "name": "Premium",
+    "badge": "Premium",
+    "description": "Magazin elegant, orientat spre conversie — gata de publicare. Fără builder: homepage, catalog, pagini produs, coș și checkout sunt create pentru tine și alimentate de datele magazinului.",
+    "features": {
+      "homepage": "Secțiuni homepage de tip Shopify",
+      "catalog": "Catalog modern cu filtre",
+      "productPages": "Pagini produs premium",
+      "sideCart": "Sertar coș lateral",
+      "checkout": "Checkout în mai mulți pași",
+      "mobileFirst": "Mobile-first și rapid",
+      "publishGo": "Neditabil — publică și gata"
+    }
+  },
+  "status": {
+    "active": "Activ",
+    "comingSoon": "În curând"
+  },
+  "badge": {
+    "editable": "Editabil",
+    "predesigned": "Predesignat"
+  },
+  "action": {
+    "preview": "Previzualizare",
+    "openPublish": "Deschide / Publică",
+    "openTemplate": "Deschide șablonul"
+  },
+  "help": {
+    "step1": "1. Copiază cheia API a magazinului de mai sus",
+    "openTemplate": "2. Apasă „Deschide șablonul” pentru a vedea magazinul",
+    "step3": "3. Șablonul va încărca automat produsele, colecțiile și setările",
+    "step4": "4. Clienții pot răsfoi produse, adăuga în coș și finaliza achizițiile",
+    "step5": "5. Toate comenzile vor apărea în tab-ul Comenzi",
+    "tip": "💡 Poți partaja URL-ul șablonului cu clienții sau îl poți integra pe site"
+  },
+  "toast": {
+    "apiKeyCopied": "Cheia API a fost copiată!",
+    "premiumUrlCopied": "URL-ul magazinului Premium a fost copiat — partajează-l pentru publicare"
+  }
+}

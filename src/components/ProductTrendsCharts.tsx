@@ -15,14 +15,18 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { ProductAnalytics } from '@/lib/productAnalytics';
 import { formatRon } from '@/lib/productAnalytics';
-
-const COLORS = ['hsl(160 50% 40%)', 'hsl(32 80% 50%)', 'hsl(0 70% 55%)', 'hsl(215 50% 45%)'];
+import { chartTooltipStyle, useChartTheme } from '@/hooks/useChartTheme';
 
 interface ProductTrendsChartsProps {
   analytics: ProductAnalytics;
 }
 
 export default function ProductTrendsCharts({ analytics }: ProductTrendsChartsProps) {
+  const theme = useChartTheme();
+  const tip = chartTooltipStyle(theme);
+  const axis = { fontSize: 11, fill: theme.axis };
+  const colors = [theme.c2, theme.c4, theme.c5, theme.c3];
+
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
       <Card className="border-border/60">
@@ -35,21 +39,15 @@ export default function ProductTrendsCharts({ analytics }: ProductTrendsChartsPr
             <AreaChart data={analytics.productsAddedOverTime}>
               <defs>
                 <linearGradient id="prodAdd" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(215 55% 45%)" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="hsl(215 55% 45%)" stopOpacity={0.02} />
+                  <stop offset="0%" stopColor={theme.c3} stopOpacity={0.35} />
+                  <stop offset="100%" stopColor={theme.c3} stopOpacity={0.02} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border/60" />
-              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={28} />
-              <Tooltip />
-              <Area
-                type="monotone"
-                dataKey="count"
-                stroke="hsl(215 55% 40%)"
-                fill="url(#prodAdd)"
-                name="Products"
-              />
+              <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
+              <XAxis dataKey="label" tick={axis} />
+              <YAxis allowDecimals={false} tick={axis} width={28} />
+              <Tooltip contentStyle={tip} />
+              <Area type="monotone" dataKey="count" stroke={theme.c3} fill="url(#prodAdd)" name="Products" />
             </AreaChart>
           </ResponsiveContainer>
         </CardContent>
@@ -72,10 +70,10 @@ export default function ProductTrendsCharts({ analytics }: ProductTrendsChartsPr
                 paddingAngle={3}
               >
                 {analytics.inventoryDistribution.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  <Cell key={i} fill={colors[i % colors.length]} />
                 ))}
               </Pie>
-              <Tooltip />
+              <Tooltip contentStyle={tip} />
             </PieChart>
           </ResponsiveContainer>
         </CardContent>
@@ -90,11 +88,11 @@ export default function ProductTrendsCharts({ analytics }: ProductTrendsChartsPr
           {analytics.salesByProduct.length ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={analytics.salesByProduct}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/60" />
-                <XAxis dataKey="title" tick={{ fontSize: 10 }} interval={0} angle={-15} textAnchor="end" height={55} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={28} />
-                <Tooltip />
-                <Bar dataKey="units" fill="hsl(215 50% 45%)" radius={[4, 4, 0, 0]} name="Units" />
+                <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
+                <XAxis dataKey="title" tick={{ ...axis, fontSize: 10 }} interval={0} angle={-15} textAnchor="end" height={55} />
+                <YAxis allowDecimals={false} tick={axis} width={28} />
+                <Tooltip contentStyle={tip} />
+                <Bar dataKey="units" fill={theme.c3} radius={[4, 4, 0, 0]} name="Units" />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -112,11 +110,11 @@ export default function ProductTrendsCharts({ analytics }: ProductTrendsChartsPr
           {analytics.salesByProduct.length ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={analytics.salesByProduct}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/60" />
-                <XAxis dataKey="title" tick={{ fontSize: 10 }} interval={0} angle={-15} textAnchor="end" height={55} />
-                <YAxis tick={{ fontSize: 11 }} width={48} />
-                <Tooltip formatter={(v: number) => formatRon(v)} />
-                <Bar dataKey="revenue" fill="hsl(160 50% 40%)" radius={[4, 4, 0, 0]} name="Revenue" />
+                <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
+                <XAxis dataKey="title" tick={{ ...axis, fontSize: 10 }} interval={0} angle={-15} textAnchor="end" height={55} />
+                <YAxis tick={axis} width={48} />
+                <Tooltip contentStyle={tip} formatter={(v: number) => formatRon(v)} />
+                <Bar dataKey="revenue" fill={theme.c2} radius={[4, 4, 0, 0]} name="Revenue" />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -134,11 +132,11 @@ export default function ProductTrendsCharts({ analytics }: ProductTrendsChartsPr
           {analytics.categorySales.some((c) => c.revenue > 0) ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={analytics.categorySales}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/60" />
-                <XAxis dataKey="category" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} width={48} />
-                <Tooltip formatter={(v: number) => formatRon(v)} />
-                <Bar dataKey="revenue" fill="hsl(32 75% 48%)" radius={[4, 4, 0, 0]} name="Revenue" />
+                <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
+                <XAxis dataKey="category" tick={axis} />
+                <YAxis tick={axis} width={48} />
+                <Tooltip contentStyle={tip} formatter={(v: number) => formatRon(v)} />
+                <Bar dataKey="revenue" fill={theme.c4} radius={[4, 4, 0, 0]} name="Revenue" />
               </BarChart>
             </ResponsiveContainer>
           ) : (

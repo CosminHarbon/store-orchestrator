@@ -1,0 +1,56 @@
+{
+  "title": "Stock Management",
+  "description": "Manage product inventory levels. Stock is automatically updated when orders are placed.",
+  "saveChanges": "Save Changes",
+  "saveChangesCount": "Save Changes ({{count}})",
+  "resetChanges": "Reset Changes",
+  "exportCsv": "Export CSV",
+  "reset": "Reset",
+  "table": {
+    "product": "Product",
+    "sku": "SKU",
+    "status": "Status",
+    "currentStock": "Current Stock",
+    "newStock": "New Stock",
+    "lowStockAlert": "Low Stock Alert",
+    "price": "Price",
+    "category": "Category"
+  },
+  "label": {
+    "currentStock": "Current Stock",
+    "alertThreshold": "Alert Threshold",
+    "updateStock": "Update Stock",
+    "skuPrefix": "SKU: {{sku}}"
+  },
+  "placeholder": {
+    "quantity": "Stock quantity"
+  },
+  "badge": {
+    "outOfStock": "Out of Stock",
+    "lowStock": "Low Stock",
+    "inStock": "In Stock",
+    "modified": "Modified"
+  },
+  "quickSet": {
+    "zero": "Set to 0",
+    "ten": "Set to 10",
+    "fifty": "Set to 50"
+  },
+  "share": {
+    "title": "Stock Export",
+    "text": "Stock data export"
+  },
+  "empty": {
+    "noProducts": "No products found. Add some products first to manage their stock levels."
+  },
+  "toast": {
+    "updated": "Successfully updated {{count}} product settings",
+    "updateFailed": "Failed to update products: {{message}}",
+    "noChanges": "No changes to save",
+    "reset": "Changes reset",
+    "shared": "Stock data shared",
+    "exported": "Stock data exported",
+    "reportOpened": "Beautiful stock report opened!",
+    "allowPopups": "Please allow popups to view the stock report"
+  }
+}

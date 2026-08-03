@@ -1,29 +1,19 @@
-import { Home, Package, ShoppingCart, Settings, Store, Users, BarChart3, CreditCard, Layout, Star } from "lucide-react";
+import { Home, Package, ShoppingCart, Users, BarChart3, CreditCard, Layout, Star } from "lucide-react";
 import logoImg from "@/assets/logo.png";
-import { NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
-
-const navigationItems = [
-  { title: "Dashboard", url: "/", icon: Home, tab: "dashboard" },
-  { title: "Products", url: "/products", icon: Package, tab: "products" },
-  { title: "Stock", url: "/stock", icon: BarChart3, tab: "stock" },
-  { title: "Orders", url: "/orders", icon: ShoppingCart, tab: "orders" },
-  { title: "Customers", url: "/customers", icon: Users, tab: "customers" },
-  { title: "Reviews", url: "/reviews", icon: Star, tab: "reviews" },
-  { title: "Payments", url: "/payments", icon: CreditCard, tab: "payments" },
-  { title: "Templates", url: "/templates", icon: Layout, tab: "templates" },
-];
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { useTranslation } from "react-i18next";
 
 interface AppSidebarProps {
   activeTab: string;
@@ -31,19 +21,30 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
+  const { t } = useTranslation('common');
   const { state, setOpenMobile } = useSidebar();
   const isMobile = useIsMobile();
   const collapsed = state === "collapsed";
 
+  const navigationItems = [
+    { titleKey: "nav.dashboard", url: "/", icon: Home, tab: "dashboard" },
+    { titleKey: "nav.products", url: "/products", icon: Package, tab: "products" },
+    { titleKey: "nav.stock", url: "/stock", icon: BarChart3, tab: "stock" },
+    { titleKey: "nav.orders", url: "/orders", icon: ShoppingCart, tab: "orders" },
+    { titleKey: "nav.customers", url: "/customers", icon: Users, tab: "customers" },
+    { titleKey: "nav.reviews", url: "/reviews", icon: Star, tab: "reviews" },
+    { titleKey: "nav.payments", url: "/payments", icon: CreditCard, tab: "payments" },
+    { titleKey: "nav.templates", url: "/templates", icon: Layout, tab: "templates" },
+  ];
+
   const getTabClass = (tab: string) => {
-    return activeTab === tab 
-      ? "bg-primary text-primary-foreground font-medium" 
+    return activeTab === tab
+      ? "bg-primary text-primary-foreground font-medium"
       : "hover:bg-muted/50 text-muted-foreground hover:text-foreground";
   };
 
   const handleTabChange = (tab: string) => {
     onTabChange(tab);
-    // Auto-close sidebar on mobile after tab selection
     if (isMobile) {
       setOpenMobile(false);
     }
@@ -55,25 +56,22 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
         <SidebarGroup>
           <div className="px-3 py-3 mb-2">
             <div className="flex items-center gap-3">
-              <img src={logoImg} alt="Speed Vendors Logo" className="h-10 w-10 object-contain shrink-0" />
-              {!collapsed && <span className="font-semibold text-lg truncate">Speed Vendors</span>}
+              <img src={logoImg} alt={t('brandLogoAlt')} className="h-10 w-10 object-contain shrink-0" />
+              {!collapsed && <span className="font-semibold text-lg truncate">{t('brand')}</span>}
             </div>
           </div>
-          
+
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    asChild
-                    className={getTabClass(item.tab)}
-                  >
+                <SidebarMenuItem key={item.tab}>
+                  <SidebarMenuButton asChild className={getTabClass(item.tab)}>
                     <button
                       onClick={() => handleTabChange(item.tab)}
                       className="w-full flex items-center gap-3 px-3 py-2 text-left rounded-md transition-colors"
                     >
                       <item.icon className="h-4 w-4 shrink-0" />
-                      {!collapsed && <span>{item.title}</span>}
+                      {!collapsed && <span>{t(item.titleKey)}</span>}
                     </button>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -82,6 +80,12 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter className="border-t border-sidebar-border p-2">
+        <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between px-1"}`}>
+          {!collapsed && <span className="text-xs text-muted-foreground">{t('theme')}</span>}
+          <ThemeToggle />
+        </div>
+      </SidebarFooter>
     </Sidebar>
   );
 }

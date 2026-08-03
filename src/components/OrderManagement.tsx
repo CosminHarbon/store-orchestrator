@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Eye, Package, Truck, X, Receipt, Send, ExternalLink, Edit, Search, CreditCard, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ import { ResponsiveOrderTable } from './ResponsiveOrderTable';
 import { AWBCreationModal } from './AWBCreationModal';
 import { PendingCheckoutsSection } from './PendingCheckoutsSection';
 import { AbandonedCartsSection } from './AbandonedCartsSection';
+import { CodOrderBanner, ShippingSummaryCard } from '@/components/shipping/ShippingSummaryCard';
 
 interface Order {
   id: string;
@@ -22,6 +24,13 @@ interface Order {
   customer_email: string;
   customer_phone: string;
   customer_address: string;
+  customer_city?: string | null;
+  customer_county?: string | null;
+  delivery_type?: 'home' | 'locker' | string | null;
+  selected_carrier_code?: string | null;
+  locker_id?: string | null;
+  locker_name?: string | null;
+  locker_address?: string | null;
   total: number;
   payment_status: 'pending' | 'paid' | 'failed' | 'refunded' | 'invoiced' | 'cash';
   shipping_status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
@@ -31,6 +40,13 @@ interface Order {
   carrier_name?: string;
   tracking_url?: string;
   estimated_delivery_date?: string;
+  awb_label_url?: string | null;
+  awb_service_name?: string | null;
+  awb_service_id?: number | null;
+  awb_carrier_id?: number | null;
+  awb_shipping_cost?: number | null;
+  awb_cod_amount?: number | null;
+  locker_deposit_code?: string | null;
 }
 
 interface OrderItem {
@@ -41,6 +57,8 @@ interface OrderItem {
 }
 
 const OrderManagement = () => {
+  const { t: tOrders } = useTranslation('orders');
+  const { t: tCommon } = useTranslation('common');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -72,11 +90,11 @@ const OrderManagement = () => {
         throw new Error(response.error.message);
       }
 
-      toast.success('Invoice generated and sent to customer successfully');
+      toast.success(tOrders('toast.invoiceSent'));
       queryClient.invalidateQueries({ queryKey: ['orders'] });
     } catch (error: any) {
       console.error('Error generating and sending invoice:', error);
-      toast.error(error.message || 'Failed to generate and send invoice');
+      toast.error(error.message || tOrders('toast.invoiceFailed'));
     }
   };
 
@@ -131,10 +149,10 @@ const OrderManagement = () => {
       setIsEditingOrder(false);
       setEditingOrder(null);
       queryClient.invalidateQueries({ queryKey: ['orders'] });
-      toast.success('Order details updated successfully');
+      toast.success(tOrders('toast.orderUpdated'));
     } catch (error: any) {
       console.error('Failed to update order:', error);
-      toast.error(`Failed to update order details: ${error.message}`);
+      toast.error(tOrders('toast.orderUpdateFailed', { message: error.message }));
     }
   };
 
@@ -156,9 +174,9 @@ const OrderManagement = () => {
   const handleRefreshOrders = async () => {
     try {
       await refetch();
-      toast.success('Orders refreshed');
+      toast.success(tOrders('toast.ordersRefreshed'));
     } catch {
-      toast.error('Failed to refresh orders');
+      toast.error(tOrders('toast.refreshFailed'));
     }
   };
 
@@ -175,7 +193,7 @@ const OrderManagement = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
-      toast.success('Order updated successfully');
+      toast.success(tOrders('toast.orderSaved'));
 
       // Ensure the open View dialog reflects latest status immediately
       if (data && data[0]) {
@@ -184,7 +202,7 @@ const OrderManagement = () => {
       }
     },
     onError: (error) => {
-      toast.error('Failed to update order');
+      toast.error(tOrders('toast.orderSaveFailed'));
       console.error(error);
     }
   });
@@ -200,12 +218,12 @@ const OrderManagement = () => {
         .limit(1);
       
       if (error || !transactions || transactions.length === 0) {
-        throw new Error('No payment transaction found for this order');
+        throw new Error(tOrders('error.noPaymentTx'));
       }
       
       const transaction = transactions[0];
       if (!transaction.netopia_payment_id) {
-        throw new Error('No payment ID found for this transaction');
+        throw new Error(tOrders('error.noPaymentId'));
       }
 
       // Call the payment status function
@@ -222,11 +240,11 @@ const OrderManagement = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
-      toast.success("Payment status refreshed");
+      toast.success(tOrders('toast.paymentRefreshed'));
     },
     onError: (error) => {
       console.error('Error refreshing payment status:', error);
-      toast.error("Failed to refresh payment status");
+      toast.error(tOrders('toast.paymentRefreshFailed'));
     }
   });
 
@@ -263,17 +281,17 @@ const OrderManagement = () => {
       setSelectedOrder((prev) => (prev && prev.id === orderId ? { ...prev, payment_status: 'paid' } : prev));
       
       queryClient.invalidateQueries({ queryKey: ['orders'] });
-      toast.success("Payment status updated to paid");
+      toast.success(tOrders('toast.markedPaid'));
     } catch (error) {
       console.error('Error marking payment as completed:', error);
-      toast.error("Failed to update payment status");
+      toast.error(tOrders('toast.markPaidFailed'));
     }
   };
 
   const handleCreateAWB = async (orderId: string) => {
     const order = orders?.find(o => o.id === orderId);
     if (!order) {
-      toast.error('Order not found');
+      toast.error(tOrders('toast.orderNotFound'));
       return;
     }
     setSelectedOrder(order);
@@ -283,12 +301,12 @@ const OrderManagement = () => {
   const handleCancelAWB = async (orderId: string) => {
     const order = orders?.find(o => o.id === orderId);
     if (!order) {
-      toast.error('Order not found');
+      toast.error(tOrders('toast.orderNotFound'));
       return;
     }
 
     if (!order.awb_number) {
-      toast.error('No AWB number found for this order');
+      toast.error(tOrders('toast.noAwb'));
       return;
     }
 
@@ -313,10 +331,10 @@ const OrderManagement = () => {
       }
 
       if (!data?.success) {
-        throw new Error(data?.message || data?.error || 'Failed to cancel AWB');
+        throw new Error(data?.message || data?.error || tOrders('toast.awbCancelGeneric'));
       }
 
-      toast.success('AWB cancelled successfully');
+      toast.success(tOrders('toast.awbCancelled'));
       
       // Update selected order status if it's the same order
       setSelectedOrder(prev => prev && prev.id === orderId 
@@ -327,7 +345,7 @@ const OrderManagement = () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
     } catch (error: any) {
       console.error('Error cancelling AWB:', error);
-      toast.error(error.message || 'Failed to cancel AWB with carrier');
+      toast.error(error.message || tOrders('toast.awbCancelFailed'));
     } finally {
       setCreatingAWB(prev => {
         const newSet = new Set(prev);
@@ -347,7 +365,7 @@ const OrderManagement = () => {
       .eq('order_id', order.id);
     
     if (error) {
-      toast.error('Failed to load order items');
+      toast.error(tOrders('toast.loadItemsFailed'));
       return;
     }
     
@@ -375,7 +393,9 @@ const OrderManagement = () => {
 
     return (
       <Badge variant={variants[status] || 'outline'}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {tOrders(`status.${status}`, {
+          defaultValue: status.charAt(0).toUpperCase() + status.slice(1),
+        })}
       </Badge>
     );
   };
@@ -397,7 +417,7 @@ const OrderManagement = () => {
   }) || [];
 
   if (isLoading) {
-    return <div>Loading orders...</div>;
+    return <div>{tOrders('loadingOrders')}</div>;
   }
 
   return (
@@ -410,8 +430,8 @@ const OrderManagement = () => {
         <div className="flex flex-col gap-4">
           <div className="flex justify-between items-center gap-3">
             <div>
-              <CardTitle>Orders</CardTitle>
-              <CardDescription>Manage customer orders and fulfillment</CardDescription>
+              <CardTitle>{tOrders('title')}</CardTitle>
+              <CardDescription>{tOrders('description')}</CardDescription>
             </div>
             <Button
               type="button"
@@ -421,13 +441,13 @@ const OrderManagement = () => {
               disabled={isFetching}
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-              Refresh
+              {tCommon('refresh')}
             </Button>
           </div>
           <div className="relative w-full max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search orders..."
+              placeholder={tOrders('searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -451,16 +471,16 @@ const OrderManagement = () => {
         {filteredOrders.length === 0 && !searchQuery && (
           <div className="text-center py-8 text-muted-foreground">
             <div className="space-y-2">
-              <p>No orders found.</p>
-              <p className="text-sm">Orders will appear here when customers make purchases.</p>
+              <p>{tOrders('empty')}</p>
+              <p className="text-sm">{tOrders('emptyDescription')}</p>
             </div>
           </div>
         )}
         {filteredOrders.length === 0 && searchQuery && (
           <div className="text-center py-8 text-muted-foreground">
             <div className="space-y-2">
-              <p>No orders match your search.</p>
-              <p className="text-sm">Try adjusting your search terms.</p>
+              <p>{tOrders('emptySearch')}</p>
+              <p className="text-sm">{tOrders('emptySearchHint')}</p>
             </div>
           </div>
         )}
@@ -472,31 +492,47 @@ const OrderManagement = () => {
           isOpen={isAWBModalOpen}
           onClose={() => setIsAWBModalOpen(false)}
           order={selectedOrder}
-          onSuccess={() => {
+          onSuccess={(result) => {
             queryClient.invalidateQueries({ queryKey: ['orders'] });
-            // Update selected order status
-            setSelectedOrder(prev => prev ? { ...prev, shipping_status: 'processing' } : null);
+            setSelectedOrder((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    shipping_status: 'shipped',
+                    awb_number: result?.awb_number || prev.awb_number,
+                    tracking_url: result?.tracking_url || prev.tracking_url,
+                    awb_label_url: result?.label_url ?? prev.awb_label_url,
+                    locker_deposit_code: result?.locker_deposit_code ?? prev.locker_deposit_code,
+                    awb_cod_amount: result?.cod_amount ?? prev.awb_cod_amount,
+                    carrier_name: result?.carrier_name || prev.carrier_name,
+                    awb_service_name: result?.service_name ?? prev.awb_service_name,
+                    awb_shipping_cost: result?.shipping_cost ?? prev.awb_shipping_cost,
+                  }
+                : null
+            );
           }}
         />
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-lg md:text-xl">Order Details</DialogTitle>
+        <DialogContent className="max-w-4xl w-[calc(100vw-1.25rem)] max-h-[min(92dvh,920px)] p-0 gap-0 flex flex-col overflow-hidden">
+          <DialogHeader className="shrink-0 px-4 sm:px-6 pt-5 pb-3 pr-12 border-b text-left">
+            <DialogTitle className="text-lg md:text-xl">{tOrders('detailsTitle')}</DialogTitle>
           </DialogHeader>
           {selectedOrder && (
-            <div className="space-y-6">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 space-y-6">
               {/* Order Summary */}
               <div className="bg-muted/50 p-4 rounded-lg">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                   <div>
-                    <p className="font-mono text-sm text-muted-foreground">Order #{selectedOrder.id.slice(-8)}</p>
-                    <p className="text-lg font-semibold">{selectedOrder.total.toFixed(2)} RON</p>
+                    <p className="font-mono text-sm text-muted-foreground">
+                      {tOrders('orderId', { id: selectedOrder.id.slice(-8) })}
+                    </p>
+                    <p className="text-lg font-semibold">{selectedOrder.total.toFixed(2)} {tCommon('ron')}</p>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Payment Status</p>
+                      <p className="text-xs text-muted-foreground">{tOrders('paymentStatus')}</p>
                       <Select
                         value={selectedOrder.payment_status}
                         onValueChange={(value) => handleStatusUpdate(selectedOrder.id, 'payment_status', value)}
@@ -505,17 +541,17 @@ const OrderManagement = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="cash">Cash</SelectItem>
-                          <SelectItem value="paid">Paid</SelectItem>
-                          <SelectItem value="failed">Failed</SelectItem>
-                          <SelectItem value="refunded">Refunded</SelectItem>
-                          <SelectItem value="invoiced">Invoiced</SelectItem>
+                          <SelectItem value="pending">{tOrders('status.pending')}</SelectItem>
+                          <SelectItem value="cash">{tOrders('status.cash')}</SelectItem>
+                          <SelectItem value="paid">{tOrders('status.paid')}</SelectItem>
+                          <SelectItem value="failed">{tOrders('status.failed')}</SelectItem>
+                          <SelectItem value="refunded">{tOrders('status.refunded')}</SelectItem>
+                          <SelectItem value="invoiced">{tOrders('status.invoiced')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Shipping Status</p>
+                      <p className="text-xs text-muted-foreground">{tOrders('shippingStatus')}</p>
                       <Select
                         value={selectedOrder.shipping_status}
                         onValueChange={(value) => handleStatusUpdate(selectedOrder.id, 'shipping_status', value)}
@@ -524,11 +560,11 @@ const OrderManagement = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="processing">Processing</SelectItem>
-                          <SelectItem value="shipped">Shipped</SelectItem>
-                          <SelectItem value="delivered">Delivered</SelectItem>
-                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                          <SelectItem value="pending">{tOrders('status.pending')}</SelectItem>
+                          <SelectItem value="processing">{tOrders('status.processing')}</SelectItem>
+                          <SelectItem value="shipped">{tOrders('status.shipped')}</SelectItem>
+                          <SelectItem value="delivered">{tOrders('status.delivered')}</SelectItem>
+                          <SelectItem value="cancelled">{tOrders('status.cancelled')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -544,7 +580,7 @@ const OrderManagement = () => {
                     className="flex-1"
                   >
                     <Edit className="h-4 w-4 mr-2" />
-                    Edit Order
+                    {tOrders('editOrder')}
                   </Button>
                   <Button
                     onClick={() => generateAndSendInvoice(selectedOrder.id)}
@@ -554,29 +590,20 @@ const OrderManagement = () => {
                     disabled={!!selectedOrder.invoice_link}
                   >
                     <Receipt className="h-4 w-4 mr-2" />
-                    Generate & Send Invoice
+                    {tOrders('generateSendInvoice')}
                   </Button>
                   {selectedOrder.awb_number ? (
                     <div className="flex gap-2 flex-1">
-                      <Button
-                        onClick={() => window.open(selectedOrder.tracking_url, '_blank')}
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                      >
-                        <Truck className="h-4 w-4 mr-2" />
-                        Track Package
-                      </Button>
                       {selectedOrder.shipping_status !== 'delivered' && selectedOrder.shipping_status !== 'cancelled' && (
                         <Button
                           onClick={() => handleCancelAWB(selectedOrder.id)}
                           variant="outline"
                           size="sm"
-                          className="text-destructive hover:text-destructive-foreground"
+                          className="text-destructive hover:text-destructive-foreground flex-1"
                           disabled={creatingAWB.has(selectedOrder.id)}
                         >
                           <X className="h-4 w-4 mr-2" />
-                          Cancel AWB
+                          {tOrders('cancelAwb')}
                         </Button>
                       )}
                     </div>
@@ -589,7 +616,7 @@ const OrderManagement = () => {
                       disabled={selectedOrder.shipping_status === 'delivered' || selectedOrder.shipping_status === 'cancelled'}
                     >
                       <Truck className="h-4 w-4 mr-2" />
-                      Create AWB
+                      {tOrders('createAwb')}
                     </Button>
                   )}
                   {selectedOrder.invoice_link && (
@@ -600,7 +627,7 @@ const OrderManagement = () => {
                       className="flex-1"
                     >
                       <ExternalLink className="h-4 w-4 mr-2" />
-                      View Invoice
+                      {tOrders('viewInvoice')}
                     </Button>
                   )}
                 </div>
@@ -616,7 +643,7 @@ const OrderManagement = () => {
                       disabled={refreshingPayments.has(selectedOrder.id)}
                     >
                       <CreditCard className="h-4 w-4 mr-2" />
-                      {refreshingPayments.has(selectedOrder.id) ? 'Checking...' : 'Check Payment Status'}
+                      {refreshingPayments.has(selectedOrder.id) ? tOrders('checkingPayment') : tOrders('checkPaymentStatus')}
                     </Button>
                     <Button
                       onClick={() => handleManualComplete(selectedOrder.id)}
@@ -625,48 +652,31 @@ const OrderManagement = () => {
                       className="flex-1"
                     >
                       <CreditCard className="h-4 w-4 mr-2" />
-                      Mark as Paid
+                      {tOrders('markAsPaid')}
                     </Button>
                   </div>
                 )}
               </div>
 
-              {/* Shipping Information */}
+              {/* COD banner only before AWB — shipping card already shows COD after */}
+              {!selectedOrder.awb_number && <CodOrderBanner order={selectedOrder} />}
+
+              {/* Shipping Summary — central panel after AWB */}
               {selectedOrder.awb_number && (
-                <div className="mb-6">
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base">Shipping Information</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="font-medium text-muted-foreground">AWB Number</p>
-                        <p className="font-mono">{selectedOrder.awb_number}</p>
-                      </div>
-                      <div>
-                        <p className="font-medium text-muted-foreground">Carrier</p>
-                        <p>{selectedOrder.carrier_name}</p>
-                      </div>
-                      {selectedOrder.estimated_delivery_date && (
-                        <div>
-                          <p className="font-medium text-muted-foreground">Estimated Delivery</p>
-                          <p>{new Date(selectedOrder.estimated_delivery_date).toLocaleDateString()}</p>
-                        </div>
-                      )}
-                      {selectedOrder.tracking_url && (
-                        <div>
-                          <p className="font-medium text-muted-foreground">Tracking</p>
-                          <Button
-                            variant="link"
-                            className="p-0 h-auto text-primary"
-                            onClick={() => window.open(selectedOrder.tracking_url, '_blank')}
-                          >
-                            View Tracking Details
-                          </Button>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                <div>
+                  <ShippingSummaryCard
+                    order={selectedOrder}
+                    cancelling={creatingAWB.has(selectedOrder.id)}
+                    onCancel={() => handleCancelAWB(selectedOrder.id)}
+                    onRegenerate={() => {
+                      // Allow creating a new AWB after cancel; if still active, open modal for replacement flow
+                      if (selectedOrder.shipping_status === 'cancelled' || !selectedOrder.awb_number) {
+                        handleCreateAWB(selectedOrder.id);
+                        return;
+                      }
+                      toast.message(tOrders('toast.cancelAwbFirst'));
+                    }}
+                  />
                 </div>
               )}
 
@@ -674,25 +684,60 @@ const OrderManagement = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Customer Information</CardTitle>
+                    <CardTitle className="text-base">{tOrders('customerInfo')}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
-                    <div><strong>Name:</strong> {selectedOrder.customer_name}</div>
-                    <div><strong>Email:</strong> {selectedOrder.customer_email}</div>
-                    <div><strong>Phone:</strong> {selectedOrder.customer_phone}</div>
-                    <div><strong>Address:</strong> {selectedOrder.customer_address}</div>
+                    <div><strong>{tCommon('name')}:</strong> {selectedOrder.customer_name}</div>
+                    <div><strong>{tCommon('email')}:</strong> {selectedOrder.customer_email}</div>
+                    <div><strong>{tCommon('phone')}:</strong> {selectedOrder.customer_phone}</div>
+                    {selectedOrder.delivery_type === 'locker' ? (
+                      <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5 mt-2">
+                        <div className="font-medium flex items-center gap-2">
+                          <Package className="h-4 w-4" />
+                          {tOrders('lockerDelivery')}
+                        </div>
+                        {(selectedOrder.carrier_name || selectedOrder.selected_carrier_code) && (
+                          <div className="text-muted-foreground">
+                            {tOrders('courier')}:{' '}
+                            <span className="text-foreground">
+                              {selectedOrder.carrier_name || selectedOrder.selected_carrier_code}
+                            </span>
+                          </div>
+                        )}
+                        {selectedOrder.locker_name && (
+                          <div>
+                            <strong>{tOrders('locker')}:</strong> {selectedOrder.locker_name}
+                          </div>
+                        )}
+                        {selectedOrder.locker_address && (
+                          <div>
+                            <strong>{tCommon('address')}:</strong> {selectedOrder.locker_address}
+                          </div>
+                        )}
+                        {(selectedOrder.customer_city || selectedOrder.customer_county) && (
+                          <div>
+                            <strong>{tOrders('location')}:</strong>{' '}
+                            {[selectedOrder.customer_city, selectedOrder.customer_county]
+                              .filter(Boolean)
+                              .join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div><strong>{tCommon('address')}:</strong> {selectedOrder.customer_address}</div>
+                    )}
                   </CardContent>
                 </Card>
                 
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Order Information</CardTitle>
+                    <CardTitle className="text-base">{tOrders('orderInfo')}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
-                    <div><strong>Order Date:</strong> {new Date(selectedOrder.created_at).toLocaleString()}</div>
-                    <div><strong>Order ID:</strong> <span className="font-mono">{selectedOrder.id}</span></div>
-                    <div><strong>Total Amount:</strong> {selectedOrder.total.toFixed(2)} RON</div>
-                    <div><strong>Items:</strong> {orderItems.length} product(s)</div>
+                    <div><strong>{tOrders('orderDate')}:</strong> {new Date(selectedOrder.created_at).toLocaleString()}</div>
+                    <div><strong>{tOrders('orderIdLabel')}:</strong> <span className="font-mono">{selectedOrder.id}</span></div>
+                    <div><strong>{tOrders('totalAmount')}:</strong> {selectedOrder.total.toFixed(2)} {tCommon('ron')}</div>
+                    <div><strong>{tOrders('itemsCount', { count: orderItems.length })}</strong></div>
                   </CardContent>
                 </Card>
               </div>
@@ -700,7 +745,7 @@ const OrderManagement = () => {
               {/* Order Items */}
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Order Items</CardTitle>
+                  <CardTitle className="text-base">{tOrders('orderItems')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {/* Desktop Table */}
@@ -708,19 +753,19 @@ const OrderManagement = () => {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Product</TableHead>
-                          <TableHead>Price</TableHead>
-                          <TableHead>Quantity</TableHead>
-                          <TableHead>Total</TableHead>
+                          <TableHead>{tOrders('table.product')}</TableHead>
+                          <TableHead>{tOrders('table.price')}</TableHead>
+                          <TableHead>{tOrders('table.quantity')}</TableHead>
+                          <TableHead>{tOrders('table.total')}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {orderItems.map((item) => (
                           <TableRow key={item.id}>
                             <TableCell className="font-medium">{item.product_title}</TableCell>
-                            <TableCell>{item.product_price.toFixed(2)} RON</TableCell>
+                            <TableCell>{item.product_price.toFixed(2)} {tCommon('ron')}</TableCell>
                             <TableCell>{item.quantity}</TableCell>
-                            <TableCell>{(item.product_price * item.quantity).toFixed(2)} RON</TableCell>
+                            <TableCell>{(item.product_price * item.quantity).toFixed(2)} {tCommon('ron')}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -733,17 +778,17 @@ const OrderManagement = () => {
                       <div key={item.id} className="border rounded-lg p-3 space-y-2">
                         <div className="font-medium">{item.product_title}</div>
                         <div className="flex justify-between text-sm">
-                           <span>{item.product_price.toFixed(2)} RON × {item.quantity}</span>
-                           <span className="font-medium">{(item.product_price * item.quantity).toFixed(2)} RON</span>
+                           <span>{item.product_price.toFixed(2)} {tCommon('ron')} × {item.quantity}</span>
+                           <span className="font-medium">{(item.product_price * item.quantity).toFixed(2)} {tCommon('ron')}</span>
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  <div className="mt-4 pt-4 border-t">
+                  <div className="mt-4 pt-4 border-t pb-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-lg font-semibold">Total:</span>
-                      <span className="text-lg font-semibold">{selectedOrder.total.toFixed(2)} RON</span>
+                      <span className="text-lg font-semibold">{tCommon('total')}:</span>
+                      <span className="text-lg font-semibold">{selectedOrder.total.toFixed(2)} {tCommon('ron')}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -757,11 +802,11 @@ const OrderManagement = () => {
       <Dialog open={isEditingOrder} onOpenChange={setIsEditingOrder}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Order Details</DialogTitle>
+            <DialogTitle>{tOrders('editTitle')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="customer_name">Customer Name</Label>
+              <Label htmlFor="customer_name">{tOrders('field.customerName')}</Label>
               <Input
                 id="customer_name"
                 value={editFormData.customer_name}
@@ -769,7 +814,7 @@ const OrderManagement = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="customer_email">Customer Email</Label>
+              <Label htmlFor="customer_email">{tOrders('field.customerEmail')}</Label>
               <Input
                 id="customer_email"
                 type="email"
@@ -778,7 +823,7 @@ const OrderManagement = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="customer_phone">Customer Phone</Label>
+              <Label htmlFor="customer_phone">{tOrders('field.customerPhone')}</Label>
               <Input
                 id="customer_phone"
                 value={editFormData.customer_phone}
@@ -786,7 +831,7 @@ const OrderManagement = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="customer_address">Customer Address</Label>
+              <Label htmlFor="customer_address">{tOrders('field.customerAddress')}</Label>
               <Input
                 id="customer_address"
                 value={editFormData.customer_address}
@@ -795,10 +840,10 @@ const OrderManagement = () => {
             </div>
             <div className="flex gap-2 pt-4">
               <Button onClick={saveOrderChanges} className="flex-1">
-                Save Changes
+                {tCommon('saveChanges')}
               </Button>
               <Button onClick={() => setIsEditingOrder(false)} variant="outline" className="flex-1">
-                Cancel
+                {tCommon('cancel')}
               </Button>
             </div>
           </div>

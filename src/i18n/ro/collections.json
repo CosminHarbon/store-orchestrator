@@ -1,0 +1,62 @@
+{
+  "title": "Colecții",
+  "description": "Organizează produsele în colecții",
+  "subtitle": "Grupează produsele în colecții curate pentru vitrina magazinului.",
+  "createCollection": "Creează colecție",
+  "section": {
+    "overview": "Prezentare generală"
+  },
+  "searchPlaceholder": "Caută colecții…",
+  "count_one": "{{count}} colecție",
+  "count_other": "{{count}} colecții",
+  "pageOf": "Pagina {{page}} din {{total}}",
+  "kpi": {
+    "total": "Total colecții",
+    "totalSub": "Toate colecțiile",
+    "productsAssigned": "Produse asignate",
+    "productsAssignedSub": "Produse unice",
+    "largest": "Cea mai mare colecție",
+    "empty": "Colecții goale",
+    "emptySub": "Fără produse încă",
+    "avgProducts": "Medie produse",
+    "avgProductsSub": "Per colecție",
+    "inventoryValue": "Valoare inventar colecții",
+    "inventoryValueSub": "Preț × stoc al produselor asignate",
+    "revenue": "Venit colecții",
+    "revenueSub": "Din produsele asignate din comenzi"
+  },
+  "analytics": {
+    "topByRevenue": "Top colecții după venit",
+    "topByRevenueDesc": "Pe baza istoricului comenzilor produselor asignate",
+    "noRevenueYet": "Niciun venit din colecții încă."
+  },
+  "empty": {
+    "search": "Nicio colecție nu corespunde căutării",
+    "createFirst": "Creează prima colecție",
+    "searchHint": "Încearcă un alt nume sau șterge căutarea.",
+    "createFirstHint": "Colecțiile ajută cumpărătorii să navigheze produse conexe — de exemplu „Essentials de vară” sau „Noutăți”."
+  },
+  "table": {
+    "collection": "Colecție",
+    "products": "Produse",
+    "inventory": "Inventar",
+    "revenue": "Venit",
+    "updated": "Actualizat"
+  },
+  "createDialog": {
+    "title": "Creează colecție",
+    "description": "Poți adăuga produse și o imagine după creare.",
+    "namePlaceholder": "ex. Essentials de vară"
+  },
+  "confirm": {
+    "delete": "Ștergi „{{name}}”?"
+  },
+  "create": "Creează",
+  "creating": "Se creează…",
+  "toast": {
+    "created": "Colecție creată",
+    "createFailed": "Crearea colecției a eșuat: {{message}}",
+    "deleted": "Colecție ștearsă",
+    "deleteFailed": "Ștergerea colecției a eșuat: {{message}}"
+  }
+}

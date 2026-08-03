@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { format, subDays, startOfYear } from 'date-fns';
+import { enUS, ro } from 'date-fns/locale';
 import { Calendar as CalendarIcon, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -18,7 +20,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { isAppLanguage } from '@/i18n/types';
 
+function useDateFnsLocale() {
+  const { i18n } = useTranslation();
+  const lng = (i18n.resolvedLanguage || i18n.language || 'ro').split('-')[0];
+  return isAppLanguage(lng) && lng === 'en' ? enUS : ro;
+}
 export type DateRange = {
   from: Date;
   to: Date;
@@ -34,10 +42,9 @@ interface DateRangeFilterProps {
   className?: string;
 }
 
-const presets: { key: PresetKey; label: string; getRange: () => DateRange }[] = [
+const presets: { key: Exclude<PresetKey, 'custom'>; getRange: () => DateRange }[] = [
   {
     key: 'today',
-    label: 'Today',
     getRange: () => {
       const now = new Date();
       const from = new Date(now);
@@ -47,25 +54,29 @@ const presets: { key: PresetKey; label: string; getRange: () => DateRange }[] = 
   },
   {
     key: 'week',
-    label: 'Last 7 days',
     getRange: () => ({ from: subDays(new Date(), 7), to: new Date() }),
   },
   {
     key: '30days',
-    label: 'Last 30 days',
     getRange: () => ({ from: subDays(new Date(), 30), to: new Date() }),
   },
   {
     key: '90days',
-    label: 'Last 90 days',
     getRange: () => ({ from: subDays(new Date(), 90), to: new Date() }),
   },
   {
     key: 'year',
-    label: 'This year',
     getRange: () => ({ from: startOfYear(new Date()), to: new Date() }),
   },
 ];
+
+const presetLabelKeys: Record<Exclude<PresetKey, 'custom'>, string> = {
+  today: 'dateRange.today',
+  week: 'dateRange.last7days',
+  '30days': 'dateRange.last30days',
+  '90days': 'dateRange.last90days',
+  year: 'dateRange.thisYear',
+};
 
 export function DateRangeFilter({
   dateRange,
@@ -74,6 +85,8 @@ export function DateRangeFilter({
   onPresetChange,
   className,
 }: DateRangeFilterProps) {
+  const { t } = useTranslation('common');
+  const dateLocale = useDateFnsLocale();
   const [isCustomOpen, setIsCustomOpen] = useState(false);
   const [tempFrom, setTempFrom] = useState<Date | undefined>(dateRange.from);
   const [tempTo, setTempTo] = useState<Date | undefined>(dateRange.to);
@@ -115,9 +128,18 @@ export function DateRangeFilter({
 
   const getPresetLabel = () => {
     if (preset === 'custom') {
-      return `${format(dateRange.from, 'd MMM')} - ${format(dateRange.to, 'd MMM yyyy')}`;
+      return `${format(dateRange.from, 'd MMM', { locale: dateLocale })} - ${format(dateRange.to, 'd MMM yyyy', { locale: dateLocale })}`;
     }
-    return presets.find((p) => p.key === preset)?.label || 'Select period';
+    const labelKey = presetLabelKeys[preset];
+    return labelKey ? t(labelKey) : t('dateRange.selectPeriod');
+  };
+
+  const getMobilePresetLabel = () => {
+    if (preset === 'custom') {
+      return `${format(dateRange.from, 'd/M')} - ${format(dateRange.to, 'd/M')}`;
+    }
+    const labelKey = presetLabelKeys[preset];
+    return labelKey ? t(labelKey) : t('dateRange.period');
   };
 
   return (
@@ -128,10 +150,7 @@ export function DateRangeFilter({
             <CalendarIcon className="h-4 w-4" />
             <span className="hidden sm:inline">{getPresetLabel()}</span>
             <span className="sm:hidden">
-              {preset === 'custom' 
-                ? `${format(dateRange.from, 'd/M')} - ${format(dateRange.to, 'd/M')}`
-                : presets.find((p) => p.key === preset)?.label.replace('Last ', '') || 'Period'
-              }
+              {getMobilePresetLabel()}
             </span>
             <ChevronDown className="h-3 w-3 opacity-50" />
           </Button>
@@ -143,12 +162,12 @@ export function DateRangeFilter({
               onClick={() => handlePresetSelect(p.key)}
               className={cn(preset === p.key && 'bg-accent')}
             >
-              {p.label}
+              {t(presetLabelKeys[p.key])}
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => handlePresetSelect('custom')}>
-            Custom range...
+            {t('dateRange.custom')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -157,7 +176,7 @@ export function DateRangeFilter({
       <Dialog open={isCustomOpen} onOpenChange={setIsCustomOpen}>
         <DialogContent className="sm:max-w-fit">
           <DialogHeader>
-            <DialogTitle>Select Date Range</DialogTitle>
+            <DialogTitle>{t('dateRange.selectTitle')}</DialogTitle>
           </DialogHeader>
           
           <div className="flex flex-col sm:flex-row gap-4 py-4">
@@ -169,7 +188,9 @@ export function DateRangeFilter({
                 className="w-full justify-start"
                 onClick={() => setSelectingDate('from')}
               >
-                From: {tempFrom ? format(tempFrom, 'MMM d, yyyy') : 'Select date'}
+                {t('dateRange.from', {
+                  date: tempFrom ? format(tempFrom, 'PPP', { locale: dateLocale }) : t('dateRange.selectDate'),
+                })}
               </Button>
               {selectingDate === 'from' && (
                 <Calendar
@@ -190,7 +211,9 @@ export function DateRangeFilter({
                 className="w-full justify-start"
                 onClick={() => setSelectingDate('to')}
               >
-                To: {tempTo ? format(tempTo, 'MMM d, yyyy') : 'Select date'}
+                {t('dateRange.to', {
+                  date: tempTo ? format(tempTo, 'PPP', { locale: dateLocale }) : t('dateRange.selectDate'),
+                })}
               </Button>
               {selectingDate === 'to' && (
                 <Calendar
@@ -206,13 +229,13 @@ export function DateRangeFilter({
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCustomOpen(false)}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button 
               onClick={handleApplyCustomRange}
               disabled={!tempFrom || !tempTo}
             >
-              Apply Range
+              {t('dateRange.apply')}
             </Button>
           </DialogFooter>
         </DialogContent>

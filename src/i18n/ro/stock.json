@@ -1,0 +1,56 @@
+{
+  "title": "Gestionare stoc",
+  "description": "Gestionează nivelurile de inventar. Stocul se actualizează automat când se plasează comenzi.",
+  "saveChanges": "Salvează modificările",
+  "saveChangesCount": "Salvează modificările ({{count}})",
+  "resetChanges": "Resetează modificările",
+  "exportCsv": "Exportă CSV",
+  "reset": "Resetează",
+  "table": {
+    "product": "Produs",
+    "sku": "SKU",
+    "status": "Status",
+    "currentStock": "Stoc curent",
+    "newStock": "Stoc nou",
+    "lowStockAlert": "Alertă stoc redus",
+    "price": "Preț",
+    "category": "Categorie"
+  },
+  "label": {
+    "currentStock": "Stoc curent",
+    "alertThreshold": "Prag alertă",
+    "updateStock": "Actualizează stocul",
+    "skuPrefix": "SKU: {{sku}}"
+  },
+  "placeholder": {
+    "quantity": "Cantitate stoc"
+  },
+  "badge": {
+    "outOfStock": "Fără stoc",
+    "lowStock": "Stoc redus",
+    "inStock": "În stoc",
+    "modified": "Modificat"
+  },
+  "quickSet": {
+    "zero": "Setează la 0",
+    "ten": "Setează la 10",
+    "fifty": "Setează la 50"
+  },
+  "share": {
+    "title": "Export stoc",
+    "text": "Export date stoc"
+  },
+  "empty": {
+    "noProducts": "Nu s-au găsit produse. Adaugă produse mai întâi pentru a gestiona stocul."
+  },
+  "toast": {
+    "updated": "Au fost actualizate cu succes {{count}} setări de produs",
+    "updateFailed": "Actualizarea produselor a eșuat: {{message}}",
+    "noChanges": "Nu există modificări de salvat",
+    "reset": "Modificările au fost resetate",
+    "shared": "Datele de stoc au fost partajate",
+    "exported": "Datele de stoc au fost exportate",
+    "reportOpened": "Raportul de stoc a fost deschis!",
+    "allowPopups": "Permite ferestrele pop-up pentru a vedea raportul de stoc"
+  }
+}

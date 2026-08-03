@@ -16,6 +16,10 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { EAWBConnectionTest } from './EAWBConnectionTest';
 import { EAWBDiagnosis } from './EAWBDiagnosis';
+import { ThemeSelector } from '@/components/theme/ThemeSelector';
+import { LanguageSelector } from '@/components/settings/LanguageSelector';
+import { DefaultPickupLockerSection } from '@/components/settings/DefaultPickupLockerSection';
+import { useTranslation } from 'react-i18next';
 
 const NetopiaCredentialHelp = ({ title, children }: { title: string; children: ReactNode }) => (
   <Popover>
@@ -67,6 +71,13 @@ interface Profile {
   eawb_address?: string;
   eawb_billing_address_id?: number;
   eawb_shipping_address_id?: number;
+  eawb_pickup_locker_id?: string | null;
+  eawb_pickup_locker_name?: string | null;
+  eawb_pickup_locker_address?: string | null;
+  eawb_pickup_locker_carrier_id?: number | null;
+  eawb_pickup_locker_carrier_code?: string | null;
+  eawb_pickup_locker_county?: string | null;
+  eawb_pickup_locker_city?: string | null;
   eawb_default_carrier_id?: number;
   eawb_default_service_id?: number;
   cash_payment_enabled?: boolean;
@@ -76,6 +87,8 @@ interface Profile {
 }
 
 const StoreSettings = () => {
+  const { t: tSettings } = useTranslation('settings');
+  const { t: tCommon } = useTranslation('common');
   const [storeName, setStoreName] = useState('');
   const [isCodeDialogOpen, setIsCodeDialogOpen] = useState(false);
   const [openCollapsibles, setOpenCollapsibles] = useState({
@@ -207,10 +220,10 @@ const StoreSettings = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
-      toast.success('Settings updated successfully');
+      toast.success(tSettings('toast.updated'));
     },
     onError: (error) => {
-      toast.error('Failed to update settings');
+      toast.error(tSettings('toast.updateFailed'));
       console.error(error);
     }
   });
@@ -274,11 +287,11 @@ const StoreSettings = () => {
 
   const testNetopiaConnection = async () => {
     if (!providerConfigs.netpopia.api_key?.trim()) {
-      toast.error('Missing API Key. Add it from Netopia Admin → Profile → Security.');
+      toast.error(tSettings('toast.missingApiKey'));
       return;
     }
     if (!providerConfigs.netpopia.signature?.trim()) {
-      toast.error('Missing POS Signature. Add it from Netopia Admin → Point of Sale → Technical Settings.');
+      toast.error(tSettings('toast.missingPosSignature'));
       return;
     }
 
@@ -295,17 +308,17 @@ const StoreSettings = () => {
       });
 
       if (error) {
-        toast.error(error.message || 'Connection test failed.');
+        toast.error(error.message || tSettings('toast.connectionFailed'));
         return;
       }
 
       if (data?.success) {
-        toast.success(data.message || 'Netopia connection successful.');
+        toast.success(data.message || tSettings('toast.netopiaOk'));
       } else {
-        toast.error(data?.error || 'Connection test failed.');
+        toast.error(data?.error || tSettings('toast.connectionFailed'));
       }
     } catch (e: any) {
-      toast.error(e?.message || 'Connection test failed.');
+      toast.error(e?.message || tSettings('toast.connectionFailed'));
     } finally {
       setNetopiaTestLoading(false);
     }
@@ -327,7 +340,7 @@ const StoreSettings = () => {
 
   const fetchEawbShippingAddresses = async () => {
     if (!providerConfigs.eawb?.api_key) {
-      toast.error('Please enter and save your eAWB API key first');
+      toast.error(tSettings('toast.eawbKeyFirst'));
       return;
     }
 
@@ -343,7 +356,7 @@ const StoreSettings = () => {
 
       if (payload?.error === 'NO_SHIPPING_ADDRESS') {
         setEawbData(prev => ({ ...prev, shippingAddresses: [] }));
-        toast.error('No pickup (shipping) address found in your Europarcel account. Create one in your Europarcel dashboard, then retrieve again.');
+        toast.error(tSettings('toast.noPickupAddress'));
         return;
       }
 
@@ -363,14 +376,14 @@ const StoreSettings = () => {
           );
           queryClient.invalidateQueries({ queryKey: ['profile'] });
         } else {
-          toast.success(`${list.length} pickup addresses found — please select one`);
+          toast.success(tSettings('toast.pickupAddressesFound', { count: list.length }));
         }
       } else {
         throw new Error(payload?.message || payload?.error || 'Failed to fetch pickup addresses');
       }
     } catch (error: any) {
       console.error('Error fetching shipping addresses:', error);
-      toast.error('Failed to fetch pickup addresses: ' + error.message);
+      toast.error(tSettings('toast.fetchPickupFailed', { message: error.message }));
     } finally {
       setEawbLoading(prev => ({ ...prev, shippingAddresses: false }));
     }
@@ -378,7 +391,7 @@ const StoreSettings = () => {
 
   const fetchEawbBillingAddresses = async () => {
     if (!providerConfigs.eawb?.api_key) {
-      toast.error('Please enter and save your eAWB API key first');
+      toast.error(tSettings('toast.eawbKeyFirst'));
       return;
     }
 
@@ -392,7 +405,7 @@ const StoreSettings = () => {
       const payload: any = data ?? (error as any)?.context ?? null;
 
       if (payload?.error === 'NO_BILLING_ADDRESS') {
-        toast.error('No billing address found in your Europarcel/eAWB account. Please create one in your Europarcel dashboard.');
+        toast.error(tSettings('toast.noBillingAddress'));
         return;
       }
 
@@ -404,16 +417,16 @@ const StoreSettings = () => {
 
         if (payload.selected_billing_address_id) {
           updateProviderConfig('eawb', 'billing_address_id', String(payload.selected_billing_address_id));
-          toast.success('Billing address linked automatically');
+          toast.success(tSettings('toast.billingLinked'));
         } else {
-          toast.success(`${list.length} billing addresses found — please select one`);
+          toast.success(tSettings('toast.billingAddressesFound', { count: list.length }));
         }
       } else {
         throw new Error(payload?.message || payload?.error || 'Failed to fetch billing addresses');
       }
     } catch (error: any) {
       console.error('Error fetching billing addresses:', error);
-      toast.error('Failed to fetch billing addresses: ' + error.message);
+      toast.error(tSettings('toast.fetchBillingFailed', { message: error.message }));
     } finally {
       setEawbLoading(prev => ({ ...prev, billingAddresses: false }));
     }
@@ -421,7 +434,7 @@ const StoreSettings = () => {
 
   const fetchEawbCarriers = async () => {
     if (!providerConfigs.eawb?.api_key) {
-      toast.error('Please enter your eAWB API key first');
+      toast.error(tSettings('toast.eawbKeyEnter'));
       return;
     }
 
@@ -436,13 +449,13 @@ const StoreSettings = () => {
 
       if (data.success) {
         setEawbData(prev => ({ ...prev, carriers: data.data.data || [] }));
-        toast.success('Carriers fetched successfully');
+        toast.success(tSettings('toast.carriersFetched'));
       } else {
         throw new Error(data.error);
       }
     } catch (error) {
       console.error('Error fetching carriers:', error);
-      toast.error('Failed to fetch carriers: ' + error.message);
+      toast.error(tSettings('toast.fetchCarriersFailed', { message: error.message }));
     } finally {
       setEawbLoading(prev => ({ ...prev, carriers: false }));
     }
@@ -450,12 +463,12 @@ const StoreSettings = () => {
 
   const fetchEawbServices = async (carrierId: string) => {
     if (!providerConfigs.eawb?.api_key) {
-      toast.error('Please enter your eAWB API key first');
+      toast.error(tSettings('toast.eawbKeyEnter'));
       return;
     }
     
     if (!carrierId) {
-      toast.error('Please select a carrier first');
+      toast.error(tSettings('toast.selectCarrierFirst'));
       return;
     }
 
@@ -470,13 +483,13 @@ const StoreSettings = () => {
 
       if (data.success) {
         setEawbData(prev => ({ ...prev, services: data.data.data || [] }));
-        toast.success('Services fetched successfully');
+        toast.success(tSettings('toast.servicesFetched'));
       } else {
         throw new Error(data.error);
       }
     } catch (error) {
       console.error('Error fetching services:', error);
-      toast.error('Failed to fetch services: ' + error.message);
+      toast.error(tSettings('toast.fetchServicesFailed', { message: error.message }));
     } finally {
       setEawbLoading(prev => ({ ...prev, services: false }));
     }
@@ -484,15 +497,15 @@ const StoreSettings = () => {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast.success('Copied to clipboard');
+    toast.success(tCommon('copiedToClipboard'));
   };
 
   if (isLoading) {
-    return <div>Loading settings...</div>;
+    return <div>{tSettings('loading')}</div>;
   }
 
   if (!profile) {
-    return <div>Profile not found</div>;
+    return <div>{tSettings('profileNotFound')}</div>;
   }
 
   const integrationCode = `<!-- Add this to your website -->
@@ -735,34 +748,58 @@ class StoreAPI {
     <div className="space-y-6">
       <Tabs defaultValue="store-settings" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="store-settings">Store Settings</TabsTrigger>
-          <TabsTrigger value="integrations">Integrations</TabsTrigger>
+          <TabsTrigger value="store-settings">{tSettings('tab.storeSettings')}</TabsTrigger>
+          <TabsTrigger value="integrations">{tSettings('tab.integrations')}</TabsTrigger>
         </TabsList>
         
         <TabsContent value="store-settings" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Store Settings</CardTitle>
-              <CardDescription>Configure your store information and API access</CardDescription>
+              <CardTitle>{tSettings('appearance.title')}</CardTitle>
+              <CardDescription>
+                {tSettings('appearance.desc')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ThemeSelector />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{tSettings('language.title')}</CardTitle>
+              <CardDescription>
+                {tSettings('language.desc')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <LanguageSelector />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{tSettings('store.title')}</CardTitle>
+              <CardDescription>{tSettings('store.desc')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="store-name">Store Name</Label>
+                <Label htmlFor="store-name">{tSettings('store.name')}</Label>
                 <div className="flex gap-2">
                   <Input
                     id="store-name"
                     value={storeName || profile.store_name}
                     onChange={(e) => setStoreName(e.target.value)}
-                    placeholder="Enter store name"
+                    placeholder={tSettings('store.namePlaceholder')}
                   />
                   <Button onClick={updateStoreName} disabled={!storeName || storeName === profile.store_name}>
-                    Save
+                    {tCommon('save')}
                   </Button>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="api-key">Store API Key</Label>
+                <Label htmlFor="api-key">{tSettings('store.apiKey')}</Label>
                 <div className="flex gap-2">
                   <Input
                     id="api-key"
@@ -784,7 +821,7 @@ class StoreAPI {
                   </Button>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  This key is used to authenticate API requests from your website. Keep it secure!
+                  {tSettings('store.apiKeyHelp')}
                 </p>
               </div>
             </CardContent>
@@ -792,8 +829,8 @@ class StoreAPI {
 
           <Card>
             <CardHeader>
-              <CardTitle>Website Integration</CardTitle>
-              <CardDescription>Copy this code to integrate with your website</CardDescription>
+              <CardTitle>{tSettings('integration.title')}</CardTitle>
+              <CardDescription>{tSettings('integration.desc')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-col sm:flex-row gap-2">
@@ -801,12 +838,12 @@ class StoreAPI {
                   <DialogTrigger asChild>
                     <Button className="w-full sm:w-auto text-sm">
                       <Code className="h-4 w-4 mr-2 flex-shrink-0" />
-                      <span className="truncate">View Integration Code</span>
+                      <span className="truncate">{tSettings('integration.viewCode')}</span>
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle>Website Integration Code</DialogTitle>
+                      <DialogTitle>{tSettings('integration.dialogTitle')}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
                       <div className="relative">
@@ -832,7 +869,7 @@ class StoreAPI {
                   onClick={() => copyToClipboard(integrationCode)}
                 >
                   <Copy className="h-4 w-4 mr-2 flex-shrink-0" />
-                  <span className="truncate">Copy Code</span>
+                  <span className="truncate">{tSettings('integration.copyCode')}</span>
                 </Button>
               </div>
             </CardContent>
@@ -842,8 +879,8 @@ class StoreAPI {
         <TabsContent value="integrations" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Service Integrations</CardTitle>
-              <CardDescription>Connect your store with invoicing, shipping, and payment providers</CardDescription>
+              <CardTitle>{tSettings('services.title')}</CardTitle>
+              <CardDescription>{tSettings('services.desc')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Desktop View - Collapsible Layout */}
@@ -862,8 +899,8 @@ class StoreAPI {
                         <div className="flex items-center gap-3">
                           <FileText className="h-5 w-5 text-primary" />
                           <div className="text-left">
-                            <div className="font-medium">Invoicing</div>
-                            <div className="text-sm text-muted-foreground">Oblio.eu Integration</div>
+                            <div className="font-medium">{tSettings('section.invoicing')}</div>
+                            <div className="text-sm text-muted-foreground">{tSettings('section.invoicingSub')}</div>
                           </div>
                         </div>
                         <ChevronDown className={`h-4 w-4 transition-transform ${openCollapsibles.invoicing ? 'rotate-180' : ''}`} />
@@ -871,25 +908,25 @@ class StoreAPI {
                     </CollapsibleTrigger>
                     <CollapsibleContent className="mt-2 space-y-4 p-4 border rounded-lg bg-muted/30">
                       <div className="space-y-2">
-                        <Label htmlFor="invoicing-provider">Invoicing Provider</Label>
+                        <Label htmlFor="invoicing-provider">{tSettings('label.invoicingProvider')}</Label>
                         <Select
                           value={integrations.invoicing}
                           onValueChange={(value) => setIntegrations({ ...integrations, invoicing: value })}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select invoicing provider" />
+                            <SelectValue placeholder={tSettings('select.invoicing')} />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="oblio.eu">Oblio.eu</SelectItem>
                           </SelectContent>
                         </Select>
                         <p className="text-sm text-muted-foreground">
-                          Handles automatic invoice generation for your orders
+                          {tSettings('help.invoicingAuto')}
                         </p>
                         
                         {integrations.invoicing === 'oblio.eu' && (
                           <div className="mt-4 space-y-4">
-                            <h4 className="font-medium">Oblio.eu Configuration</h4>
+                            <h4 className="font-medium">{tSettings('config.oblio')}</h4>
                             <div className="grid gap-4">
                               <div className="space-y-2">
                                 <Label htmlFor="oblio-email">Oblio Email Address</Label>
@@ -970,8 +1007,8 @@ class StoreAPI {
                         <div className="flex items-center gap-3">
                           <Truck className="h-5 w-5 text-primary" />
                           <div className="text-left">
-                            <div className="font-medium">Delivery</div>
-                            <div className="text-sm text-muted-foreground">eAWB.ro Integration</div>
+                            <div className="font-medium">{tSettings('section.delivery')}</div>
+                            <div className="text-sm text-muted-foreground">{tSettings('section.deliverySubEawb')}</div>
                           </div>
                         </div>
                         <ChevronDown className={`h-4 w-4 transition-transform ${openCollapsibles.delivery ? 'rotate-180' : ''}`} />
@@ -979,13 +1016,13 @@ class StoreAPI {
                     </CollapsibleTrigger>
                     <CollapsibleContent className="mt-2 space-y-4 p-4 border rounded-lg bg-muted/30">
                       <div className="space-y-2">
-                        <Label htmlFor="shipping-provider">Shipping Provider</Label>
+                        <Label htmlFor="shipping-provider">{tSettings('label.shippingProvider')}</Label>
                         <Select
                           value={integrations.shipping}
                           onValueChange={(value) => setIntegrations({ ...integrations, shipping: value })}
                         >
                            <SelectTrigger>
-                             <SelectValue placeholder="Select shipping provider" />
+                             <SelectValue placeholder={tSettings('select.shipping')} />
                            </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="eawb">eAWB.ro</SelectItem>
@@ -997,7 +1034,7 @@ class StoreAPI {
                         
                          {integrations.shipping === 'sameday' && (
                            <div className="mt-4 space-y-4">
-                             <h4 className="font-medium">Sameday Configuration</h4>
+                             <h4 className="font-medium">{tSettings('config.sameday')}</h4>
                              <div className="grid gap-4">
                                <div className="space-y-2">
                                  <Label htmlFor="sameday-api-key">API Key</Label>
@@ -1034,7 +1071,7 @@ class StoreAPI {
 
                          {integrations.shipping === 'woot' && (
                            <div className="mt-4 space-y-4">
-                             <h4 className="font-medium">Woot.ro Configuration</h4>
+                             <h4 className="font-medium">{tSettings('config.woot')}</h4>
                              <div className="grid gap-4">
                                <div className="space-y-2">
                                  <Label htmlFor="woot-api-key">API Key</Label>
@@ -1074,7 +1111,7 @@ class StoreAPI {
 
                           {integrations.shipping === 'eawb' && (
                             <div className="mt-4 space-y-4">
-                              <h4 className="font-medium">eAWB.ro Configuration</h4>
+                              <h4 className="font-medium">{tSettings('config.eawb')}</h4>
                               <div className="grid gap-4">
                                 <div className="space-y-2">
                                   <Label htmlFor="eawb-api-key">API Key</Label>
@@ -1223,6 +1260,13 @@ class StoreAPI {
                                       {eawbLoading.shippingAddresses ? 'Retrieving...' : 'Retrieve Pickup Addresses'}
                                     </Button>
                                   </div>
+                                  <DefaultPickupLockerSection
+                                    profile={profile}
+                                    saving={updateProfileMutation.isPending}
+                                    onSave={async (fields) => {
+                                      await updateProfileMutation.mutateAsync(fields);
+                                    }}
+                                  />
                                  <div className="grid grid-cols-2 gap-4">
                                    <div className="space-y-2">
                                      <Label htmlFor="eawb-default-carrier">Default Carrier ID</Label>
@@ -1349,8 +1393,8 @@ class StoreAPI {
                         <div className="flex items-center gap-3">
                           <CreditCard className="h-5 w-5 text-primary" />
                           <div className="text-left">
-                            <div className="font-medium">Payment</div>
-                            <div className="text-sm text-muted-foreground">Netpopia Integration</div>
+                            <div className="font-medium">{tSettings('section.payment')}</div>
+                            <div className="text-sm text-muted-foreground">{tSettings('section.paymentSub')}</div>
                           </div>
                         </div>
                         <ChevronDown className={`h-4 w-4 transition-transform ${openCollapsibles.payment ? 'rotate-180' : ''}`} />
@@ -1358,25 +1402,25 @@ class StoreAPI {
                     </CollapsibleTrigger>
                     <CollapsibleContent className="mt-2 space-y-4 p-4 border rounded-lg bg-muted/30">
                       <div className="space-y-2">
-                        <Label htmlFor="payment-provider">Payment Processor</Label>
+                        <Label htmlFor="payment-provider">{tSettings('label.paymentProcessor')}</Label>
                         <Select
                           value={integrations.payment}
                           onValueChange={(value) => setIntegrations({ ...integrations, payment: value })}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select payment processor" />
+                            <SelectValue placeholder={tSettings('select.payment')} />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="netpopia">Netpopia Payments</SelectItem>
                           </SelectContent>
                         </Select>
                         <p className="text-sm text-muted-foreground">
-                          Processes online payments from your customers
+                          {tSettings('help.paymentOnline')}
                         </p>
                         
                         {integrations.payment === 'netpopia' && (
                           <div className="mt-4 space-y-4">
-                            <h4 className="font-medium">Netopia Payments (API v2)</h4>
+                            <h4 className="font-medium">{tSettings('config.netopia')}</h4>
                             <p className="text-sm text-muted-foreground">
                               Required: API Key and POS Signature. Public Key is optional and used to verify payment notifications (IPN).
                             </p>
@@ -1468,15 +1512,15 @@ class StoreAPI {
                   {/* Payment Options */}
                   <Card className="mt-4">
                     <CardHeader>
-                      <CardTitle className="text-base">Payment & Delivery Fees</CardTitle>
-                      <CardDescription>Configure additional fees for cash payments and delivery options</CardDescription>
+                      <CardTitle className="text-base">{tSettings('fees.title')}</CardTitle>
+                      <CardDescription>{tSettings('fees.desc')}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <div className="space-y-0.5">
-                            <Label>Enable Cash Payments</Label>
-                            <p className="text-xs text-muted-foreground">Allow customers to pay with cash on delivery</p>
+                            <Label>{tSettings('fees.enableCash')}</Label>
+                            <p className="text-xs text-muted-foreground">{tSettings('fees.enableCashHelp')}</p>
                           </div>
                           <input
                             type="checkbox"
@@ -1487,7 +1531,7 @@ class StoreAPI {
                         </div>
                         {feeSettings.cash_payment_enabled && (
                           <div className="space-y-2">
-                            <Label htmlFor="cash-fee">Cash Payment Fee (RON)</Label>
+                            <Label htmlFor="cash-fee">{tSettings('fees.cashFee')}</Label>
                             <Input
                               id="cash-fee"
                               type="number"
@@ -1498,12 +1542,12 @@ class StoreAPI {
                               placeholder="0.00"
                             />
                             <p className="text-xs text-muted-foreground">
-                              Additional fee for cash on delivery (0 for free)
+                              {tSettings('fees.cashFeeHelp')}
                             </p>
                           </div>
                         )}
                         <div className="space-y-2">
-                          <Label htmlFor="home-delivery-fee">Home Delivery Fee (RON)</Label>
+                          <Label htmlFor="home-delivery-fee">{tSettings('fees.homeDelivery')}</Label>
                           <Input
                             id="home-delivery-fee"
                             type="number"
@@ -1514,11 +1558,11 @@ class StoreAPI {
                             placeholder="0.00"
                           />
                           <p className="text-xs text-muted-foreground">
-                            Fee for home delivery
+                            {tSettings('fees.homeDeliveryHelp')}
                           </p>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="locker-delivery-fee">Locker Delivery Fee (RON)</Label>
+                          <Label htmlFor="locker-delivery-fee">{tSettings('fees.lockerDelivery')}</Label>
                           <Input
                             id="locker-delivery-fee"
                             type="number"
@@ -1529,7 +1573,7 @@ class StoreAPI {
                             placeholder="0.00"
                           />
                           <p className="text-xs text-muted-foreground">
-                            Fee for locker delivery
+                            {tSettings('fees.lockerDeliveryHelp')}
                           </p>
                         </div>
                       </div>
@@ -1553,8 +1597,8 @@ class StoreAPI {
                       <div className="flex items-center gap-3">
                         <FileText className="h-5 w-5 text-primary" />
                         <div className="text-left">
-                          <div className="font-medium">Invoicing</div>
-                          <div className="text-sm text-muted-foreground">Oblio.eu Integration</div>
+                          <div className="font-medium">{tSettings('section.invoicing')}</div>
+                          <div className="text-sm text-muted-foreground">{tSettings('section.invoicingSub')}</div>
                         </div>
                       </div>
                       <ChevronDown className={`h-4 w-4 transition-transform ${openCollapsibles.invoicing ? 'rotate-180' : ''}`} />
@@ -1562,26 +1606,26 @@ class StoreAPI {
                   </CollapsibleTrigger>
                   <CollapsibleContent className="mt-2 space-y-4 p-4 border rounded-lg bg-muted/30">
                     <div className="space-y-2">
-                      <Label htmlFor="mobile-invoicing-provider">Invoicing Provider</Label>
+                      <Label htmlFor="mobile-invoicing-provider">{tSettings('label.invoicingProvider')}</Label>
                       <Select
                         value={integrations.invoicing}
                         onValueChange={(value) => setIntegrations({ ...integrations, invoicing: value })}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select invoicing provider" />
+                          <SelectValue placeholder={tSettings('select.invoicing')} />
                         </SelectTrigger>
                         <SelectContent className="z-50 bg-background border border-border/50">
                           <SelectItem value="oblio.eu">Oblio.eu</SelectItem>
                         </SelectContent>
                       </Select>
                       <p className="text-sm text-muted-foreground">
-                        Handles automatic invoice generation for your orders
+                        {tSettings('help.invoicingAuto')}
                       </p>
                     </div>
                     
                     {integrations.invoicing === 'oblio.eu' && (
                       <div className="space-y-4">
-                        <h4 className="font-medium">Oblio.eu Configuration</h4>
+                        <h4 className="font-medium">{tSettings('config.oblio')}</h4>
                         <div className="space-y-4">
                           <div className="space-y-2">
                             <Label htmlFor="mobile-oblio-email">Oblio Email Address</Label>
@@ -1661,8 +1705,8 @@ class StoreAPI {
                       <div className="flex items-center gap-3">
                         <CreditCard className="h-5 w-5 text-primary" />
                         <div className="text-left">
-                          <div className="font-medium">Payment</div>
-                          <div className="text-sm text-muted-foreground">Netpopia Integration</div>
+                          <div className="font-medium">{tSettings('section.payment')}</div>
+                          <div className="text-sm text-muted-foreground">{tSettings('section.paymentSub')}</div>
                         </div>
                       </div>
                       <ChevronDown className={`h-4 w-4 transition-transform ${openCollapsibles.payment ? 'rotate-180' : ''}`} />
@@ -1670,26 +1714,26 @@ class StoreAPI {
                   </CollapsibleTrigger>
                   <CollapsibleContent className="mt-2 space-y-4 p-4 border rounded-lg bg-muted/30">
                     <div className="space-y-2">
-                      <Label htmlFor="mobile-payment-provider">Payment Processor</Label>
+                      <Label htmlFor="mobile-payment-provider">{tSettings('label.paymentProcessor')}</Label>
                       <Select
                         value={integrations.payment}
                         onValueChange={(value) => setIntegrations({ ...integrations, payment: value })}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select payment processor" />
+                          <SelectValue placeholder={tSettings('select.payment')} />
                         </SelectTrigger>
                         <SelectContent className="z-50 bg-background border border-border/50">
                           <SelectItem value="netpopia">Netpopia Payments</SelectItem>
                         </SelectContent>
                       </Select>
                       <p className="text-sm text-muted-foreground">
-                        Processes online payments from your customers
+                        {tSettings('help.paymentOnline')}
                       </p>
                     </div>
                     
                     {integrations.payment === 'netpopia' && (
                       <div className="space-y-4">
-                        <h4 className="font-medium">Netopia Payments (API v2)</h4>
+                        <h4 className="font-medium">{tSettings('config.netopia')}</h4>
                         <p className="text-sm text-muted-foreground">
                           Required: API Key and POS Signature. Public Key is optional for IPN verification.
                         </p>
@@ -1787,8 +1831,8 @@ class StoreAPI {
                       <div className="flex items-center gap-3">
                         <Truck className="h-5 w-5 text-primary" />
                         <div className="text-left">
-                          <div className="font-medium">Delivery</div>
-                          <div className="text-sm text-muted-foreground">Sameday Integration</div>
+                          <div className="font-medium">{tSettings('section.delivery')}</div>
+                          <div className="text-sm text-muted-foreground">{tSettings('section.deliverySubSameday')}</div>
                         </div>
                       </div>
                       <ChevronDown className={`h-4 w-4 transition-transform ${openCollapsibles.delivery ? 'rotate-180' : ''}`} />
@@ -1796,13 +1840,13 @@ class StoreAPI {
                   </CollapsibleTrigger>
                   <CollapsibleContent className="mt-2 space-y-4 p-4 border rounded-lg bg-muted/30">
                     <div className="space-y-2">
-                      <Label htmlFor="mobile-shipping-provider">Shipping Provider</Label>
+                      <Label htmlFor="mobile-shipping-provider">{tSettings('label.shippingProvider')}</Label>
                       <Select
                         value={integrations.shipping}
                         onValueChange={(value) => setIntegrations({ ...integrations, shipping: value })}
                       >
                          <SelectTrigger>
-                           <SelectValue placeholder="Select shipping provider" />
+                           <SelectValue placeholder={tSettings('select.shipping')} />
                          </SelectTrigger>
                          <SelectContent className="z-50 bg-background border border-border/50">
                            <SelectItem value="eawb">eAWB.ro</SelectItem>
@@ -1815,7 +1859,7 @@ class StoreAPI {
                     
                      {integrations.shipping === 'sameday' && (
                        <div className="space-y-4">
-                         <h4 className="font-medium">Sameday Configuration</h4>
+                         <h4 className="font-medium">{tSettings('config.sameday')}</h4>
                          <div className="space-y-4">
                            <div className="space-y-2">
                              <Label htmlFor="mobile-sameday-api-key">API Key</Label>
@@ -1852,7 +1896,7 @@ class StoreAPI {
 
                      {integrations.shipping === 'woot' && (
                        <div className="space-y-4">
-                         <h4 className="font-medium">Woot.ro Configuration</h4>
+                         <h4 className="font-medium">{tSettings('config.woot')}</h4>
                          <div className="space-y-4">
                            <div className="space-y-2">
                              <Label htmlFor="mobile-woot-api-key">API Key</Label>
@@ -1892,7 +1936,7 @@ class StoreAPI {
                       
                       {integrations.shipping === 'eawb' && (
                         <div className="space-y-4">
-                          <h4 className="font-medium">eAWB.ro Configuration</h4>
+                          <h4 className="font-medium">{tSettings('config.eawb')}</h4>
                           <div className="space-y-4">
                             <div className="space-y-2">
                               <Label htmlFor="mobile-eawb-api-key">API Key</Label>
@@ -2041,6 +2085,13 @@ class StoreAPI {
                                 {eawbLoading.shippingAddresses ? 'Retrieving...' : 'Retrieve Pickup Addresses'}
                               </Button>
                             </div>
+                            <DefaultPickupLockerSection
+                              profile={profile}
+                              saving={updateProfileMutation.isPending}
+                              onSave={async (fields) => {
+                                await updateProfileMutation.mutateAsync(fields);
+                              }}
+                            />
                             <div className="grid grid-cols-1 gap-4">
                               <div className="space-y-2">
                                 <Label htmlFor="mobile-eawb-default-carrier">Default Carrier ID</Label>
@@ -2148,7 +2199,7 @@ class StoreAPI {
 
               <Button onClick={updateIntegrations} className="w-full">
                 <Settings className="h-4 w-4 mr-2" />
-                Save Integration Settings
+                {tSettings('saveIntegrationSettings')}
               </Button>
             </CardContent>
           </Card>

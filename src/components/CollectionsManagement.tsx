@@ -1,4 +1,5 @@
 import { useMemo, useState, type ComponentType } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowUpDown,
@@ -35,6 +36,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatRon } from '@/lib/paymentAnalytics';
 import { cn } from '@/lib/utils';
+import { formatShortDate } from '@/i18n/format';
 
 type SortKey = 'name' | 'product_count' | 'inventory_value' | 'revenue' | 'updated_at';
 
@@ -68,6 +70,8 @@ function KpiCard({
 }
 
 const CollectionsManagement = () => {
+  const { t: tCollections } = useTranslation('collections');
+  const { t: tCommon } = useTranslation('common');
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('updated_at');
@@ -268,7 +272,7 @@ const CollectionsManagement = () => {
         const sales = revenueByProduct.get(id) || { revenue: 0, units: 0 };
         return {
           id,
-          title: p?.title || 'Unknown',
+          title: p?.title || tCommon('unknown'),
           units: sales.units,
           revenue: sales.revenue,
         };
@@ -288,7 +292,7 @@ const CollectionsManagement = () => {
       return result;
     },
     onSuccess: (result) => {
-      toast.success('Collection created');
+      toast.success(tCollections('toast.created'));
       setIsCreateOpen(false);
       setCreateForm({ name: '', description: '', image_url: '' });
       queryClient.invalidateQueries({ queryKey: ['collections'] });
@@ -307,7 +311,7 @@ const CollectionsManagement = () => {
       }
     },
     onError: (error: any) => {
-      toast.error(`Failed to create collection: ${error.message}`);
+      toast.error(tCollections('toast.createFailed', { message: error.message }));
     },
   });
 
@@ -318,13 +322,13 @@ const CollectionsManagement = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success('Collection deleted');
+      toast.success(tCollections('toast.deleted'));
       setDrawerCollection(null);
       queryClient.invalidateQueries({ queryKey: ['collections'] });
       queryClient.invalidateQueries({ queryKey: ['product-collections-map'] });
     },
     onError: (error: any) => {
-      toast.error(`Failed to delete collection: ${error.message}`);
+      toast.error(tCollections('toast.deleteFailed', { message: error.message }));
     },
   });
 
@@ -354,22 +358,22 @@ const CollectionsManagement = () => {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
             <Folder className="h-6 w-6" />
-            Collections
+            {tCollections('title')}
           </h2>
           <p className="text-muted-foreground text-sm mt-1">
-            Group products into curated collections for your storefront.
+            {tCollections('subtitle')}
           </p>
         </div>
         <Button onClick={() => setIsCreateOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          Create Collection
+          {tCollections('createCollection')}
         </Button>
       </div>
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            Overview
+            {tCollections('section.overview')}
           </h3>
           <Button
             type="button"
@@ -378,46 +382,46 @@ const CollectionsManagement = () => {
             onClick={() => toggleAnalytics(!showAnalytics)}
           >
             <BarChart3 className="h-4 w-4 mr-2" />
-            {showAnalytics ? 'Hide Analytics' : 'Show Analytics'}
+            {showAnalytics ? tCommon('hideAnalytics') : tCommon('showAnalytics')}
             <ChevronDown
               className={cn('h-4 w-4 ml-1 transition-transform', showAnalytics && 'rotate-180')}
             />
           </Button>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <KpiCard title="Total Collections" value={String(kpis.total)} subtitle="All collections" icon={Folder} />
+          <KpiCard title={tCollections('kpi.total')} value={String(kpis.total)} subtitle={tCollections('kpi.totalSub')} icon={Folder} />
           <KpiCard
-            title="Products Assigned"
+            title={tCollections('kpi.productsAssigned')}
             value={String(kpis.productsAssigned)}
-            subtitle="Unique products"
+            subtitle={tCollections('kpi.productsAssignedSub')}
             icon={Package}
           />
           <KpiCard
-            title="Largest Collection"
+            title={tCollections('kpi.largest')}
             value={String(kpis.largestCount)}
             subtitle={kpis.largestName}
             icon={FolderOpen}
           />
-          <KpiCard title="Empty Collections" value={String(kpis.empty)} subtitle="No products yet" icon={Folder} />
+          <KpiCard title={tCollections('kpi.empty')} value={String(kpis.empty)} subtitle={tCollections('kpi.emptySub')} icon={Folder} />
           <KpiCard
-            title="Avg Products"
+            title={tCollections('kpi.avgProducts')}
             value={String(kpis.avg)}
-            subtitle="Per collection"
+            subtitle={tCollections('kpi.avgProductsSub')}
             icon={TrendingUp}
           />
         </div>
         {showAnalytics && (
           <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
             <KpiCard
-              title="Collection Inventory Value"
+              title={tCollections('kpi.inventoryValue')}
               value={formatRon(kpis.totalInventory)}
-              subtitle="Price × stock of assigned products"
+              subtitle={tCollections('kpi.inventoryValueSub')}
               icon={Wallet}
             />
             <KpiCard
-              title="Collection Revenue"
+              title={tCollections('kpi.revenue')}
               value={formatRon(kpis.totalRevenue)}
-              subtitle="From order items of assigned products"
+              subtitle={tCollections('kpi.revenueSub')}
               icon={TrendingUp}
             />
           </div>
@@ -428,8 +432,8 @@ const CollectionsManagement = () => {
         <CollapsibleContent className="space-y-4">
           <Card className="border-border/60">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Top collections by revenue</CardTitle>
-              <CardDescription>Based on order history of assigned products</CardDescription>
+              <CardTitle className="text-base">{tCollections('analytics.topByRevenue')}</CardTitle>
+              <CardDescription>{tCollections('analytics.topByRevenueDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {[...collections]
@@ -447,7 +451,7 @@ const CollectionsManagement = () => {
                   </button>
                 ))}
               {!collections.some((c) => c.revenue > 0) && (
-                <p className="text-sm text-muted-foreground">No collection revenue yet.</p>
+                <p className="text-sm text-muted-foreground">{tCollections('analytics.noRevenueYet')}</p>
               )}
             </CardContent>
           </Card>
@@ -459,7 +463,7 @@ const CollectionsManagement = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             className="pl-10"
-            placeholder="Search collections…"
+            placeholder={tCollections('searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -468,7 +472,7 @@ const CollectionsManagement = () => {
           />
         </div>
         <p className="text-sm text-muted-foreground">
-          {filtered.length} collection{filtered.length === 1 ? '' : 's'}
+          {tCollections('count', { count: filtered.length })}
         </p>
       </div>
 
@@ -486,18 +490,18 @@ const CollectionsManagement = () => {
             </div>
             <div className="space-y-1 max-w-md">
               <h3 className="text-lg font-semibold">
-                {searchQuery ? 'No collections match your search' : 'Create your first collection'}
+                {searchQuery ? tCollections('empty.search') : tCollections('empty.createFirst')}
               </h3>
               <p className="text-sm text-muted-foreground">
                 {searchQuery
-                  ? 'Try a different name or clear the search.'
-                  : 'Collections help shoppers browse related products — like “Summer Essentials” or “New Arrivals”.'}
+                  ? tCollections('empty.searchHint')
+                  : tCollections('empty.createFirstHint')}
               </p>
             </div>
             {!searchQuery && (
               <Button onClick={() => setIsCreateOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
-                Create Collection
+                {tCollections('createCollection')}
               </Button>
             )}
           </CardContent>
@@ -510,21 +514,21 @@ const CollectionsManagement = () => {
                 <TableRow>
                   <TableHead className="w-[56px]" />
                   <TableHead>
-                    <SortHead label="Collection" k="name" />
+                    <SortHead label={tCollections('table.collection')} k="name" />
                   </TableHead>
                   <TableHead className="text-right">
-                    <SortHead label="Products" k="product_count" />
+                    <SortHead label={tCollections('table.products')} k="product_count" />
                   </TableHead>
                   <TableHead className="text-right hidden md:table-cell">
-                    <SortHead label="Inventory" k="inventory_value" />
+                    <SortHead label={tCollections('table.inventory')} k="inventory_value" />
                   </TableHead>
                   <TableHead className="text-right hidden lg:table-cell">
-                    <SortHead label="Revenue" k="revenue" />
+                    <SortHead label={tCollections('table.revenue')} k="revenue" />
                   </TableHead>
                   <TableHead className="hidden sm:table-cell">
-                    <SortHead label="Updated" k="updated_at" />
+                    <SortHead label={tCollections('table.updated')} k="updated_at" />
                   </TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right">{tCommon('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -561,7 +565,7 @@ const CollectionsManagement = () => {
                       {formatRon(c.revenue)}
                     </TableCell>
                     <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
-                      {new Date(c.updated_at).toLocaleDateString()}
+                      {formatShortDate(c.updated_at)}
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1">
@@ -571,7 +575,7 @@ const CollectionsManagement = () => {
                           variant="ghost"
                           onClick={() => setDrawerCollection(c)}
                         >
-                          Edit
+                          {tCommon('edit')}
                         </Button>
                         <Button
                           type="button"
@@ -579,7 +583,7 @@ const CollectionsManagement = () => {
                           variant="ghost"
                           className="text-destructive"
                           onClick={() => {
-                            if (confirm(`Delete "${c.name}"?`)) deleteMutation.mutate(c.id);
+                            if (confirm(tCollections('confirm.delete', { name: c.name }))) deleteMutation.mutate(c.id);
                           }}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -594,7 +598,7 @@ const CollectionsManagement = () => {
 
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm text-muted-foreground">
-              Page {pageSafe} of {totalPages}
+              {tCollections('pageOf', { page: pageSafe, total: totalPages })}
             </p>
             <div className="flex gap-2">
               <Button
@@ -604,7 +608,7 @@ const CollectionsManagement = () => {
                 disabled={pageSafe <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
               >
-                Previous
+                {tCommon('previous')}
               </Button>
               <Button
                 type="button"
@@ -613,7 +617,7 @@ const CollectionsManagement = () => {
                 disabled={pageSafe >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               >
-                Next
+                {tCommon('next')}
               </Button>
             </div>
           </div>
@@ -623,20 +627,20 @@ const CollectionsManagement = () => {
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create collection</DialogTitle>
-            <DialogDescription>You can add products and an image after creating.</DialogDescription>
+            <DialogTitle>{tCollections('createDialog.title')}</DialogTitle>
+            <DialogDescription>{tCollections('createDialog.description')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Name</Label>
+              <Label>{tCommon('name')}</Label>
               <Input
                 value={createForm.name}
                 onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                placeholder="e.g. Summer Essentials"
+                placeholder={tCollections('createDialog.namePlaceholder')}
               />
             </div>
             <div className="space-y-2">
-              <Label>Description</Label>
+              <Label>{tCommon('description')}</Label>
               <Textarea
                 value={createForm.description}
                 onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
@@ -645,14 +649,14 @@ const CollectionsManagement = () => {
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Button
               type="button"
               disabled={!createForm.name.trim() || createMutation.isPending}
               onClick={() => createMutation.mutate(createForm)}
             >
-              {createMutation.isPending ? 'Creating…' : 'Create'}
+              {createMutation.isPending ? tCollections('creating') : tCollections('create')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,0 +1,218 @@
+{
+  "tab": {
+    "storeSettings": "Setări magazin",
+    "integrations": "Integrări"
+  },
+  "loading": "Se încarcă setările...",
+  "profileNotFound": "Profilul nu a fost găsit",
+  "appearance": {
+    "title": "Aspect",
+    "desc": "Alege Deschis, Întunecat sau Sistem. Preferința este salvată pe acest dispozitiv."
+  },
+  "language": {
+    "title": "Limbă",
+    "desc": "Alege limba pentru panoul comerciantului și pentru checkout. Preferința este salvată în profil.",
+    "ro": "Română",
+    "en": "Engleză",
+    "saved": "Limba a fost actualizată",
+    "saveFailed": "Salvarea preferinței de limbă a eșuat"
+  },
+  "store": {
+    "title": "Setări magazin",
+    "desc": "Configurează informațiile magazinului și accesul API",
+    "name": "Nume magazin",
+    "namePlaceholder": "Introdu numele magazinului",
+    "apiKey": "Cheie API magazin",
+    "apiKeyHelp": "Această cheie autentifică cererile API de pe site. Păstreaz-o în siguranță!"
+  },
+  "integration": {
+    "title": "Integrare website",
+    "desc": "Copiază acest cod pentru a integra pe website",
+    "viewCode": "Vezi codul de integrare",
+    "dialogTitle": "Cod integrare website",
+    "copyCode": "Copiază codul"
+  },
+  "services": {
+    "title": "Integrări servicii",
+    "desc": "Conectează magazinul cu facturare, livrare și plăți"
+  },
+  "section": {
+    "invoicing": "Facturare",
+    "invoicingSub": "Integrare Oblio.eu",
+    "delivery": "Livrare",
+    "deliverySubEawb": "Integrare eAWB.ro",
+    "deliverySubSameday": "Integrare Sameday",
+    "payment": "Plată",
+    "paymentSub": "Integrare Netopia"
+  },
+  "label": {
+    "invoicingProvider": "Furnizor facturare",
+    "shippingProvider": "Furnizor livrare",
+    "paymentProcessor": "Procesator plăți",
+    "oblioEmail": "Email Oblio",
+    "apiSecretKey": "Cheie secretă API",
+    "invoiceSeries": "Serie factură",
+    "firstInvoiceNumber": "Primul număr de factură",
+    "companyName": "Nume companie",
+    "apiKey": "Cheie API",
+    "apiKeyRequired": "Cheie API *",
+    "email": "Adresă email",
+    "phone": "Număr telefon",
+    "pickupAddress": "Adresă ridicare",
+    "billingAddress": "Adresă facturare",
+    "defaultCarrierId": "ID curier implicit",
+    "defaultServiceId": "ID serviciu implicit",
+    "posSignature": "Semnătură POS *",
+    "publicKey": "Cheie publică (opțional)",
+    "environment": "Mediu"
+  },
+  "env": {
+    "sandbox": "Sandbox (Testare)",
+    "live": "Live (Producție)"
+  },
+  "config": {
+    "oblio": "Configurare Oblio.eu",
+    "sameday": "Configurare Sameday",
+    "woot": "Configurare Woot.ro",
+    "carrierService": "Configurare curier & serviciu",
+    "netopia": "Netopia Payments (API v2)",
+    "eawb": "eAWB / Europarcel"
+  },
+  "select": {
+    "invoicing": "Selectează furnizorul de facturare",
+    "shipping": "Selectează furnizorul de livrare",
+    "payment": "Selectează procesatorul de plăți",
+    "billingAddress": "Selectează o adresă de facturare",
+    "pickupAddress": "Selectează o adresă de ridicare",
+    "defaultCarrier": "Selectează curierul implicit",
+    "defaultService": "Selectează serviciul implicit"
+  },
+  "fees": {
+    "title": "Taxe plată & livrare",
+    "desc": "Configurează taxe suplimentare pentru numerar și opțiuni de livrare",
+    "enableCash": "Activează plățile cash",
+    "enableCashHelp": "Permite clienților să plătească ramburs",
+    "cashFee": "Taxă plată cash (RON)",
+    "cashFeeHelp": "Taxă suplimentară pentru ramburs (0 pentru gratuit)",
+    "homeDelivery": "Taxă livrare la domiciliu (RON)",
+    "homeDeliveryHelp": "Taxă pentru livrare la domiciliu",
+    "lockerDelivery": "Taxă livrare locker (RON)",
+    "lockerDeliveryHelp": "Taxă pentru livrare în locker"
+  },
+  "help": {
+    "invoicingAuto": "Generează automat facturi pentru comenzile tale",
+    "paymentOnline": "Procesează plățile online de la clienți"
+  },
+  "saveIntegrationSettings": "Salvează setările de integrare",
+  "setup": {
+    "title": "Asistent configurare magazin",
+    "subtitle": "Configurează magazinul în câțiva pași simpli",
+    "stepOf": "Pasul {{current}} din {{total}}",
+    "welcome": {
+      "heading": "Bun venit! 🎉",
+      "description": "Suntem încântați să te ajutăm să îți configurezi magazinul online. Acest asistent te va ghida prin plăți, livrare, facturare și personalizarea vitrinei.",
+      "videoTitle": "Video de start rapid",
+      "videoDesc": "Urmărește acest tutorial de 5 minute pentru a înțelege procesul de configurare",
+      "watchTutorial": "Vezi tutorialul de configurare"
+    },
+    "store": {
+      "title": "Informații magazin",
+      "subtitle": "Să începem cu numele magazinului",
+      "nameLabel": "Nume magazin",
+      "namePlaceholder": "Magazinul meu minunat",
+      "nameHelp": "Va apărea pe vitrină și în comunicările cu clienții",
+      "footerNote": "După ce adaugi numele magazinului, poți configura restul setărilor oricând din panou",
+      "saveAndComplete": "Salvează și finalizează configurarea"
+    },
+    "payment": {
+      "title": "Configurare plăți",
+      "subtitle": "Configurează Netopia pentru plăți cu cardul",
+      "configTitle": "Configurare Netopia",
+      "intro": "Pentru a accepta plăți cu cardul, creează un cont Netopia și adaugă aceste credențiale în Setări magazin → Procesator plăți:",
+      "step1Prefix": "Creează și activează un cont la",
+      "step2": "Cheie API (obligatoriu) — Admin → Profil → Securitate",
+      "step3": "Semnătură POS (obligatoriu) — Admin → Punct de vânzare → Setări tehnice",
+      "step4": "Cheie publică (opțional) — aceeași pagină Setări tehnice; folosită pentru verificarea IPN",
+      "step5": "Alege Sandbox pentru testare sau Live pentru producție (cheile sunt specifice mediului)",
+      "openWebsite": "Deschide site-ul Netopia"
+    },
+    "shipping": {
+      "title": "Configurare livrare",
+      "subtitle": "Configurează eAWB.ro pentru livrări",
+      "configTitle": "Configurare eAWB.ro",
+      "intro": "eAWB.ro oferă livrări integrate cu mai mulți curieri. Pașii de configurare:",
+      "step1Prefix": "Creează un cont la",
+      "step2": "Obține cheia API din setările contului",
+      "step3": "Configurează adresa de facturare și curierul implicit",
+      "step4": "Adaugă credențialele în Setări magazin → Furnizor livrare",
+      "openWebsite": "Deschide site-ul eAWB"
+    },
+    "invoicing": {
+      "title": "Configurare facturare",
+      "subtitle": "Configurează Oblio.eu pentru facturare automată",
+      "configTitle": "Configurare Oblio.eu",
+      "intro": "Oblio.eu automatizează generarea facturilor pentru comenzile tale. Pașii de configurare:",
+      "step1Prefix": "Creează un cont Oblio la",
+      "step2": "Obține cheia API din setările contului",
+      "step3": "Configurează seria facturii și primul număr",
+      "step4": "Adaugă credențialele în Setări magazin → Furnizor facturare",
+      "openWebsite": "Deschide site-ul Oblio"
+    },
+    "template": {
+      "title": "Design vitrină",
+      "subtitle": "Personalizează aspectul magazinului",
+      "configTitle": "Personalizare șablon",
+      "intro": "Fă magazinul unic personalizând:",
+      "item1": "Culori, fonturi și branding",
+      "item2": "Secțiunea hero cu imagini personalizate",
+      "item3": "Layout și stiluri de afișare produse",
+      "item4": "Logo și identitatea magazinului",
+      "openDesigner": "Deschide designerul de șabloane"
+    },
+    "complete": {
+      "heading": "Totul e gata! 🎊",
+      "description": "Magazinul tău e pregătit! Poți actualiza setările oricând din pagina Setări magazin.",
+      "nextStepsTitle": "Pașii următori",
+      "step1": "Adaugă primele produse",
+      "step2": "Creează colecții pentru a organiza produsele",
+      "step3": "Testează procesul de checkout",
+      "step4": "Distribuie linkul magazinului clienților"
+    },
+    "buttons": {
+      "skipSetup": "Sari peste configurare",
+      "getStarted": "Începe",
+      "skipForNow": "Sari peste deocamdată",
+      "configureInSettings": "Configurează acum în Setări",
+      "completeSetup": "Finalizează configurarea"
+    },
+    "toast": {
+      "completeFailed": "Finalizarea configurării a eșuat",
+      "completeSuccess": "Configurare finalizată! Bun venit în magazinul tău.",
+      "storeNameRequired": "Te rugăm să introduci un nume de magazin",
+      "storeNameSaveFailed": "Salvarea numelui magazinului a eșuat",
+      "storeNameSaved": "Numele magazinului a fost salvat! Configurare finalizată."
+    }
+  },
+  "toast": {
+    "updated": "Setările au fost actualizate",
+    "updateFailed": "Actualizarea setărilor a eșuat",
+    "missingApiKey": "Lipsește cheia API. Adaug-o din Netopia Admin → Profil → Securitate.",
+    "missingPosSignature": "Lipsește semnătura POS. Adaug-o din Netopia Admin → Punct de vânzare → Setări tehnice.",
+    "connectionFailed": "Testul de conexiune a eșuat.",
+    "netopiaOk": "Conexiunea Netopia a reușit.",
+    "eawbKeyFirst": "Introdu și salvează mai întâi cheia API eAWB",
+    "eawbKeyEnter": "Introdu mai întâi cheia API eAWB",
+    "noPickupAddress": "Nu s-a găsit adresă de ridicare în contul Europarcel. Creează una în dashboard, apoi reîncearcă.",
+    "pickupAddressesFound": "{{count}} adrese de ridicare găsite — te rugăm să selectezi una",
+    "fetchPickupFailed": "Preluarea adreselor de ridicare a eșuat: {{message}}",
+    "noBillingAddress": "Nu s-a găsit adresă de facturare în contul Europarcel/eAWB. Creează una în dashboard.",
+    "billingLinked": "Adresa de facturare a fost legată automat",
+    "billingAddressesFound": "{{count}} adrese de facturare găsite — te rugăm să selectezi una",
+    "fetchBillingFailed": "Preluarea adreselor de facturare a eșuat: {{message}}",
+    "selectCarrierFirst": "Selectează mai întâi un curier",
+    "carriersFetched": "Curierii au fost preluați",
+    "fetchCarriersFailed": "Preluarea curierilor a eșuat: {{message}}",
+    "servicesFetched": "Serviciile au fost preluate",
+    "fetchServicesFailed": "Preluarea serviciilor a eșuat: {{message}}"
+  }
+}

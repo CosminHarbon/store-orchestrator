@@ -1,10 +1,12 @@
-import { Eye, Package, User, Mail, Phone, MapPin, Calendar, CreditCard, Truck, Receipt, Send, ExternalLink, Edit, X } from 'lucide-react';
+import { Eye, Package, User, Mail, Phone, MapPin, Truck, Receipt, ExternalLink, Edit, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
 import { openInvoice } from '@/lib/invoiceUtils';
+import { formatDateTime } from '@/i18n/format';
 
 interface Order {
   id: string;
@@ -36,53 +38,53 @@ interface ResponsiveOrderTableProps {
 }
 
 export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoice, onEditOrder, onRefreshPayment, refreshingPayments, onManualComplete, onCancelAWB, creatingAWB, onCreateAWB }: ResponsiveOrderTableProps) {
-  
+  const { t } = useTranslation('orders');
+  const { t: tCommon } = useTranslation('common');
+
   const handleManualComplete = (orderId: string) => {
     onManualComplete(orderId);
   };
+
   const getStatusBadge = (status: string, type: 'payment' | 'shipping', isMobile: boolean = false) => {
     const baseClasses = "text-xs";
-    
+    const key = status.toLowerCase();
+    const statusKey = `status.${key}` as const;
+
     if (type === 'payment') {
-      switch (status.toLowerCase()) {
+      switch (key) {
         case 'pending':
-          return <Badge variant="secondary" className={`${baseClasses} px-2 py-0.5`}>{isMobile ? 'Pending' : 'Pending Payment'}</Badge>;
+          return (
+            <Badge variant="secondary" className={`${baseClasses} px-2 py-0.5`}>
+              {isMobile ? t(statusKey) : t('pendingPayment')}
+            </Badge>
+          );
         case 'cash':
-          return <Badge variant="outline" className={`${baseClasses} px-2 py-0.5`}>Cash</Badge>;
+          return <Badge variant="outline" className={`${baseClasses} px-2 py-0.5`}>{t(statusKey)}</Badge>;
         case 'paid':
-          return <Badge variant="default" className={baseClasses}>Paid</Badge>;
+          return <Badge variant="default" className={baseClasses}>{t(statusKey)}</Badge>;
         case 'failed':
-          return <Badge variant="destructive" className={baseClasses}>Failed</Badge>;
+          return <Badge variant="destructive" className={baseClasses}>{t(statusKey)}</Badge>;
         case 'invoiced':
-          return <Badge variant="outline" className={baseClasses}>Invoiced</Badge>;
-        default:
-          return <Badge variant="outline" className={baseClasses}>{status}</Badge>;
-      }
-    } else {
-      switch (status.toLowerCase()) {
-        case 'pending':
-          return <Badge variant="secondary" className={baseClasses}>Pending</Badge>;
-        case 'processing':
-          return <Badge variant="default" className={baseClasses}>Processing</Badge>;
-        case 'shipped':
-          return <Badge variant="default" className={baseClasses}>Shipped</Badge>;
-        case 'delivered':
-          return <Badge variant="default" className={baseClasses}>Delivered</Badge>;
+          return <Badge variant="outline" className={baseClasses}>{t(statusKey)}</Badge>;
         default:
           return <Badge variant="outline" className={baseClasses}>{status}</Badge>;
       }
     }
+
+    switch (key) {
+      case 'pending':
+      case 'processing':
+      case 'shipped':
+      case 'delivered':
+      case 'cancelled':
+        return <Badge variant={key === 'pending' ? 'secondary' : 'default'} className={baseClasses}>{t(statusKey)}</Badge>;
+      default:
+        return <Badge variant="outline" className={baseClasses}>{status}</Badge>;
+    }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  const formatOrderDate = (dateString: string) =>
+    formatDateTime(dateString, { month: 'short' });
 
   return (
     <>
@@ -91,14 +93,14 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Order ID</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Payment</TableHead>
-              <TableHead>Shipping</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead>{t('table.orderId')}</TableHead>
+              <TableHead>{t('table.customer')}</TableHead>
+              <TableHead>{t('table.contact')}</TableHead>
+              <TableHead>{t('table.total')}</TableHead>
+              <TableHead>{t('table.payment')}</TableHead>
+              <TableHead>{t('table.shipping')}</TableHead>
+              <TableHead>{t('table.date')}</TableHead>
+              <TableHead>{tCommon('actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -124,7 +126,7 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                   </div>
                 </TableCell>
                 <TableCell className="font-medium">
-                  {order.total.toFixed(2)} RON
+                  {order.total.toFixed(2)} {tCommon('ron')}
                 </TableCell>
                 <TableCell>
                   {getStatusBadge(order.payment_status, 'payment')}
@@ -133,7 +135,7 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                   {getStatusBadge(order.shipping_status, 'shipping')}
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
-                  {formatDate(order.created_at)}
+                  {formatOrderDate(order.created_at)}
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-1">
@@ -141,6 +143,7 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                       size="sm"
                       variant="ghost"
                       onClick={() => onViewOrder(order)}
+                      title={tCommon('view')}
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
@@ -149,7 +152,7 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                         size="sm"
                         variant="ghost"
                         onClick={() => onEditOrder(order)}
-                        title="Edit Order"
+                        title={t('editOrder')}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -158,7 +161,7 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                        size="sm"
                        variant="ghost"
                        onClick={() => generateAndSendInvoice(order.id)}
-                       title="Generate & Send Invoice"
+                       title={t('generateSendInvoice')}
                        disabled={!!order.invoice_link}
                      >
                        <Receipt className="h-4 w-4" />
@@ -169,9 +172,9 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                           size="sm"
                           onClick={() => onRefreshPayment(order.id)}
                           disabled={refreshingPayments.has(order.id)}
-                          title="Check Payment Status"
+                          title={t('checkPaymentStatus')}
                         >
-                          {refreshingPayments.has(order.id) ? '...' : '↻'}
+                          {refreshingPayments.has(order.id) ? t('checkingPayment') : '↻'}
                         </Button>
                       )}
                       {order.payment_status === 'pending' && (
@@ -179,9 +182,9 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                           size="sm"
                           variant="outline"
                           onClick={() => handleManualComplete(order.id)}
-                          title="Mark as Paid (if payment was successful)"
+                          title={t('markAsPaidHint')}
                         >
-                          Mark Paid
+                          {t('markPaidShort')}
                         </Button>
                       )}
                     {order.invoice_link && (
@@ -189,7 +192,7 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                         size="sm"
                         variant="ghost"
                         onClick={() => openInvoice(order.id, order.invoice_link)}
-                        title="View Invoice"
+                        title={t('viewInvoice')}
                       >
                         <ExternalLink className="h-4 w-4" />
                       </Button>
@@ -199,7 +202,7 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                         size="sm"
                         variant="ghost"
                         onClick={() => onCancelAWB(order.id)}
-                        title="Cancel AWB"
+                        title={t('cancelAwb')}
                         disabled={creatingAWB?.has(order.id)}
                         className="text-destructive hover:text-destructive"
                       >
@@ -225,11 +228,11 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                     #{order.id.slice(-8)}
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    {formatDate(order.created_at)}
+                    {formatOrderDate(order.created_at)}
                   </p>
                 </div>
                 <div className="text-right space-y-1">
-                  <p className="text-lg font-semibold">{order.total.toFixed(2)} RON</p>
+                  <p className="text-lg font-semibold">{order.total.toFixed(2)} {tCommon('ron')}</p>
                   <div className="flex gap-1">
                     {getStatusBadge(order.payment_status, 'payment', true)}
                   </div>
@@ -278,7 +281,7 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                     className="w-full"
                   >
                     <Eye className="h-4 w-4 mr-2" />
-                    View Details
+                    {t('viewDetails')}
                   </Button>
                   
                   {/* Secondary Actions */}
@@ -291,7 +294,7 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                       className="w-full px-2 text-xs"
                     >
                       <Receipt className="h-3.5 w-3.5 mr-1" />
-                      {order.invoice_link ? 'Sent' : 'Invoice'}
+                      {order.invoice_link ? t('sent') : t('invoice')}
                     </Button>
                     
                     {!order.awb_number ? (
@@ -303,7 +306,7 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                         className="w-full px-2 text-xs"
                       >
                         <Package className="h-3.5 w-3.5 mr-1" />
-                        {creatingAWB?.has(order.id) ? 'Creating...' : 'AWB'}
+                        {creatingAWB?.has(order.id) ? t('creatingAwb') : t('awbShort')}
                       </Button>
                     ) : (
                       <Button
@@ -314,7 +317,7 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                         className="w-full px-6"
                       >
                         <Truck className="h-4 w-4 mr-2" />
-                        Track
+                        {tCommon('track')}
                       </Button>
                     )}
                   </div>
@@ -330,7 +333,7 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                           className="flex-1"
                         >
                           <ExternalLink className="h-4 w-4 mr-1" />
-                          View Invoice
+                          {t('viewInvoice')}
                         </Button>
                       )}
                       {order.awb_number && onCancelAWB && order.shipping_status !== 'delivered' && order.shipping_status !== 'cancelled' && (
@@ -342,7 +345,7 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                           className="flex-1 text-destructive hover:text-destructive"
                         >
                           <X className="h-4 w-4 mr-1" />
-                          Cancel AWB
+                          {t('cancelAwb')}
                         </Button>
                       )}
                     </div>

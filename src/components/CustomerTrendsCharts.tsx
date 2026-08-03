@@ -15,14 +15,17 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { CustomerAnalytics } from '@/lib/customerAnalytics';
 import { formatRon } from '@/lib/customerAnalytics';
-
-const PIE_COLORS = ['hsl(215 55% 45%)', 'hsl(32 80% 50%)', 'hsl(160 50% 40%)', 'hsl(340 55% 50%)', 'hsl(250 40% 55%)', 'hsl(190 50% 40%)', 'hsl(20 70% 50%)', 'hsl(100 40% 40%)'];
+import { chartTooltipStyle, useChartTheme } from '@/hooks/useChartTheme';
 
 interface CustomerTrendsChartsProps {
   analytics: CustomerAnalytics;
 }
 
 export default function CustomerTrendsCharts({ analytics }: CustomerTrendsChartsProps) {
+  const theme = useChartTheme();
+  const tip = chartTooltipStyle(theme);
+  const axis = { fontSize: 11, fill: theme.axis };
+  const pieColors = [theme.c3, theme.c4, theme.c2, theme.c5, theme.c1, theme.c3, theme.c4, theme.c2];
   const hasGrowth = analytics.growth.some((g) => g.newCustomers > 0);
   const hasSegments = analytics.revenueBySegment.some((s) => s.revenue > 0);
 
@@ -39,18 +42,18 @@ export default function CustomerTrendsCharts({ analytics }: CustomerTrendsCharts
               <AreaChart data={analytics.growth}>
                 <defs>
                   <linearGradient id="custGrowth" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(215 55% 45%)" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="hsl(215 55% 45%)" stopOpacity={0.02} />
+                    <stop offset="0%" stopColor={theme.c3} stopOpacity={0.35} />
+                    <stop offset="100%" stopColor={theme.c3} stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/60" />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={32} />
-                <Tooltip />
+                <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
+                <XAxis dataKey="label" tick={axis} />
+                <YAxis allowDecimals={false} tick={axis} width={32} />
+                <Tooltip contentStyle={tip} />
                 <Area
                   type="monotone"
                   dataKey="newCustomers"
-                  stroke="hsl(215 55% 40%)"
+                  stroke={theme.c3}
                   fill="url(#custGrowth)"
                   strokeWidth={2}
                   name="New customers"
@@ -81,10 +84,10 @@ export default function CustomerTrendsCharts({ analytics }: CustomerTrendsCharts
                   paddingAngle={3}
                 >
                   {analytics.returningVsNew.map((_, i) => (
-                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    <Cell key={i} fill={pieColors[i % pieColors.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip contentStyle={tip} />
               </PieChart>
             </ResponsiveContainer>
           ) : (
@@ -95,18 +98,18 @@ export default function CustomerTrendsCharts({ analytics }: CustomerTrendsCharts
 
       <Card className="border-border/60">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Lifetime by Segment</CardTitle>
+          <CardTitle className="text-base">Revenue by Segment</CardTitle>
           <CardDescription>Where revenue concentrates</CardDescription>
         </CardHeader>
         <CardContent className="h-[260px]">
           {hasSegments ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={analytics.revenueBySegment.slice(0, 6)}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/60" />
-                <XAxis dataKey="segment" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={50} />
-                <YAxis tick={{ fontSize: 11 }} width={48} />
-                <Tooltip formatter={(v: number) => formatRon(v)} />
-                <Bar dataKey="revenue" fill="hsl(160 50% 40%)" radius={[4, 4, 0, 0]} name="Revenue" />
+                <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
+                <XAxis dataKey="segment" tick={{ ...axis, fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={50} />
+                <YAxis tick={axis} width={48} />
+                <Tooltip contentStyle={tip} formatter={(v: number) => formatRon(v)} />
+                <Bar dataKey="revenue" fill={theme.c2} radius={[4, 4, 0, 0]} name="Revenue" />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -124,11 +127,11 @@ export default function CustomerTrendsCharts({ analytics }: CustomerTrendsCharts
           {hasSegments ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={analytics.revenueBySegment.slice(0, 6)}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/60" />
-                <XAxis dataKey="segment" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={50} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={32} />
-                <Tooltip />
-                <Bar dataKey="orders" fill="hsl(215 50% 45%)" radius={[4, 4, 0, 0]} name="Orders" />
+                <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
+                <XAxis dataKey="segment" tick={{ ...axis, fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={50} />
+                <YAxis allowDecimals={false} tick={axis} width={32} />
+                <Tooltip contentStyle={tip} />
+                <Bar dataKey="orders" fill={theme.c3} radius={[4, 4, 0, 0]} name="Orders" />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -146,11 +149,11 @@ export default function CustomerTrendsCharts({ analytics }: CustomerTrendsCharts
           {analytics.ltvDistribution.some((d) => d.count > 0) ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={analytics.ltvDistribution}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/60" />
-                <XAxis dataKey="bucket" tick={{ fontSize: 11 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={32} />
-                <Tooltip />
-                <Bar dataKey="count" fill="hsl(32 75% 48%)" radius={[4, 4, 0, 0]} name="Customers" />
+                <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
+                <XAxis dataKey="bucket" tick={axis} />
+                <YAxis allowDecimals={false} tick={axis} width={32} />
+                <Tooltip contentStyle={tip} />
+                <Bar dataKey="count" fill={theme.c4} radius={[4, 4, 0, 0]} name="Customers" />
               </BarChart>
             </ResponsiveContainer>
           ) : (

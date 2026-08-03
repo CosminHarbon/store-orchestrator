@@ -1,0 +1,16 @@
+{
+  "title": "Analitice",
+  "description": "Perspective asupra performanței magazinului",
+  "overview": "Prezentare generală",
+  "insights": "Perspective",
+  "trends": "Tendințe",
+  "revenue": "Venit",
+  "orders": "Comenzi",
+  "customers": "Clienți",
+  "conversion": "Conversie",
+  "noData": "Nu există date pentru această perioadă",
+  "noDataYet": "Nu există date încă.",
+  "comparePrevious": "față de perioada anterioară",
+  "comparePreviousShort": "față de perioada anterioară",
+  "comparePreviousPct": "{{value}}% față de anterior"
+}

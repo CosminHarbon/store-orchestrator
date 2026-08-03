@@ -1,5 +1,6 @@
 import { useMemo, useState, type ComponentType } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowUpDown,
   BarChart3,
@@ -49,7 +50,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatRon } from '@/lib/paymentAnalytics';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { formatShortDate } from '@/i18n/format';
 
 type SortKey =
   | 'name'
@@ -95,6 +96,8 @@ function formatDiscountValue(d: Pick<DiscountRow, 'discount_type' | 'discount_va
 }
 
 const DiscountManagement = () => {
+  const { t } = useTranslation('discounts');
+  const { t: tCommon } = useTranslation('common');
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | DiscountLifecycle>('all');
@@ -361,7 +364,7 @@ const DiscountManagement = () => {
       return data;
     },
     onSuccess: (data) => {
-      toast.success('Discount created');
+      toast.success(t('toast.created'));
       setIsCreateOpen(false);
       setCreateForm({
         name: '',
@@ -394,7 +397,7 @@ const DiscountManagement = () => {
       }
     },
     onError: (error) => {
-      toast.error('Failed to create discount');
+      toast.error(t('toast.createFailed'));
       console.error(error);
     },
   });
@@ -406,13 +409,13 @@ const DiscountManagement = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success('Discount deleted');
+      toast.success(t('toast.deleted'));
       setDrawerDiscount(null);
       queryClient.invalidateQueries({ queryKey: ['discounts'] });
       queryClient.invalidateQueries({ queryKey: ['product-discounts'] });
     },
     onError: (error) => {
-      toast.error('Failed to delete discount');
+      toast.error(t('toast.deleteFailed'));
       console.error(error);
     },
   });
@@ -420,7 +423,7 @@ const DiscountManagement = () => {
   const duplicateMutation = useMutation({
     mutationFn: async (id: string) => {
       const source = discounts.find((d) => d.id === id);
-      if (!source) throw new Error('Discount not found');
+      if (!source) throw new Error(t('toast.notFound'));
       const { data, error } = await supabase
         .from('discounts')
         .insert({
@@ -451,7 +454,7 @@ const DiscountManagement = () => {
       return { data, productCount: sourceProducts.length };
     },
     onSuccess: ({ data, productCount }) => {
-      toast.success('Discount duplicated');
+      toast.success(t('toast.duplicated'));
       queryClient.invalidateQueries({ queryKey: ['discounts'] });
       queryClient.invalidateQueries({ queryKey: ['product-discounts'] });
       if (data) {
@@ -472,7 +475,7 @@ const DiscountManagement = () => {
       }
     },
     onError: (error) => {
-      toast.error('Failed to duplicate discount');
+      toast.error(t('toast.duplicateFailed'));
       console.error(error);
     },
   });
@@ -514,22 +517,20 @@ const DiscountManagement = () => {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
             <Percent className="h-6 w-6" />
-            Discounts
+            {t('title')}
           </h2>
-          <p className="text-muted-foreground text-sm mt-1">
-            Create promotions and assign them to products in your catalog.
-          </p>
+          <p className="text-muted-foreground text-sm mt-1">{t('description')}</p>
         </div>
         <Button onClick={() => setIsCreateOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          Create Discount
+          {t('create')}
         </Button>
       </div>
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            Overview
+            {t('overview')}
           </h3>
           <Button
             type="button"
@@ -538,42 +539,42 @@ const DiscountManagement = () => {
             onClick={() => toggleAnalytics(!showAnalytics)}
           >
             <BarChart3 className="h-4 w-4 mr-2" />
-            {showAnalytics ? 'Hide Analytics' : 'Show Analytics'}
+            {showAnalytics ? tCommon('hideAnalytics') : tCommon('showAnalytics')}
             <ChevronDown
               className={cn('h-4 w-4 ml-1 transition-transform', showAnalytics && 'rotate-180')}
             />
           </Button>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-          <KpiCard title="Active" value={String(kpis.active)} subtitle="Running now" icon={Tag} />
+          <KpiCard title={t('kpi.active')} value={String(kpis.active)} subtitle={t('kpi.activeSub')} icon={Tag} />
           <KpiCard
-            title="Scheduled"
+            title={t('kpi.scheduled')}
             value={String(kpis.scheduled)}
-            subtitle="Starts later"
+            subtitle={t('kpi.scheduledSub')}
             icon={Calendar}
           />
           <KpiCard
-            title="Expired"
+            title={t('kpi.expired')}
             value={String(kpis.expired)}
-            subtitle="Ended or inactive"
+            subtitle={t('kpi.expiredSub')}
             icon={Calendar}
           />
           <KpiCard
-            title="Products on Discount"
+            title={t('kpi.productsOnDiscount')}
             value={String(kpis.productsOnDiscount)}
-            subtitle="Active promotions"
+            subtitle={t('kpi.productsOnDiscountSub')}
             icon={Tag}
           />
           <KpiCard
-            title="Avg Discount %"
+            title={t('kpi.avgPct')}
             value={`${kpis.avgPct}%`}
-            subtitle="Percentage discounts"
+            subtitle={t('kpi.avgPctSub')}
             icon={Percent}
           />
           <KpiCard
-            title="Est. Revenue Discounted"
+            title={t('kpi.estRevenue')}
             value={formatRon(kpis.estimatedDiscounted)}
-            subtitle="Per unit if all sold once"
+            subtitle={t('kpi.estRevenueSub')}
             icon={Wallet}
           />
         </div>
@@ -583,8 +584,8 @@ const DiscountManagement = () => {
         <CollapsibleContent className="space-y-4">
           <Card className="border-border/60">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Status breakdown</CardTitle>
-              <CardDescription>Derived from start/end dates and active flag</CardDescription>
+              <CardTitle className="text-base">{t('analytics.statusBreakdown')}</CardTitle>
+              <CardDescription>{t('analytics.statusBreakdownDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-3">
               {(['active', 'scheduled', 'expired'] as DiscountLifecycle[]).map((s) => (
@@ -598,7 +599,7 @@ const DiscountManagement = () => {
                   }}
                 >
                   <Badge className={statusBadgeClass(s)}>
-                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                    {t(`status.${s}`)}
                   </Badge>
                   <span className="tabular-nums text-muted-foreground">
                     {discounts.filter((d) => d.status === s).length}
@@ -615,7 +616,7 @@ const DiscountManagement = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             className="pl-10"
-            placeholder="Search discounts…"
+            placeholder={t('searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -631,17 +632,17 @@ const DiscountManagement = () => {
           }}
         >
           <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder={t('status.label')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="scheduled">Scheduled</SelectItem>
-            <SelectItem value="expired">Expired</SelectItem>
+            <SelectItem value="all">{t('status.all')}</SelectItem>
+            <SelectItem value="active">{t('status.active')}</SelectItem>
+            <SelectItem value="scheduled">{t('status.scheduled')}</SelectItem>
+            <SelectItem value="expired">{t('status.expired')}</SelectItem>
           </SelectContent>
         </Select>
         <p className="text-sm text-muted-foreground sm:ml-auto">
-          {filtered.length} discount{filtered.length === 1 ? '' : 's'}
+          {t('count', { count: filtered.length })}
         </p>
       </div>
 
@@ -660,19 +661,19 @@ const DiscountManagement = () => {
             <div className="space-y-1 max-w-md">
               <h3 className="text-lg font-semibold">
                 {searchQuery || statusFilter !== 'all'
-                  ? 'No discounts match your filters'
-                  : 'Create your first discount'}
+                  ? t('empty.filtered')
+                  : t('empty.createFirst')}
               </h3>
               <p className="text-sm text-muted-foreground">
                 {searchQuery || statusFilter !== 'all'
-                  ? 'Try clearing search or status filters.'
-                  : 'Offer percentage or fixed-amount deals and assign them to products.'}
+                  ? t('empty.filteredHint')
+                  : t('empty.createFirstHint')}
               </p>
             </div>
             {!searchQuery && statusFilter === 'all' && (
               <Button onClick={() => setIsCreateOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
-                Create Discount
+                {t('create')}
               </Button>
             )}
           </CardContent>
@@ -684,28 +685,28 @@ const DiscountManagement = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>
-                    <SortHead label="Discount" k="name" />
+                    <SortHead label={t('table.discount')} k="name" />
                   </TableHead>
-                  <TableHead>Type</TableHead>
+                  <TableHead>{t('table.type')}</TableHead>
                   <TableHead className="text-right">
-                    <SortHead label="Value" k="discount_value" />
+                    <SortHead label={t('table.value')} k="discount_value" />
                   </TableHead>
                   <TableHead className="text-right">
-                    <SortHead label="Products" k="product_count" />
+                    <SortHead label={t('table.products')} k="product_count" />
                   </TableHead>
                   <TableHead>
-                    <SortHead label="Status" k="status" />
+                    <SortHead label={t('table.status')} k="status" />
                   </TableHead>
                   <TableHead className="hidden md:table-cell">
-                    <SortHead label="Start" k="start_date" />
+                    <SortHead label={t('table.start')} k="start_date" />
                   </TableHead>
                   <TableHead className="hidden md:table-cell">
-                    <SortHead label="End" k="end_date" />
+                    <SortHead label={t('table.end')} k="end_date" />
                   </TableHead>
                   <TableHead className="hidden lg:table-cell">
-                    <SortHead label="Updated" k="updated_at" />
+                    <SortHead label={t('table.updated')} k="updated_at" />
                   </TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right">{t('table.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -724,7 +725,7 @@ const DiscountManagement = () => {
                       )}
                     </TableCell>
                     <TableCell className="text-sm capitalize">
-                      {d.discount_type === 'percentage' ? 'Percentage' : 'Fixed'}
+                      {d.discount_type === 'percentage' ? t('type.percentage') : t('type.fixed')}
                     </TableCell>
                     <TableCell className="text-right tabular-nums font-medium">
                       {formatDiscountValue(d)}
@@ -734,17 +735,17 @@ const DiscountManagement = () => {
                     </TableCell>
                     <TableCell>
                       <Badge className={statusBadgeClass(d.status)}>
-                        {d.status.charAt(0).toUpperCase() + d.status.slice(1)}
+                        {t(`status.${d.status}`)}
                       </Badge>
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                      {format(new Date(d.start_date), 'MMM d, yyyy')}
+                      {formatShortDate(d.start_date)}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                      {d.end_date ? format(new Date(d.end_date), 'MMM d, yyyy') : '—'}
+                      {d.end_date ? formatShortDate(d.end_date) : tCommon('dash')}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
-                      {format(new Date(d.updated_at || d.created_at), 'MMM d, yyyy')}
+                      {formatShortDate(d.updated_at || d.created_at)}
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1">
@@ -752,7 +753,7 @@ const DiscountManagement = () => {
                           type="button"
                           size="sm"
                           variant="ghost"
-                          title="Duplicate"
+                          title={t('editor.duplicate')}
                           onClick={() => duplicateMutation.mutate(d.id)}
                         >
                           <Copy className="h-4 w-4" />
@@ -763,7 +764,7 @@ const DiscountManagement = () => {
                           variant="ghost"
                           onClick={() => setDrawerDiscount(d)}
                         >
-                          Edit
+                          {tCommon('edit')}
                         </Button>
                         <Button
                           type="button"
@@ -771,7 +772,7 @@ const DiscountManagement = () => {
                           variant="ghost"
                           className="text-destructive"
                           onClick={() => {
-                            if (confirm(`Delete "${d.name}"?`)) deleteMutation.mutate(d.id);
+                            if (confirm(t('confirmDelete'))) deleteMutation.mutate(d.id);
                           }}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -786,7 +787,7 @@ const DiscountManagement = () => {
 
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm text-muted-foreground">
-              Page {pageSafe} of {totalPages}
+              {t('pageOf', { page: pageSafe, total: totalPages })}
             </p>
             <div className="flex gap-2">
               <Button
@@ -796,7 +797,7 @@ const DiscountManagement = () => {
                 disabled={pageSafe <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
               >
-                Previous
+                {t('previous')}
               </Button>
               <Button
                 type="button"
@@ -805,7 +806,7 @@ const DiscountManagement = () => {
                 disabled={pageSafe >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               >
-                Next
+                {t('next')}
               </Button>
             </div>
           </div>
@@ -815,30 +816,29 @@ const DiscountManagement = () => {
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create discount</DialogTitle>
-            <DialogDescription>
-              Set the offer details, then optionally assign products.
-            </DialogDescription>
+            <DialogTitle>{t('createDialog.title')}</DialogTitle>
+            <DialogDescription>{t('createDialog.description')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Name</Label>
+              <Label>{t('createDialog.name')}</Label>
               <Input
                 value={createForm.name}
                 onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                placeholder="e.g. Summer Sale"
+                placeholder={t('createDialog.namePlaceholder')}
               />
             </div>
             <div className="space-y-2">
-              <Label>Description</Label>
+              <Label>{t('createDialog.descriptionLabel')}</Label>
               <Textarea
                 value={createForm.description}
                 onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
+                placeholder={t('createDialog.descriptionPlaceholder')}
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>Type</Label>
+                <Label>{t('createDialog.discountType')}</Label>
                 <Select
                   value={createForm.discount_type}
                   onValueChange={(v: 'percentage' | 'fixed_amount') =>
@@ -849,13 +849,13 @@ const DiscountManagement = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="percentage">Percentage (%)</SelectItem>
-                    <SelectItem value="fixed_amount">Fixed amount (RON)</SelectItem>
+                    <SelectItem value="percentage">{t('type.percentage')}</SelectItem>
+                    <SelectItem value="fixed_amount">{t('type.amountRon')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Value</Label>
+                <Label>{t('createDialog.value')}</Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -869,7 +869,7 @@ const DiscountManagement = () => {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>Start</Label>
+                <Label>{t('createDialog.startDate')}</Label>
                 <Input
                   type="date"
                   value={createForm.start_date}
@@ -877,7 +877,7 @@ const DiscountManagement = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label>End</Label>
+                <Label>{t('createDialog.endDateOptional')}</Label>
                 <Input
                   type="date"
                   value={createForm.end_date}
@@ -892,12 +892,12 @@ const DiscountManagement = () => {
                   setCreateForm({ ...createForm, is_active: checked === true })
                 }
               />
-              Active when within schedule
+              {t('createDialog.activeWhenScheduled')}
             </label>
             <div className="space-y-2">
-              <Label>Products (optional)</Label>
+              <Label>{t('createDialog.productsOptional')}</Label>
               <Input
-                placeholder="Search products…"
+                placeholder={t('createDialog.searchProducts')}
                 value={createProductSearch}
                 onChange={(e) => setCreateProductSearch(e.target.value)}
               />
@@ -918,15 +918,18 @@ const DiscountManagement = () => {
                     <span className="truncate">{p.title}</span>
                   </label>
                 ))}
+                {!createSearchable.length && (
+                  <p className="p-3 text-sm text-muted-foreground">{t('createDialog.noProducts')}</p>
+                )}
               </div>
               <p className="text-xs text-muted-foreground">
-                {createProductIds.length} selected
+                {t('createDialog.selectedCount', { count: createProductIds.length })}
               </p>
             </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Button
               type="button"
@@ -937,7 +940,7 @@ const DiscountManagement = () => {
               }
               onClick={() => createMutation.mutate()}
             >
-              {createMutation.isPending ? 'Creating…' : 'Create'}
+              {createMutation.isPending ? t('createDialog.creating') : tCommon('create')}
             </Button>
           </DialogFooter>
         </DialogContent>

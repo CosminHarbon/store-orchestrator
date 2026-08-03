@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Package, Upload, Download, RefreshCw, Save, AlertTriangle, Plus, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,7 @@ interface StockManagementProps {
 }
 
 const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementProps = {}) => {
+  const { t: tStock } = useTranslation('stock');
   const [stockUpdates, setStockUpdates] = useState<{ [key: string]: number }>({});
   const [thresholdUpdates, setThresholdUpdates] = useState<{ [key: string]: number }>({});
   const [isUpdating, setIsUpdating] = useState(false);
@@ -81,7 +83,7 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
     onSuccess: (results) => {
       const totalUpdates = results.stock + results.threshold;
       if (totalUpdates > 0) {
-        toast.success(`Successfully updated ${totalUpdates} product settings`);
+        toast.success(tStock('toast.updated', { count: totalUpdates }));
         setStockUpdates({});
         setThresholdUpdates({});
         queryClient.invalidateQueries({ queryKey: ['products'] });
@@ -89,7 +91,7 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
       setIsUpdating(false);
     },
     onError: (error: any) => {
-      toast.error(`Failed to update products: ${error.message}`);
+      toast.error(tStock('toast.updateFailed', { message: error.message }));
       setIsUpdating(false);
     }
   });
@@ -144,7 +146,7 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
     }));
     
     if (stockUpdatesArray.length === 0 && thresholdUpdatesArray.length === 0) {
-      toast.error('No changes to save');
+      toast.error(tStock('toast.noChanges'));
       return;
     }
     
@@ -158,7 +160,7 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
   const handleResetChanges = () => {
     setStockUpdates({});
     setThresholdUpdates({});
-    toast.success('Changes reset');
+    toast.success(tStock('toast.reset'));
   };
 
   const exportStock = () => {
@@ -175,11 +177,11 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
       const file = new File([blob], fileName, { type: 'text/csv' });
       
       navigator.share({
-        title: 'Stock Export',
-        text: 'Stock data export',
+        title: tStock('share.title'),
+        text: tStock('share.text'),
         files: [file]
       }).then(() => {
-        toast.success('Stock data shared');
+        toast.success(tStock('toast.shared'));
       }).catch((error) => {
         // Fallback to download if sharing fails
         fallbackDownload(csvContent, fileName);
@@ -197,7 +199,7 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
     if (window.navigator && (window.navigator as any).msSaveOrOpenBlob) {
       // IE/Edge
       (window.navigator as any).msSaveOrOpenBlob(blob, fileName);
-      toast.success('Stock data exported');
+      toast.success(tStock('toast.exported'));
     } else {
       // Modern browsers
       const url = window.URL.createObjectURL(blob);
@@ -408,9 +410,9 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
         if (csvWindow) {
           csvWindow.document.write(htmlContent);
           csvWindow.document.close();
-          toast.success('Beautiful stock report opened!');
+          toast.success(tStock('toast.reportOpened'));
         } else {
-          toast.error('Please allow popups to view the stock report');
+          toast.error(tStock('toast.allowPopups'));
         }
       } else {
         // Desktop download
@@ -421,7 +423,7 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
-        toast.success('Stock data exported');
+        toast.success(tStock('toast.exported'));
       }
     }
   };
@@ -433,9 +435,9 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
   const getStockBadge = (product: Product, newStock?: number, newThreshold?: number) => {
     const stockToCheck = newStock !== undefined ? newStock : product.stock;
     const thresholdToCheck = newThreshold !== undefined ? newThreshold : product.low_stock_threshold;
-    if (stockToCheck <= 0) return <Badge variant="destructive">Out of Stock</Badge>;
-    if (stockToCheck <= thresholdToCheck) return <Badge variant="secondary">Low Stock</Badge>;
-    return <Badge variant="default">In Stock</Badge>;
+    if (stockToCheck <= 0) return <Badge variant="destructive">{tStock('badge.outOfStock')}</Badge>;
+    if (stockToCheck <= thresholdToCheck) return <Badge variant="secondary">{tStock('badge.lowStock')}</Badge>;
+    return <Badge variant="default">{tStock('badge.inStock')}</Badge>;
   };
 
   if (isLoading) {
@@ -444,7 +446,7 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            Stock Management
+            {tStock('title')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -464,7 +466,7 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
           Stock Management
         </CardTitle>
         <CardDescription>
-          Manage product inventory levels. Stock is automatically updated when orders are placed.
+          {tStock('description')}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -476,7 +478,9 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
             className="flex-1"
           >
             <Save className="h-4 w-4 mr-2" />
-            Save Changes {getPendingChangesCount() > 0 && `(${getPendingChangesCount()})`}
+            {getPendingChangesCount() > 0
+              ? tStock('saveChangesCount', { count: getPendingChangesCount() })
+              : tStock('saveChanges')}
           </Button>
           <Button
             onClick={handleResetChanges}
@@ -485,7 +489,7 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
             className="flex-1"
           >
             <RefreshCw className="h-4 w-4 mr-2" />
-            Reset Changes
+            {tStock('resetChanges')}
           </Button>
           <Button
             onClick={exportStock}
@@ -493,7 +497,7 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
             className="flex-1"
           >
             <Download className="h-4 w-4 mr-2" />
-            Export CSV
+            {tStock('exportCsv')}
           </Button>
         </div>
 
@@ -502,14 +506,14 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Current Stock</TableHead>
-                <TableHead>New Stock</TableHead>
-                <TableHead>Low Stock Alert</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Category</TableHead>
+                <TableHead>{tStock('table.product')}</TableHead>
+                <TableHead>{tStock('table.sku')}</TableHead>
+                <TableHead>{tStock('table.status')}</TableHead>
+                <TableHead>{tStock('table.currentStock')}</TableHead>
+                <TableHead>{tStock('table.newStock')}</TableHead>
+                <TableHead>{tStock('table.lowStockAlert')}</TableHead>
+                <TableHead>{tStock('table.price')}</TableHead>
+                <TableHead>{tStock('table.category')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -527,7 +531,7 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
                       {hasAnyChanges && (
                         <div className="flex items-center gap-1 mt-1">
                           <AlertTriangle className="h-3 w-3 text-yellow-600" />
-                          <span className="text-xs text-yellow-600">Modified</span>
+                          <span className="text-xs text-yellow-600">{tStock('badge.modified')}</span>
                         </div>
                       )}
                     </TableCell>
@@ -609,7 +613,7 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
                       <CardTitle className="text-base font-medium">{product.title}</CardTitle>
                       <div className="flex flex-wrap gap-2 text-sm">
                         {product.sku && (
-                          <span className="text-muted-foreground">SKU: {product.sku}</span>
+                          <span className="text-muted-foreground">{tStock('label.skuPrefix', { sku: product.sku })}</span>
                         )}
                         {product.category && (
                           <Badge variant="outline" className="text-xs">{product.category}</Badge>
@@ -618,7 +622,7 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
                       {hasAnyChanges && (
                         <div className="flex items-center gap-1">
                           <AlertTriangle className="h-3 w-3 text-yellow-600" />
-                          <span className="text-xs text-yellow-600">Modified</span>
+                          <span className="text-xs text-yellow-600">{tStock('badge.modified')}</span>
                         </div>
                       )}
                     </div>
@@ -633,13 +637,13 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
                   {/* Stock Information */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-sm font-medium text-muted-foreground">Current Stock</label>
+                      <label className="text-sm font-medium text-muted-foreground">{tStock('label.currentStock')}</label>
                       <div className={`text-lg font-medium ${hasStockChanges ? 'line-through text-gray-500' : ''}`}>
                         {product.stock}
                       </div>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-muted-foreground">Alert Threshold</label>
+                      <label className="text-sm font-medium text-muted-foreground">{tStock('label.alertThreshold')}</label>
                       <div className="flex items-center gap-2">
                         <Input
                           type="text"
@@ -659,7 +663,7 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
                   {/* Stock Controls */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-muted-foreground">Update Stock</label>
+                      <label className="text-sm font-medium text-muted-foreground">{tStock('label.updateStock')}</label>
                       {hasAnyChanges && (
                         <Button
                           size="sm"
@@ -672,7 +676,7 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
                           }}
                           className="text-xs h-auto p-1"
                         >
-                          Reset
+                          {tStock('reset')}
                         </Button>
                       )}
                     </div>
@@ -700,7 +704,7 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
                               handleStockChange(product.id, val === '' ? 0 : parseInt(val) || 0);
                             }}
                             className="text-center text-lg h-10"
-                            placeholder="Stock quantity"
+                            placeholder={tStock('placeholder.quantity')}
                           />
                         </div>
                         <Button
@@ -721,7 +725,7 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
                           onClick={() => handleStockChange(product.id, 0)}
                           className="h-9 text-xs"
                         >
-                          Set to 0
+                          {tStock('quickSet.zero')}
                         </Button>
                         <Button
                           size="sm"
@@ -729,7 +733,7 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
                           onClick={() => handleStockChange(product.id, 10)}
                           className="h-9 text-xs"
                         >
-                          Set to 10
+                          {tStock('quickSet.ten')}
                         </Button>
                         <Button
                           size="sm"
@@ -737,7 +741,7 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
                           onClick={() => handleStockChange(product.id, 50)}
                           className="h-9 text-xs"
                         >
-                          Set to 50
+                          {tStock('quickSet.fifty')}
                         </Button>
                       </div>
                     </div>
@@ -750,7 +754,7 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
 
         {products?.length === 0 && (
           <div className="text-center text-gray-500 py-8">
-            No products found. Add some products first to manage their stock levels.
+            {tStock('empty.noProducts')}
           </div>
         )}
       </CardContent>

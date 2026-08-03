@@ -1,0 +1,95 @@
+{
+  "title": "Payments",
+  "description": "Payment analytics and statistics",
+  "subtitle": "Revenue, conversion, and payment health for your store",
+  "funnel": {
+    "ordersCreated": "Orders Created",
+    "paymentStarted": "Payment Started",
+    "paymentCompleted": "Payment Completed",
+    "paymentFailed": "Payment Failed",
+    "abandonedPayment": "Abandoned Payment"
+  },
+  "stat": {
+    "highestOrder": "Highest Order Value",
+    "lowestOrder": "Lowest Order Value",
+    "aov": "Average Order Value",
+    "median": "Median Order Value",
+    "mostUsedMethod": "Most Used Payment Method",
+    "conversionRate": "Payment Conversion Rate",
+    "pendingCount": "Pending Payment Count",
+    "expiredSessions": "Expired Checkout Sessions",
+    "successfulCard": "Successful Card Payments",
+    "cancelledCard": "Cancelled Card Payments",
+    "avgTimeToPay": "Average Time To Pay (card)",
+    "minutes": "{{count}} min"
+  },
+  "kpi": {
+    "totalRevenue": "Total Revenue",
+    "totalRevenueSub": "Completed orders",
+    "totalOrders": "Total Orders",
+    "totalOrdersSub": "In selected period",
+    "aov": "Average Order Value",
+    "aovSub": "Per completed order",
+    "successRate": "Success Rate",
+    "pendingCard": "Pending Card",
+    "failed": "Failed Payments",
+    "failedSub": "Failed or cancelled attempts",
+    "refunded": "Refunded",
+    "successRateSub": "Completed vs failed/expired"
+  },
+  "section": {
+    "methodBreakdown": "Payment Method Breakdown",
+    "methodBreakdownDesc": "How customers prefer to pay",
+    "revenueBreakdown": "Revenue Breakdown",
+    "revenueBreakdownDesc": "Where your money comes from",
+    "funnel": "Payment Funnel",
+    "funnelDesc": "Journey from checkout start to outcome",
+    "analytics": "Payment Analytics",
+    "analyticsDesc": "Detailed performance statistics",
+    "recent": "Recent Payments",
+    "recentDesc": "Latest completed and cash orders",
+    "pendingLive": "Live pending card payments"
+  },
+  "table": {
+    "customer": "Customer",
+    "order": "Order",
+    "method": "Method",
+    "status": "Status",
+    "amount": "Amount",
+    "date": "Date"
+  },
+  "empty": {
+    "noPayments": "No payments in this period"
+  },
+  "funnelOfStarted": "{{pct}} of started",
+  "paymentStatus": {
+    "paid": "Paid",
+    "cash": "Cash",
+    "pending": "Pending",
+    "failed": "Failed",
+    "refunded": "Refunded",
+    "cancelled": "Cancelled"
+  },
+  "labels": {
+    "orders": "orders",
+    "revenue": "revenue",
+    "aov": "AOV"
+  },
+  "breakdown": {
+    "cardRevenue": "Revenue from Card",
+    "cashRevenue": "Revenue from Cash",
+    "pendingRevenue": "Pending Revenue",
+    "refundedRevenue": "Refunded Revenue",
+    "cancelledRevenue": "Cancelled Revenue"
+  },
+  "method": {
+    "cash": "Cash",
+    "card": "Card"
+  },
+  "chart": {
+    "revenue": "Revenue",
+    "orders": "Orders",
+    "byMethod": "By payment method",
+    "overTime": "Over time"
+  }
+}

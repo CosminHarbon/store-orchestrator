@@ -1,4 +1,5 @@
 import { lazy, Suspense, useMemo, type ComponentType } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowDownRight,
@@ -41,11 +42,13 @@ import { cn } from '@/lib/utils';
 const PaymentTrendsCharts = lazy(() => import('@/components/PaymentTrendsCharts'));
 
 function DeltaBadge({ value }: { value: number }) {
+  const { t } = useTranslation('analytics');
+
   if (!Number.isFinite(value) || Math.abs(value) < 0.05) {
     return (
       <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
         <Minus className="h-3 w-3" />
-        vs prior period
+        {t('comparePreviousShort')}
       </span>
     );
   }
@@ -58,8 +61,7 @@ function DeltaBadge({ value }: { value: number }) {
       )}
     >
       {up ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
-      {up ? '+' : ''}
-      {value.toFixed(1)}% vs prior
+      {t('comparePreviousPct', { value: `${up ? '+' : ''}${value.toFixed(1)}` })}
     </span>
   );
 }
@@ -98,32 +100,34 @@ function KpiCard({
   );
 }
 
-function paymentMethodLabel(order: AnalyticsOrder) {
-  return isCashOrder(order) ? 'Cash' : 'Card';
+function paymentMethodLabel(order: AnalyticsOrder, t: (key: string) => string) {
+  return isCashOrder(order) ? t('method.cash') : t('method.card');
 }
 
-function paymentStatusBadge(order: AnalyticsOrder) {
+function paymentStatusBadge(order: AnalyticsOrder, t: (key: string) => string) {
   const status = order.payment_status;
   switch (status) {
     case 'paid':
     case 'invoiced':
-      return <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-0">Paid</Badge>;
+      return <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 border-0">{t('paymentStatus.paid')}</Badge>;
     case 'cash':
-      return <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100 border-0">Cash</Badge>;
+      return <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 border-0">{t('paymentStatus.cash')}</Badge>;
     case 'pending':
-      return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-0">Pending</Badge>;
+      return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-0">{t('paymentStatus.pending')}</Badge>;
     case 'failed':
-      return <Badge variant="destructive">Failed</Badge>;
+      return <Badge variant="destructive">{t('paymentStatus.failed')}</Badge>;
     case 'refunded':
-      return <Badge className="bg-slate-200 text-slate-700 hover:bg-slate-200 border-0">Refunded</Badge>;
+      return <Badge className="bg-muted text-muted-foreground hover:bg-muted border-0">{t('paymentStatus.refunded')}</Badge>;
     case 'cancelled':
-      return <Badge className="bg-slate-200 text-slate-600 hover:bg-slate-200 border-0">Cancelled</Badge>;
+      return <Badge className="bg-muted text-muted-foreground hover:bg-muted border-0">{t('paymentStatus.cancelled')}</Badge>;
     default:
       return <Badge variant="outline">{status}</Badge>;
   }
 }
 
 const PaymentStatistics = () => {
+  const { t: tPayments } = useTranslation('payments');
+  const { t: tAnalytics } = useTranslation('analytics');
   const { user } = useAuth();
   const { dateRange, setDateRange, preset, setPreset } = useDateRangeFilter('30days');
   const prevRange = useMemo(() => previousPeriod(dateRange), [dateRange]);
@@ -269,31 +273,31 @@ const PaymentStatistics = () => {
   }
 
   const funnelSteps = [
-    { key: 'ordersCreated', label: 'Orders Created', value: analytics.funnel.ordersCreated },
-    { key: 'paymentStarted', label: 'Payment Started', value: analytics.funnel.paymentStarted },
-    { key: 'paymentCompleted', label: 'Payment Completed', value: analytics.funnel.paymentCompleted },
-    { key: 'paymentFailed', label: 'Payment Failed', value: analytics.funnel.paymentFailed },
-    { key: 'abandonedPayment', label: 'Abandoned Payment', value: analytics.funnel.abandonedPayment },
+    { key: 'ordersCreated', label: tPayments('funnel.ordersCreated'), value: analytics.funnel.ordersCreated },
+    { key: 'paymentStarted', label: tPayments('funnel.paymentStarted'), value: analytics.funnel.paymentStarted },
+    { key: 'paymentCompleted', label: tPayments('funnel.paymentCompleted'), value: analytics.funnel.paymentCompleted },
+    { key: 'paymentFailed', label: tPayments('funnel.paymentFailed'), value: analytics.funnel.paymentFailed },
+    { key: 'abandonedPayment', label: tPayments('funnel.abandonedPayment'), value: analytics.funnel.abandonedPayment },
   ] as const;
 
   const statItems = [
-    { label: 'Highest Order Value', value: formatRon(analytics.stats.highest) },
-    { label: 'Lowest Order Value', value: formatRon(analytics.stats.lowest) },
-    { label: 'Average Order Value', value: formatRon(analytics.stats.aov) },
-    { label: 'Median Order Value', value: formatRon(analytics.stats.median) },
-    { label: 'Most Used Payment Method', value: analytics.stats.mostUsedMethod },
-    { label: 'Payment Conversion Rate', value: formatPct(analytics.stats.conversionRate) },
+    { label: tPayments('stat.highestOrder'), value: formatRon(analytics.stats.highest) },
+    { label: tPayments('stat.lowestOrder'), value: formatRon(analytics.stats.lowest) },
+    { label: tPayments('stat.aov'), value: formatRon(analytics.stats.aov) },
+    { label: tPayments('stat.median'), value: formatRon(analytics.stats.median) },
+    { label: tPayments('stat.mostUsedMethod'), value: analytics.stats.mostUsedMethod },
+    { label: tPayments('stat.conversionRate'), value: formatPct(analytics.stats.conversionRate) },
     {
-      label: 'Average Time To Pay (card)',
+      label: tPayments('stat.avgTimeToPay'),
       value:
         analytics.stats.avgTimeToPayMinutes == null
           ? '—'
-          : `${Math.round(analytics.stats.avgTimeToPayMinutes)} min`,
+          : tPayments('stat.minutes', { count: Math.round(analytics.stats.avgTimeToPayMinutes) }),
     },
-    { label: 'Pending Payment Count', value: String(analytics.stats.pendingPaymentCount) },
-    { label: 'Expired Checkout Sessions', value: String(analytics.stats.expiredSessions) },
-    { label: 'Successful Card Payments', value: String(analytics.stats.successfulCard) },
-    { label: 'Cancelled Card Payments', value: String(analytics.stats.cancelledCard) },
+    { label: tPayments('stat.pendingCount'), value: String(analytics.stats.pendingPaymentCount) },
+    { label: tPayments('stat.expiredSessions'), value: String(analytics.stats.expiredSessions) },
+    { label: tPayments('stat.successfulCard'), value: String(analytics.stats.successfulCard) },
+    { label: tPayments('stat.cancelledCard'), value: String(analytics.stats.cancelledCard) },
   ];
 
   return (
@@ -301,9 +305,9 @@ const PaymentStatistics = () => {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight">Payments</h2>
+          <h2 className="text-xl font-semibold tracking-tight">{tPayments('title')}</h2>
           <p className="text-sm text-muted-foreground">
-            Revenue, conversion, and payment health for your store
+            {tPayments('subtitle')}
           </p>
         </div>
         <DateRangeFilter
@@ -317,51 +321,51 @@ const PaymentStatistics = () => {
       {/* Section 1 — KPI Cards */}
       <section className="space-y-3">
         <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Overview
+          {tAnalytics('overview')}
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7 gap-3">
           <KpiCard
-            title="Total Revenue"
+            title={tPayments('kpi.totalRevenue')}
             value={formatRon(analytics.totalRevenue)}
-            subtitle="Completed orders"
+            subtitle={tPayments('kpi.totalRevenueSub')}
             icon={Wallet}
             delta={analytics.deltas.revenue}
           />
           <KpiCard
-            title="Total Orders"
+            title={tPayments('kpi.totalOrders')}
             value={String(analytics.totalOrders)}
-            subtitle="In selected period"
+            subtitle={tPayments('kpi.totalOrdersSub')}
             icon={ShoppingBag}
             delta={analytics.deltas.orders}
           />
           <KpiCard
-            title="Average Order Value"
+            title={tPayments('kpi.aov')}
             value={formatRon(analytics.averageOrderValue)}
-            subtitle="Per completed order"
+            subtitle={tPayments('kpi.aovSub')}
             icon={TrendingUp}
             delta={analytics.deltas.aov}
           />
           <KpiCard
-            title="Success Rate"
+            title={tPayments('kpi.successRate')}
             value={formatPct(analytics.paymentSuccessRate)}
-            subtitle="Completed vs failed/expired"
+            subtitle={tPayments('kpi.successRateSub')}
             icon={CheckCircle2}
             delta={analytics.deltas.successRate}
           />
           <KpiCard
-            title="Pending Card"
+            title={tPayments('kpi.pendingCard')}
             value={String(analytics.pendingCardCount)}
             subtitle={formatRon(analytics.pendingCardRevenue)}
             icon={Timer}
           />
           <KpiCard
-            title="Failed Payments"
+            title={tPayments('kpi.failed')}
             value={String(analytics.failedPayments)}
-            subtitle="Failed or cancelled attempts"
+            subtitle={tPayments('kpi.failedSub')}
             icon={XCircle}
           />
           <KpiCard
-            title="Refunded"
+            title={tPayments('kpi.refunded')}
             value={String(analytics.refundedPayments)}
             subtitle={formatRon(analytics.refundedRevenue)}
             icon={RefreshCcw}
@@ -373,15 +377,15 @@ const PaymentStatistics = () => {
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="border-border/60">
           <CardHeader>
-            <CardTitle className="text-base">Payment Method Breakdown</CardTitle>
-            <CardDescription>How customers prefer to pay</CardDescription>
+            <CardTitle className="text-base">{tPayments('section.methodBreakdown')}</CardTitle>
+            <CardDescription>{tPayments('section.methodBreakdownDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <CreditCard className="h-4 w-4 text-sky-700" />
-                  <span className="font-medium">Card</span>
+                  <span className="font-medium">{tPayments('method.card')}</span>
                 </div>
                 <span className="text-2xl font-semibold tabular-nums">
                   {formatPct(analytics.card.pctOrders, 0)}
@@ -391,15 +395,15 @@ const PaymentStatistics = () => {
               <div className="grid grid-cols-3 gap-2 text-sm">
                 <div>
                   <div className="font-semibold tabular-nums">{analytics.card.orders}</div>
-                  <div className="text-xs text-muted-foreground">orders</div>
+                  <div className="text-xs text-muted-foreground">{tPayments('labels.orders')}</div>
                 </div>
                 <div>
                   <div className="font-semibold tabular-nums">{formatRon(analytics.card.revenue)}</div>
-                  <div className="text-xs text-muted-foreground">revenue</div>
+                  <div className="text-xs text-muted-foreground">{tPayments('labels.revenue')}</div>
                 </div>
                 <div>
                   <div className="font-semibold tabular-nums">{formatRon(analytics.card.aov)}</div>
-                  <div className="text-xs text-muted-foreground">AOV</div>
+                  <div className="text-xs text-muted-foreground">{tPayments('labels.aov')}</div>
                 </div>
               </div>
             </div>
@@ -408,7 +412,7 @@ const PaymentStatistics = () => {
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <Banknote className="h-4 w-4 text-amber-700" />
-                  <span className="font-medium">Cash</span>
+                  <span className="font-medium">{tPayments('method.cash')}</span>
                 </div>
                 <span className="text-2xl font-semibold tabular-nums">
                   {formatPct(analytics.cash.pctOrders, 0)}
@@ -418,15 +422,15 @@ const PaymentStatistics = () => {
               <div className="grid grid-cols-3 gap-2 text-sm">
                 <div>
                   <div className="font-semibold tabular-nums">{analytics.cash.orders}</div>
-                  <div className="text-xs text-muted-foreground">orders</div>
+                  <div className="text-xs text-muted-foreground">{tPayments('labels.orders')}</div>
                 </div>
                 <div>
                   <div className="font-semibold tabular-nums">{formatRon(analytics.cash.revenue)}</div>
-                  <div className="text-xs text-muted-foreground">revenue</div>
+                  <div className="text-xs text-muted-foreground">{tPayments('labels.revenue')}</div>
                 </div>
                 <div>
                   <div className="font-semibold tabular-nums">{formatRon(analytics.cash.aov)}</div>
-                  <div className="text-xs text-muted-foreground">AOV</div>
+                  <div className="text-xs text-muted-foreground">{tPayments('labels.aov')}</div>
                 </div>
               </div>
             </div>
@@ -435,38 +439,38 @@ const PaymentStatistics = () => {
 
         <Card className="border-border/60">
           <CardHeader>
-            <CardTitle className="text-base">Revenue Breakdown</CardTitle>
-            <CardDescription>Where your money comes from</CardDescription>
+            <CardTitle className="text-base">{tPayments('section.revenueBreakdown')}</CardTitle>
+            <CardDescription>{tPayments('section.revenueBreakdownDesc')}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
                 {
-                  label: 'Revenue from Card',
+                  label: tPayments('breakdown.cardRevenue'),
                   value: analytics.card.revenue,
                   icon: CreditCard,
                   tone: 'from-sky-50 to-background',
                 },
                 {
-                  label: 'Revenue from Cash',
+                  label: tPayments('breakdown.cashRevenue'),
                   value: analytics.cash.revenue,
                   icon: Banknote,
                   tone: 'from-amber-50 to-background',
                 },
                 {
-                  label: 'Pending Revenue',
+                  label: tPayments('breakdown.pendingRevenue'),
                   value: analytics.pendingCardRevenue,
                   icon: Timer,
                   tone: 'from-yellow-50 to-background',
                 },
                 {
-                  label: 'Refunded Revenue',
+                  label: tPayments('breakdown.refundedRevenue'),
                   value: analytics.refundedRevenue,
                   icon: RefreshCcw,
                   tone: 'from-slate-50 to-background',
                 },
                 {
-                  label: 'Cancelled Revenue',
+                  label: tPayments('breakdown.cancelledRevenue'),
                   value: analytics.cancelledRevenue,
                   icon: AlertTriangle,
                   tone: 'from-rose-50 to-background',
@@ -495,8 +499,8 @@ const PaymentStatistics = () => {
       <section>
         <Card className="border-border/60">
           <CardHeader>
-            <CardTitle className="text-base">Payment Funnel</CardTitle>
-            <CardDescription>Journey from checkout start to outcome</CardDescription>
+            <CardTitle className="text-base">{tPayments('section.funnel')}</CardTitle>
+            <CardDescription>{tPayments('section.funnelDesc')}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
@@ -516,7 +520,7 @@ const PaymentStatistics = () => {
                     <div className="text-xs text-muted-foreground mb-2">{step.label}</div>
                     <div className="text-2xl font-semibold tabular-nums">{step.value}</div>
                     <div className="text-xs text-muted-foreground mt-1">
-                      {formatPct(ofStarted, 0)} of started
+                      {tPayments('funnelOfStarted', { pct: formatPct(ofStarted, 0) })}
                     </div>
                     <Progress value={pct} className="h-1.5 mt-3" />
                   </div>
@@ -531,7 +535,7 @@ const PaymentStatistics = () => {
       <section className="space-y-3">
         <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <Lightbulb className="h-4 w-4" />
-          Insights
+          {tAnalytics('insights')}
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
           {analytics.insights.map((insight) => (
@@ -540,7 +544,7 @@ const PaymentStatistics = () => {
               className="border-border/60 bg-gradient-to-br from-muted/40 via-background to-background"
             >
               <CardContent className="pt-4 pb-4 flex gap-3 items-start">
-                <div className="rounded-full bg-emerald-100 p-1.5 mt-0.5">
+                <div className="rounded-full bg-emerald-500/15 p-1.5 mt-0.5">
                   <Lightbulb className="h-3.5 w-3.5 text-emerald-700" />
                 </div>
                 <p className="text-sm leading-relaxed">{insight}</p>
@@ -553,7 +557,7 @@ const PaymentStatistics = () => {
       {/* Section 7 — Trends (lazy) */}
       <section className="space-y-3">
         <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Trends
+          {tAnalytics('trends')}
         </h3>
         <Suspense
           fallback={
@@ -576,8 +580,8 @@ const PaymentStatistics = () => {
       <section>
         <Card className="border-border/60">
           <CardHeader>
-            <CardTitle className="text-base">Payment Analytics</CardTitle>
-            <CardDescription>Detailed performance statistics</CardDescription>
+            <CardTitle className="text-base">{tPayments('section.analytics')}</CardTitle>
+            <CardDescription>{tPayments('section.analyticsDesc')}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -596,26 +600,26 @@ const PaymentStatistics = () => {
       <section>
         <Card className="border-border/60">
           <CardHeader>
-            <CardTitle className="text-base">Recent Payments</CardTitle>
-            <CardDescription>Latest completed and cash orders</CardDescription>
+            <CardTitle className="text-base">{tPayments('section.recent')}</CardTitle>
+            <CardDescription>{tPayments('section.recentDesc')}</CardDescription>
           </CardHeader>
           <CardContent>
             {analytics.recentOrders.length === 0 ? (
               <div className="text-center py-10 text-muted-foreground">
                 <Package className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                <p>No payments in this period</p>
+                <p>{tPayments('empty.noPayments')}</p>
               </div>
             ) : (
               <div className="overflow-x-auto rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Order</TableHead>
-                      <TableHead>Method</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Date</TableHead>
+                      <TableHead>{tPayments('table.customer')}</TableHead>
+                      <TableHead>{tPayments('table.order')}</TableHead>
+                      <TableHead>{tPayments('table.method')}</TableHead>
+                      <TableHead>{tPayments('table.status')}</TableHead>
+                      <TableHead>{tPayments('table.amount')}</TableHead>
+                      <TableHead>{tPayments('table.date')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -627,9 +631,9 @@ const PaymentStatistics = () => {
                         </TableCell>
                         <TableCell className="font-mono text-sm">#{order.id.slice(-8)}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">{paymentMethodLabel(order)}</Badge>
+                          <Badge variant="outline">{paymentMethodLabel(order, tPayments)}</Badge>
                         </TableCell>
-                        <TableCell>{paymentStatusBadge(order)}</TableCell>
+                        <TableCell>{paymentStatusBadge(order, tPayments)}</TableCell>
                         <TableCell className="font-medium tabular-nums">
                           {formatRon(Number(order.total))}
                         </TableCell>
@@ -649,7 +653,7 @@ const PaymentStatistics = () => {
       {/* Section 8 — Pending Card Payments */}
       <section className="space-y-3">
         <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Live pending card payments
+          {tPayments('section.pendingLive')}
         </h3>
         <PendingCheckoutsSection />
       </section>

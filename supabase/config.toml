@@ -38,7 +38,7 @@ image_transformation_enabled = true
 
 [auth]
 enabled = true
-port = 54329
+port = 54331
 site_url = "http://127.0.0.1:3000"
 additional_redirect_urls = ["https://127.0.0.1:3000"]
 jwt_expiry = 3600

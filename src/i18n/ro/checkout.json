@@ -1,0 +1,138 @@
+{
+  "title": "Checkout",
+  "backToBag": "← Înapoi la coș",
+  "backToCart": "Înapoi la coș",
+  "contactInfo": "Informații contact",
+  "completeOrder": "Finalizează comanda",
+  "payNow": "Plătește acum",
+  "continueShopping": "Continuă cumpărăturile",
+  "loadingExperience": "Se încarcă experiența ta...",
+  "steps": {
+    "customer": "Client",
+    "delivery": "Livrare",
+    "payment": "Plată",
+    "review": "Sumar"
+  },
+  "field": {
+    "fullName": "Nume complet *",
+    "email": "Email *",
+    "phone": "Telefon",
+    "street": "Stradă *",
+    "number": "Număr *",
+    "numberShort": "Nr.",
+    "block": "Bloc",
+    "apartment": "Apartament",
+    "apt": "Ap."
+  },
+  "placeholder": {
+    "fullName": "Nume complet *",
+    "email": "Email *",
+    "phone": "Telefon",
+    "street": "Stradă *",
+    "number": "Număr *",
+    "discount": "Cod reducere"
+  },
+  "delivery": {
+    "home": "Livrare la domiciliu",
+    "locker": "Locker",
+    "homeDelivery": "Livrare la domiciliu",
+    "lockerDelivery": "Livrare locker",
+    "eta": "Livrare estimată în 1–3 zile lucrătoare după expediere.",
+    "selectLocker": "Selectează un locker",
+    "changeLocker": "Schimbă lockerul",
+    "locateMe": "Localizează-mă",
+    "chooseCarrier": "Alege un curier..."
+  },
+  "payment": {
+    "method": "Metodă de plată",
+    "cardNetopia": "Card (Netopia)",
+    "cardSecure": "Plată online securizată",
+    "cardAtLocker": "Card la locker",
+    "card": "Card",
+    "cashOnDelivery": "Plată ramburs",
+    "cash": "Numerar",
+    "cashWithFee": "+ {{fee}} taxă",
+    "payAtLockerFee": "Plătești cu cardul la ridicare · + {{fee}} taxă",
+    "payAtLocker": "Plătești cu cardul la ridicarea coletului",
+    "noExtraFee": "Fără taxă suplimentară",
+    "fee": "Taxă plată"
+  },
+  "summary": {
+    "title": "Sumar comandă",
+    "qty": "Cant. {{count}}",
+    "subtotal": "Subtotal",
+    "shipping": "Livrare",
+    "delivery": "Livrare",
+    "deliveryFee": "Taxă livrare",
+    "lockerCardFee": "Taxă card locker",
+    "cashFee": "Taxă cash",
+    "total": "Total"
+  },
+  "action": {
+    "back": "Înapoi",
+    "continue": "Continuă",
+    "viewCart": "Vezi coșul",
+    "addToCart": "Adaugă în coș",
+    "outOfStock": "Fără stoc",
+    "proceedCheckout": "Mergi la checkout",
+    "placeOrder": "Plasează comanda",
+    "placingOrder": "Se plasează comanda…",
+    "payAmount": "Plătește {{amount}}",
+    "shopNow": "Cumpără acum"
+  },
+  "cart": {
+    "title": "Coș de cumpărături",
+    "yourBag": "Coșul tău",
+    "empty": "Coșul tău este gol",
+    "items": "{{count}} articole",
+    "shippingAtCheckout": "Livrarea se calculează la checkout",
+    "youMayAlsoLike": "S-ar putea să-ți placă",
+    "checkout": "Checkout",
+    "close": "Închide coșul"
+  },
+  "review": {
+    "paymentPrefix": "Plată:"
+  },
+  "catalog": {
+    "title": "Catalog",
+    "search": "Caută produse...",
+    "allCollections": "Toate colecțiile",
+    "filters": "Filtre"
+  },
+  "product": {
+    "reviews": "Recenzii",
+    "writeReview": "Scrie o recenzie",
+    "related": "Produse similare",
+    "inStock": "În stoc",
+    "onlyLeft": "Doar {{count}} rămase"
+  },
+  "toast": {
+    "added": "{{title}} a fost adăugat în coș",
+    "addedAnother": "Încă un {{title}} adăugat în coș",
+    "removed": "{{title}} a fost eliminat din coș",
+    "updatedInCart": "{{title}} actualizat în coș",
+    "cartEmpty": "Coșul tău este gol",
+    "orderSuccessLocker": "Comandă creată cu succes! Plătești cu cardul la locker.",
+    "orderSuccessCash": "Comandă creată cu succes! Vei plăti ramburs la livrare.",
+    "paymentVerifyShort": "Verificarea plății este în curs. Vei primi confirmarea în curând.",
+    "paymentVerifyCharged": "Eroare la verificarea plății. Contactează suportul dacă ai fost debitat.",
+    "outOfStock": "Produsul nu este în stoc",
+    "maxStock": "Stoc maxim atins ({{stock}})",
+    "fillRequired": "Te rugăm să completezi toate câmpurile obligatorii",
+    "invalidEmail": "Te rugăm să introduci o adresă de email validă",
+    "fillAddress": "Te rugăm să completezi detaliile adresei",
+    "selectLocker": "Te rugăm să selectezi un locker",
+    "paymentSuccess": "Plată reușită! Mulțumim pentru comandă.",
+    "paymentVerifying": "Verificarea plății este în curs. Verifică emailul pentru confirmare.",
+    "paymentVerifyError": "Eroare la verificarea plății. Contactează suportul cu detaliile comenzii.",
+    "paymentInitFailed": "Inițierea plății a eșuat. Contactează suportul.",
+    "paymentSetupFailed": "Configurarea plății a eșuat. Contactează suportul.",
+    "createOrderFailed": "Crearea comenzii a eșuat",
+    "createOrderRetry": "Crearea comenzii a eșuat. Te rugăm să încerci din nou.",
+    "loadStoreFailed": "Încărcarea datelor magazinului a eșuat",
+    "loadProductsFailed": "Încărcarea produselor a eșuat",
+    "discountApplied": "Reducerea a fost aplicată",
+    "discountInvalid": "Cod de reducere invalid"
+  },
+  "rights": "Toate drepturile rezervate."
+}
