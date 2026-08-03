@@ -31,25 +31,57 @@ type PricingPlan = {
 };
 
 export default function Landing() {
-  const { t } = useTranslation("auth");
+  const { t, ready } = useTranslation("auth");
   const { language, setLanguage } = useLanguage();
   const [businessType, setBusinessType] = useState<"pf" | "srl">("pf");
   const navigate = useNavigate();
-
-  const featureCards = t("landing.featureCards", { returnObjects: true }) as FeatureCard[];
-  const comparisonPf = t("landing.comparison.pf", { returnObjects: true }) as ComparisonPlan;
-  const comparisonSrl = t("landing.comparison.srl", { returnObjects: true }) as ComparisonPlan;
-  const noTechPoints = t("landing.noTech.points", { returnObjects: true }) as string[];
-  const pricingPf = t("landing.pricing.pf", { returnObjects: true }) as PricingPlan;
-  const pricingSrl = t("landing.pricing.srl", { returnObjects: true }) as PricingPlan;
-
-  const activeComparison = businessType === "pf" ? comparisonPf : comparisonSrl;
 
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
       navigate("/welcome", { replace: true });
     }
   }, [navigate]);
+
+  const featureCards = t("landing.featureCards", { returnObjects: true });
+  const comparisonPf = t("landing.comparison.pf", { returnObjects: true });
+  const comparisonSrl = t("landing.comparison.srl", { returnObjects: true });
+  const noTechPoints = t("landing.noTech.points", { returnObjects: true });
+  const pricingPf = t("landing.pricing.pf", { returnObjects: true });
+  const pricingSrl = t("landing.pricing.srl", { returnObjects: true });
+
+  // Guard: returnObjects yields the key string until the auth bundle is present
+  if (
+    !ready ||
+    !Array.isArray(featureCards) ||
+    !Array.isArray(noTechPoints) ||
+    typeof comparisonPf !== "object" ||
+    comparisonPf === null ||
+    !Array.isArray((comparisonPf as ComparisonPlan).features) ||
+    typeof comparisonSrl !== "object" ||
+    comparisonSrl === null ||
+    !Array.isArray((comparisonSrl as ComparisonPlan).features) ||
+    typeof pricingPf !== "object" ||
+    pricingPf === null ||
+    !Array.isArray((pricingPf as PricingPlan).features) ||
+    typeof pricingSrl !== "object" ||
+    pricingSrl === null ||
+    !Array.isArray((pricingSrl as PricingPlan).features)
+  ) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const cards = featureCards as FeatureCard[];
+  const points = noTechPoints as string[];
+  const pfPlan = comparisonPf as ComparisonPlan;
+  const srlPlan = comparisonSrl as ComparisonPlan;
+  const pricingIndividual = pricingPf as PricingPlan;
+  const pricingCompany = pricingSrl as PricingPlan;
+
+  const activeComparison = businessType === "pf" ? pfPlan : srlPlan;
 
   const toggleLanguage = () => {
     const next: AppLanguage = language === "en" ? "ro" : "en";
@@ -132,7 +164,7 @@ export default function Landing() {
           </h2>
           
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featureCards.map((card, i) => {
+            {cards.map((card, i) => {
               const meta = FEATURE_CARD_META[i];
               const Icon = meta.icon;
               return (
@@ -248,7 +280,7 @@ export default function Landing() {
           </div>
           
           <div className="grid sm:grid-cols-2 gap-6 mb-12">
-            {noTechPoints.map((point, i) => {
+            {points.map((point, i) => {
               const Icon = NO_TECH_POINT_ICONS[i];
               return (
                 <div 
@@ -285,23 +317,23 @@ export default function Landing() {
               <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white mb-6 shadow-lg shadow-orange-500/25">
                 <User className="h-7 w-7" />
               </div>
-              <h3 className="text-2xl font-bold mb-1">{pricingPf.title}</h3>
-              <p className="text-muted-foreground mb-6">{pricingPf.subtitle}</p>
+              <h3 className="text-2xl font-bold mb-1">{pricingIndividual.title}</h3>
+              <p className="text-muted-foreground mb-6">{pricingIndividual.subtitle}</p>
               
               <div className="mb-6">
                 <div className="flex items-baseline gap-2 mb-2">
-                  <span className="text-4xl font-bold">{pricingPf.setup}</span>
+                  <span className="text-4xl font-bold">{pricingIndividual.setup}</span>
                 </div>
-                <p className="text-sm text-muted-foreground">{pricingPf.setupLabel}</p>
+                <p className="text-sm text-muted-foreground">{pricingIndividual.setupLabel}</p>
               </div>
               
               <div className="flex items-baseline gap-1 mb-8 p-4 bg-muted/50 rounded-xl">
-                <span className="text-2xl font-bold">{pricingPf.monthly}</span>
-                <span className="text-muted-foreground">{pricingPf.monthlyLabel}</span>
+                <span className="text-2xl font-bold">{pricingIndividual.monthly}</span>
+                <span className="text-muted-foreground">{pricingIndividual.monthlyLabel}</span>
               </div>
               
               <ul className="space-y-3">
-                {pricingPf.features.map((feature) => (
+                {pricingIndividual.features.map((feature) => (
                   <li key={feature} className="flex items-center gap-3 text-sm">
                     <div className="h-5 w-5 rounded-full bg-orange-500/20 flex items-center justify-center text-orange-600">
                       <Check className="h-3 w-3" />
@@ -315,29 +347,29 @@ export default function Landing() {
             {/* Company Package */}
             <div className="relative bg-card/50 backdrop-blur-sm rounded-3xl border-2 border-violet-500/50 p-8 animate-fade-in [animation-delay:300ms] hover:shadow-xl transition-all duration-300 shadow-lg shadow-violet-500/10">
               <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-gradient-to-r from-violet-500 to-purple-500 text-white text-sm font-semibold rounded-full shadow-lg">
-                {pricingSrl.badge}
+                {pricingCompany.badge}
               </div>
               
               <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center text-white mb-6 shadow-lg shadow-violet-500/25">
                 <Building2 className="h-7 w-7" />
               </div>
-              <h3 className="text-2xl font-bold mb-1">{pricingSrl.title}</h3>
-              <p className="text-muted-foreground mb-6">{pricingSrl.subtitle}</p>
+              <h3 className="text-2xl font-bold mb-1">{pricingCompany.title}</h3>
+              <p className="text-muted-foreground mb-6">{pricingCompany.subtitle}</p>
               
               <div className="mb-6">
                 <div className="flex items-baseline gap-2 mb-2">
-                  <span className="text-4xl font-bold">{pricingSrl.setup}</span>
+                  <span className="text-4xl font-bold">{pricingCompany.setup}</span>
                 </div>
-                <p className="text-sm text-muted-foreground">{pricingSrl.setupLabel}</p>
+                <p className="text-sm text-muted-foreground">{pricingCompany.setupLabel}</p>
               </div>
               
               <div className="flex items-baseline gap-1 mb-8 p-4 bg-violet-500/10 rounded-xl border border-violet-500/20">
-                <span className="text-2xl font-bold">{pricingSrl.monthly}</span>
-                <span className="text-muted-foreground">{pricingSrl.monthlyLabel}</span>
+                <span className="text-2xl font-bold">{pricingCompany.monthly}</span>
+                <span className="text-muted-foreground">{pricingCompany.monthlyLabel}</span>
               </div>
               
               <ul className="space-y-3">
-                {pricingSrl.features.map((feature) => (
+                {pricingCompany.features.map((feature) => (
                   <li key={feature} className="flex items-center gap-3 text-sm">
                     <div className="h-5 w-5 rounded-full bg-violet-500/20 flex items-center justify-center text-violet-600">
                       <Check className="h-3 w-3" />
