@@ -1,0 +1,174 @@
+.sv-dashboard-home {
+  --svd-accent: 257 69% 42%;
+  --svd-accent-deep: 257 69% 34%;
+  --svd-ink: 261 51% 12%;
+  --svd-paper: 0 0% 100%;
+  --svd-muted: 250 12% 36%;
+  --svd-line: 250 24% 89%;
+  --svd-mist: 255 45% 97%;
+  --svd-panel: 0 0% 100%;
+  color: hsl(var(--svd-ink));
+}
+
+.dark .sv-dashboard-home {
+  --svd-accent: 255 100% 68%;
+  --svd-accent-deep: 255 100% 62%;
+  --svd-ink: 0 0% 100%;
+  --svd-paper: 263 53% 6%;
+  --svd-muted: 240 12% 74%;
+  --svd-line: 255 18% 20%;
+  --svd-mist: 261 36% 11%;
+  --svd-panel: 261 42% 9%;
+}
+
+.sv-dashboard-surface {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid hsl(var(--svd-line));
+  border-radius: 24px;
+  background: hsl(var(--svd-panel));
+  color: hsl(var(--svd-ink));
+  box-shadow:
+    0 1px 1px rgba(15, 23, 42, 0.02),
+    0 12px 40px -24px rgba(15, 23, 42, 0.18);
+  padding: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .sv-dashboard-surface {
+    padding: 1.5rem;
+  }
+}
+
+.sv-dashboard-surface--hero,
+.sv-dashboard-surface--attention {
+  color: #ffffff;
+}
+
+.sv-dashboard-surface--hero {
+  border-color: rgba(255, 255, 255, 0.06);
+  background:
+    radial-gradient(circle at top left, rgba(110, 61, 255, 0.14), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(75, 33, 182, 0.18), transparent 28%),
+    #0d0717;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 22px 60px -32px rgba(13, 7, 23, 0.75);
+}
+
+.sv-dashboard-surface--attention {
+  border-color: rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+    #1a0f2e;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 20px 48px -30px rgba(26, 15, 46, 0.85);
+}
+
+.sv-dashboard-surface--hero .sv-dashboard-eyebrow,
+.sv-dashboard-surface--attention .sv-dashboard-eyebrow {
+  color: rgba(196, 181, 255, 0.92);
+}
+
+.sv-dashboard-surface--hero .sv-dashboard-muted,
+.sv-dashboard-surface--attention .sv-dashboard-muted {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.sv-dashboard-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: hsl(var(--svd-accent));
+}
+
+.sv-dashboard-eyebrow--light {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.sv-dashboard-muted {
+  color: hsl(var(--svd-muted));
+}
+
+.sv-dashboard-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(var(--svd-accent));
+  transition: color 160ms ease, transform 160ms ease;
+}
+
+.sv-dashboard-link:hover {
+  color: hsl(var(--svd-accent-deep));
+  transform: translateX(1px);
+}
+
+.dark .sv-dashboard-link:hover {
+  color: #c4b5ff;
+}
+
+.sv-dashboard-action-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 0.9rem 1rem;
+  text-align: left;
+  transition:
+    transform 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease;
+}
+
+.sv-dashboard-action-row:hover {
+  transform: translateY(-1px);
+  border-color: rgba(110, 61, 255, 0.28);
+}
+
+.sv-dashboard-order-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-radius: 18px;
+  border: 1px solid transparent;
+  padding: 0.95rem 1rem;
+  text-align: left;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease;
+}
+
+.sv-dashboard-order-row:hover {
+  background: hsl(var(--svd-mist));
+  border-color: hsl(var(--svd-line));
+  transform: translateY(-1px);
+}
+
+.dark .sv-dashboard-order-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.sv-dashboard-insight-card {
+  min-height: 280px;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.sv-dashboard-insight-card:hover {
+  transform: translateY(-1px);
+  border-color: hsl(var(--svd-accent) / 0.22);
+  box-shadow:
+    0 1px 1px rgba(15, 23, 42, 0.02),
+    0 18px 40px -28px rgba(110, 61, 255, 0.28);
+}

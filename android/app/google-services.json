@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "372641271280",
+    "project_id": "speed-vendors",
+    "storage_bucket": "speed-vendors.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:372641271280:android:39af4199b7b531af8be135",
+        "android_client_info": {
+          "package_name": "com.speedvendors.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyADaJKf9LlkF3I5-YmUEKAVUV2054eInto"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

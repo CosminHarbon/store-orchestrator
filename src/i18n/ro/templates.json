@@ -1,6 +1,6 @@
 {
   "title": "Șabloane",
-  "description": "Personalizează designul magazinului",
+  "description": "Construiește și personalizează website-ul",
   "browseTemplates": "Răsfoiește șabloane",
   "customize": "Personalizează",
   "customizeShort": "Custom",
@@ -15,9 +15,9 @@
   "templateUrl": "URL șablon:",
   "howToUse": "Cum folosești șabloanele",
   "editable": {
-    "name": "Șablon editabil",
-    "badge": "Editabil",
-    "description": "Magazin complet personalizabil cu builder live, culori, hero și blocuri de conținut. Editezi tot vizual.",
+    "name": "Magazin modern",
+    "badge": "Builder vizual",
+    "description": "Magazin complet personalizabil cu un builder vizual — secțiuni, culori, tipografie, media și previzualizare live.",
     "features": {
       "liveEditor": "Editor vizual live",
       "customBlocks": "Blocuri și layout-uri personalizate",
@@ -31,7 +31,7 @@
   "premium": {
     "name": "Premium",
     "badge": "Premium",
-    "description": "Magazin elegant, orientat spre conversie — gata de publicare. Fără builder: homepage, catalog, pagini produs, coș și checkout sunt create pentru tine și alimentate de datele magazinului.",
+    "description": "Magazin elegant, orientat spre conversie — gata de publicare. Homepage, catalog, pagini produs, coș și checkout sunt create pentru tine și alimentate de datele magazinului.",
     "features": {
       "homepage": "Secțiuni homepage de tip Shopify",
       "catalog": "Catalog modern cu filtre",
@@ -41,6 +41,12 @@
       "mobileFirst": "Mobile-first și rapid",
       "publishGo": "Neditabil — publică și gata"
     }
+  },
+  "floral": {
+    "name": "Floral Atelier",
+    "badge": "Floral",
+    "niche": "Florării",
+    "description": "Magazin boutique pentru florării — imagini aerisite, tipografie elegantă și checkout complet cu Netopia, ramburs, livrare acasă și locker."
   },
   "status": {
     "active": "Activ",
@@ -53,7 +59,14 @@
   "action": {
     "preview": "Previzualizare",
     "openPublish": "Deschide / Publică",
-    "openTemplate": "Deschide șablonul"
+    "openTemplate": "Deschide șablonul",
+    "demo": "Demo",
+    "live": "Magazin live",
+    "copyLiveUrl": "Copiază URL live"
+  },
+  "modes": {
+    "demoHint": "Poze, produse și texte exemplu — arată clienților cum poate arăta site-ul.",
+    "liveHint": "Produsele, textele și checkout-ul tău reale."
   },
   "help": {
     "step1": "1. Copiază cheia API a magazinului de mai sus",
@@ -65,6 +78,114 @@
   },
   "toast": {
     "apiKeyCopied": "Cheia API a fost copiată!",
-    "premiumUrlCopied": "URL-ul magazinului Premium a fost copiat — partajează-l pentru publicare"
+    "premiumUrlCopied": "URL-ul magazinului Premium a fost copiat — partajează-l pentru publicare",
+    "floralUrlCopied": "URL-ul magazinului Floral a fost copiat — partajează-l pentru publicare"
+  },
+  "builder": {
+    "hubEyebrow": "Website",
+    "hubTitle": "Website Builder",
+    "hubSubtitle": "Proiectează magazinul vizual — editează secțiuni, stilizează brandul, previzualizează instant și publică când ești gata.",
+    "hubLiveBadge": "Editor vizual",
+    "hubCtaTitle": "Construiește website-ul",
+    "hubCtaBody": "Deschide editorul pentru a personaliza homepage-ul, tema și blocurile de conținut cu previzualizare live.",
+    "openBuilder": "Deschide website builder",
+    "templatesTitle": "Șabloane de start",
+    "customizeTemplate": "Personalizează website-ul",
+    "eyebrow": "Website builder",
+    "title": "Pagina Home",
+    "saving": "Se salvează…",
+    "saved": "Salvat",
+    "unsaved": "Modificări nesalvate",
+    "preview": "Previzualizare",
+    "publish": "Publică",
+    "publishedToast": "Salvat și URL live copiat — partajează-l cu clienții",
+    "addSection": "Adaugă secțiune",
+    "add": "Adaugă",
+    "homepageSections": "Secțiuni homepage",
+    "hidden": "Ascuns",
+    "systemSectionHint": "Această secțiune folosește datele din catalog. O poți ascunde sau stiliza din Temă.",
+    "pagesHint": "Home este complet editabil în builder. Paginile produs, coș și checkout moștenesc automat tema ta.",
+    "tabs": {
+      "sections": "Secțiuni",
+      "theme": "Temă",
+      "pages": "Pagini"
+    },
+    "catalog": {
+      "content": "Conținut",
+      "marketing": "Marketing",
+      "productsHint": "Grila de produse, colecțiile și review-urile sunt secțiuni built-in — le activezi din lista de secțiuni."
+    },
+    "sections": {
+      "header": "Header",
+      "hero": "Hero",
+      "collections": "Colecții",
+      "products": "Produse recomandate",
+      "reviews": "Review-uri",
+      "footer": "Footer",
+      "block": {
+        "text": "Text",
+        "image": "Imagine",
+        "text-image": "Imagine + text",
+        "carousel": "Carousel imagini",
+        "banner": "Banner promoțional",
+        "newsletter": "Newsletter",
+        "testimonial": "Testimoniale",
+        "video": "Video",
+        "custom-html": "Bloc personalizat"
+      }
+    },
+    "fields": {
+      "heading": "Titlu",
+      "description": "Descriere",
+      "button": "Text buton",
+      "buttonUrl": "Link buton",
+      "layout": "Layout",
+      "changeBackground": "Schimbă imaginea de fundal",
+      "changeLogo": "Schimbă logo-ul",
+      "changeImage": "Înlocuiește imaginea",
+      "gradient": "Overlay gradient",
+      "storeName": "Nume magazin",
+      "navbarStyle": "Stil header",
+      "footerText": "Text footer",
+      "title": "Titlu secțiune",
+      "text": "Text",
+      "quote": "Citat",
+      "author": "Autor",
+      "videoUrl": "URL video"
+    },
+    "layouts": {
+      "center": "Centrat",
+      "left": "Stânga",
+      "right": "Dreapta",
+      "split": "Split"
+    },
+    "theme": {
+      "colors": "Culori",
+      "primary": "Principal",
+      "secondary": "Secundar",
+      "accent": "Text muted",
+      "background": "Fundal",
+      "text": "Text",
+      "typography": "Tipografie",
+      "headingFont": "Font titluri",
+      "bodyFont": "Font text",
+      "layout": "Layout & butoane",
+      "radius": "Colțuri",
+      "buttons": "Stil butoane"
+    },
+    "pages": {
+      "home": "Home",
+      "products": "Produse",
+      "cart": "Coș",
+      "checkout": "Checkout",
+      "editable": "Editabil în builder",
+      "themeLinked": "Folosește tema ta"
+    },
+    "media": {
+      "title": "Bibliotecă media",
+      "upload": "Încarcă imagine",
+      "empty": "Nicio imagine încă — încarcă primul asset.",
+      "uploadFailed": "Încărcarea a eșuat"
+    }
   }
 }

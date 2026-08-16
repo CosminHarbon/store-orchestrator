@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, type ComponentType } from 'react';
+import { lazy, Suspense, useMemo, useState, type ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -17,12 +17,14 @@ import {
   XCircle,
   AlertTriangle,
   CheckCircle2,
+  Download,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/DateRangeFilter';
 import { PendingCheckoutsSection } from '@/components/PendingCheckoutsSection';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,6 +40,8 @@ import {
   type AnalyticsTransaction,
 } from '@/lib/paymentAnalytics';
 import { cn } from '@/lib/utils';
+import { ExportDialog } from '@/components/export/ExportDialog';
+import type { ExportRow } from '@/lib/export/types';
 
 const PaymentTrendsCharts = lazy(() => import('@/components/PaymentTrendsCharts'));
 
@@ -128,6 +132,8 @@ function paymentStatusBadge(order: AnalyticsOrder, t: (key: string) => string) {
 const PaymentStatistics = () => {
   const { t: tPayments } = useTranslation('payments');
   const { t: tAnalytics } = useTranslation('analytics');
+  const { t: tExport } = useTranslation('export');
+  const [exportOpen, setExportOpen] = useState(false);
   const { user } = useAuth();
   const { dateRange, setDateRange, preset, setPreset } = useDateRangeFilter('30days');
   const prevRange = useMemo(() => previousPeriod(dateRange), [dateRange]);
@@ -248,6 +254,35 @@ const PaymentStatistics = () => {
     );
   }, [analytics]);
 
+
+  const exportRows = useMemo<ExportRow[]>(() => {
+    const orders = data?.orders || [];
+    return orders.map((o) => ({
+      id: o.id,
+      created: o.created_at,
+      customer: o.customer_name,
+      email: o.customer_email,
+      total: Number(o.total).toFixed(2),
+      payment_status: o.payment_status,
+      method: isCashOrder(o) ? tPayments('method.cash') : tPayments('method.card'),
+      shipping_status: o.shipping_status,
+    }));
+  }, [data?.orders, tPayments]);
+
+  const exportSummary = useMemo(() => {
+    if (!analytics) {
+      return [
+        { label: tExport('summary.rows'), value: '0' },
+        { label: tExport('summary.revenue'), value: '0.00 RON' },
+      ];
+    }
+    return [
+      { label: tExport('summary.orders'), value: String(exportRows.length) },
+      { label: tExport('summary.revenue'), value: formatRon(analytics.totalRevenue) },
+      { label: tExport('summary.paid'), value: String(analytics.stats.successfulCard + analytics.cash.orders) },
+    ];
+  }, [analytics, exportRows.length, tExport]);
+
   if (isLoading || !analytics) {
     return (
       <div className="space-y-6">
@@ -310,12 +345,18 @@ const PaymentStatistics = () => {
             {tPayments('subtitle')}
           </p>
         </div>
-        <DateRangeFilter
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-          preset={preset}
-          onPresetChange={setPreset}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => setExportOpen(true)}>
+            <Download className="h-4 w-4 mr-2" />
+            {tExport('open')}
+          </Button>
+          <DateRangeFilter
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            preset={preset}
+            onPresetChange={setPreset}
+          />
+        </div>
       </div>
 
       {/* Section 1 — KPI Cards */}
@@ -657,6 +698,13 @@ const PaymentStatistics = () => {
         </h3>
         <PendingCheckoutsSection />
       </section>
+      <ExportDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        datasetId="payments"
+        rows={exportRows}
+        summary={exportSummary}
+      />
     </div>
   );
 };

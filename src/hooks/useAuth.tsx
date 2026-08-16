@@ -6,7 +6,11 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (
+    email: string,
+    password: string
+  ) => Promise<{ error: any; needsEmailConfirmation?: boolean }>;
+  resendSignupEmail: (email: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
@@ -40,14 +44,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string) => {
     const redirectUrl = 'https://www.speedvendors.com/auth/callback';
-    
-    
-    const { error } = await supabase.auth.signUp({
+
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: redirectUrl
-      }
+        emailRedirectTo: redirectUrl,
+      },
+    });
+
+    if (error) return { error };
+
+    // Supabase returns 200 for existing emails (anti-enumeration) and does not
+    // send another confirmation mail. Detect that and surface a clear error.
+    const identities = data.user?.identities ?? [];
+    if (data.user && identities.length === 0) {
+      return {
+        error: {
+          message: 'User already registered',
+          code: 'user_already_registered',
+        },
+      };
+    }
+
+    return { error: null, needsEmailConfirmation: !data.session };
+  };
+
+  const resendSignupEmail = async (email: string) => {
+    const redirectUrl = 'https://www.speedvendors.com/auth/callback';
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: {
+        emailRedirectTo: redirectUrl,
+      },
     });
     return { error };
   };
@@ -61,6 +91,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    try {
+      const { unregisterPushToken } = await import('@/lib/notifications/pushNotifications');
+      await unregisterPushToken();
+    } catch {
+      /* push cleanup must never block logout */
+    }
     await supabase.auth.signOut();
   };
 
@@ -70,6 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session,
       loading,
       signUp,
+      resendSignupEmail,
       signIn,
       signOut,
     }}>

@@ -100,6 +100,32 @@
     "titleCount": "Coșuri abandonate ({{count}})",
     "description": "Clienți care au început checkout-ul, dar nu au apăsat Plasează comanda. Separat de Plățile card în așteptare.",
     "refresh": "Reîmprospătează",
+    "clearAll": "Șterge tot",
+    "clearSelection": "Anulează selecția",
+    "deleteSelected": "Șterge selecția",
+    "selectedCount": "{{count}} selectate",
+    "selectAllAria": "Selectează toate coșurile abandonate",
+    "selectRowAria": "Selectează coșul abandonat",
+    "sectionMenuAria": "Acțiuni coșuri abandonate",
+    "rowMenuAria": "Acțiuni coș",
+    "viewDetails": "Vezi detalii",
+    "confirm": {
+      "one": {
+        "title": "Șterge",
+        "description": "Acest coș abandonat va fi șters definitiv.\nAceastă acțiune nu poate fi anulată.",
+        "action": "Șterge"
+      },
+      "selected": {
+        "title": "Șterge selecția",
+        "description": "Coșurile abandonate selectate vor fi șterse definitiv.\nAceastă acțiune nu poate fi anulată.",
+        "action": "Șterge selecția"
+      },
+      "all": {
+        "title": "Șterge tot",
+        "description": "Vor fi eliminate definitiv toate coșurile abandonate afișate momentan.\nAceastă acțiune nu poate fi anulată.",
+        "action": "Șterge tot"
+      }
+    },
     "loading": "Se încarcă coșurile abandonate...",
     "empty": "Niciun coș abandonat momentan.",
     "detailsTitle": "Detalii coș abandonat",
@@ -148,7 +174,12 @@
     },
     "toast": {
       "refreshed": "Coșurile abandonate au fost reîmprospătate",
-      "refreshFailed": "Reîmprospătarea coșurilor abandonate a eșuat"
+      "refreshFailed": "Reîmprospătarea coșurilor abandonate a eșuat",
+      "deletedOne": "Coșul abandonat a fost șters",
+      "deletedSelected": "Coșurile selectate au fost șterse",
+      "cleared": "Coșurile abandonate au fost șterse",
+      "deleteFailed": "Ștergerea coșurilor abandonate a eșuat",
+      "clearFailed": "Ștergerea coșurilor abandonate a eșuat"
     }
   },
   "pending": {

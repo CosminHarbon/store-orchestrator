@@ -1,0 +1,179 @@
+{
+  "dialog": {
+    "title": "Export {{name}}",
+    "description": "Alege un șablon de coloane și un aspect de raport, apoi deschide raportul branduit SpeedVendors (include și CSV).",
+    "rowCount": "{{count}} rânduri gata de export"
+  },
+  "presets": {
+    "title": "Șabloane de coloane",
+    "essential": {
+      "name": "Esențial",
+      "description": "Câmpurile pe care le folosești cel mai des."
+    },
+    "detailed": {
+      "name": "Detaliat",
+      "description": "Export operațional complet."
+    },
+    "accounting": {
+      "name": "Contabilitate",
+      "description": "Set de coloane pentru financiar."
+    }
+  },
+  "styles": {
+    "title": "Aspect raport",
+    "classic": {
+      "name": "Clasic",
+      "description": "Tabel curat, brand SpeedVendors."
+    },
+    "executive": {
+      "name": "Executive",
+      "description": "Carduri sumar și spațiu generos."
+    },
+    "ledger": {
+      "name": "Registru",
+      "description": "Layout dens, tip contabilitate."
+    }
+  },
+  "customize": {
+    "title": "Personalizează coloanele",
+    "show": "Arată",
+    "hide": "Ascunde",
+    "includeSummary": "Include carduri sumar",
+    "includeGeneratedAt": "Include data generării"
+  },
+  "actions": {
+    "cancel": "Anulează",
+    "preview": "Previzualizează raportul",
+    "downloadCsv": "Descarcă CSV",
+    "csvOnly": "Doar CSV",
+    "exportPremium": "Exportă raportul",
+    "print": "Printează"
+  },
+  "meta": {
+    "generated": "Generat",
+    "rows": "Rânduri",
+    "poweredBy": "Export SpeedVendors",
+    "store": "Magazin",
+    "template": "Șablon"
+  },
+  "toast": {
+    "exported": "Au fost exportate {{count}} rânduri",
+    "exportedWithReport": "Raportul premium a fost deschis și {{count}} rânduri au fost descărcate",
+    "previewOpened": "Previzualizarea raportului a fost deschisă",
+    "allowPopups": "Permite ferestre pop-up pentru raportul premium",
+    "needColumns": "Selectează cel puțin o coloană"
+  },
+  "open": "Exportă",
+  "datasets": {
+    "products": {
+      "title": "Produse",
+      "subtitle": "Export catalog din SpeedVendors"
+    },
+    "stock": {
+      "title": "Stoc",
+      "subtitle": "Snapshot inventar din SpeedVendors"
+    },
+    "reviews": {
+      "title": "Recenzii",
+      "subtitle": "Export feedback clienți"
+    },
+    "orders": {
+      "title": "Comenzi",
+      "subtitle": "Export comenzi și fulfillment"
+    },
+    "customers": {
+      "title": "Clienți",
+      "subtitle": "Export analiză clienți"
+    },
+    "payments": {
+      "title": "Plăți",
+      "subtitle": "Export activitate plăți"
+    }
+  },
+  "columns": {
+    "products": {
+      "title": "Produs",
+      "sku": "SKU",
+      "category": "Categorie",
+      "price": "Preț (RON)",
+      "stock": "Stoc",
+      "low_stock_threshold": "Alertă stoc redus",
+      "orders": "Comenzi",
+      "revenue": "Venit (RON)",
+      "id": "ID produs"
+    },
+    "stock": {
+      "title": "Produs",
+      "sku": "SKU",
+      "stock": "Stoc curent",
+      "low_stock_threshold": "Alertă stoc redus",
+      "price": "Preț (RON)",
+      "category": "Categorie",
+      "status": "Status"
+    },
+    "reviews": {
+      "customer": "Client",
+      "email": "Email",
+      "product": "Produs",
+      "rating": "Rating",
+      "review": "Recenzie",
+      "status": "Status",
+      "created": "Creat",
+      "reply": "Răspuns"
+    },
+    "orders": {
+      "id": "ID comandă",
+      "created": "Creat",
+      "customer": "Client",
+      "email": "Email",
+      "phone": "Telefon",
+      "address": "Adresă",
+      "city": "Oraș",
+      "county": "Județ",
+      "total": "Total (RON)",
+      "payment_status": "Plată",
+      "shipping_status": "Livrare",
+      "delivery_type": "Tip livrare",
+      "awb": "AWB",
+      "carrier": "Curier"
+    },
+    "customers": {
+      "name": "Nume",
+      "email": "Email",
+      "phone": "Telefon",
+      "orders": "Comenzi",
+      "spent": "Total cheltuit (RON)",
+      "aov": "Valoare medie (RON)",
+      "segment": "Segment",
+      "status": "Status",
+      "first_order": "Prima comandă",
+      "last_order": "Ultima comandă",
+      "payment_method": "Plată preferată"
+    },
+    "payments": {
+      "id": "ID comandă",
+      "created": "Creat",
+      "customer": "Client",
+      "email": "Email",
+      "total": "Total (RON)",
+      "payment_status": "Status plată",
+      "method": "Metodă",
+      "shipping_status": "Livrare"
+    }
+  },
+  "summary": {
+    "rows": "Rânduri",
+    "totalValue": "Valoare totală",
+    "avgValue": "Medie",
+    "products": "Produse",
+    "outOfStock": "Fără stoc",
+    "lowStock": "Stoc redus",
+    "orders": "Comenzi",
+    "customers": "Clienți",
+    "revenue": "Venit",
+    "paid": "Plătite",
+    "pending": "În așteptare",
+    "failed": "Eșuate",
+    "avgRating": "Rating mediu"
+  }
+}

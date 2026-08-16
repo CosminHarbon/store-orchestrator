@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Grid3X3, List, Search, SlidersHorizontal } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { StorefrontCommerce } from '@/hooks/useStorefrontCommerce';
 import { productReviewStats } from '@/lib/storefront/api';
 import { ProductCard } from './ProductCard';
@@ -11,6 +12,7 @@ interface Props {
 type SortKey = 'featured' | 'newest' | 'price-asc' | 'price-desc' | 'name';
 
 export function PremiumCatalog({ commerce }: Props) {
+  const { t } = useTranslation('storefront');
   const {
     products,
     collections,
@@ -136,7 +138,7 @@ export function PremiumCatalog({ commerce }: Props) {
             />
           </div>
 
-          <FilterGroup title="Collections">
+          <FilterGroup title={t('catalog.collections')}>
             <Chip
               active={!selectedCollectionId}
               onClick={() => {
@@ -159,7 +161,7 @@ export function PremiumCatalog({ commerce }: Props) {
           </FilterGroup>
 
           {categories.length > 0 && (
-            <FilterGroup title="Category">
+            <FilterGroup title={t('catalog.category')}>
               <select
                 className="w-full rounded-[var(--prem-radius-sm)] border border-[var(--prem-line)] bg-white px-3 py-2 text-sm"
                 value={category}
@@ -178,7 +180,7 @@ export function PremiumCatalog({ commerce }: Props) {
             </FilterGroup>
           )}
 
-          <FilterGroup title="Price (RON)">
+          <FilterGroup title={t('catalog.price')}>
             <div className="flex gap-2">
               <input
                 type="number"
@@ -203,7 +205,7 @@ export function PremiumCatalog({ commerce }: Props) {
             </div>
           </FilterGroup>
 
-          <FilterGroup title="Sort">
+          <FilterGroup title={t('catalog.sort')}>
             <select
               className="w-full rounded-[var(--prem-radius-sm)] border border-[var(--prem-line)] bg-white px-3 py-2 text-sm"
               value={sort}

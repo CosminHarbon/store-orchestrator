@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import LiveTemplateEditor from "./LiveTemplateEditor";
 import BlockRenderer from "./BlockRenderer";
 import type { TemplateBlock } from "./BlockEditor";
+import { parseBuilderConfig } from "@/components/website-builder/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useAbandonedCartAutosave } from "@/hooks/useAbandonedCartAutosave";
 import { useTheme } from "next-themes";
@@ -24,6 +25,10 @@ import type { StorefrontReview } from "@/lib/storefront/types";
 import { LockerPicker } from "@/components/lockers/LockerPicker";
 import { AddressLocalityFields } from "@/components/address/AddressLocalityFields";
 import { applyStorefrontLanguage } from "@/i18n/LanguageProvider";
+import { getDemoCatalog } from "@/lib/storefront/demoCatalog";
+import { isAppLanguage, type AppLanguage } from "@/i18n/types";
+import { StorefrontDemoBanner } from "@/components/templates/StorefrontDemoBanner";
+import { StorefrontLanguageToggle } from "@/components/templates/StorefrontLanguageToggle";
 
 interface Product {
   id: string;
@@ -76,11 +81,13 @@ interface ExtendedCustomization {
   gradient_enabled: boolean;
   animation_style: string;
   show_reviews?: boolean;
+  builder_config?: unknown;
 }
 
 interface EnhancedElementarTemplateProps {
   apiKey: string;
   editMode?: boolean;
+  demo?: boolean;
 }
 
 const defaultCustomization: ExtendedCustomization = {
@@ -112,8 +119,9 @@ const defaultCustomization: ExtendedCustomization = {
   show_reviews: true,
 };
 
-const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElementarTemplateProps) => {
-  const { t } = useTranslation("checkout");
+const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: EnhancedElementarTemplateProps) => {
+  const { t, i18n } = useTranslation(["checkout", "storefront"]);
+  const lang: AppLanguage = isAppLanguage(i18n.language) ? i18n.language : "en";
   const [products, setProducts] = useState<Product[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [reviews, setReviews] = useState<StorefrontReview[]>([]);
@@ -235,6 +243,46 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
       return;
     }
 
+    if (demo) {
+      const catalog = getDemoCatalog('elementar', lang);
+      setMapboxToken(catalog.mapboxToken);
+      setCustomization((prev) => ({ ...prev, ...catalog.customization }));
+      setFeeSettings({
+        cash_payment_enabled: catalog.fees.cash_payment_enabled,
+        cash_payment_fee: catalog.fees.cash_payment_fee,
+        home_delivery_fee: catalog.fees.home_delivery_fee,
+        locker_delivery_fee: catalog.fees.locker_delivery_fee,
+      });
+      setProducts(
+        catalog.products.map((p) => ({
+          id: p.id,
+          title: p.title,
+          description: p.description,
+          price: p.price,
+          image: p.image,
+          stock: p.stock,
+          category: p.category,
+          collection_ids: p.collection_ids,
+        }))
+      );
+      const collectionMap: Record<string, string[]> = {};
+      catalog.products.forEach((p) => {
+        collectionMap[p.id] = p.collection_ids;
+      });
+      setProductCollections(collectionMap);
+      setCollections(
+        catalog.collections.map((c) => ({
+          id: c.id,
+          name: c.name,
+          description: c.description || '',
+          image_url: c.image_url || '',
+        }))
+      );
+      setReviews(catalog.reviews);
+      setLoading(false);
+      return;
+    }
+
     const fetchConfig = async () => {
       try {
         const response = await fetch(`${API_BASE}/config`, {
@@ -266,7 +314,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
     };
     fetchConfig();
     fetchData();
-  }, [apiKey]);
+  }, [apiKey, demo, lang]);
 
   const checkPaymentStatus = async (refId: string) => {
     setLoading(true);
@@ -446,10 +494,36 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
     [cart]
   );
 
+  const homepageSections = useMemo(
+    () => parseBuilderConfig(customization.builder_config, blocks, customization),
+    [blocks, customization]
+  );
+
+  const renderBlocksBetween = (afterType: string, beforeType: string) => {
+    const start = homepageSections.findIndex((section) => section.type === afterType);
+    const end = homepageSections.findIndex((section) => section.type === beforeType);
+    if (start < 0 || end < 0 || end <= start) return null;
+    return homepageSections.slice(start + 1, end).flatMap((section) => {
+      if (section.type !== 'block' || !section.visible || !section.blockId) return [];
+      const block = blocks.find((item) => item.id === section.blockId);
+      if (!block) return [];
+      return [
+        <BlockRenderer
+          key={block.id}
+          block={{ ...block, is_visible: true }}
+          customization={customization}
+        />,
+      ];
+    });
+  };
+
+  const sectionVisible = (type: 'hero' | 'collections' | 'products' | 'reviews') =>
+    homepageSections.find((section) => section.type === type)?.visible !== false;
+
   const { getSessionToken, markConvertedLocally } = useAbandonedCartAutosave({
     apiBase: API_BASE,
     apiKey,
-    enabled: !editMode,
+    enabled: !editMode && !demo,
     view,
     paymentMethod,
     checkoutForm,
@@ -477,6 +551,10 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
   });
 
   const handleCheckout = async () => {
+    if (demo) {
+      toast.info(t("storefront:demo.orderBlocked"));
+      return;
+    }
     if (!checkoutForm.name || !checkoutForm.email) {
       toast.error(t("toast.fillRequired"));
       return;
@@ -622,6 +700,18 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
       className={`sticky top-0 z-50 ${getNavbarStyles()} ${animationClass}`}
       style={{ borderColor: `${colors.primary_color}20` }}
     >
+      {demo && (
+        <StorefrontDemoBanner
+          className="border-b"
+          style={
+            {
+              borderColor: `${colors.primary_color}20`,
+              backgroundColor: colors.secondary_color,
+              color: colors.text_color,
+            } as React.CSSProperties
+          }
+        />
+      )}
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <button className="p-2 hover:opacity-70 rounded-lg" style={{ color: colors.text_color }}>
@@ -645,6 +735,16 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
           </button>
 
           <div className="flex items-center gap-2">
+            <StorefrontLanguageToggle
+              compact
+              className="border"
+              style={
+                {
+                  borderColor: `${colors.primary_color}30`,
+                  color: colors.text_color,
+                } as React.CSSProperties
+              }
+            />
             <ThemeToggle />
             {editMode && (
               <button
@@ -803,9 +903,10 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
       {view === "home" && (
         <>
           <Header />
+          {renderBlocksBetween('header', 'hero')}
           
           {/* Hero Section */}
-          {colors.show_hero_section && (
+          {sectionVisible('hero') && colors.show_hero_section && (
             <section 
               className="relative min-h-[80vh] flex items-center justify-center overflow-hidden"
               style={{
@@ -896,8 +997,10 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
             </section>
           )}
 
+          {renderBlocksBetween('hero', 'collections')}
+
           {/* Collections Section */}
-          {collections.length > 0 && colors.show_collection_images && (
+          {collections.length > 0 && sectionVisible('collections') && colors.show_collection_images && (
             <section className="py-24">
               <div className="container mx-auto px-4">
                 <div className="text-center mb-16 space-y-4">
@@ -945,7 +1048,10 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
             </section>
           )}
 
+          {renderBlocksBetween('collections', 'products')}
+
           {/* Products Section */}
+          {sectionVisible('products') && (
           <section id="products-section" className="py-24">
             <div className="container mx-auto px-4">
               <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-12">
@@ -1017,9 +1123,12 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
               )}
             </div>
           </section>
+          )}
+
+          {renderBlocksBetween('products', 'reviews')}
 
           {/* Customer Reviews */}
-          {customization.show_reviews !== false && reviews.length > 0 && (
+          {sectionVisible('reviews') && customization.show_reviews !== false && reviews.length > 0 && (
             <section className="py-24" style={{ backgroundColor: colors.secondary_color }}>
               <div className="container mx-auto px-4">
                 <div className="text-center mb-12 space-y-3">
@@ -1069,17 +1178,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false }: EnhancedElement
             </section>
           )}
 
-          {/* Custom Blocks Section */}
-          {blocks.filter(b => b.is_visible).length > 0 && (
-            <section className="custom-blocks">
-              {blocks
-                .filter(b => b.is_visible)
-                .sort((a, b) => a.block_order - b.block_order)
-                .map(block => (
-                  <BlockRenderer key={block.id} block={block} customization={customization} />
-                ))}
-            </section>
-          )}
+          {renderBlocksBetween('reviews', 'footer')}
 
           {/* Footer */}
           <footer 

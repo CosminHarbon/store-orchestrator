@@ -41,6 +41,8 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { ExportDialog } from '@/components/export/ExportDialog';
+import type { ExportRow } from '@/lib/export/types';
 import ProductImageUpload from './ProductImageUpload';
 import { ResponsiveProductTable } from './ResponsiveProductTable';
 import CollectionsManagement from './CollectionsManagement';
@@ -127,7 +129,9 @@ function KpiCard({
 const ProductManagement = () => {
   const { t: tProducts } = useTranslation('products');
   const { t: tCommon } = useTranslation('common');
+  const { t: tExport } = useTranslation('export');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [imageDialogProduct, setImageDialogProduct] = useState<Product | null>(null);
   const [drawerProduct, setDrawerProduct] = useState<Product | null>(null);
@@ -516,35 +520,30 @@ const ProductManagement = () => {
     [products, selectedIds]
   );
 
-  const exportSelected = () => {
-    const rows = (selectedProducts.length ? selectedProducts : filteredProducts).map((p) => ({
+  const exportRows = useMemo<ExportRow[]>(() => {
+    const source = selectedProducts.length ? selectedProducts : filteredProducts;
+    return source.map((p) => ({
       id: p.id,
       title: p.title,
-      sku: p.sku,
-      category: p.category,
-      price: p.price,
+      sku: p.sku || '',
+      category: p.category || '',
+      price: Number(p.price).toFixed(2),
       stock: p.stock,
       low_stock_threshold: p.low_stock_threshold,
       orders: analytics.metricsById[p.id]?.orders ?? 0,
-      revenue: analytics.metricsById[p.id]?.revenue ?? 0,
+      revenue: Number(analytics.metricsById[p.id]?.revenue ?? 0).toFixed(2),
     }));
-    const header = Object.keys(rows[0] || { title: '' }).join(',');
-    const body = rows
-      .map((r) =>
-        Object.values(r)
-          .map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`)
-          .join(',')
-      )
-      .join('\n');
-    const blob = new Blob([[header, body].join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `products-export-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success(tProducts('toast.exported', { count: rows.length }));
-  };
+  }, [selectedProducts, filteredProducts, analytics.metricsById]);
+
+  const exportSummary = useMemo(() => {
+    const total = exportRows.reduce((s, r) => s + Number(r.revenue || 0), 0);
+    return [
+      { label: tExport('summary.products'), value: String(exportRows.length) },
+      { label: tExport('summary.revenue'), value: `${total.toFixed(2)} RON` },
+    ];
+  }, [exportRows, tExport]);
+
+  const openExport = () => setExportOpen(true);
 
   const duplicateSelected = async () => {
     if (!selectedProducts.length) return;
@@ -689,9 +688,9 @@ const ProductManagement = () => {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={exportSelected}>
+              <Button type="button" variant="outline" size="sm" onClick={openExport}>
                 <Download className="h-4 w-4 mr-2" />
-                {tCommon('export')}
+                {tExport('open')}
               </Button>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
@@ -1117,8 +1116,8 @@ const ProductManagement = () => {
                       <Button size="sm" variant="outline" onClick={duplicateSelected}>
                         <Copy className="h-3.5 w-3.5 mr-1" /> {tProducts('bulk.duplicate')}
                       </Button>
-                      <Button size="sm" variant="outline" onClick={exportSelected}>
-                        <Download className="h-3.5 w-3.5 mr-1" /> {tProducts('bulk.export')}
+                      <Button size="sm" variant="outline" onClick={openExport}>
+                        <Download className="h-3.5 w-3.5 mr-1" /> {tExport('open')}
                       </Button>
                       <Button size="sm" variant="destructive" onClick={deleteSelected}>
                         <Trash2 className="h-3.5 w-3.5 mr-1" /> {tProducts('bulk.delete')}
@@ -1320,6 +1319,13 @@ const ProductManagement = () => {
           discount_value: d.discount_value,
           is_active: d.is_active,
         }))}
+      />
+      <ExportDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        datasetId="products"
+        rows={exportRows}
+        summary={exportSummary}
       />
     </div>
   );

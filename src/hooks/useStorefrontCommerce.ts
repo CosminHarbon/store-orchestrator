@@ -22,11 +22,21 @@ import type {
 } from '@/lib/storefront/types';
 import { emptyCheckoutForm } from '@/lib/storefront/types';
 import { useAbandonedCartAutosave } from '@/hooks/useAbandonedCartAutosave';
+import { getDemoCatalog, type DemoTheme } from '@/lib/storefront/demoCatalog';
+import { isAppLanguage, type AppLanguage } from '@/i18n/types';
 
 const RECENT_KEY = 'premium_recently_viewed';
 
-export function useStorefrontCommerce(apiKey: string) {
-  const { t } = useTranslation('checkout');
+export type StorefrontCommerceOptions = {
+  demo?: boolean;
+  theme?: DemoTheme;
+};
+
+export function useStorefrontCommerce(apiKey: string, options: StorefrontCommerceOptions = {}) {
+  const demo = Boolean(options.demo);
+  const theme: DemoTheme = options.theme || 'premium';
+  const { t, i18n } = useTranslation(['checkout', 'storefront']);
+  const lang: AppLanguage = isAppLanguage(i18n.language) ? i18n.language : 'en';
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<StorefrontProduct[]>([]);
   const [collections, setCollections] = useState<StorefrontCollection[]>([]);
@@ -158,6 +168,20 @@ export function useStorefrontCommerce(apiKey: string) {
     (async () => {
       try {
         setLoading(true);
+
+        if (demo) {
+          const catalog = getDemoCatalog(theme, lang);
+          if (cancelled) return;
+          setMapboxToken(catalog.mapboxToken);
+          setFees(catalog.fees);
+          setCustomization(catalog.customization);
+          setProducts(catalog.products);
+          setCollections(catalog.collections);
+          setReviews(catalog.reviews);
+          setPaymentMethod('card');
+          return;
+        }
+
         const [cfg, prods, colsPayload, revs] = await Promise.all([
           fetchStoreConfig(apiKey),
           fetchStoreProducts(apiKey),
@@ -190,7 +214,7 @@ export function useStorefrontCommerce(apiKey: string) {
     return () => {
       cancelled = true;
     };
-  }, [apiKey, checkPaymentStatus, t]);
+  }, [apiKey, checkPaymentStatus, demo, theme, lang, t]);
 
   const addToCart = useCallback((product: StorefrontProduct, qty = 1) => {
     setCart((prev) => {
@@ -281,7 +305,7 @@ export function useStorefrontCommerce(apiKey: string) {
   const { getSessionToken, markConvertedLocally } = useAbandonedCartAutosave({
     apiBase: STORE_API_BASE,
     apiKey,
-    enabled: true,
+    enabled: !demo,
     view: abandonedView,
     paymentMethod,
     checkoutForm,
@@ -291,6 +315,10 @@ export function useStorefrontCommerce(apiKey: string) {
   });
 
   const placeOrder = useCallback(async () => {
+    if (demo) {
+      toast.info(t('storefront:demo.orderBlocked'));
+      return;
+    }
     if (!checkoutForm.name || !checkoutForm.email) {
       toast.error(t('toast.fillRequired'));
       return;
@@ -384,6 +412,7 @@ export function useStorefrontCommerce(apiKey: string) {
     apiKey,
     cart,
     checkoutForm,
+    demo,
     getSessionToken,
     markConvertedLocally,
     orderTotal,
@@ -416,6 +445,7 @@ export function useStorefrontCommerce(apiKey: string) {
 
   return {
     apiKey,
+    demo,
     loading,
     products,
     collections,

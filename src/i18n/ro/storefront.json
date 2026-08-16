@@ -1,0 +1,97 @@
+{
+  "language": {
+    "toggle": "Schimbă limba",
+    "ro": "Română",
+    "en": "English"
+  },
+  "demo": {
+    "banner": "Storefront demo cu poze și produse exemplu — magazinul Live folosește catalogul tău real.",
+    "orderBlocked": "Acesta este un demo. Comenzile nu sunt procesate. Deschide magazinul Live pentru checkout real."
+  },
+  "nav": {
+    "home": "Acasă",
+    "shop": "Magazin",
+    "allProducts": "Toate produsele",
+    "openCart": "Deschide coșul",
+    "openMenu": "Deschide meniul"
+  },
+  "home": {
+    "collections": "Colecții",
+    "featuredCategories": "Categorii recomandate",
+    "featured": "Recomandate",
+    "beloved": "Aranjamente preferate",
+    "viewAll": "Vezi tot",
+    "justArrived": "Noutăți",
+    "newThisWeek": "Noi săptămâna aceasta",
+    "kindWords": "Cuvinte frumoase",
+    "fromCustomers": "De la clienții noștri",
+    "shopNow": "Cumpără acum",
+    "atelier": "Atelierul",
+    "atelierTitle": "Creat pentru florării care vând cu eleganță",
+    "atelierBody": "Prezintă buchete, ediții de sezon și cadouri într-un storefront la fel de rafinat ca florile — cu checkout securizat, livrare acasă și locker.",
+    "discover": "Descoperă magazinul",
+    "promiseFresh": "Prospețime în aceeași zi",
+    "promiseFreshBody": "Fire alese cu grijă, aranjate zilnic",
+    "promiseDelivery": "Livrare atentă",
+    "promiseGift": "Făcute să încânte",
+    "promiseGiftBody": "Ambalare îngrijită & bilete scrise de mână",
+    "promiseQuality": "Calitate premium",
+    "promiseQualityBody": "Flori de sezon cu frumusețe de durată",
+    "freeDelivery": "Livrare acasă gratuită",
+    "deliveryFrom": "Livrare de la {{amount}}",
+    "explore": "Explorează {{name}}"
+  },
+  "premiumHome": {
+    "collections": "Colecții",
+    "featuredCategories": "Categorii recomandate",
+    "shopNow": "Cumpără acum",
+    "explore": "Explorează {{name}}",
+    "curated": "Selecție",
+    "bestSellers": "Cele mai vândute",
+    "viewAll": "Vezi tot",
+    "emptyProducts": "Produsele vor apărea aici după ce le adaugi.",
+    "shipping": "Livrare",
+    "shopCollection": "Vezi colecția",
+    "justIn": "Noutăți",
+    "newArrivals": "Sosiri recente",
+    "whyShop": "De ce să cumperi de la noi",
+    "fastDelivery": "Livrare rapidă",
+    "fastDeliveryBody": "Livrare de încredere în toată România",
+    "securePayments": "Plăți sigure",
+    "securePaymentsBody": "Card prin Netopia și ramburs",
+    "easyReturns": "Returnări ușoare",
+    "easyReturnsBody": "Suport fără bătăi de cap după cumpărare",
+    "support": "Suport",
+    "supportBody": "Suntem aici când ai nevoie",
+    "whatCustomersSay": "Ce spun clienții",
+    "defaultReview": "Experiență excelentă de cumpărături.",
+    "stayInLoop": "Rămâi la curent",
+    "newsletterBody": "Fii primul care află despre noutăți și oferte exclusive.",
+    "emailPlaceholder": "Adresă de email",
+    "subscribe": "Abonează-te",
+    "subscribed": "Mulțumim pentru abonare!",
+    "freeDeliveryEvery": "Livrare acasă gratuită la fiecare comandă",
+    "deliveryLockers": "Livrare acasă de la {{home}} · Lockere de la {{locker}}"
+  },
+  "footer": {
+    "shop": "Magazin",
+    "delivery": "Livrare",
+    "homeDelivery": "Livrare acasă",
+    "lockerPickup": "Ridicare locker",
+    "cardCash": "Card și ramburs",
+    "note": "Notă",
+    "help": "Ajutor"
+  },
+  "product": {
+    "addToCart": "Adaugă în coș",
+    "unavailable": "Indisponibil",
+    "soldOut": "Stoc epuizat",
+    "noImage": "Fără imagine"
+  },
+  "catalog": {
+    "collections": "Colecții",
+    "category": "Categorie",
+    "price": "Preț (RON)",
+    "sort": "Sortare"
+  }
+}

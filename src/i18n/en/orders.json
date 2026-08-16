@@ -106,6 +106,32 @@
     "titleCount": "Abandoned Carts ({{count}})",
     "description": "Customers who started checkout but never pressed Place Order. Separate from Pending Card Payments.",
     "refresh": "Refresh",
+    "clearAll": "Clear All",
+    "clearSelection": "Clear Selection",
+    "deleteSelected": "Delete Selected",
+    "selectedCount": "{{count}} selected",
+    "selectAllAria": "Select all abandoned carts",
+    "selectRowAria": "Select abandoned cart",
+    "sectionMenuAria": "Abandoned carts actions",
+    "rowMenuAria": "Cart actions",
+    "viewDetails": "View Details",
+    "confirm": {
+      "one": {
+        "title": "Delete",
+        "description": "This abandoned cart will be permanently deleted.\nThis action cannot be undone.",
+        "action": "Delete"
+      },
+      "selected": {
+        "title": "Delete Selected",
+        "description": "This will permanently delete the selected abandoned carts.\nThis action cannot be undone.",
+        "action": "Delete Selected"
+      },
+      "all": {
+        "title": "Clear All",
+        "description": "This will permanently remove every abandoned cart currently shown.\nThis action cannot be undone.",
+        "action": "Clear All"
+      }
+    },
     "loading": "Loading abandoned carts...",
     "empty": "No abandoned carts right now.",
     "detailsTitle": "Abandoned Cart Details",
@@ -154,7 +180,12 @@
     },
     "toast": {
       "refreshed": "Abandoned carts refreshed",
-      "refreshFailed": "Failed to refresh abandoned carts"
+      "refreshFailed": "Failed to refresh abandoned carts",
+      "deletedOne": "Abandoned cart deleted",
+      "deletedSelected": "Selected abandoned carts deleted",
+      "cleared": "Abandoned carts cleared",
+      "deleteFailed": "Failed to delete abandoned carts",
+      "clearFailed": "Failed to clear abandoned carts"
     }
   },
   "pending": {

@@ -1,16 +1,14 @@
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Copy, RefreshCw, Eye, Code, Settings, ChevronDown, FileText, CreditCard, Truck, HelpCircle, Loader2 } from 'lucide-react';
+import { Copy, RefreshCw, Eye, Code, Settings, ChevronDown, FileText, CreditCard, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -19,26 +17,20 @@ import { EAWBDiagnosis } from './EAWBDiagnosis';
 import { ThemeSelector } from '@/components/theme/ThemeSelector';
 import { LanguageSelector } from '@/components/settings/LanguageSelector';
 import { DefaultPickupLockerSection } from '@/components/settings/DefaultPickupLockerSection';
+import { NetopiaPaymentPanel } from '@/components/payments/NetopiaPaymentPanel';
+import { EawbShippingPanel } from '@/components/shipping/EawbShippingPanel';
 import { useTranslation } from 'react-i18next';
+import { goToPaymentsTab } from '@/lib/openExternalUrl';
 
-const NetopiaCredentialHelp = ({ title, children }: { title: string; children: ReactNode }) => (
-  <Popover>
-    <PopoverTrigger asChild>
-      <button
-        type="button"
-        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-        aria-label={`Where do I find ${title}?`}
-      >
-        <HelpCircle className="h-3.5 w-3.5" />
-        Where do I find this?
-      </button>
-    </PopoverTrigger>
-    <PopoverContent className="w-80 text-sm" align="start">
-      <p className="font-medium mb-1">{title}</p>
-      <div className="text-muted-foreground space-y-1">{children}</div>
-    </PopoverContent>
-  </Popover>
-);
+/** Allow empty / intermediate number typing; coerce to a finite number on save. */
+function parseFeeValue(raw: string): number {
+  const n = parseFloat(raw);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
+function isValidFeeInput(raw: string): boolean {
+  return raw === '' || /^\d*\.?\d*$/.test(raw);
+}
 
 interface Profile {
   id: string;
@@ -96,6 +88,7 @@ const StoreSettings = () => {
     payment: false,
     delivery: false
   });
+  const [settingsTab, setSettingsTab] = useState('store-settings');
   const [integrations, setIntegrations] = useState({
     invoicing: 'oblio.eu',
     shipping: 'sameday',
@@ -110,9 +103,9 @@ const StoreSettings = () => {
   });
   const [feeSettings, setFeeSettings] = useState({
     cash_payment_enabled: true,
-    cash_payment_fee: 0,
-    home_delivery_fee: 0,
-    locker_delivery_fee: 0
+    cash_payment_fee: '',
+    home_delivery_fee: '',
+    locker_delivery_fee: '',
   });
   
   // eAWB fetch states
@@ -130,10 +123,37 @@ const StoreSettings = () => {
   });
   const [shippingAddressSearch, setShippingAddressSearch] = useState('');
   const [selectedCarrierForServices, setSelectedCarrierForServices] = useState('');
-  const [netopiaTestLoading, setNetopiaTestLoading] = useState(false);
   
   const { user } = useAuth();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const openSection = (detail: string) => {
+      if (detail === 'delivery' || detail === 'payment' || detail === 'invoicing') {
+        setSettingsTab('integrations');
+        if (detail === 'delivery') {
+          setIntegrations((prev) => ({ ...prev, shipping: 'eawb' }));
+        }
+        setOpenCollapsibles((prev) => ({ ...prev, [detail]: true }));
+      }
+    };
+
+    try {
+      const pending = localStorage.getItem('sv:pending-settings-section');
+      if (pending) {
+        localStorage.removeItem('sv:pending-settings-section');
+        openSection(pending);
+      }
+    } catch {
+      /* ignore */
+    }
+
+    const onOpenSection = (event: Event) => {
+      openSection((event as CustomEvent<string>).detail);
+    };
+    window.addEventListener('sv:open-settings-section', onOpenSection);
+    return () => window.removeEventListener('sv:open-settings-section', onOpenSection);
+  }, []);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['profile'],
@@ -200,9 +220,12 @@ const StoreSettings = () => {
       });
       setFeeSettings({
         cash_payment_enabled: profile.cash_payment_enabled ?? true,
-        cash_payment_fee: profile.cash_payment_fee || 0,
-        home_delivery_fee: profile.home_delivery_fee || 0,
-        locker_delivery_fee: profile.locker_delivery_fee || 0
+        cash_payment_fee:
+          profile.cash_payment_fee == null ? '' : String(profile.cash_payment_fee),
+        home_delivery_fee:
+          profile.home_delivery_fee == null ? '' : String(profile.home_delivery_fee),
+        locker_delivery_fee:
+          profile.locker_delivery_fee == null ? '' : String(profile.locker_delivery_fee),
       });
     }
   }, [profile]);
@@ -234,7 +257,7 @@ const StoreSettings = () => {
   };
 
   const updateStoreName = () => {
-    updateProfileMutation.mutate({ store_name: storeName });
+    updateProfileMutation.mutate({ store_name: storeName.trim() });
   };
 
   const updateIntegrations = () => {
@@ -269,9 +292,9 @@ const StoreSettings = () => {
       eawb_default_carrier_id: providerConfigs.eawb.default_carrier_id ? parseInt(providerConfigs.eawb.default_carrier_id) : null,
       eawb_default_service_id: providerConfigs.eawb.default_service_id ? parseInt(providerConfigs.eawb.default_service_id) : null,
       cash_payment_enabled: feeSettings.cash_payment_enabled,
-      cash_payment_fee: feeSettings.cash_payment_fee,
-      home_delivery_fee: feeSettings.home_delivery_fee,
-      locker_delivery_fee: feeSettings.locker_delivery_fee
+      cash_payment_fee: parseFeeValue(feeSettings.cash_payment_fee),
+      home_delivery_fee: parseFeeValue(feeSettings.home_delivery_fee),
+      locker_delivery_fee: parseFeeValue(feeSettings.locker_delivery_fee),
     });
   };
 
@@ -283,45 +306,6 @@ const StoreSettings = () => {
         [field]: value
       }
     }));
-  };
-
-  const testNetopiaConnection = async () => {
-    if (!providerConfigs.netpopia.api_key?.trim()) {
-      toast.error(tSettings('toast.missingApiKey'));
-      return;
-    }
-    if (!providerConfigs.netpopia.signature?.trim()) {
-      toast.error(tSettings('toast.missingPosSignature'));
-      return;
-    }
-
-    setNetopiaTestLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('netopia-payment', {
-        body: {
-          action: 'test_connection',
-          api_key: providerConfigs.netpopia.api_key,
-          signature: providerConfigs.netpopia.signature,
-          public_key: providerConfigs.netpopia.public_key || null,
-          sandbox: providerConfigs.netpopia.sandbox,
-        },
-      });
-
-      if (error) {
-        toast.error(error.message || tSettings('toast.connectionFailed'));
-        return;
-      }
-
-      if (data?.success) {
-        toast.success(data.message || tSettings('toast.netopiaOk'));
-      } else {
-        toast.error(data?.error || tSettings('toast.connectionFailed'));
-      }
-    } catch (e: any) {
-      toast.error(e?.message || tSettings('toast.connectionFailed'));
-    } finally {
-      setNetopiaTestLoading(false);
-    }
   };
 
   const formatShippingAddressLabel = (addr: any) => {
@@ -746,7 +730,7 @@ class StoreAPI {
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="store-settings" className="w-full">
+      <Tabs value={settingsTab} onValueChange={setSettingsTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="store-settings">{tSettings('tab.storeSettings')}</TabsTrigger>
           <TabsTrigger value="integrations">{tSettings('tab.integrations')}</TabsTrigger>
@@ -788,11 +772,14 @@ class StoreAPI {
                 <div className="flex gap-2">
                   <Input
                     id="store-name"
-                    value={storeName || profile.store_name}
+                    value={storeName}
                     onChange={(e) => setStoreName(e.target.value)}
                     placeholder={tSettings('store.namePlaceholder')}
                   />
-                  <Button onClick={updateStoreName} disabled={!storeName || storeName === profile.store_name}>
+                  <Button
+                    onClick={updateStoreName}
+                    disabled={!storeName.trim() || storeName.trim() === (profile.store_name || '')}
+                  >
                     {tCommon('save')}
                   </Button>
                 </div>
@@ -1110,6 +1097,27 @@ class StoreAPI {
                           )}
 
                           {integrations.shipping === 'eawb' && (
+                            <EawbShippingPanel
+                              profile={profile}
+                              onApiKeySynced={(apiKey) => updateProviderConfig('eawb', 'api_key', apiKey)}
+                              onLocalConfigCleared={() => {
+                                setProviderConfigs((prev) => ({
+                                  ...prev,
+                                  eawb: {
+                                    api_key: '',
+                                    name: '',
+                                    email: '',
+                                    phone: '',
+                                    address: '',
+                                    billing_address_id: '',
+                                    shipping_address_id: '',
+                                    default_carrier_id: '',
+                                    default_service_id: '',
+                                  },
+                                }));
+                              }}
+                            >
+
                             <div className="mt-4 space-y-4">
                               <h4 className="font-medium">{tSettings('config.eawb')}</h4>
                               <div className="grid gap-4">
@@ -1375,8 +1383,9 @@ class StoreAPI {
                                    </div>
                                  </div>
                               </div>
-                            )}
-                        </div>
+                            </EawbShippingPanel>
+                          )}
+                      </div>
                     </CollapsibleContent>
                   </Collapsible>
 
@@ -1419,91 +1428,16 @@ class StoreAPI {
                         </p>
                         
                         {integrations.payment === 'netpopia' && (
-                          <div className="mt-4 space-y-4">
-                            <h4 className="font-medium">{tSettings('config.netopia')}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              Required: API Key and POS Signature. Public Key is optional and used to verify payment notifications (IPN).
-                            </p>
-                            <div className="grid gap-4">
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between gap-2">
-                                  <Label htmlFor="netpopia-api-key">API Key *</Label>
-                                  <NetopiaCredentialHelp title="API Key">
-                                    <p>In the Netopia admin dashboard, open <strong>Profile → Security</strong> and generate or copy your API Key.</p>
-                                    <p>Sandbox and Live each have their own keys — they are not interchangeable.</p>
-                                  </NetopiaCredentialHelp>
-                                </div>
-                                <Input
-                                  id="netpopia-api-key"
-                                  type="password"
-                                  value={providerConfigs.netpopia.api_key}
-                                  onChange={(e) => updateProviderConfig('netpopia', 'api_key', e.target.value)}
-                                  placeholder="API key from Profile → Security"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between gap-2">
-                                  <Label htmlFor="netpopia-signature">POS Signature *</Label>
-                                  <NetopiaCredentialHelp title="POS Signature">
-                                    <p>In Netopia admin, open <strong>Point of Sale → Technical Settings</strong> for your store POS and copy the Signature (format like XXXX-XXXX-XXXX-XXXX).</p>
-                                  </NetopiaCredentialHelp>
-                                </div>
-                                <Input
-                                  id="netpopia-signature"
-                                  type="password"
-                                  value={providerConfigs.netpopia.signature}
-                                  onChange={(e) => updateProviderConfig('netpopia', 'signature', e.target.value)}
-                                  placeholder="POS signature from Technical Settings"
-                                  required
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between gap-2">
-                                  <Label htmlFor="netpopia-public-key">Public Key (optional)</Label>
-                                  <NetopiaCredentialHelp title="Public Key">
-                                    <p>Also found under <strong>Point of Sale → Technical Settings</strong>.</p>
-                                    <p>Paste the certificate/public key PEM used to verify IPN JWT tokens. Existing merchants can leave this empty.</p>
-                                  </NetopiaCredentialHelp>
-                                </div>
-                                <Textarea
-                                  id="netpopia-public-key"
-                                  value={providerConfigs.netpopia.public_key || ''}
-                                  onChange={(e) => updateProviderConfig('netpopia', 'public_key', e.target.value)}
-                                  placeholder="-----BEGIN CERTIFICATE----- or -----BEGIN PUBLIC KEY-----"
-                                  className="min-h-[100px] font-mono text-xs"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="netpopia-sandbox">Environment</Label>
-                                <Select
-                                  value={providerConfigs.netpopia.sandbox ? 'sandbox' : 'live'}
-                                  onValueChange={(value) => updateProviderConfig('netpopia', 'sandbox', value === 'sandbox')}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="sandbox">Sandbox (Testing)</SelectItem>
-                                    <SelectItem value="live">Live (Production)</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <p className="text-xs text-muted-foreground">
-                                  Use Sandbox credentials only in Sandbox mode, and Live credentials only in Live mode.
-                                </p>
-                              </div>
-                              <div className="pt-1">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  onClick={testNetopiaConnection}
-                                  disabled={netopiaTestLoading}
-                                >
-                                  {netopiaTestLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                                  Test Netopia Connection
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
+                          <NetopiaPaymentPanel
+                            idPrefix="desktop-netopia"
+                            savedApiKey={profile?.netpopia_api_key}
+                            savedSignature={profile?.netpopia_signature}
+                            config={providerConfigs.netpopia}
+                            onConfigChange={(field, value) =>
+                              updateProviderConfig('netpopia', field as any, value)
+                            }
+                            onGoToPayments={goToPaymentsTab}
+                          />
                         )}
                       </div>
                     </CollapsibleContent>
@@ -1534,11 +1468,15 @@ class StoreAPI {
                             <Label htmlFor="cash-fee">{tSettings('fees.cashFee')}</Label>
                             <Input
                               id="cash-fee"
-                              type="number"
-                              step="0.01"
-                              min="0"
+                              type="text"
+                              inputMode="decimal"
                               value={feeSettings.cash_payment_fee}
-                              onChange={(e) => setFeeSettings({ ...feeSettings, cash_payment_fee: parseFloat(e.target.value) || 0 })}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                if (isValidFeeInput(v)) {
+                                  setFeeSettings({ ...feeSettings, cash_payment_fee: v });
+                                }
+                              }}
                               placeholder="0.00"
                             />
                             <p className="text-xs text-muted-foreground">
@@ -1550,11 +1488,15 @@ class StoreAPI {
                           <Label htmlFor="home-delivery-fee">{tSettings('fees.homeDelivery')}</Label>
                           <Input
                             id="home-delivery-fee"
-                            type="number"
-                            step="0.01"
-                            min="0"
+                            type="text"
+                            inputMode="decimal"
                             value={feeSettings.home_delivery_fee}
-                            onChange={(e) => setFeeSettings({ ...feeSettings, home_delivery_fee: parseFloat(e.target.value) || 0 })}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (isValidFeeInput(v)) {
+                                setFeeSettings({ ...feeSettings, home_delivery_fee: v });
+                              }
+                            }}
                             placeholder="0.00"
                           />
                           <p className="text-xs text-muted-foreground">
@@ -1565,11 +1507,15 @@ class StoreAPI {
                           <Label htmlFor="locker-delivery-fee">{tSettings('fees.lockerDelivery')}</Label>
                           <Input
                             id="locker-delivery-fee"
-                            type="number"
-                            step="0.01"
-                            min="0"
+                            type="text"
+                            inputMode="decimal"
                             value={feeSettings.locker_delivery_fee}
-                            onChange={(e) => setFeeSettings({ ...feeSettings, locker_delivery_fee: parseFloat(e.target.value) || 0 })}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (isValidFeeInput(v)) {
+                                setFeeSettings({ ...feeSettings, locker_delivery_fee: v });
+                              }
+                            }}
                             placeholder="0.00"
                           />
                           <p className="text-xs text-muted-foreground">
@@ -1732,88 +1678,16 @@ class StoreAPI {
                     </div>
                     
                     {integrations.payment === 'netpopia' && (
-                      <div className="space-y-4">
-                        <h4 className="font-medium">{tSettings('config.netopia')}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Required: API Key and POS Signature. Public Key is optional for IPN verification.
-                        </p>
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between gap-2">
-                              <Label htmlFor="mobile-netpopia-api-key">API Key *</Label>
-                              <NetopiaCredentialHelp title="API Key">
-                                <p>Netopia admin → <strong>Profile → Security</strong>. Sandbox and Live keys are different.</p>
-                              </NetopiaCredentialHelp>
-                            </div>
-                            <Input
-                              id="mobile-netpopia-api-key"
-                              type="password"
-                              value={providerConfigs.netpopia.api_key}
-                              onChange={(e) => updateProviderConfig('netpopia', 'api_key', e.target.value)}
-                              placeholder="API key from Profile → Security"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between gap-2">
-                              <Label htmlFor="mobile-netpopia-signature">POS Signature *</Label>
-                              <NetopiaCredentialHelp title="POS Signature">
-                                <p>Netopia admin → <strong>Point of Sale → Technical Settings</strong>.</p>
-                              </NetopiaCredentialHelp>
-                            </div>
-                            <Input
-                              id="mobile-netpopia-signature"
-                              type="password"
-                              value={providerConfigs.netpopia.signature}
-                              onChange={(e) => updateProviderConfig('netpopia', 'signature', e.target.value)}
-                              placeholder="POS signature from Technical Settings"
-                              required
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between gap-2">
-                              <Label htmlFor="mobile-netpopia-public-key">Public Key (optional)</Label>
-                              <NetopiaCredentialHelp title="Public Key">
-                                <p>Same Technical Settings page. Used to verify IPN JWTs. Optional for existing merchants.</p>
-                              </NetopiaCredentialHelp>
-                            </div>
-                            <Textarea
-                              id="mobile-netpopia-public-key"
-                              value={providerConfigs.netpopia.public_key || ''}
-                              onChange={(e) => updateProviderConfig('netpopia', 'public_key', e.target.value)}
-                              placeholder="-----BEGIN CERTIFICATE----- or -----BEGIN PUBLIC KEY-----"
-                              className="min-h-[100px] font-mono text-xs"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="mobile-netpopia-sandbox">Environment</Label>
-                            <Select
-                              value={providerConfigs.netpopia.sandbox ? 'sandbox' : 'live'}
-                              onValueChange={(value) => updateProviderConfig('netpopia', 'sandbox', value === 'sandbox')}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="z-50 bg-background border border-border/50">
-                                <SelectItem value="sandbox">Sandbox (Testing)</SelectItem>
-                                <SelectItem value="live">Live (Production)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <p className="text-xs text-muted-foreground">
-                              Sandbox and Live credentials are not interchangeable.
-                            </p>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={testNetopiaConnection}
-                            disabled={netopiaTestLoading}
-                            className="w-full"
-                          >
-                            {netopiaTestLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                            Test Netopia Connection
-                          </Button>
-                        </div>
-                      </div>
+                      <NetopiaPaymentPanel
+                        idPrefix="mobile-netopia"
+                        savedApiKey={profile?.netpopia_api_key}
+                        savedSignature={profile?.netpopia_signature}
+                        config={providerConfigs.netpopia}
+                        onConfigChange={(field, value) =>
+                          updateProviderConfig('netpopia', field as any, value)
+                        }
+                        onGoToPayments={goToPaymentsTab}
+                      />
                     )}
                   </CollapsibleContent>
                 </Collapsible>
@@ -1935,6 +1809,26 @@ class StoreAPI {
                       )}
                       
                       {integrations.shipping === 'eawb' && (
+                        <EawbShippingPanel
+                          profile={profile}
+                          onApiKeySynced={(apiKey) => updateProviderConfig('eawb', 'api_key', apiKey)}
+                          onLocalConfigCleared={() => {
+                            setProviderConfigs((prev) => ({
+                              ...prev,
+                              eawb: {
+                                api_key: '',
+                                name: '',
+                                email: '',
+                                phone: '',
+                                address: '',
+                                billing_address_id: '',
+                                shipping_address_id: '',
+                                default_carrier_id: '',
+                                default_service_id: '',
+                              },
+                            }));
+                          }}
+                        >
                         <div className="space-y-4">
                           <h4 className="font-medium">{tSettings('config.eawb')}</h4>
                           <div className="space-y-4">
@@ -2192,6 +2086,7 @@ class StoreAPI {
                             </div>
                           </div>
                         </div>
+                        </EawbShippingPanel>
                       )}
                   </CollapsibleContent>
                 </Collapsible>

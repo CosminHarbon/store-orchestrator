@@ -1,0 +1,97 @@
+{
+  "language": {
+    "toggle": "Switch language",
+    "ro": "Română",
+    "en": "English"
+  },
+  "demo": {
+    "banner": "Demo storefront with sample photos & products — your live store uses your real catalog.",
+    "orderBlocked": "This is a demo. Orders are not processed. Open Live store to use real checkout."
+  },
+  "nav": {
+    "home": "Home",
+    "shop": "Shop",
+    "allProducts": "All products",
+    "openCart": "Open cart",
+    "openMenu": "Open menu"
+  },
+  "home": {
+    "collections": "Collections",
+    "featuredCategories": "Featured categories",
+    "featured": "Featured",
+    "beloved": "Beloved arrangements",
+    "viewAll": "View all",
+    "justArrived": "Just arrived",
+    "newThisWeek": "New this week",
+    "kindWords": "Kind words",
+    "fromCustomers": "From our customers",
+    "shopNow": "Shop now",
+    "atelier": "The atelier",
+    "atelierTitle": "Designed for florists who sell with grace",
+    "atelierBody": "Present bouquets, seasonal drops, and gift sets in a storefront that feels as refined as the flowers themselves — with secure checkout, home delivery, and locker pickup built in.",
+    "discover": "Discover the shop",
+    "promiseFresh": "Same-day freshness",
+    "promiseFreshBody": "Hand-selected stems, arranged daily",
+    "promiseDelivery": "Careful delivery",
+    "promiseGift": "Made to delight",
+    "promiseGiftBody": "Thoughtful wrapping & handwritten notes",
+    "promiseQuality": "Premium quality",
+    "promiseQualityBody": "Seasonal blooms with lasting beauty",
+    "freeDelivery": "Complimentary home delivery",
+    "deliveryFrom": "Delivery from {{amount}}",
+    "explore": "Explore {{name}}"
+  },
+  "premiumHome": {
+    "collections": "Collections",
+    "featuredCategories": "Featured categories",
+    "shopNow": "Shop now",
+    "explore": "Explore {{name}}",
+    "curated": "Curated",
+    "bestSellers": "Best sellers",
+    "viewAll": "View all",
+    "emptyProducts": "Products will appear here once added.",
+    "shipping": "Shipping",
+    "shopCollection": "Shop the collection",
+    "justIn": "Just in",
+    "newArrivals": "New arrivals",
+    "whyShop": "Why shop with us",
+    "fastDelivery": "Fast delivery",
+    "fastDeliveryBody": "Reliable shipping across Romania",
+    "securePayments": "Secure payments",
+    "securePaymentsBody": "Card via Netopia & cash on delivery",
+    "easyReturns": "Easy returns",
+    "easyReturnsBody": "Hassle-free support after purchase",
+    "support": "Support",
+    "supportBody": "We're here when you need help",
+    "whatCustomersSay": "What customers say",
+    "defaultReview": "Great experience shopping here.",
+    "stayInLoop": "Stay in the loop",
+    "newsletterBody": "Be first to know about new arrivals and exclusive offers.",
+    "emailPlaceholder": "Email address",
+    "subscribe": "Subscribe",
+    "subscribed": "Thanks for subscribing!",
+    "freeDeliveryEvery": "Free home delivery on every order",
+    "deliveryLockers": "Home delivery from {{home}} · Lockers from {{locker}}"
+  },
+  "footer": {
+    "shop": "Shop",
+    "delivery": "Delivery",
+    "homeDelivery": "Home delivery",
+    "lockerPickup": "Locker pickup",
+    "cardCash": "Card & cash on delivery",
+    "note": "Note",
+    "help": "Help"
+  },
+  "product": {
+    "addToCart": "Add to cart",
+    "unavailable": "Unavailable",
+    "soldOut": "Sold out",
+    "noImage": "No image"
+  },
+  "catalog": {
+    "collections": "Collections",
+    "category": "Category",
+    "price": "Price (RON)",
+    "sort": "Sort"
+  }
+}

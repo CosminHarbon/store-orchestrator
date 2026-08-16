@@ -1,0 +1,179 @@
+{
+  "dialog": {
+    "title": "Export {{name}}",
+    "description": "Choose a column template and a report look, then open a branded SpeedVendors report (CSV included).",
+    "rowCount": "{{count}} rows ready to export"
+  },
+  "presets": {
+    "title": "Column templates",
+    "essential": {
+      "name": "Essential",
+      "description": "The fields you need most often."
+    },
+    "detailed": {
+      "name": "Detailed",
+      "description": "Full operational export."
+    },
+    "accounting": {
+      "name": "Accounting",
+      "description": "Finance-friendly column set."
+    }
+  },
+  "styles": {
+    "title": "Report look",
+    "classic": {
+      "name": "Classic",
+      "description": "Clean branded table."
+    },
+    "executive": {
+      "name": "Executive",
+      "description": "Summary cards and space."
+    },
+    "ledger": {
+      "name": "Ledger",
+      "description": "Dense accounting layout."
+    }
+  },
+  "customize": {
+    "title": "Customize columns",
+    "show": "Show",
+    "hide": "Hide",
+    "includeSummary": "Include summary cards",
+    "includeGeneratedAt": "Include generated date"
+  },
+  "actions": {
+    "cancel": "Cancel",
+    "preview": "Preview report",
+    "downloadCsv": "Download CSV",
+    "csvOnly": "CSV only",
+    "exportPremium": "Export report",
+    "print": "Print"
+  },
+  "meta": {
+    "generated": "Generated",
+    "rows": "Rows",
+    "poweredBy": "SpeedVendors export",
+    "store": "Store",
+    "template": "Template"
+  },
+  "toast": {
+    "exported": "Exported {{count}} rows",
+    "exportedWithReport": "Opened premium report and downloaded {{count}} rows",
+    "previewOpened": "Report preview opened",
+    "allowPopups": "Allow pop-ups to open the premium report",
+    "needColumns": "Select at least one column"
+  },
+  "open": "Export",
+  "datasets": {
+    "products": {
+      "title": "Products",
+      "subtitle": "Catalog export from SpeedVendors"
+    },
+    "stock": {
+      "title": "Stock",
+      "subtitle": "Inventory snapshot from SpeedVendors"
+    },
+    "reviews": {
+      "title": "Reviews",
+      "subtitle": "Customer feedback export"
+    },
+    "orders": {
+      "title": "Orders",
+      "subtitle": "Order and fulfillment export"
+    },
+    "customers": {
+      "title": "Customers",
+      "subtitle": "Customer analytics export"
+    },
+    "payments": {
+      "title": "Payments",
+      "subtitle": "Payment activity export"
+    }
+  },
+  "columns": {
+    "products": {
+      "title": "Product",
+      "sku": "SKU",
+      "category": "Category",
+      "price": "Price (RON)",
+      "stock": "Stock",
+      "low_stock_threshold": "Low stock alert",
+      "orders": "Orders",
+      "revenue": "Revenue (RON)",
+      "id": "Product ID"
+    },
+    "stock": {
+      "title": "Product",
+      "sku": "SKU",
+      "stock": "Current stock",
+      "low_stock_threshold": "Low stock alert",
+      "price": "Price (RON)",
+      "category": "Category",
+      "status": "Status"
+    },
+    "reviews": {
+      "customer": "Customer",
+      "email": "Email",
+      "product": "Product",
+      "rating": "Rating",
+      "review": "Review",
+      "status": "Status",
+      "created": "Created",
+      "reply": "Reply"
+    },
+    "orders": {
+      "id": "Order ID",
+      "created": "Created",
+      "customer": "Customer",
+      "email": "Email",
+      "phone": "Phone",
+      "address": "Address",
+      "city": "City",
+      "county": "County",
+      "total": "Total (RON)",
+      "payment_status": "Payment",
+      "shipping_status": "Shipping",
+      "delivery_type": "Delivery",
+      "awb": "AWB",
+      "carrier": "Carrier"
+    },
+    "customers": {
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "orders": "Orders",
+      "spent": "Total spent (RON)",
+      "aov": "AOV (RON)",
+      "segment": "Segment",
+      "status": "Status",
+      "first_order": "First order",
+      "last_order": "Last order",
+      "payment_method": "Preferred payment"
+    },
+    "payments": {
+      "id": "Order ID",
+      "created": "Created",
+      "customer": "Customer",
+      "email": "Email",
+      "total": "Total (RON)",
+      "payment_status": "Payment status",
+      "method": "Method",
+      "shipping_status": "Shipping"
+    }
+  },
+  "summary": {
+    "rows": "Rows",
+    "totalValue": "Total value",
+    "avgValue": "Average",
+    "products": "Products",
+    "outOfStock": "Out of stock",
+    "lowStock": "Low stock",
+    "orders": "Orders",
+    "customers": "Customers",
+    "revenue": "Revenue",
+    "paid": "Paid",
+    "pending": "Pending",
+    "failed": "Failed",
+    "avgRating": "Avg rating"
+  }
+}

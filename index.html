@@ -3,25 +3,36 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="shortcut icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>Speed Vendors</title>
-    <meta name="description" content="Multi-tenant e-commerce platform for managing online stores with custom templates, payments, and shipping integration" />
-    <meta name="author" content="Speed Vendors" />
-    
+    <title>SpeedVendors</title>
+    <meta name="description" content="SpeedVendors builds and powers online stores for Romanian businesses — products, orders, payments, shipping and analytics in one platform." />
+    <meta name="author" content="SpeedVendors" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-    <meta property="og:title" content="Speed Vendors" />
-    <meta property="og:description" content="Multi-tenant e-commerce platform for managing online stores with custom templates, payments, and shipping integration" />
+    <meta property="og:title" content="SpeedVendors" />
+    <meta property="og:description" content="We build your online store. You run the business." />
     <meta property="og:type" content="website" />
-
     <meta name="twitter:card" content="summary_large_image" />
 
     <script>
       (function () {
         try {
-          var stored = localStorage.getItem('sv-theme');
+          var path = location.pathname || '/';
+          var key = 'sv-app-theme';
+          if (path === '/' || path === '') key = 'sv-marketing-theme';
+          else if (path.indexOf('/templates/') === 0) key = 'sv-storefront-theme';
+
+          var legacy = localStorage.getItem('sv-theme');
+          if (legacy) {
+            if (!localStorage.getItem('sv-app-theme')) localStorage.setItem('sv-app-theme', legacy);
+            if (!localStorage.getItem('sv-storefront-theme')) localStorage.setItem('sv-storefront-theme', legacy);
+          }
+
+          var stored = localStorage.getItem(key);
           var theme = stored || 'light';
           var resolved = theme;
           if (theme === 'system') {

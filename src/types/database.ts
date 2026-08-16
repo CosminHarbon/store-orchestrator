@@ -558,6 +558,7 @@ export type Database = {
           oblio_first_number: string | null
           oblio_name: string | null
           oblio_series_name: string | null
+          onboarding_state: Record<string, unknown>
           payment_provider: string | null
           preferred_language: string
           sameday_api_key: string | null
@@ -615,6 +616,7 @@ export type Database = {
           oblio_first_number?: string | null
           oblio_name?: string | null
           oblio_series_name?: string | null
+          onboarding_state?: Record<string, unknown>
           payment_provider?: string | null
           preferred_language?: string
           sameday_api_key?: string | null
@@ -672,6 +674,7 @@ export type Database = {
           oblio_first_number?: string | null
           oblio_name?: string | null
           oblio_series_name?: string | null
+          onboarding_state?: Record<string, unknown>
           payment_provider?: string | null
           preferred_language?: string
           sameday_api_key?: string | null
@@ -693,28 +696,37 @@ export type Database = {
       push_tokens: {
         Row: {
           created_at: string
+          device_id: string | null
           device_token: string
           id: string
+          is_active: boolean
           onesignal_player_id: string | null
           platform: string
+          provider: string
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          device_id?: string | null
           device_token: string
           id?: string
+          is_active?: boolean
           onesignal_player_id?: string | null
           platform: string
+          provider?: string
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          device_id?: string | null
           device_token?: string
           id?: string
+          is_active?: boolean
           onesignal_player_id?: string | null
           platform?: string
+          provider?: string
           updated_at?: string
           user_id?: string
         }
@@ -824,6 +836,7 @@ export type Database = {
           animation_style: string | null
           background_color: string | null
           border_radius: string | null
+          builder_config: Record<string, unknown> | null
           button_style: string | null
           created_at: string
           font_family: string | null
@@ -855,6 +868,7 @@ export type Database = {
           animation_style?: string | null
           background_color?: string | null
           border_radius?: string | null
+          builder_config?: Record<string, unknown> | null
           button_style?: string | null
           created_at?: string
           font_family?: string | null
@@ -886,6 +900,7 @@ export type Database = {
           animation_style?: string | null
           background_color?: string | null
           border_radius?: string | null
+          builder_config?: Record<string, unknown> | null
           button_style?: string | null
           created_at?: string
           font_family?: string | null

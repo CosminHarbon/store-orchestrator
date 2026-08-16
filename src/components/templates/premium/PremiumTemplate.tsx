@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Menu, ShoppingBag, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useStorefrontCommerce } from '@/hooks/useStorefrontCommerce';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { StorefrontDemoBanner } from '@/components/templates/StorefrontDemoBanner';
+import { StorefrontLanguageToggle } from '@/components/templates/StorefrontLanguageToggle';
 import { PremiumCartDrawer } from './PremiumCartDrawer';
 import { PremiumCatalog } from './PremiumCatalog';
 import { PremiumCheckout } from './PremiumCheckout';
@@ -11,13 +14,15 @@ import './premium.css';
 
 interface PremiumTemplateProps {
   apiKey: string;
+  demo?: boolean;
 }
 
 const FONT_HREF =
   'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap';
 
-export default function PremiumTemplate({ apiKey }: PremiumTemplateProps) {
-  const commerce = useStorefrontCommerce(apiKey);
+export default function PremiumTemplate({ apiKey, demo = false }: PremiumTemplateProps) {
+  const { t } = useTranslation('storefront');
+  const commerce = useStorefrontCommerce(apiKey, { demo, theme: 'premium' });
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -48,23 +53,26 @@ export default function PremiumTemplate({ apiKey }: PremiumTemplateProps) {
 
   return (
     <div className="premium-store">
+      {demo && (
+        <StorefrontDemoBanner className="border-[var(--prem-line)] bg-[var(--prem-surface)] text-[var(--prem-ink)]" />
+      )}
       <header className="sticky top-0 z-50 border-b border-[var(--prem-line)] bg-[var(--prem-bg)]/90 backdrop-blur-md">
         <div className="prem-container flex items-center justify-between h-16 md:h-[4.25rem]">
           <button
             type="button"
             className="p-2 rounded-full hover:bg-black/5 md:hidden"
             onClick={() => setMenuOpen(true)}
-            aria-label="Open menu"
+            aria-label={t('nav.openMenu')}
           >
             <Menu className="h-5 w-5" />
           </button>
 
           <nav className="hidden md:flex items-center gap-6 text-sm">
             <button type="button" className="hover:opacity-70" onClick={() => setView('home')}>
-              Home
+              {t('nav.home')}
             </button>
             <button type="button" className="hover:opacity-70" onClick={() => openCatalog()}>
-              Shop
+              {t('nav.shop')}
             </button>
             {collections.slice(0, 3).map((c) => (
               <button
@@ -93,12 +101,16 @@ export default function PremiumTemplate({ apiKey }: PremiumTemplateProps) {
           </button>
 
           <div className="flex items-center gap-1 ml-auto md:ml-0">
+            <StorefrontLanguageToggle
+              compact
+              className="border-[var(--prem-line)] text-[var(--prem-ink)]"
+            />
             <ThemeToggle className="!text-[var(--prem-ink)] hover:!bg-black/5 dark:hover:!bg-white/10" />
             <button
               type="button"
               className="relative p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10"
               onClick={() => setCartOpen(true)}
-              aria-label="Open cart"
+              aria-label={t('nav.openCart')}
             >
               <ShoppingBag className="h-5 w-5" />
               {cartCount > 0 && (
@@ -133,7 +145,7 @@ export default function PremiumTemplate({ apiKey }: PremiumTemplateProps) {
                 setMenuOpen(false);
               }}
             >
-              Home
+              {t('nav.home')}
             </button>
             <button
               type="button"
@@ -143,7 +155,7 @@ export default function PremiumTemplate({ apiKey }: PremiumTemplateProps) {
                 setMenuOpen(false);
               }}
             >
-              Shop
+              {t('nav.shop')}
             </button>
             {collections.map((c) => (
               <button
@@ -175,15 +187,17 @@ export default function PremiumTemplate({ apiKey }: PremiumTemplateProps) {
             <div>
               <h3 className="prem-display text-2xl mb-3">{customization.store_name}</h3>
               <p className="text-sm text-[var(--prem-muted)] leading-relaxed">
-                {customization.hero_subtitle || 'Premium products, carefully curated.'}
+                {customization.hero_subtitle || customization.store_name}
               </p>
             </div>
             <div>
-              <h4 className="text-xs uppercase tracking-[0.18em] text-[var(--prem-muted)] mb-3">Shop</h4>
+              <h4 className="text-xs uppercase tracking-[0.18em] text-[var(--prem-muted)] mb-3">
+                {t('footer.shop')}
+              </h4>
               <ul className="space-y-2 text-sm">
                 <li>
                   <button type="button" onClick={() => openCatalog()}>
-                    All products
+                    {t('nav.allProducts')}
                   </button>
                 </li>
                 {collections.slice(0, 4).map((c) => (
@@ -196,19 +210,20 @@ export default function PremiumTemplate({ apiKey }: PremiumTemplateProps) {
               </ul>
             </div>
             <div>
-              <h4 className="text-xs uppercase tracking-[0.18em] text-[var(--prem-muted)] mb-3">Help</h4>
+              <h4 className="text-xs uppercase tracking-[0.18em] text-[var(--prem-muted)] mb-3">
+                {t('footer.delivery')}
+              </h4>
               <ul className="space-y-2 text-sm text-[var(--prem-muted)]">
-                <li>Shipping & delivery</li>
-                <li>Returns</li>
-                <li>Privacy policy</li>
-                <li>Terms of service</li>
+                <li>{t('footer.homeDelivery')}</li>
+                <li>{t('footer.lockerPickup')}</li>
+                <li>{t('footer.cardCash')}</li>
               </ul>
             </div>
             <div>
-              <h4 className="text-xs uppercase tracking-[0.18em] text-[var(--prem-muted)] mb-3">Contact</h4>
-              <p className="text-sm text-[var(--prem-muted)]">
-                Questions about an order? Reach out anytime — we typically reply within one business day.
-              </p>
+              <h4 className="text-xs uppercase tracking-[0.18em] text-[var(--prem-muted)] mb-3">
+                {t('footer.note')}
+              </h4>
+              <p className="text-sm text-[var(--prem-muted)]">{customization.footer_text}</p>
             </div>
           </div>
           <div className="border-t border-[var(--prem-line)] py-4 text-center text-xs text-[var(--prem-muted)]">

@@ -1,32 +1,139 @@
 {
   "loadingStore": "Loading your store...",
   "defaultStoreName": "My Store",
-  "yourStore": "Your Store",
-  "periodRevenue": "Period Revenue",
-  "ordersInPeriod": "{{count}} orders in selected period",
-  "viewAnalytics": "+ View Analytics",
-  "viewAnalyticsShort": "Analytics",
-  "kpi": {
-    "products": "Products",
-    "orders": "Orders",
-    "pending": "Pending",
-    "lowStock": "Low Stock"
+  "header": {
+    "eyebrow": "Dashboard",
+    "greetingMorning": "Good morning, {{name}}.",
+    "greetingAfternoon": "Good afternoon, {{name}}.",
+    "greetingEvening": "Good evening, {{name}}.",
+    "subtitle": "Here’s what’s happening with your store today.",
+    "pendingActions": "{{count}} things need attention",
+    "caughtUp": "You’re all caught up"
   },
-  "todayOverview": "Today's Overview",
-  "newOrders": "New Orders",
-  "last24Hours": "Last 24 hours",
-  "todaysSales": "Today's Sales",
-  "revenueGenerated": "Revenue generated",
-  "lowStockAlert": "Low Stock Alert",
-  "productsNeedRestocking": "Products need restocking",
-  "quickActions": "Quick Actions",
-  "action": {
-    "settings": "Settings",
-    "settingsDesc": "Configure store and integrations",
-    "customers": "Customers",
-    "customersDesc": "Manage customer relationships",
-    "templates": "Templates",
-    "templatesDesc": "Customize your storefront design"
+  "activity": {
+    "eyebrow": "Store activity",
+    "title": "Performance snapshot",
+    "sales": "Sales · {{period}}",
+    "orders": "Orders · {{period}}",
+    "items": "Items sold · {{period}}",
+    "attention": "Pending actions · Now",
+    "period": {
+      "today": "Today",
+      "3d": "Last 3 days",
+      "7d": "Last 7 days",
+      "14d": "Last 14 days",
+      "30d": "Last 30 days",
+      "90d": "Last 90 days",
+      "year": "This year",
+      "custom": "Custom range"
+    }
+  },
+  "actionCenter": {
+    "eyebrow": "Action Center",
+    "title": "What needs your attention",
+    "allGood": "Everything looks good",
+    "caughtUp": "You're all caught up.",
+    "awaitingFulfillment": "{{count}} orders awaiting fulfilment",
+    "pendingPayments": "{{count}} customers haven't completed payment",
+    "lowStock": "{{count}} products are running low on stock",
+    "needAwb": "{{count}} orders need an AWB",
+    "failedPayments": "{{count}} failed payments need review",
+    "viewOrders": "View orders",
+    "reviewPayments": "Review payments",
+    "checkInventory": "Check inventory",
+    "openShipping": "Open shipping"
+  },
+  "recentOrders": {
+    "eyebrow": "Recent activity",
+    "title": "Recent Orders",
+    "viewAll": "View all orders",
+    "emptyTitle": "No orders yet",
+    "emptyBody": "Your most recent sales activity will appear here."
+  },
+  "performance": {
+    "eyebrow": "Store performance",
+    "title": "Sales performance",
+    "empty": "No data for this period",
+    "range": {
+      "today": "Today",
+      "7d": "7D",
+      "30d": "30D",
+      "90d": "90D"
+    },
+    "metric": {
+      "sales": "Sales",
+      "orders": "Orders"
+    }
+  },
+  "inventory": {
+    "eyebrow": "Inventory",
+    "title": "What needs restocking",
+    "viewAll": "View inventory",
+    "outOfStock": "Out of stock",
+    "lowStock": "Low stock",
+    "noneOut": "No products are out of stock.",
+    "noneLow": "No products are running low.",
+    "healthyTitle": "Inventory looks healthy",
+    "healthyBody": "No stock issues need attention right now."
+  },
+  "abandoned": {
+    "eyebrow": "Abandoned carts",
+    "title": "Abandoned carts",
+    "view": "View abandoned carts",
+    "activeCount": "{{count}} active",
+    "potentialValue": "{{amount}} potential value",
+    "lastActivity": "Most recent cart activity {{time}}",
+    "emptyTitle": "No abandoned carts",
+    "emptyBody": "Customers currently completing checkout will appear here if they leave."
+  },
+  "paymentHealth": {
+    "eyebrow": "Payments",
+    "title": "Payment health",
+    "view": "View payments",
+    "pending": "Pending",
+    "failed": "Failed",
+    "mix": "Card {{card}} · Cash {{cash}}",
+    "allGood": "All payments look good ✓"
+  },
+  "setup": {
+    "eyebrow": "Store setup",
+    "title": "Finish setting up your store",
+    "open": "Continue setup",
+    "progress": "{{done}} of {{total}} completed",
+    "next": "Next: {{step}}",
+    "storefront": "Storefront configured",
+    "products": "First product added",
+    "payments": "Payments connected",
+    "shipping": "Shipping connected",
+    "done": "Done",
+    "todo": "To do"
+  },
+  "launchState": {
+    "eyebrow": "Getting started",
+    "title": "Your store is ready to grow",
+    "subtitle": "Finish the basics so customers can start shopping and checking out with confidence.",
+    "addFirstProduct": "Add your first product",
+    "connectPayments": "Connect payments",
+    "connectShipping": "Connect shipping",
+    "customizeStorefront": "Customize storefront"
+  },
+  "status": {
+    "paid": "Paid",
+    "pending": "Pending",
+    "failed": "Failed",
+    "refunded": "Refunded",
+    "cash": "Cash",
+    "awaitingShipment": "Awaiting shipment",
+    "processing": "Processing",
+    "shipped": "Shipped",
+    "delivered": "Delivered",
+    "cancelled": "Cancelled"
+  },
+  "time": {
+    "justNow": "just now",
+    "minutes": "{{count}}m ago",
+    "hours": "{{count}}h ago",
+    "days": "{{count}}d ago"
   },
   "unsavedStockTitle": "Unsaved Stock Changes",
   "unsavedStockDesc": "You have unsaved stock changes. Would you like to save them before leaving?"

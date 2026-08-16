@@ -1,0 +1,11 @@
+.sv-export-dialog__hero {
+  background:
+    radial-gradient(ellipse at top right, rgba(110, 61, 255, 0.12), transparent 55%),
+    hsl(var(--background));
+}
+
+.dark .sv-export-dialog__hero {
+  background:
+    radial-gradient(ellipse at top right, rgba(110, 61, 255, 0.2), transparent 55%),
+    hsl(var(--background));
+}

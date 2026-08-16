@@ -134,6 +134,11 @@ export function useLanguage() {
 export async function applyStorefrontLanguage(lang: unknown) {
   const { default: i18n } = await import('@/i18n');
   const resolved = isAppLanguage(lang) ? lang : DEFAULT_LANGUAGE;
+  try {
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, resolved);
+  } catch {
+    /* ignore */
+  }
   if (i18n.language !== resolved) {
     await i18n.changeLanguage(resolved);
   }

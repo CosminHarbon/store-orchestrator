@@ -1,0 +1,154 @@
+{
+  "progress": "{{current}} din {{total}}",
+  "exit": "Ieși din setup",
+  "maybeLater": "Poate mai târziu",
+  "actions": {
+    "continue": "Continuă",
+    "back": "Înapoi",
+    "skip": "Sari peste momentan",
+    "getStarted": "Începe",
+    "finish": "Finalizează setup-ul",
+    "goDashboard": "Mergi la Dashboard",
+    "viewStore": "Vezi magazinul",
+    "tryAgain": "Încearcă din nou",
+    "setUpLater": "Configurează mai târziu",
+    "completeSetup": "Finalizează configurarea"
+  },
+  "status": {
+    "completed": "Completat",
+    "skipped": "Sărit",
+    "notConfigured": "Neconfigurat"
+  },
+  "welcome": {
+    "eyebrow": "Configurare magazin",
+    "title": "Hai să-ți construim magazinul.",
+    "body": "Te ghidăm prin câțiva pași rapizi — detalii magazin, storefront, primul produs, plăți și livrare.",
+    "saved": "Progresul se salvează automat.",
+    "skipSetup": "Sari peste setup momentan"
+  },
+  "store": {
+    "eyebrow": "Informații magazin",
+    "title": "Cum se numește magazinul tău?",
+    "body": "Acest nume apare pe storefront și pe facturi.",
+    "label": "Nume magazin",
+    "placeholder": "ex. Aurora Home",
+    "hint": "Poți schimba oricând din Setări.",
+    "required": "Introdu un nume de magazin."
+  },
+  "storefront": {
+    "eyebrow": "Storefront",
+    "title": "Alege-ți storefront-ul",
+    "body": "Alege un șablon de start. Poți personaliza totul mai târziu în Website Builder.",
+    "elementar": {
+      "name": "Magazin modern",
+      "badge": "Editabil",
+      "description": "Storefront complet personalizabil cu builder vizual, culori și blocuri de conținut."
+    },
+    "premium": {
+      "name": "Premium",
+      "badge": "Predesignat",
+      "description": "Magazin elegant, orientat spre conversie — gata de publicare cu produsele tale."
+    },
+    "floral": {
+      "name": "Floral Atelier",
+      "badge": "Florării",
+      "description": "Storefront boutique ultra-premium pentru florării — imagini aerisite și checkout complet."
+    },
+    "preview": "Previzualizare",
+    "previewDemo": "Demo",
+    "previewLive": "Live",
+    "selected": "Selectat",
+    "select": "Selectează",
+    "needSelect": "Selectează un șablon pentru a continua."
+  },
+  "product": {
+    "eyebrow": "Primul produs",
+    "title": "Adaugă primul produs",
+    "body": "Magazinul are nevoie de cel puțin un produs înainte ca clienții să poată cumpăra.",
+    "fields": {
+      "title": "Nume produs",
+      "sku": "SKU",
+      "price": "Preț (RON)",
+      "stock": "Stoc",
+      "description": "Descriere"
+    },
+    "placeholders": {
+      "title": "Tricou din bumbac organic",
+      "sku": "SKU-001",
+      "description": "Descriere scurtă a produsului"
+    },
+    "create": "Creează produsul",
+    "creating": "Se creează…",
+    "successTitle": "Primul tău produs este live.",
+    "successBody": "Apare deja în Produse. Poți adăuga imagini și alte detalii oricând.",
+    "addAnother": "Adaugă alt produs",
+    "errors": {
+      "title": "Numele produsului este obligatoriu.",
+      "price": "Introdu un preț valid."
+    }
+  },
+  "payments": {
+    "eyebrow": "Plăți",
+    "title": "Acceptă plăți cu cardul",
+    "body": "Conectează Netopia ca clienții să poată plăti cu cardul la checkout.",
+    "connected": "Plățile sunt conectate",
+    "connectedBody": "Netopia este legat de magazinul tău.",
+    "openWizard": "Conectează Netopia",
+    "failed": "Nu am putut conecta contul încă."
+  },
+  "shipping": {
+    "eyebrow": "Livrare",
+    "title": "Configurează livrarea",
+    "body": "Conectează eAWB pentru a genera AWB-uri și a oferi opțiuni de livrare.",
+    "connected": "Livrarea este conectată",
+    "connectedBody": "eAWB este legat de magazinul tău.",
+    "openWizard": "Conectează eAWB",
+    "failed": "Nu am putut conecta contul încă."
+  },
+  "settings": {
+    "eyebrow": "Finisaje magazin",
+    "title": "Fă magazinul să arate complet",
+    "body": "Confirmă numele și adaugă un logo. Poți rafina totul mai târziu.",
+    "storeName": "Nume magazin",
+    "logo": "Logo magazin",
+    "logoHint": "Încarcă un logo pătrat pentru header-ul storefront-ului.",
+    "uploadLogo": "Încarcă logo",
+    "logoUploaded": "Logo încărcat",
+    "uploadFailed": "Încărcarea logo-ului a eșuat."
+  },
+  "review": {
+    "eyebrow": "Recapitulare",
+    "title": "Magazinul tău este aproape gata",
+    "body": "Iată ce ai configurat. Poți finaliza oricând elementele sărite.",
+    "steps": {
+      "store": "Informații magazin",
+      "storefront": "Storefront",
+      "product": "Primul produs",
+      "payments": "Plăți",
+      "shipping": "Livrare",
+      "settings": "Setări magazin",
+      "review": "Recapitulare"
+    }
+  },
+  "ready": {
+    "title": "Magazinul tău este gata.",
+    "titlePartial": "Magazinul tău a fost creat.",
+    "body": "Poți continua să construiești din Dashboard.",
+    "bodyPartial": "Poți finaliza plățile și livrarea oricând din Setări.",
+    "store": "Magazin",
+    "template": "Storefront",
+    "products": "Produse",
+    "payments": "Plăți",
+    "shipping": "Livrare",
+    "connected": "Conectat",
+    "notConnected": "Neconectat",
+    "none": "Niciunul încă"
+  },
+  "dashboard": {
+    "title": "Finalizează configurarea magazinului",
+    "progress": "{{done}} din {{total}} completate",
+    "next": "Următorul: {{step}}",
+    "continue": "Continuă setup-ul",
+    "later": "Poate mai târziu"
+  }
+}

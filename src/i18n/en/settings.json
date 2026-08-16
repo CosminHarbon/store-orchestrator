@@ -128,24 +128,30 @@
       "title": "Payment Setup",
       "subtitle": "Configure Netopia for card payments",
       "configTitle": "Netopia Configuration",
-      "intro": "To accept card payments, create a Netopia merchant account and add these credentials in Store Settings → Payment Provider:",
+      "intro": "Connect Netopia with our guided setup. It takes about 2–3 minutes and you never leave SpeedVendors.",
       "step1Prefix": "Create and activate an account at",
       "step2": "API Key (required) — Admin → Profile → Security",
       "step3": "POS Signature (required) — Admin → Point of Sale → Technical Settings",
       "step4": "Public Key (optional) — same Technical Settings page; used for IPN verification",
       "step5": "Choose Sandbox for testing or Live for production (keys are environment-specific)",
-      "openWebsite": "Open Netopia Website"
+      "openWebsite": "Open Netopia Website",
+      "startGuidedSetup": "Start guided setup",
+      "alreadyConnected": "Netopia is already connected. You can continue or manage credentials in Settings.",
+      "manageInSettings": "Manage in Settings"
     },
     "shipping": {
       "title": "Shipping Setup",
       "subtitle": "Configure eAWB.ro for shipping",
       "configTitle": "eAWB.ro Configuration",
-      "intro": "eAWB.ro provides integrated shipping with multiple carriers. Here's how to set it up:",
+      "intro": "Connect eAWB with our guided setup. It takes about 2–3 minutes and you never leave SpeedVendors.",
       "step1Prefix": "Create an account at",
       "step2": "Get your API key from your account settings",
       "step3": "Configure your billing address and default carrier",
       "step4": "Add credentials in Store Settings → Shipping Provider",
-      "openWebsite": "Open eAWB Website"
+      "openWebsite": "Open eAWB Website",
+      "startGuidedSetup": "Start guided setup",
+      "alreadyConnected": "eAWB is already connected. You can continue or manage shipping in Settings.",
+      "manageInSettings": "Manage in Settings"
     },
     "invoicing": {
       "title": "Invoicing Setup",
@@ -191,6 +197,270 @@
       "storeNameRequired": "Please enter a store name",
       "storeNameSaveFailed": "Failed to save store name",
       "storeNameSaved": "Store name saved! Setup complete."
+    }
+  },
+  "netopiaSetup": {
+    "title": "Setup Payments",
+    "subtitle": "Securely connect your Netopia account in just a few minutes.",
+    "estimatedTime": "Estimated time: 2–3 minutes",
+    "stepOf": "Step {{current}} of {{total}}",
+    "complete": "Complete",
+    "stepperAria": "Setup progress",
+    "show": "Show",
+    "hide": "Hide",
+    "connect": "Connect Netopia",
+    "connecting": "Connecting…",
+    "fields": {
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "Paste your API Key",
+      "posSignature": "POS Signature",
+      "posSignaturePlaceholder": "Paste your POS Signature"
+    },
+    "errors": {
+      "apiKeyRequired": "API Key is required.",
+      "signatureRequired": "POS Signature is required.",
+      "openBrowserFailed": "Could not open Netopia. Please try again."
+    },
+    "paths": {
+      "netopiaHome": "Netopia",
+      "createAccount": "Create account / Log in",
+      "dashboard": "Dashboard",
+      "pointOfSale": "Point of Sale",
+      "createPos": "Create POS",
+      "technicalSettings": "Technical Settings",
+      "security": "Security",
+      "api": "API",
+      "copyApiKey": "Copy API Key",
+      "posSignature": "POS Signature",
+      "verify": "Verify connection"
+    },
+    "help": {
+      "title": "Where do I find this?",
+      "path": "Navigation path",
+      "screenshotPlaceholder": "Screenshot placeholder — coming soon",
+      "troubleshooting": "Troubleshooting"
+    },
+    "steps": {
+      "1": {
+        "title": "Create or log into your Netopia account",
+        "description": "You need a Netopia merchant account before you can accept online card payments.",
+        "openNetopia": "Open Netopia",
+        "alreadyHaveAccount": "I already have an account",
+        "helpExplanation": "Open Netopia in a secure browser window, create an account or sign in, then return here to continue.",
+        "tip1": "Use the same email you use for your business.",
+        "tip2": "Make sure your Netopia account is activated before continuing.",
+        "tip3": "You can reopen Netopia anytime from this step."
+      },
+      "2": {
+        "title": "Create a Point of Sale (POS)",
+        "description": "Inside Netopia, create a new Point of Sale for your website.",
+        "helpExplanation": "A POS represents your online store in Netopia. Create one for your SpeedVendors storefront, then open Technical Settings.",
+        "tip1": "Choose a clear POS name that matches your store.",
+        "tip2": "Website / e-commerce POS type is usually the right choice.",
+        "tip3": "You will need Technical Settings in the next steps for your signature."
+      },
+      "3": {
+        "title": "Copy your API Key",
+        "description": "Find your API Key under Security → API and paste it below.",
+        "helpExplanation": "In the Netopia admin dashboard, open Security → API, then generate or copy your API Key.",
+        "tip1": "Make sure your account is activated.",
+        "tip2": "Open Security → API.",
+        "tip3": "Generate a new key if necessary. Sandbox and Live keys are different."
+      },
+      "4": {
+        "title": "Copy your POS Signature",
+        "description": "Find your POS Signature under Point of Sale → Technical Settings.",
+        "helpExplanation": "Open your POS Technical Settings and copy the Signature value (often formatted like XXXX-XXXX-XXXX-XXXX).",
+        "tip1": "Select the POS you created for this store.",
+        "tip2": "Open Technical Settings.",
+        "tip3": "Copy the Signature exactly — do not add spaces."
+      },
+      "5": {
+        "title": "Verify connection",
+        "description": "Confirm your credentials, then connect Netopia to SpeedVendors.",
+        "helpExplanation": "We will securely test these credentials against Netopia, then save them to your store profile.",
+        "tip1": "Double-check you did not mix Sandbox and Live credentials.",
+        "tip2": "If the test fails, go back and re-copy your keys.",
+        "tip3": "Advanced options (Public Key, Sandbox/Live) are available in Settings after setup."
+      }
+    },
+    "success": {
+      "title": "Netopia connected successfully",
+      "description": "Your store is now ready to accept online card payments.",
+      "finish": "Finish",
+      "goToPayments": "Go to Payments"
+    },
+    "connected": {
+      "title": "Netopia Connected",
+      "badge": "Connected",
+      "description": "Your store is ready to accept online card payments.",
+      "credentialsSaved": "Credentials saved"
+    },
+    "setupCard": {
+      "title": "Connect Netopia",
+      "description": "Set up online card payments in a few guided steps. Estimated time: 2–3 minutes."
+    },
+    "actions": {
+      "completeSetup": "Complete Setup",
+      "testConnection": "Test Connection",
+      "editCredentials": "Edit Credentials",
+      "advancedSettings": "Advanced Settings",
+      "disconnect": "Disconnect"
+    },
+    "advanced": {
+      "title": "Advanced Settings",
+      "description": "Edit credentials manually, set Sandbox/Live, and optionally add a Public Key for IPN verification.",
+      "apiKeyHelp": "In the Netopia admin dashboard, open Profile → Security and generate or copy your API Key. Sandbox and Live each have their own keys.",
+      "signatureHelp": "In Netopia admin, open Point of Sale → Technical Settings for your store POS and copy the Signature.",
+      "publicKeyHelp": "Also found under Point of Sale → Technical Settings. Paste the certificate/public key PEM used to verify IPN JWT tokens. Optional for most merchants.",
+      "publicKeyPlaceholder": "-----BEGIN CERTIFICATE----- or -----BEGIN PUBLIC KEY-----",
+      "envHelp": "Use Sandbox credentials only in Sandbox mode, and Live credentials only in Live mode."
+    },
+    "disconnect": {
+      "title": "Disconnect Netopia?",
+      "description": "Disconnecting Netopia will disable online card payments until you reconnect your account."
+    },
+    "toast": {
+      "disconnected": "Netopia disconnected. You can reconnect anytime."
+    }
+  },
+  "eawbSetup": {
+    "title": "Setup Shipping",
+    "subtitle": "Securely connect your eAWB account.",
+    "estimatedTime": "Estimated setup time: 2–3 minutes",
+    "stepOf": "Step {{current}} of {{total}}",
+    "complete": "Complete",
+    "stepperAria": "Shipping setup progress",
+    "show": "Show",
+    "hide": "Hide",
+    "skipLocker": "Skip this step",
+    "retrievePickup": "Retrieve Pickup Addresses",
+    "retrieveBilling": "Retrieve Billing Addresses",
+    "testConnection": "Test Connection",
+    "testing": "Testing…",
+    "testSuccess": "Connection successful. Your shipping account is ready.",
+    "none": "None selected",
+    "selectedId": "Selected address #{{id}}",
+    "fields": {
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "Paste your eAWB API Key",
+      "pickupAddress": "Pickup Address",
+      "locker": "Default Pickup Locker"
+    },
+    "errors": {
+      "apiKeyRequired": "API Key is required.",
+      "pickupRequired": "Select a pickup address to continue.",
+      "billingRequired": "Select a billing address to continue.",
+      "openBrowserFailed": "Could not open eAWB. Please try again."
+    },
+    "paths": {
+      "eawbHome": "eAWB",
+      "loginRegister": "Login or Register",
+      "settings": "Settings",
+      "api": "API",
+      "generateKey": "Generate API Key",
+      "retrievePickup": "Retrieve pickup addresses",
+      "retrieveBilling": "Retrieve billing addresses",
+      "locker": "Default pickup locker",
+      "verify": "Test connection"
+    },
+    "help": {
+      "title": "Where do I find this?",
+      "path": "Navigation path",
+      "screenshotPlaceholder": "Screenshot placeholder — coming soon",
+      "troubleshooting": "Troubleshooting"
+    },
+    "steps": {
+      "1": {
+        "title": "Create or log into your eAWB account",
+        "description": "An eAWB account is required before generating shipping labels.",
+        "openEawb": "Open eAWB",
+        "alreadyHaveAccount": "I already have an account",
+        "helpExplanation": "Open eAWB, create an account or sign in, then activate your merchant account before continuing.",
+        "tip1": "Open eAWB in a secure browser window.",
+        "tip2": "Log in or register with your business email.",
+        "tip3": "Make sure your account is activated before generating an API key."
+      },
+      "2": {
+        "title": "Generate and paste your API Key",
+        "description": "Create an API key in eAWB, then paste it below. We save it securely to your store profile.",
+        "instruction1": "Open Settings → API inside eAWB.",
+        "instruction2": "Generate an API Key.",
+        "instruction3": "Paste it below.",
+        "helpExplanation": "In the eAWB dashboard, open Settings → API, generate a key, and paste it here. Continuing saves the key to your profile so the next steps can retrieve addresses.",
+        "tip1": "Save your key somewhere safe — you may not see it again.",
+        "tip2": "The key must be saved before retrieving addresses.",
+        "tip3": "If retrieve fails, confirm the key was generated for an activated account."
+      },
+      "3": {
+        "title": "Retrieve Pickup Addresses",
+        "description": "This is where couriers will collect your parcels. Select a pickup address from your eAWB account.",
+        "helpExplanation": "We use the same Europarcel pickup address retrieval already available in Settings. Create a shipping address in eAWB first if the list is empty.",
+        "tip1": "Create at least one shipping/pickup address in your eAWB dashboard.",
+        "tip2": "Click Retrieve Pickup Addresses, then select one.",
+        "tip3": "This address is used when generating AWBs without a locker pickup."
+      },
+      "4": {
+        "title": "Retrieve Billing Address",
+        "description": "Select the billing address linked to your eAWB account.",
+        "helpExplanation": "We use the same billing address retrieval already available in Settings.",
+        "tip1": "Create a billing address in eAWB if none appear.",
+        "tip2": "If you only have one, it may be linked automatically.",
+        "tip3": "You can change this later in Advanced Settings."
+      },
+      "5": {
+        "title": "Default Pickup Locker (Optional)",
+        "description": "If you regularly ship from a courier locker instead of your warehouse, choose your default pickup locker.",
+        "helpExplanation": "This reuses the same locker picker as Settings. The locker is suggested when creating AWBs and can always be changed per shipment.",
+        "tip1": "Skip this step if you only ship from a warehouse address.",
+        "tip2": "Use Map, List, or Locate Me to find your locker.",
+        "tip3": "You can update the default locker anytime in Advanced Settings."
+      },
+      "6": {
+        "title": "Test Connection",
+        "description": "Verify that SpeedVendors can reach your eAWB account with the saved credentials.",
+        "helpExplanation": "This runs the same connection test already used in Settings. No new API is introduced.",
+        "tip1": "Ensure your API key was saved in step 2.",
+        "tip2": "If the test fails, go back and re-check your key.",
+        "tip3": "Carrier and service defaults remain optional in Advanced Settings."
+      }
+    },
+    "success": {
+      "title": "eAWB Connected Successfully",
+      "description": "Your store is now ready to generate shipping labels.",
+      "finish": "Finish",
+      "goToShipping": "Go to Shipping Settings"
+    },
+    "connected": {
+      "title": "eAWB Connected",
+      "badge": "Connected",
+      "description": "Your shipping account is ready.",
+      "credentialsSaved": "Credentials saved"
+    },
+    "setupCard": {
+      "title": "Connect eAWB",
+      "description": "Set up shipping labels in a few guided steps. Estimated time: 2–3 minutes."
+    },
+    "actions": {
+      "completeSetup": "Complete Setup",
+      "testConnection": "Test Connection",
+      "editDetails": "Edit Details",
+      "advancedSettings": "Advanced Settings",
+      "disconnect": "Disconnect"
+    },
+    "advanced": {
+      "title": "Advanced Settings",
+      "description": "All existing eAWB options: company info, addresses, optional carrier/service IDs, default locker, connection test, and diagnostics."
+    },
+    "disconnect": {
+      "title": "Disconnect eAWB?",
+      "description": "Disconnecting eAWB will remove your shipping credentials from SpeedVendors. Existing orders and generated AWBs are not deleted."
+    },
+    "toast": {
+      "disconnected": "eAWB disconnected. You can reconnect anytime.",
+      "testOk": "eAWB connection successful.",
+      "pickupLinked": "Pickup address linked.",
+      "lockerSaved": "Default pickup locker saved."
     }
   },
   "toast": {

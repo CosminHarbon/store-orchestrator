@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Sparkles, Package, Truck, Smartphone, Globe } from "lucide-react";
+import { Package, Truck, Smartphone, Globe } from "lucide-react";
 import { useLanguage } from "@/i18n/LanguageProvider";
 import type { AppLanguage } from "@/i18n/types";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 
 const WELCOME_FEATURES = [
   { icon: Truck, color: "orange", titleKey: "welcome.feature1Title", descKey: "welcome.feature1Desc" },
@@ -38,9 +39,7 @@ export default function Welcome() {
 
       {/* Logo & Branding */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
-        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center mb-6 shadow-lg">
-          <Sparkles className="w-10 h-10 text-primary-foreground" />
-        </div>
+        <BrandLogo variant="mark" className="mb-6" imgClassName="h-20 w-20" />
         
         <h1 className="text-3xl font-bold text-foreground text-center mb-2">
           {t("title")}

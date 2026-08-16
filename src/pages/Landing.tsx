@@ -1,418 +1,647 @@
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { useNavigate, Link } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { Globe, Truck, Smartphone, Check, Zap, Shield, Sparkles, User, Building2, Heart, ArrowRight, Clock, Settings } from "lucide-react";
-import { Capacitor } from "@capacitor/core";
-import { cn } from "@/lib/utils";
-import { useLanguage } from "@/i18n/LanguageProvider";
-import type { AppLanguage } from "@/i18n/types";
+import { useEffect, useState, type ReactNode } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { motion, useReducedMotion } from 'framer-motion';
+import { Capacitor } from '@capacitor/core';
+import {
+  ArrowRight,
+  BarChart3,
+  Boxes,
+  Check,
+  CreditCard,
+  FileText,
+  Globe,
+  Package,
+  ShoppingBag,
+  Store,
+  Truck,
+  Users,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { BrandLogo } from '@/components/brand/BrandLogo';
+import { useLanguage } from '@/i18n/LanguageProvider';
+import type { AppLanguage } from '@/i18n/types';
+import { MARKETING_PRICING, hasPrice } from '@/lib/marketingPricing';
+import { cn } from '@/lib/utils';
+import '@/styles/marketing.css';
 
-const FEATURE_CARD_META = [
-  { icon: Truck, color: "from-orange-500 to-amber-500" },
-  { icon: Zap, color: "from-violet-500 to-purple-500" },
-  { icon: Smartphone, color: "from-cyan-500 to-blue-500" },
-  { icon: Shield, color: "from-emerald-500 to-green-500" },
+const NAV_IDS = ['features', 'how-it-works', 'pricing', 'faq'] as const;
+
+const FEATURE_ICONS = [
+  Package,
+  ShoppingBag,
+  CreditCard,
+  Truck,
+  FileText,
+  Users,
+  BarChart3,
+  Store,
 ] as const;
 
-const NO_TECH_POINT_ICONS = [Settings, Sparkles, Heart, Clock] as const;
+/** First-party integrations in the product — wordmarks only (no partner logo files in repo). */
+const INTEGRATION_NAMES = ['Netopia', 'eAWB', 'Oblio'] as const;
 
-type FeatureCard = { title: string; desc: string };
-type ComparisonPlan = { title: string; subtitle: string; features: string[] };
-type PricingPlan = {
-  title: string;
-  subtitle: string;
-  setup: string;
-  setupLabel: string;
-  monthly: string;
-  monthlyLabel: string;
-  features: string[];
-  badge?: string;
-};
+function Section({
+  id,
+  className,
+  children,
+}: {
+  id?: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section id={id} className={cn('relative px-4 sm:px-6 lg:px-8', className)}>
+      <div className="mx-auto max-w-6xl">{children}</div>
+    </section>
+  );
+}
+
+function DashboardMock() {
+  const { t } = useTranslation('auth');
+  return (
+    <div
+      className="relative overflow-hidden rounded-2xl border border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-mist))] shadow-[0_40px_80px_-40px_rgba(15,23,42,0.45)]"
+      aria-hidden
+    >
+      <div className="flex items-center gap-2 border-b border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-paper))]/80 px-4 py-3">
+        <span className="h-2.5 w-2.5 rounded-full bg-rose-400/80" />
+        <span className="h-2.5 w-2.5 rounded-full bg-amber-400/80" />
+        <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
+        <span className="ml-3 text-xs text-muted-foreground font-medium tracking-wide">
+          {t('landing.mock.windowTitle')}
+        </span>
+      </div>
+      <div className="grid grid-cols-[88px_1fr] sm:grid-cols-[120px_1fr] min-h-[240px] sm:min-h-[300px]">
+        <div className="border-r border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-paper))] p-3 space-y-2">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className={cn(
+                'h-7 rounded-md',
+                i === 1 ? 'bg-[hsl(var(--sv-accent))]/25' : 'bg-[hsl(var(--sv-mist))]'
+              )}
+            />
+          ))}
+        </div>
+        <div className="p-4 sm:p-5 space-y-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="rounded-xl border border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-paper))] p-3"
+              >
+                <div className="h-2 w-10 rounded bg-[hsl(var(--sv-line))] mb-2" />
+                <div className="h-5 w-14 rounded bg-[hsl(var(--sv-accent))]/30" />
+              </div>
+            ))}
+          </div>
+          <div className="rounded-xl border border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-paper))] p-3 space-y-2">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-lg bg-[hsl(var(--sv-mist))]" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-2.5 w-[70%] rounded bg-[hsl(var(--sv-line))]" />
+                  <div className="h-2 w-[40%] rounded bg-[hsl(var(--sv-line))]/70" />
+                </div>
+                <div className="h-6 w-14 rounded-full bg-[hsl(var(--sv-accent-soft))]" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Landing() {
-  const { t, ready } = useTranslation("auth");
+  const { t, ready } = useTranslation('auth');
   const { language, setLanguage } = useLanguage();
-  const [businessType, setBusinessType] = useState<"pf" | "srl">("pf");
   const navigate = useNavigate();
+  const reduceMotion = useReducedMotion();
+  const [scrolled, setScrolled] = useState(false);
+  const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
 
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
-      navigate("/welcome", { replace: true });
+      navigate('/welcome', { replace: true });
     }
   }, [navigate]);
 
-  const featureCards = t("landing.featureCards", { returnObjects: true });
-  const comparisonPf = t("landing.comparison.pf", { returnObjects: true });
-  const comparisonSrl = t("landing.comparison.srl", { returnObjects: true });
-  const noTechPoints = t("landing.noTech.points", { returnObjects: true });
-  const pricingPf = t("landing.pricing.pf", { returnObjects: true });
-  const pricingSrl = t("landing.pricing.srl", { returnObjects: true });
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
-  // Guard: returnObjects yields the key string until the auth bundle is present
+  const featureItems = t('landing.platform.items', { returnObjects: true });
+  const howSteps = t('landing.how.steps', { returnObjects: true });
+  const faqItems = t('landing.faq.items', { returnObjects: true });
+  const included = t('landing.pricing.included', { returnObjects: true });
+
   if (
     !ready ||
-    !Array.isArray(featureCards) ||
-    !Array.isArray(noTechPoints) ||
-    typeof comparisonPf !== "object" ||
-    comparisonPf === null ||
-    !Array.isArray((comparisonPf as ComparisonPlan).features) ||
-    typeof comparisonSrl !== "object" ||
-    comparisonSrl === null ||
-    !Array.isArray((comparisonSrl as ComparisonPlan).features) ||
-    typeof pricingPf !== "object" ||
-    pricingPf === null ||
-    !Array.isArray((pricingPf as PricingPlan).features) ||
-    typeof pricingSrl !== "object" ||
-    pricingSrl === null ||
-    !Array.isArray((pricingSrl as PricingPlan).features)
+    !Array.isArray(featureItems) ||
+    !Array.isArray(howSteps) ||
+    !Array.isArray(faqItems) ||
+    !Array.isArray(included)
   ) {
     return (
-      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
-        <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="sv-marketing min-h-screen flex items-center justify-center">
+        <div className="h-8 w-8 border-2 border-[hsl(var(--sv-accent))] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
-  const cards = featureCards as FeatureCard[];
-  const points = noTechPoints as string[];
-  const pfPlan = comparisonPf as ComparisonPlan;
-  const srlPlan = comparisonSrl as ComparisonPlan;
-  const pricingIndividual = pricingPf as PricingPlan;
-  const pricingCompany = pricingSrl as PricingPlan;
+  const features = featureItems as { title: string; desc: string }[];
+  const steps = howSteps as { title: string; desc: string }[];
+  const faqs = faqItems as { q: string; a: string }[];
+  const includedList = included as string[];
 
-  const activeComparison = businessType === "pf" ? pfPlan : srlPlan;
+  const priceValue =
+    billing === 'monthly' ? MARKETING_PRICING.monthly : MARKETING_PRICING.yearly;
+  const showPrice = hasPrice(priceValue);
+
+  const fade = reduceMotion
+    ? {}
+    : {
+        initial: { opacity: 0, y: 16 },
+        whileInView: { opacity: 1, y: 0 },
+        viewport: { once: true, margin: '-40px' },
+        transition: { duration: 0.45, ease: 'easeOut' },
+      };
+
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const toggleLanguage = () => {
-    const next: AppLanguage = language === "en" ? "ro" : "en";
+    const next: AppLanguage = language === 'en' ? 'ro' : 'en';
     void setLanguage(next);
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
-      {/* Decorative background elements */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-gradient-to-br from-violet-500/20 to-purple-500/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 right-0 w-80 h-80 bg-gradient-to-bl from-cyan-500/15 to-blue-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 left-0 w-72 h-72 bg-gradient-to-tr from-orange-500/15 to-amber-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-gradient-to-tl from-emerald-500/15 to-green-500/10 rounded-full blur-3xl" />
-      </div>
+    <div className="sv-marketing min-h-screen overflow-x-hidden">
+      <div className="pointer-events-none fixed inset-0 sv-marketing-glow" aria-hidden />
+      <div className="pointer-events-none fixed inset-0 sv-marketing-grid opacity-60" aria-hidden />
 
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <span className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
-            {t("title")}
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleLanguage}
-            className="gap-2 hover:bg-primary/10"
+      {/* Navbar */}
+      <header
+        className={cn(
+          'sticky top-0 z-50 transition-all duration-300',
+          scrolled
+            ? 'border-b border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-paper))]/85 backdrop-blur-xl'
+            : 'bg-transparent'
+        )}
+      >
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+          <Link to="/" className="flex items-center gap-2.5 shrink-0">
+            <BrandLogo variant="horizontal" imgClassName="h-8 w-auto max-w-[180px]" />
+          </Link>
+
+          <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-[hsl(var(--sv-ink))]/70">
+            {NAV_IDS.map((id) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => scrollTo(id)}
+                className="hover:text-[hsl(var(--sv-ink))] transition-colors"
+              >
+                {t(`landing.nav.${id}`)}
+              </button>
+            ))}
+          </nav>
+
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="hidden sm:inline-flex gap-1.5 text-[hsl(var(--sv-ink))]/70"
+              onClick={toggleLanguage}
+              aria-label={t('landing.nav.language')}
+            >
+              <Globe className="h-4 w-4" />
+              {language.toUpperCase()}
+            </Button>
+            <ThemeToggle />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="hidden sm:inline-flex"
+              onClick={() => navigate('/auth?tab=signin')}
+            >
+              {t('landing.nav.login')}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className="rounded-full bg-[hsl(var(--sv-accent))] text-[hsl(var(--sv-on-accent))] hover:bg-[hsl(var(--sv-accent-deep))]"
+              onClick={() => navigate('/auth?tab=signup')}
+            >
+              {t('landing.nav.getStarted')}
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero */}
+      <Section className="pt-14 pb-20 sm:pt-20 sm:pb-28">
+        <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-12 lg:gap-16 items-center">
+          <motion.div
+            {...(reduceMotion
+              ? {}
+              : { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.55 } })}
+            className="space-y-7"
           >
-            <Globe className="h-4 w-4" />
-            {language === "en" ? "RO" : "EN"}
-          </Button>
-        </div>
-      </nav>
-
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-24 px-4">
-        <div className="container mx-auto max-w-5xl text-center space-y-8">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-violet-500/10 to-purple-500/10 border border-violet-500/20 text-sm font-medium text-violet-600 dark:text-violet-400 animate-fade-in">
-            <Sparkles className="h-4 w-4" />
-            {t("landing.badge")}
-          </div>
-          
-          <h1 className="text-5xl md:text-7xl font-bold leading-tight animate-fade-in [animation-delay:100ms]">
-            {t("landing.heroTitle")}
-            <span className="block bg-gradient-to-r from-violet-600 via-purple-600 to-cyan-600 bg-clip-text text-transparent">
-              {t("landing.heroHighlight")}
-            </span>
-          </h1>
-          
-          <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto animate-fade-in [animation-delay:200ms]">
-            {t("landing.heroSubtitle")}
-          </p>
-          
-          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6 animate-fade-in [animation-delay:300ms]">
-            <Button 
-              size="lg" 
-              onClick={() => navigate("/auth")} 
-              className="text-lg px-8 py-6 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/25"
-            >
-              {t("landing.cta")}
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
-              onClick={() => navigate("/auth")} 
-              className="text-lg px-8 py-6 border-2 hover:bg-primary/5"
-            >
-              {t("landing.ctaSecondary")}
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="relative py-24 px-4">
-        <div className="container mx-auto max-w-6xl">
-          <h2 className="text-4xl md:text-5xl font-bold text-center mb-16 animate-fade-in">
-            {t("landing.featuresTitle")}
-          </h2>
-          
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {cards.map((card, i) => {
-              const meta = FEATURE_CARD_META[i];
-              const Icon = meta.icon;
-              return (
-                <div 
-                  key={card.title} 
-                  className="group relative p-6 bg-card/50 backdrop-blur-sm rounded-3xl border border-border/50 hover:border-primary/30 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 animate-fade-in"
-                  style={{ animationDelay: `${i * 100}ms` }}
-                >
-                  <div className={cn(
-                    "h-14 w-14 rounded-2xl bg-gradient-to-br flex items-center justify-center text-white mb-5 shadow-lg",
-                    meta.color
-                  )}>
-                    <Icon className="h-7 w-7" />
-                  </div>
-                  <h3 className="font-bold text-xl mb-2">{card.title}</h3>
-                  <p className="text-muted-foreground">{card.desc}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Individual vs Company Comparison */}
-      <section className="relative py-24 px-4 bg-gradient-to-b from-muted/30 to-transparent">
-        <div className="container mx-auto max-w-5xl">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 animate-fade-in">{t("landing.comparison.title")}</h2>
-            <p className="text-xl text-muted-foreground animate-fade-in [animation-delay:100ms]">{t("landing.comparison.subtitle")}</p>
-          </div>
-          
-          {/* Toggle */}
-          <div className="flex justify-center mb-10 animate-fade-in [animation-delay:200ms]">
-            <div className="inline-flex bg-muted/50 backdrop-blur-sm rounded-full p-1.5 border border-border/50">
-              <button
-                onClick={() => setBusinessType("pf")}
-                className={cn(
-                  "px-6 py-3 rounded-full text-sm font-semibold transition-all duration-300",
-                  businessType === "pf" 
-                    ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/25" 
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <User className="h-4 w-4 inline mr-2" />
-                {t("landing.toggle.individual")}
-              </button>
-              <button
-                onClick={() => setBusinessType("srl")}
-                className={cn(
-                  "px-6 py-3 rounded-full text-sm font-semibold transition-all duration-300",
-                  businessType === "srl" 
-                    ? "bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-lg shadow-violet-500/25" 
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Building2 className="h-4 w-4 inline mr-2" />
-                {t("landing.toggle.company")}
-              </button>
-            </div>
-          </div>
-
-          {/* Comparison Card */}
-          <div className="max-w-lg mx-auto animate-fade-in [animation-delay:300ms]">
-            <div className={cn(
-              "relative rounded-3xl p-8 border-2 transition-all duration-500",
-              businessType === "pf" 
-                ? "bg-gradient-to-br from-orange-500/5 to-amber-500/5 border-orange-500/30" 
-                : "bg-gradient-to-br from-violet-500/5 to-purple-500/5 border-violet-500/30"
-            )}>
-              <div className="text-center mb-8">
-                <div className={cn(
-                  "inline-flex h-16 w-16 rounded-2xl items-center justify-center text-white mb-4 shadow-lg",
-                  businessType === "pf" 
-                    ? "bg-gradient-to-br from-orange-500 to-amber-500" 
-                    : "bg-gradient-to-br from-violet-500 to-purple-500"
-                )}>
-                  {businessType === "pf" ? <User className="h-8 w-8" /> : <Building2 className="h-8 w-8" />}
-                </div>
-                <h3 className="text-2xl font-bold">{activeComparison.title}</h3>
-                <p className="text-muted-foreground">{activeComparison.subtitle}</p>
-              </div>
-              
-              <ul className="space-y-4">
-                {activeComparison.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-3">
-                    <div className={cn(
-                      "h-6 w-6 rounded-full flex items-center justify-center shrink-0 mt-0.5",
-                      businessType === "pf" 
-                        ? "bg-orange-500/20 text-orange-600" 
-                        : "bg-violet-500/20 text-violet-600"
-                    )}>
-                      <Check className="h-4 w-4" />
-                    </div>
-                    <span className="text-lg">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* No Tech Section */}
-      <section className="relative py-24 px-4">
-        <div className="container mx-auto max-w-4xl">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 animate-fade-in">
-              <span className="bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
-                {t("landing.noTech.title")}
-              </span>
-            </h2>
-            <p className="text-xl text-muted-foreground animate-fade-in [animation-delay:100ms]">{t("landing.noTech.subtitle")}</p>
-          </div>
-          
-          <div className="grid sm:grid-cols-2 gap-6 mb-12">
-            {points.map((point, i) => {
-              const Icon = NO_TECH_POINT_ICONS[i];
-              return (
-                <div 
-                  key={point} 
-                  className="flex items-center gap-4 p-5 bg-gradient-to-r from-cyan-500/5 to-blue-500/5 rounded-2xl border border-cyan-500/20 animate-fade-in"
-                  style={{ animationDelay: `${(i + 2) * 100}ms` }}
-                >
-                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-white shadow-lg shadow-cyan-500/25 shrink-0">
-                    <Icon className="h-6 w-6" />
-                  </div>
-                  <span className="font-medium text-lg">{point}</span>
-                </div>
-              );
-            })}
-          </div>
-          
-          <p className="text-center text-2xl font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent animate-fade-in [animation-delay:600ms]">
-            {t("landing.noTech.conclusion")}
-          </p>
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section className="relative py-24 px-4 bg-gradient-to-b from-muted/30 to-transparent">
-        <div className="container mx-auto max-w-5xl">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 animate-fade-in">{t("landing.pricing.title")}</h2>
-            <p className="text-xl text-muted-foreground animate-fade-in [animation-delay:100ms]">{t("landing.pricing.subtitle")}</p>
-          </div>
-          
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {/* Individual Package */}
-            <div className="relative bg-card/50 backdrop-blur-sm rounded-3xl border border-border/50 p-8 animate-fade-in [animation-delay:200ms] hover:shadow-xl transition-all duration-300">
-              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white mb-6 shadow-lg shadow-orange-500/25">
-                <User className="h-7 w-7" />
-              </div>
-              <h3 className="text-2xl font-bold mb-1">{pricingIndividual.title}</h3>
-              <p className="text-muted-foreground mb-6">{pricingIndividual.subtitle}</p>
-              
-              <div className="mb-6">
-                <div className="flex items-baseline gap-2 mb-2">
-                  <span className="text-4xl font-bold">{pricingIndividual.setup}</span>
-                </div>
-                <p className="text-sm text-muted-foreground">{pricingIndividual.setupLabel}</p>
-              </div>
-              
-              <div className="flex items-baseline gap-1 mb-8 p-4 bg-muted/50 rounded-xl">
-                <span className="text-2xl font-bold">{pricingIndividual.monthly}</span>
-                <span className="text-muted-foreground">{pricingIndividual.monthlyLabel}</span>
-              </div>
-              
-              <ul className="space-y-3">
-                {pricingIndividual.features.map((feature) => (
-                  <li key={feature} className="flex items-center gap-3 text-sm">
-                    <div className="h-5 w-5 rounded-full bg-orange-500/20 flex items-center justify-center text-orange-600">
-                      <Check className="h-3 w-3" />
-                    </div>
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Company Package */}
-            <div className="relative bg-card/50 backdrop-blur-sm rounded-3xl border-2 border-violet-500/50 p-8 animate-fade-in [animation-delay:300ms] hover:shadow-xl transition-all duration-300 shadow-lg shadow-violet-500/10">
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-gradient-to-r from-violet-500 to-purple-500 text-white text-sm font-semibold rounded-full shadow-lg">
-                {pricingCompany.badge}
-              </div>
-              
-              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center text-white mb-6 shadow-lg shadow-violet-500/25">
-                <Building2 className="h-7 w-7" />
-              </div>
-              <h3 className="text-2xl font-bold mb-1">{pricingCompany.title}</h3>
-              <p className="text-muted-foreground mb-6">{pricingCompany.subtitle}</p>
-              
-              <div className="mb-6">
-                <div className="flex items-baseline gap-2 mb-2">
-                  <span className="text-4xl font-bold">{pricingCompany.setup}</span>
-                </div>
-                <p className="text-sm text-muted-foreground">{pricingCompany.setupLabel}</p>
-              </div>
-              
-              <div className="flex items-baseline gap-1 mb-8 p-4 bg-violet-500/10 rounded-xl border border-violet-500/20">
-                <span className="text-2xl font-bold">{pricingCompany.monthly}</span>
-                <span className="text-muted-foreground">{pricingCompany.monthlyLabel}</span>
-              </div>
-              
-              <ul className="space-y-3">
-                {pricingCompany.features.map((feature) => (
-                  <li key={feature} className="flex items-center gap-3 text-sm">
-                    <div className="h-5 w-5 rounded-full bg-violet-500/20 flex items-center justify-center text-violet-600">
-                      <Check className="h-3 w-3" />
-                    </div>
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Final CTA */}
-      <section className="relative py-24 px-4">
-        <div className="container mx-auto max-w-4xl">
-          <div className="relative rounded-3xl p-12 bg-gradient-to-r from-violet-600 via-purple-600 to-cyan-600 text-white text-center overflow-hidden shadow-2xl shadow-violet-500/30">
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMzLjMxNCAwIDYgMi42ODYgNiA2cy0yLjY4NiA2LTYgNi02LTIuNjg2LTYtNiAyLjY4Ni02IDYtNiIgc3Ryb2tlPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiIHN0cm9rZS13aWR0aD0iMiIvPjwvZz48L3N2Zz4=')] opacity-30" />
-            
-            <div className="relative z-10 space-y-6">
-              <h2 className="text-4xl md:text-5xl font-bold">{t("landing.ctaFinalTitle")}</h2>
-              <p className="text-xl text-white/80 max-w-xl mx-auto">{t("landing.ctaFinalSubtitle")}</p>
+            <p className="font-display text-5xl sm:text-6xl lg:text-[4.25rem] font-extrabold leading-[1.02] tracking-tight">
+              {t('landing.hero.line1')}
+              <br />
+              <span className="text-[hsl(var(--sv-accent))]">{t('landing.hero.line2')}</span>
+            </p>
+            <p className="max-w-xl text-base sm:text-lg text-[hsl(var(--sv-ink))]/65 leading-relaxed">
+              {t('landing.hero.subtitle')}
+            </p>
+            <div className="flex flex-wrap gap-3">
               <Button
                 size="lg"
-                onClick={() => navigate("/auth")}
-                className="text-lg px-10 py-6 bg-white text-violet-600 hover:bg-white/90 shadow-xl font-semibold"
+                className="rounded-full h-12 px-6 bg-[hsl(var(--sv-accent))] text-[hsl(var(--sv-on-accent))] hover:bg-[hsl(var(--sv-accent-deep))]"
+                onClick={() => navigate('/auth?tab=signup')}
               >
-                {t("landing.ctaFinalButton")}
-                <ArrowRight className="ml-2 h-5 w-5" />
+                {t('landing.hero.ctaPrimary')}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="rounded-full h-12 px-6 border-[hsl(var(--sv-line))] bg-transparent"
+                onClick={() => scrollTo('how-it-works')}
+              >
+                {t('landing.hero.ctaSecondary')}
               </Button>
             </div>
-          </div>
+            <p className="text-sm font-medium text-[hsl(var(--sv-ink))]/55">{t('landing.hero.tagline')}</p>
+          </motion.div>
+
+          <motion.div
+            {...(reduceMotion
+              ? {}
+              : {
+                  initial: { opacity: 0, y: 28 },
+                  animate: { opacity: 1, y: 0 },
+                  transition: { duration: 0.6, delay: 0.12 },
+                })}
+          >
+            <DashboardMock />
+          </motion.div>
         </div>
-      </section>
+      </Section>
+
+      {/* Trust strip — names only; no partner logo files in repo */}
+      <Section className="pb-16">
+        <motion.div {...fade} className="space-y-5">
+          <p className="text-center text-xs font-semibold uppercase tracking-[0.18em] text-[hsl(var(--sv-ink))]/45">
+            {t('landing.trust.label')}
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+            {INTEGRATION_NAMES.map((name) => (
+              <span
+                key={name}
+                className="font-display text-sm sm:text-base font-semibold tracking-tight text-[hsl(var(--sv-ink))]/40"
+              >
+                {name}
+              </span>
+            ))}
+          </div>
+        </motion.div>
+      </Section>
+
+      {/* How it works */}
+      <Section id="how-it-works" className="py-20 sm:py-24">
+        <motion.div {...fade} className="max-w-2xl mb-12">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[hsl(var(--sv-accent))] mb-3">
+            {t('landing.how.eyebrow')}
+          </p>
+          <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight">
+            {t('landing.how.title')}
+          </h2>
+          <p className="mt-3 text-[hsl(var(--sv-ink))]/60 text-base sm:text-lg">{t('landing.how.subtitle')}</p>
+        </motion.div>
+
+        <div className="grid md:grid-cols-3 gap-6 md:gap-8 relative">
+          <div
+            className="hidden md:block absolute top-10 left-[16%] right-[16%] h-px bg-[hsl(var(--sv-line))]"
+            aria-hidden
+          />
+          {steps.map((step, i) => (
+            <motion.div key={step.title} {...fade} transition={{ delay: i * 0.06 }} className="relative space-y-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-paper))] font-display text-sm font-bold relative z-10">
+                {String(i + 1).padStart(2, '0')}
+              </div>
+              <h3 className="font-display text-xl font-semibold">{step.title}</h3>
+              <p className="text-sm leading-relaxed text-[hsl(var(--sv-ink))]/60">{step.desc}</p>
+            </motion.div>
+          ))}
+        </div>
+      </Section>
+
+      {/* Platform features */}
+      <Section id="features" className="py-20 sm:py-24">
+        <motion.div {...fade} className="max-w-2xl mb-12">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[hsl(var(--sv-accent))] mb-3">
+            {t('landing.platform.eyebrow')}
+          </p>
+          <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight">
+            {t('landing.platform.title')}
+          </h2>
+          <p className="mt-3 text-[hsl(var(--sv-ink))]/60 text-base sm:text-lg">
+            {t('landing.platform.subtitle')}
+          </p>
+        </motion.div>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-px rounded-2xl overflow-hidden border border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-line))]">
+          {features.map((item, i) => {
+            const Icon = FEATURE_ICONS[i] ?? Boxes;
+            return (
+              <motion.div
+                key={item.title}
+                {...fade}
+                className="bg-[hsl(var(--sv-paper))] p-6 sm:p-7 space-y-3"
+              >
+                <Icon className="h-5 w-5 text-[hsl(var(--sv-accent))]" strokeWidth={1.75} />
+                <h3 className="font-display font-semibold text-base">{item.title}</h3>
+                <p className="text-sm text-[hsl(var(--sv-ink))]/55 leading-relaxed">{item.desc}</p>
+              </motion.div>
+            );
+          })}
+        </div>
+      </Section>
+
+      {/* Ecosystem flow */}
+      <Section className="py-20 sm:py-24">
+        <motion.div {...fade} className="text-center max-w-2xl mx-auto mb-12">
+          <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight">
+            {t('landing.ecosystem.title')}
+          </h2>
+          <p className="mt-3 text-[hsl(var(--sv-ink))]/60">{t('landing.ecosystem.subtitle')}</p>
+        </motion.div>
+        <motion.div
+          {...fade}
+          className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-sm font-medium"
+        >
+          {(
+            t('landing.ecosystem.nodes', { returnObjects: true }) as string[]
+          ).map((node, i, arr) => (
+            <div key={node} className="flex items-center gap-2 sm:gap-3">
+              <span className="rounded-full border border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-mist))] px-4 py-2">
+                {node}
+              </span>
+              {i < arr.length - 1 && (
+                <ArrowRight className="h-4 w-4 text-[hsl(var(--sv-ink))]/30 shrink-0" aria-hidden />
+              )}
+            </div>
+          ))}
+        </motion.div>
+      </Section>
+
+      {/* We handle the technology */}
+      <Section className="py-20 sm:py-24">
+        <motion.div
+          {...fade}
+          className="rounded-3xl border border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-mist))] px-6 py-12 sm:px-12 sm:py-16"
+        >
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-start">
+            <div>
+              <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
+                {t('landing.tech.title')}
+              </h2>
+              <p className="mt-4 text-[hsl(var(--sv-ink))]/60 text-base sm:text-lg leading-relaxed">
+                {t('landing.tech.subtitle')}
+              </p>
+            </div>
+            <ul className="space-y-3">
+              {(t('landing.tech.points', { returnObjects: true }) as string[]).map((point) => (
+                <li key={point} className="flex gap-3 text-sm sm:text-base text-[hsl(var(--sv-ink))]/75">
+                  <Check className="h-5 w-5 shrink-0 text-[hsl(var(--sv-accent))] mt-0.5" />
+                  <span>{point}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </motion.div>
+      </Section>
+
+      {/* Pricing */}
+      <Section id="pricing" className="py-20 sm:py-24">
+        <motion.div {...fade} className="text-center max-w-2xl mx-auto mb-12">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[hsl(var(--sv-accent))] mb-3">
+            {t('landing.pricing.eyebrow')}
+          </p>
+          <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight">
+            {t('landing.pricing.title')}
+          </h2>
+          <p className="mt-3 text-[hsl(var(--sv-ink))]/60">{t('landing.pricing.subtitle')}</p>
+        </motion.div>
+
+        <motion.div
+          {...fade}
+          className="mx-auto max-w-lg rounded-3xl border border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-paper))] p-7 sm:p-9 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.35)]"
+        >
+          <div className="flex items-center justify-between gap-3 mb-6">
+            <div>
+              <h3 className="font-display text-xl font-bold">{t('landing.pricing.planName')}</h3>
+              <p className="text-sm text-[hsl(var(--sv-ink))]/55">{t('landing.pricing.planTag')}</p>
+            </div>
+            <div className="inline-flex rounded-full border border-[hsl(var(--sv-line))] p-1 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setBilling('monthly')}
+                className={cn(
+                  'rounded-full px-3 py-1.5 transition-colors',
+                  billing === 'monthly'
+                    ? 'bg-[hsl(var(--sv-accent))] text-[hsl(var(--sv-on-accent))]'
+                    : 'text-[hsl(var(--sv-ink))]/55'
+                )}
+              >
+                {t('landing.pricing.monthly')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setBilling('yearly')}
+                className={cn(
+                  'rounded-full px-3 py-1.5 transition-colors',
+                  billing === 'yearly'
+                    ? 'bg-[hsl(var(--sv-accent))] text-[hsl(var(--sv-on-accent))]'
+                    : 'text-[hsl(var(--sv-ink))]/55'
+                )}
+              >
+                {t('landing.pricing.yearly')}
+              </button>
+            </div>
+          </div>
+
+          <div className="mb-6 min-h-[3.5rem] flex items-end gap-2">
+            {showPrice ? (
+              <>
+                <span className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight">
+                  {priceValue}
+                </span>
+                <span className="text-sm text-[hsl(var(--sv-ink))]/50 pb-1.5">
+                  {billing === 'monthly'
+                    ? t('landing.pricing.perMonth')
+                    : t('landing.pricing.perYear')}
+                </span>
+              </>
+            ) : (
+              <span className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[hsl(var(--sv-ink))]/45">
+                {t('landing.pricing.comingSoon')}
+              </span>
+            )}
+          </div>
+
+          <ul className="space-y-2.5 mb-8">
+            {includedList.map((item) => (
+              <li key={item} className="flex gap-2.5 text-sm text-[hsl(var(--sv-ink))]/70">
+                <Check className="h-4 w-4 shrink-0 text-[hsl(var(--sv-accent))] mt-0.5" />
+                {item}
+              </li>
+            ))}
+          </ul>
+
+          <div className="rounded-2xl border border-dashed border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-mist))]/60 p-4 mb-6 space-y-1.5">
+            <p className="text-sm font-semibold">{t('landing.pricing.setupTitle')}</p>
+            <p className="text-sm text-[hsl(var(--sv-ink))]/60 leading-relaxed">
+              {t('landing.pricing.setupBody')}
+            </p>
+            {hasPrice(MARKETING_PRICING.setupFee) ? (
+              <p className="text-sm font-medium pt-1">{MARKETING_PRICING.setupFee}</p>
+            ) : (
+              <p className="text-xs text-[hsl(var(--sv-ink))]/45 pt-1">{t('landing.pricing.setupFeeTbd')}</p>
+            )}
+          </div>
+
+          <Button
+            size="lg"
+            className="w-full rounded-full h-12 bg-[hsl(var(--sv-accent))] text-[hsl(var(--sv-on-accent))] hover:bg-[hsl(var(--sv-accent-deep))]"
+            onClick={() => navigate('/auth?tab=signup')}
+          >
+            {t('landing.pricing.cta')}
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </motion.div>
+      </Section>
+
+      {/* FAQ */}
+      <Section id="faq" className="py-20 sm:py-24">
+        <motion.div {...fade} className="max-w-2xl mb-10">
+          <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight">
+            {t('landing.faq.title')}
+          </h2>
+        </motion.div>
+        <div className="max-w-3xl divide-y divide-[hsl(var(--sv-line))] border-y border-[hsl(var(--sv-line))]">
+          {faqs.map((item) => (
+            <details key={item.q} className="group py-5">
+              <summary className="cursor-pointer list-none font-display font-semibold text-base sm:text-lg flex items-center justify-between gap-4">
+                {item.q}
+                <span className="text-[hsl(var(--sv-ink))]/35 group-open:rotate-45 transition-transform text-2xl leading-none">
+                  +
+                </span>
+              </summary>
+              <p className="mt-3 text-sm sm:text-base text-[hsl(var(--sv-ink))]/60 leading-relaxed pr-8">
+                {item.a}
+              </p>
+            </details>
+          ))}
+        </div>
+      </Section>
+
+      {/* Final CTA */}
+      <Section className="py-20 sm:py-28">
+        <motion.div
+          {...fade}
+          className="rounded-3xl bg-[hsl(var(--sv-surface-deep))] text-white px-6 py-14 sm:px-12 sm:py-16 text-center"
+        >
+          <h2 className="font-display text-3xl sm:text-5xl font-extrabold tracking-tight">
+            {t('landing.final.title')}
+          </h2>
+          <p className="mt-4 text-base sm:text-lg opacity-70 max-w-xl mx-auto">
+            {t('landing.final.subtitle')}
+          </p>
+          <Button
+            size="lg"
+            className="mt-8 rounded-full h-12 px-8 bg-[hsl(var(--sv-accent))] text-[hsl(var(--sv-on-accent))] hover:bg-[hsl(var(--sv-accent-deep))]"
+            onClick={() => navigate('/auth?tab=signup')}
+          >
+            {t('landing.final.cta')}
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </motion.div>
+      </Section>
 
       {/* Footer */}
-      <footer className="border-t border-border/50 py-8 bg-muted/20">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground space-y-2">
-          <p className="font-semibold text-foreground">{t("title")}</p>
-          <p>© 2025 Speed Vendors. {t("landing.rights")}</p>
-          <Link to="/privacy-policy" className="text-primary hover:underline">
-            {t("landing.privacy")}
-          </Link>
+      <footer className="border-t border-[hsl(var(--sv-line))] px-4 sm:px-6 lg:px-8 py-12">
+        <div className="mx-auto max-w-6xl grid sm:grid-cols-2 lg:grid-cols-4 gap-10">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <BrandLogo variant="horizontal" imgClassName="h-7 w-auto max-w-[160px]" />
+            </div>
+            <p className="text-sm text-[hsl(var(--sv-ink))]/50 max-w-xs">{t('landing.footer.tagline')}</p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--sv-ink))]/40 mb-3">
+              {t('landing.footer.product')}
+            </p>
+            <ul className="space-y-2 text-sm text-[hsl(var(--sv-ink))]/65">
+              {NAV_IDS.map((id) => (
+                <li key={id}>
+                  <button type="button" onClick={() => scrollTo(id)} className="hover:text-[hsl(var(--sv-ink))]">
+                    {t(`landing.nav.${id}`)}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--sv-ink))]/40 mb-3">
+              {t('landing.footer.account')}
+            </p>
+            <ul className="space-y-2 text-sm text-[hsl(var(--sv-ink))]/65">
+              <li>
+                <button type="button" onClick={() => navigate('/auth?tab=signin')} className="hover:text-[hsl(var(--sv-ink))]">
+                  {t('landing.nav.login')}
+                </button>
+              </li>
+              <li>
+                <button type="button" onClick={() => navigate('/auth?tab=signup')} className="hover:text-[hsl(var(--sv-ink))]">
+                  {t('landing.nav.getStarted')}
+                </button>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--sv-ink))]/40 mb-3">
+              {t('landing.footer.legal')}
+            </p>
+            <ul className="space-y-2 text-sm text-[hsl(var(--sv-ink))]/65">
+              <li>
+                <Link to="/privacy" className="hover:text-[hsl(var(--sv-ink))]">
+                  {t('landing.footer.privacy')}
+                </Link>
+              </li>
+              <li>
+                <a href="mailto:cosminharbon@icloud.com" className="hover:text-[hsl(var(--sv-ink))]">
+                  {t('landing.footer.contact')}
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div className="mx-auto max-w-6xl mt-10 pt-6 border-t border-[hsl(var(--sv-line))] text-xs text-[hsl(var(--sv-ink))]/40 flex flex-wrap justify-between gap-2">
+          <span>© {new Date().getFullYear()} SpeedVendors</span>
+          <span>{t('landing.footer.rights')}</span>
         </div>
       </footer>
     </div>

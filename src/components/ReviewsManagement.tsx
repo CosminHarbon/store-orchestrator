@@ -53,6 +53,8 @@ import {
   type ReviewStatus,
 } from '@/lib/reviewAnalytics';
 import { cn } from '@/lib/utils';
+import { ExportDialog } from '@/components/export/ExportDialog';
+import type { ExportRow } from '@/lib/export/types';
 
 function KpiCard({
   title,
@@ -100,6 +102,7 @@ type SortKey = 'newest' | 'oldest' | 'highest' | 'lowest';
 
 export default function ReviewsManagement() {
   const { t: tReviews } = useTranslation('reviews');
+  const { t: tExport } = useTranslation('export');
   const { t: tCommon } = useTranslation('common');
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -117,6 +120,7 @@ export default function ReviewsManagement() {
   const [sort, setSort] = useState<SortKey>('newest');
   const [page, setPage] = useState(1);
   const pageSize = 12;
+  const [exportOpen, setExportOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [drawerReview, setDrawerReview] = useState<ReviewRow | null>(null);
   const [showAnalytics, setShowAnalytics] = useState(() => {
@@ -294,39 +298,29 @@ export default function ReviewsManagement() {
     onError: () => toast.error(tReviews('toast.deleteFailed')),
   });
 
-  const exportCsv = () => {
-    const header = [
-      tReviews('csvHeaders.customer'),
-      tReviews('csvHeaders.email'),
-      tReviews('csvHeaders.product'),
-      tReviews('csvHeaders.rating'),
-      tReviews('csvHeaders.review'),
-      tReviews('csvHeaders.status'),
-      tReviews('csvHeaders.created'),
-      tReviews('csvHeaders.reply'),
+  const exportRows = useMemo<ExportRow[]>(() => {
+    return filtered.map((r) => ({
+      customer: r.customer_name,
+      email: r.customer_email || '',
+      product: r.product?.title || '',
+      rating: r.rating,
+      review: r.review_text || '',
+      status: normalizeReviewStatus(r),
+      created: r.created_at,
+      reply: r.merchant_reply || '',
+    }));
+  }, [filtered]);
+
+  const exportSummary = useMemo(() => {
+    const avg =
+      exportRows.length === 0
+        ? 0
+        : exportRows.reduce((s, r) => s + Number(r.rating || 0), 0) / exportRows.length;
+    return [
+      { label: tExport('summary.rows'), value: String(exportRows.length) },
+      { label: tExport('summary.avgRating'), value: avg.toFixed(1) },
     ];
-    const lines = filtered.map((r) =>
-      [
-        r.customer_name,
-        r.customer_email || '',
-        r.product?.title || '',
-        r.rating,
-        (r.review_text || '').replace(/"/g, '""'),
-        normalizeReviewStatus(r),
-        r.created_at,
-        (r.merchant_reply || '').replace(/"/g, '""'),
-      ]
-        .map((c) => `"${c}"`)
-        .join(',')
-    );
-    const blob = new Blob([[header.join(','), ...lines].join('\n')], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `reviews-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  }, [exportRows, tExport]);
 
   const selectedIds = [...selected];
 
@@ -363,9 +357,9 @@ export default function ReviewsManagement() {
               {tReviews('showOnStorefront')}
             </Label>
           </div>
-          <Button type="button" variant="outline" size="sm" onClick={exportCsv}>
+          <Button type="button" variant="outline" size="sm" onClick={() => setExportOpen(true)}>
             <Download className="h-4 w-4 mr-2" />
-            {tReviews('exportCsv')}
+            {tExport('open')}
           </Button>
         </div>
       </div>
@@ -764,6 +758,13 @@ export default function ReviewsManagement() {
           if (!o) setDrawerReview(null);
         }}
         allReviews={reviews}
+      />
+      <ExportDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        datasetId="reviews"
+        rows={exportRows}
+        summary={exportSummary}
       />
     </div>
   );

@@ -1,0 +1,69 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Syne:wght@500;600;700;800&display=swap');
+
+/*
+  Marketing landing — scoped brand palette (SpeedVendors).
+  Never touches storefront/dashboard theme tokens.
+
+  Brand:
+    #6E3DFF — primary
+    #4B21B6 — secondary / hover
+    #1A0F2E — dark surface
+    #0D0717 — deepest background
+    #FFFFFF — white
+*/
+
+.sv-marketing {
+  --sv-accent: 255 100% 62%; /* #6E3DFF */
+  --sv-accent-deep: 257 69% 42%; /* #4B21B6 */
+  --sv-accent-soft: 255 100% 96%;
+  --sv-surface-dark: 261 51% 12%; /* #1A0F2E */
+  --sv-surface-deep: 263 53% 6%; /* #0D0717 */
+  --sv-ink: 261 51% 12%; /* #1A0F2E — readable text on light */
+  --sv-paper: 0 0% 100%; /* #FFFFFF */
+  --sv-mist: 255 40% 97%;
+  --sv-line: 255 20% 90%;
+  --sv-on-accent: 0 0% 100%;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  color: hsl(var(--sv-ink));
+  background: hsl(var(--sv-paper));
+}
+
+.dark .sv-marketing {
+  --sv-accent: 255 100% 62%; /* #6E3DFF */
+  --sv-accent-deep: 257 69% 42%; /* #4B21B6 */
+  --sv-accent-soft: 257 40% 18%;
+  --sv-surface-dark: 261 51% 12%; /* #1A0F2E */
+  --sv-surface-deep: 263 53% 6%; /* #0D0717 */
+  --sv-ink: 0 0% 100%; /* #FFFFFF */
+  --sv-paper: 263 53% 6%; /* #0D0717 */
+  --sv-mist: 261 51% 12%; /* #1A0F2E */
+  --sv-line: 257 30% 22%;
+  --sv-on-accent: 0 0% 100%;
+  color: hsl(var(--sv-ink));
+  background: hsl(var(--sv-paper));
+}
+
+.sv-marketing .font-display {
+  font-family: 'Syne', 'DM Sans', system-ui, sans-serif;
+  letter-spacing: -0.03em;
+}
+
+.sv-marketing-grid {
+  background-image:
+    linear-gradient(to right, hsl(var(--sv-line) / 0.55) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(var(--sv-line) / 0.55) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, black 20%, transparent 75%);
+}
+
+.sv-marketing-glow {
+  background:
+    radial-gradient(ellipse 50% 40% at 50% -10%, hsl(var(--sv-accent) / 0.16), transparent 60%),
+    radial-gradient(ellipse 40% 30% at 90% 20%, hsl(var(--sv-accent-deep) / 0.08), transparent 50%);
+}
+
+.dark .sv-marketing-glow {
+  background:
+    radial-gradient(ellipse 50% 40% at 50% -10%, hsl(var(--sv-accent) / 0.2), transparent 60%),
+    radial-gradient(ellipse 40% 30% at 85% 15%, hsl(var(--sv-accent-deep) / 0.18), transparent 50%);
+}

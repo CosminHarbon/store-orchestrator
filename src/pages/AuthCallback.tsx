@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 
 const AuthCallback = () => {
   const [searchParams] = useSearchParams();
@@ -108,7 +109,7 @@ const AuthCallback = () => {
       <Card className="w-full max-w-md text-center">
         <CardHeader>
           <div className="flex justify-center mb-4">
-            <img src="/logo.png" alt="Speed Vendors Logo" className="h-20 w-20 object-contain" />
+            <BrandLogo variant="mark" imgClassName="h-20 w-20" />
           </div>
           <CardTitle className="text-2xl font-bold">Speed Vendors</CardTitle>
           <CardDescription>

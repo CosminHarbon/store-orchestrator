@@ -1,0 +1,50 @@
+.sv-setup {
+  color-scheme: dark;
+}
+
+.sv-setup-card {
+  min-height: min(720px, calc(100dvh - 8rem));
+}
+
+/* Light card: keep readable field contrast even when app theme is dark. */
+.sv-setup-card input,
+.sv-setup-card textarea,
+.sv-setup-card select {
+  color: #1a0f2e;
+  background-color: #ffffff;
+  border-color: hsl(220 13% 88%);
+  caret-color: #1a0f2e;
+}
+
+.sv-setup-card input::placeholder,
+.sv-setup-card textarea::placeholder {
+  color: hsl(220 10% 55%);
+  opacity: 1;
+}
+
+/* Dark theme: light text on dark fields so typing is clearly visible. */
+.dark .sv-setup-card {
+  background-color: hsl(210 28% 10%);
+  color: hsl(210 20% 96%);
+  border-color: hsl(215 20% 22%);
+}
+
+.dark .sv-setup-card input,
+.dark .sv-setup-card textarea,
+.dark .sv-setup-card select {
+  color: #ffffff;
+  background-color: hsl(210 30% 8%);
+  border-color: hsl(215 20% 24%);
+  caret-color: #ffffff;
+}
+
+.dark .sv-setup-card input::placeholder,
+.dark .sv-setup-card textarea::placeholder {
+  color: hsl(215 12% 58%);
+  opacity: 1;
+}
+
+.dark .sv-setup-card [data-sv-setup-muted],
+.dark .sv-setup-card .text-muted-foreground {
+  color: hsl(215 12% 68%);
+}

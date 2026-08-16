@@ -1,534 +1,814 @@
-import { useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  CreditCard,
+  ExternalLink,
+  Loader2,
+  Package,
+  Palette,
+  Sparkles,
+  Store,
+  Truck,
+  X,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
+import { useStoreOnboarding } from '@/hooks/useStoreOnboarding';
+import { FirstProductStep } from '@/components/onboarding/FirstProductStep';
+import {
+  NetopiaSetupWizard,
+  type NetopiaWizardCredentials,
+} from '@/components/payments/NetopiaSetupWizard';
+import { EawbSetupWizard } from '@/components/shipping/EawbSetupWizard';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { 
-  Sparkles, 
-  Store, 
-  CreditCard, 
-  Truck, 
-  FileText, 
-  Palette, 
-  CheckCircle2,
-  ExternalLink,
-  Video,
-  ChevronRight,
-  ChevronLeft,
-  X
-} from 'lucide-react';
-
-type Step = 'welcome' | 'store' | 'payment' | 'shipping' | 'invoicing' | 'template' | 'complete';
+import {
+  ONBOARDING_STEPS,
+  OnboardingStepId,
+  PROGRESS_STEPS,
+  isDefaultStoreName,
+} from '@/components/onboarding/onboardingTypes';
+import { BrandLogo } from '@/components/brand/BrandLogo';
+import '@/styles/store-setup.css';
 
 const SetupWizard = () => {
-  const { t } = useTranslation('settings');
-  const { t: tCommon } = useTranslation('common');
-  const [currentStep, setCurrentStep] = useState<Step>('welcome');
-  const [loading, setLoading] = useState(false);
-  const [storeName, setStoreName] = useState('');
-  const [profileData, setProfileData] = useState<any>(null);
-  const { user } = useAuth();
+  const { t } = useTranslation('onboarding');
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-
-  const steps: Step[] = ['welcome', 'store', 'payment', 'shipping', 'invoicing', 'template', 'complete'];
-  const currentStepIndex = steps.indexOf(currentStep);
-  const progress = ((currentStepIndex + 1) / steps.length) * 100;
+  const onboarding = useStoreOnboarding();
+  const [step, setStep] = useState<OnboardingStepId>('welcome');
+  const [direction, setDirection] = useState(1);
+  const [storeName, setStoreName] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState<'elementar' | 'premium' | 'floral' | null>(null);
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [shippingOpen, setShippingOpen] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      loadProfile();
-    }
-  }, [user]);
+    if (!authLoading && !user) navigate('/auth');
+  }, [authLoading, user, navigate]);
 
-  const loadProfile = async () => {
-    if (!user) return;
-    
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
-    
-    if (data) {
-      setProfileData(data);
-      setStoreName(data.store_name || '');
-    }
+  useEffect(() => {
+    if (onboarding.isLoading || hydrated) return;
+    setStep(onboarding.resumeStep);
+    setStoreName(
+      isDefaultStoreName(onboarding.profile?.store_name)
+        ? ''
+        : onboarding.profile?.store_name || ''
+    );
+    setSelectedTemplate(onboarding.state.selected_template || null);
+    setHydrated(true);
+  }, [hydrated, onboarding.isLoading, onboarding.profile?.store_name, onboarding.resumeStep, onboarding.state.selected_template]);
+
+  const stepIndex = Math.max(0, ONBOARDING_STEPS.indexOf(step));
+  const progressIndex = Math.max(
+    1,
+    PROGRESS_STEPS.includes(step as (typeof PROGRESS_STEPS)[number])
+      ? PROGRESS_STEPS.indexOf(step as (typeof PROGRESS_STEPS)[number]) + 1
+      : step === 'welcome'
+        ? 0
+        : PROGRESS_STEPS.length
+  );
+
+  const go = async (next: OnboardingStepId, dir = 1) => {
+    setDirection(dir);
+    setStep(next);
+    await onboarding.goToStep(next);
   };
 
-  const completeSetup = async () => {
-    if (!user) return;
-    
-    setLoading(true);
-    const { error } = await supabase
-      .from('profiles')
-      .update({ setup_completed: true })
-      .eq('user_id', user.id);
-    
-    if (error) {
-      toast.error(t('setup.toast.completeFailed'));
-    } else {
-      toast.success(t('setup.toast.completeSuccess'));
-      navigate('/app');
-    }
-    setLoading(false);
+  const handleExit = async () => {
+    await onboarding.exitSetup();
+    navigate('/app');
   };
 
-  const skipSetup = async () => {
-    if (!user) return;
-    
-    const { error } = await supabase
-      .from('profiles')
-      .update({ welcome_dismissed: true })
-      .eq('user_id', user.id);
-    
-    if (!error) {
-      navigate('/app');
-    }
-  };
+  const netopiaCredentials: NetopiaWizardCredentials = useMemo(
+    () => ({
+      api_key: onboarding.profile?.netpopia_api_key || '',
+      signature: onboarding.profile?.netpopia_signature || '',
+      public_key: '',
+      sandbox: true,
+    }),
+    [onboarding.profile?.netpopia_api_key, onboarding.profile?.netpopia_signature]
+  );
 
-  const updateStoreName = async () => {
-    if (!user || !storeName.trim()) {
-      toast.error(t('setup.toast.storeNameRequired'));
-      return;
-    }
-    
-    setLoading(true);
-    const { error } = await supabase
-      .from('profiles')
-      .update({ 
-        store_name: storeName,
-        setup_completed: true // Mark setup as complete once store name is added
-      })
-      .eq('user_id', user.id);
-    
-    if (error) {
-      toast.error(t('setup.toast.storeNameSaveFailed'));
-    } else {
-      toast.success(t('setup.toast.storeNameSaved'));
-      navigate('/app');
-    }
-    setLoading(false);
-  };
+  const storeUrl = useMemo(() => {
+    const apiKey = onboarding.profile?.store_api_key;
+    if (!apiKey) return null;
+    const template = onboarding.state.selected_template || 'elementar';
+    return `${window.location.origin}/templates/${template}?api_key=${apiKey}`;
+  }, [onboarding.profile?.store_api_key, onboarding.state.selected_template]);
 
-  const nextStep = () => {
-    const nextIndex = currentStepIndex + 1;
-    if (nextIndex < steps.length) {
-      setCurrentStep(steps[nextIndex]);
-    }
-  };
+  const paymentsConnected = onboarding.derived.payments;
+  const shippingConnected = onboarding.derived.shipping;
+  const partialReady = !paymentsConnected || !shippingConnected;
 
-  const prevStep = () => {
-    const prevIndex = currentStepIndex - 1;
-    if (prevIndex >= 0) {
-      setCurrentStep(steps[prevIndex]);
-    }
-  };
-
-  const getStepIcon = (step: Step) => {
-    switch (step) {
-      case 'welcome': return <Sparkles className="h-5 w-5" />;
-      case 'store': return <Store className="h-5 w-5" />;
-      case 'payment': return <CreditCard className="h-5 w-5" />;
-      case 'shipping': return <Truck className="h-5 w-5" />;
-      case 'invoicing': return <FileText className="h-5 w-5" />;
-      case 'template': return <Palette className="h-5 w-5" />;
-      case 'complete': return <CheckCircle2 className="h-5 w-5" />;
-    }
-  };
+  if (authLoading || onboarding.isLoading || !hydrated) {
+    return (
+      <div className="sv-setup flex min-h-screen items-center justify-center bg-[#0D0717]">
+        <Loader2 className="h-7 w-7 animate-spin text-white/70" />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 flex items-center justify-center p-4">
-      <Card className="w-full max-w-3xl shadow-xl">
-        <CardHeader className="relative">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-4 top-4"
-            onClick={skipSetup}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-          <div className="flex items-center gap-3 mb-4">
-            {getStepIcon(currentStep)}
-            <CardTitle className="text-2xl">{t('setup.title')}</CardTitle>
+    <div className="sv-setup min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(110,61,255,0.18),transparent_34%),#0D0717] text-white">
+      <div className="mx-auto flex min-h-screen max-w-3xl flex-col px-4 py-6 md:px-6 md:py-10">
+        <header className="mb-6 flex items-center justify-between gap-3">
+          <div>
+            <BrandLogo
+              variant="horizontal"
+              surface="dark"
+              imgClassName="h-8 w-auto max-w-[170px]"
+            />
+            {step !== 'welcome' && step !== 'ready' && (
+              <p className="mt-2 text-sm text-white/65">
+                {t('progress', {
+                  current: Math.min(progressIndex, PROGRESS_STEPS.length),
+                  total: PROGRESS_STEPS.length,
+                })}
+              </p>
+            )}
           </div>
-          <CardDescription>
-            {t('setup.subtitle')}
-          </CardDescription>
-          <div className="mt-4">
-            <Progress value={progress} className="h-2" />
-            <p className="text-xs text-muted-foreground mt-2">
-              {t('setup.stepOf', { current: currentStepIndex + 1, total: steps.length })}
-            </p>
+          {step !== 'ready' && (
+            <Button
+              variant="ghost"
+              className="text-white/70 hover:bg-white/10 hover:text-white"
+              onClick={handleExit}
+            >
+              <X className="mr-2 h-4 w-4" />
+              {t('exit')}
+            </Button>
+          )}
+        </header>
+
+        {step !== 'welcome' && step !== 'ready' && (
+          <div className="mb-6 h-1.5 overflow-hidden rounded-full bg-white/10">
+            <motion.div
+              className="h-full rounded-full bg-[#6E3DFF]"
+              animate={{
+                width: `${(Math.min(progressIndex, PROGRESS_STEPS.length) / PROGRESS_STEPS.length) * 100}%`,
+              }}
+              transition={{ type: 'spring', stiffness: 220, damping: 28 }}
+            />
           </div>
-        </CardHeader>
-        
-        <CardContent className="space-y-6">
-          <Tabs value={currentStep}>
-            {/* Welcome Step */}
-            <TabsContent value="welcome" className="space-y-6">
-              <div className="text-center space-y-4">
-                <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                  <Sparkles className="h-10 w-10 text-primary" />
-                </div>
-                <h2 className="text-3xl font-bold">{t('setup.welcome.heading')}</h2>
-                <p className="text-muted-foreground max-w-md mx-auto">
-                  {t('setup.welcome.description')}
-                </p>
-                
-                {/* Video Tutorial Card */}
-                <Card className="border-primary/20 bg-primary/5">
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <Video className="h-5 w-5 text-primary" />
-                      <CardTitle className="text-lg">{t('setup.welcome.videoTitle')}</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <p className="text-sm text-muted-foreground">
-                      {t('setup.welcome.videoDesc')}
-                    </p>
-                    <Button variant="outline" className="w-full" asChild>
-                      <a href="https://www.youtube.com/watch?v=YOUR_VIDEO_ID" target="_blank" rel="noopener noreferrer">
-                        <Video className="h-4 w-4 mr-2" />
-                        {t('setup.welcome.watchTutorial')}
-                        <ExternalLink className="h-4 w-4 ml-2" />
-                      </a>
-                    </Button>
-                  </CardContent>
-                </Card>
+        )}
 
-                <div className="flex gap-3 justify-center pt-4">
-                  <Button variant="outline" onClick={skipSetup}>
-                    {t('setup.buttons.skipSetup')}
-                  </Button>
-                  <Button onClick={nextStep}>
-                    {t('setup.buttons.getStarted')}
-                    <ChevronRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </div>
-              </div>
-            </TabsContent>
-
-            {/* Store Info Step */}
-            <TabsContent value="store" className="space-y-6">
-              <div className="space-y-4">
-                <div className="text-center space-y-2">
-                  <h2 className="text-2xl font-bold">{t('setup.store.title')}</h2>
-                  <p className="text-muted-foreground">
-                    {t('setup.store.subtitle')}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="store-name">{t('setup.store.nameLabel')}</Label>
-                  <Input
-                    id="store-name"
-                    placeholder={t('setup.store.namePlaceholder')}
-                    value={storeName}
-                    onChange={(e) => setStoreName(e.target.value)}
+        <div className="flex flex-1 items-stretch">
+          <div className="sv-setup-card w-full rounded-[28px] border border-white/10 bg-white text-[#1A0F2E] shadow-[0_30px_80px_-40px_rgba(0,0,0,0.65)] dark:border-white/10 dark:bg-[hsl(210_28%_10%)] dark:text-white">
+            <AnimatePresence mode="wait" custom={direction}>
+              <motion.div
+                key={step}
+                custom={direction}
+                initial={{ opacity: 0, x: direction * 24 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: direction * -24 }}
+                transition={{ duration: 0.22 }}
+                className="flex h-full flex-col p-6 md:p-8"
+              >
+                {step === 'welcome' && (
+                  <WelcomeStep
+                    onStart={async () => {
+                      await onboarding.completeStep('welcome');
+                      await go('store');
+                    }}
+                    onSkip={handleExit}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    {t('setup.store.nameHelp')}
-                  </p>
-                </div>
+                )}
 
-                <div className="flex gap-3 pt-4">
-                  <Button variant="outline" onClick={prevStep}>
-                    <ChevronLeft className="h-4 w-4 mr-2" />
-                    {tCommon('back')}
-                  </Button>
-                  <Button onClick={updateStoreName} disabled={loading} className="flex-1">
-                    {t('setup.store.saveAndComplete')}
-                    <ChevronRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </div>
-                <p className="text-xs text-center text-muted-foreground">
-                  {t('setup.store.footerNote')}
-                </p>
-              </div>
-            </TabsContent>
-
-            {/* Payment Setup Step */}
-            <TabsContent value="payment" className="space-y-6">
-              <div className="space-y-4">
-                <div className="text-center space-y-2">
-                  <h2 className="text-2xl font-bold">{t('setup.payment.title')}</h2>
-                  <p className="text-muted-foreground">
-                    {t('setup.payment.subtitle')}
-                  </p>
-                </div>
-
-                <Card className="border-primary/20">
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <CreditCard className="h-5 w-5" />
-                      {t('setup.payment.configTitle')}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      {t('setup.payment.intro')}
-                    </p>
-                    
-                    <ol className="space-y-2 text-sm list-decimal list-inside">
-                      <li>{t('setup.payment.step1Prefix')} <a href="https://netopia-payments.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">netopia-payments.com</a></li>
-                      <li>{t('setup.payment.step2')}</li>
-                      <li>{t('setup.payment.step3')}</li>
-                      <li>{t('setup.payment.step4')}</li>
-                      <li>{t('setup.payment.step5')}</li>
-                    </ol>
-
-                    <div className="flex flex-col gap-2">
-                      <Button variant="outline" asChild>
-                        <a href="https://netopia-payments.com" target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          {t('setup.payment.openWebsite')}
-                        </a>
-                      </Button>
-                      <Button variant="outline" onClick={() => navigate('/app')}>
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        {t('setup.buttons.configureInSettings')}
-                      </Button>
+                {step === 'store' && (
+                  <StepFrame
+                    eyebrow={t('store.eyebrow')}
+                    title={t('store.title')}
+                    body={t('store.body')}
+                    icon={Store}
+                  >
+                    <div className="space-y-2">
+                      <Label htmlFor="store-name">{t('store.label')}</Label>
+                      <Input
+                        id="store-name"
+                        value={storeName}
+                        onChange={(e) => setStoreName(e.target.value)}
+                        placeholder={t('store.placeholder')}
+                        className="h-12"
+                      />
+                      <p className="text-xs text-muted-foreground">{t('store.hint')}</p>
                     </div>
-                  </CardContent>
-                </Card>
+                    <StepActions
+                      onBack={() => go('welcome', -1)}
+                      onSkip={async () => {
+                        await onboarding.skipStep('store');
+                        await go('storefront');
+                      }}
+                      onContinue={async () => {
+                        if (!storeName.trim() || isDefaultStoreName(storeName)) {
+                          toast.error(t('store.required'));
+                          return;
+                        }
+                        await onboarding.saveStoreName(storeName);
+                        await go('storefront');
+                      }}
+                      loading={onboarding.saving}
+                    />
+                  </StepFrame>
+                )}
 
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={prevStep}>
-                    <ChevronLeft className="h-4 w-4 mr-2" />
-                    {tCommon('back')}
-                  </Button>
-                  <Button variant="ghost" onClick={nextStep}>
-                    {t('setup.buttons.skipForNow')}
-                  </Button>
-                  <Button onClick={nextStep} className="flex-1">
-                    {tCommon('continue')}
-                    <ChevronRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </div>
-              </div>
-            </TabsContent>
-
-            {/* Shipping Setup Step */}
-            <TabsContent value="shipping" className="space-y-6">
-              <div className="space-y-4">
-                <div className="text-center space-y-2">
-                  <h2 className="text-2xl font-bold">{t('setup.shipping.title')}</h2>
-                  <p className="text-muted-foreground">
-                    {t('setup.shipping.subtitle')}
-                  </p>
-                </div>
-
-                <Card className="border-primary/20">
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Truck className="h-5 w-5" />
-                      {t('setup.shipping.configTitle')}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      {t('setup.shipping.intro')}
-                    </p>
-                    
-                    <ol className="space-y-2 text-sm list-decimal list-inside">
-                      <li>{t('setup.shipping.step1Prefix')} <a href="https://www.eawb.ro" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">eawb.ro</a></li>
-                      <li>{t('setup.shipping.step2')}</li>
-                      <li>{t('setup.shipping.step3')}</li>
-                      <li>{t('setup.shipping.step4')}</li>
-                    </ol>
-
-                    <div className="flex flex-col gap-2">
-                      <Button variant="outline" asChild>
-                        <a href="https://www.eawb.ro" target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          {t('setup.shipping.openWebsite')}
-                        </a>
-                      </Button>
-                      <Button variant="outline" onClick={() => navigate('/app')}>
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        {t('setup.buttons.configureInSettings')}
-                      </Button>
+                {step === 'storefront' && (
+                  <StepFrame
+                    eyebrow={t('storefront.eyebrow')}
+                    title={t('storefront.title')}
+                    body={t('storefront.body')}
+                    icon={Palette}
+                  >
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {(
+                        [
+                          ['elementar', 'from-stone-200 via-stone-100 to-white'],
+                          ['premium', 'from-[#1c2b24] via-[#2a3d34] to-[#0f1612]'],
+                          ['floral', 'from-[#f3e4e0] via-[#fbf8f5] to-[#efe8e3]'],
+                        ] as const
+                      ).map(([id, gradient]) => {
+                        const active = selectedTemplate === id;
+                        return (
+                          <button
+                            key={id}
+                            type="button"
+                            onClick={() => setSelectedTemplate(id)}
+                            className={cn(
+                              'overflow-hidden rounded-2xl border text-left transition',
+                              active
+                                ? 'border-[#6E3DFF] ring-2 ring-[#6E3DFF]/20'
+                                : 'border-border hover:border-[#6E3DFF]/35'
+                            )}
+                          >
+                            <div className={cn('relative h-28 bg-gradient-to-br', gradient)}>
+                              {active && (
+                                <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-[#6E3DFF] px-2 py-0.5 text-[11px] font-medium text-white">
+                                  <Check className="h-3 w-3" />
+                                  {t('storefront.selected')}
+                                </span>
+                              )}
+                            </div>
+                            <div className="space-y-1 p-4">
+                              <div className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                                {t(`storefront.${id}.badge`)}
+                              </div>
+                              <div className="font-semibold">{t(`storefront.${id}.name`)}</div>
+                              <p className="text-xs text-muted-foreground">
+                                {t(`storefront.${id}.description`)}
+                              </p>
+                              {onboarding.profile?.store_api_key && (
+                                <div className="mt-2 flex flex-wrap gap-3">
+                                  <button
+                                    type="button"
+                                    className="inline-flex items-center gap-1 text-xs font-medium text-[#6E3DFF]"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      window.open(
+                                        `${window.location.origin}/templates/${id}?api_key=${onboarding.profile!.store_api_key}&demo=1`,
+                                        '_blank'
+                                      );
+                                    }}
+                                  >
+                                    {t('storefront.previewDemo')} <ExternalLink className="h-3 w-3" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-[#6E3DFF]"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      window.open(
+                                        `${window.location.origin}/templates/${id}?api_key=${onboarding.profile!.store_api_key}`,
+                                        '_blank'
+                                      );
+                                    }}
+                                  >
+                                    {t('storefront.previewLive')} <ExternalLink className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
-                  </CardContent>
-                </Card>
+                    <StepActions
+                      onBack={() => go('store', -1)}
+                      onSkip={async () => {
+                        await onboarding.skipStep('storefront');
+                        await go('product');
+                      }}
+                      onContinue={async () => {
+                        if (!selectedTemplate) {
+                          toast.error(t('storefront.needSelect'));
+                          return;
+                        }
+                        await onboarding.selectTemplate(selectedTemplate);
+                        await go('product');
+                      }}
+                      loading={onboarding.saving}
+                    />
+                  </StepFrame>
+                )}
 
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={prevStep}>
-                    <ChevronLeft className="h-4 w-4 mr-2" />
-                    {tCommon('back')}
-                  </Button>
-                  <Button variant="ghost" onClick={nextStep}>
-                    {t('setup.buttons.skipForNow')}
-                  </Button>
-                  <Button onClick={nextStep} className="flex-1">
-                    {tCommon('continue')}
-                    <ChevronRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </div>
-              </div>
-            </TabsContent>
+                {step === 'product' && (
+                  <StepFrame
+                    eyebrow={t('product.eyebrow')}
+                    title={t('product.title')}
+                    body={t('product.body')}
+                    icon={Package}
+                  >
+                    {onboarding.productCount > 0 ? (
+                      <div className="flex flex-col gap-4">
+                        <SuccessInline
+                          title={t('product.successTitle')}
+                          body={t('product.successBody')}
+                        />
+                        <StepActions
+                          onBack={() => go('storefront', -1)}
+                          hideSkip
+                          onContinue={async () => {
+                            await onboarding.completeStep('product');
+                            await go('payments');
+                          }}
+                          loading={onboarding.saving}
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <FirstProductStep
+                          onCreated={() => onboarding.refreshProducts()}
+                          onContinue={async () => {
+                            await onboarding.completeStep('product');
+                            await go('payments');
+                          }}
+                          onSkip={async () => {
+                            await onboarding.skipStep('product');
+                            await go('payments');
+                          }}
+                        />
+                        <div className="pt-2">
+                          <Button variant="ghost" onClick={() => go('storefront', -1)}>
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            {t('actions.back')}
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </StepFrame>
+                )}
 
-            {/* Invoicing Setup Step */}
-            <TabsContent value="invoicing" className="space-y-6">
-              <div className="space-y-4">
-                <div className="text-center space-y-2">
-                  <h2 className="text-2xl font-bold">{t('setup.invoicing.title')}</h2>
-                  <p className="text-muted-foreground">
-                    {t('setup.invoicing.subtitle')}
-                  </p>
-                </div>
-
-                <Card className="border-primary/20">
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <FileText className="h-5 w-5" />
-                      {t('setup.invoicing.configTitle')}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      {t('setup.invoicing.intro')}
-                    </p>
-                    
-                    <ol className="space-y-2 text-sm list-decimal list-inside">
-                      <li>{t('setup.invoicing.step1Prefix')} <a href="https://www.oblio.eu" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">oblio.eu</a></li>
-                      <li>{t('setup.invoicing.step2')}</li>
-                      <li>{t('setup.invoicing.step3')}</li>
-                      <li>{t('setup.invoicing.step4')}</li>
-                    </ol>
-
-                    <div className="flex flex-col gap-2">
-                      <Button variant="outline" asChild>
-                        <a href="https://www.oblio.eu" target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          {t('setup.invoicing.openWebsite')}
-                        </a>
+                {step === 'payments' && (
+                  <StepFrame
+                    eyebrow={t('payments.eyebrow')}
+                    title={t('payments.title')}
+                    body={t('payments.body')}
+                    icon={CreditCard}
+                  >
+                    {paymentsConnected ? (
+                      <SuccessInline
+                        title={t('payments.connected')}
+                        body={t('payments.connectedBody')}
+                      />
+                    ) : (
+                      <Button
+                        className="w-full bg-[#6E3DFF] hover:bg-[#4B21B6] sm:w-auto"
+                        onClick={() => setPaymentOpen(true)}
+                      >
+                        {t('payments.openWizard')}
                       </Button>
-                      <Button variant="outline" onClick={() => navigate('/app')}>
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        {t('setup.buttons.configureInSettings')}
+                    )}
+                    <StepActions
+                      onBack={() => go('product', -1)}
+                      onSkip={async () => {
+                        await onboarding.skipStep('payments');
+                        await go('shipping');
+                      }}
+                      onContinue={async () => {
+                        if (paymentsConnected) {
+                          await onboarding.completeStep('payments');
+                          await go('shipping');
+                          return;
+                        }
+                        setPaymentOpen(true);
+                      }}
+                      continueLabel={
+                        paymentsConnected ? t('actions.continue') : t('actions.completeSetup')
+                      }
+                    />
+                  </StepFrame>
+                )}
+
+                {step === 'shipping' && (
+                  <StepFrame
+                    eyebrow={t('shipping.eyebrow')}
+                    title={t('shipping.title')}
+                    body={t('shipping.body')}
+                    icon={Truck}
+                  >
+                    {shippingConnected ? (
+                      <SuccessInline
+                        title={t('shipping.connected')}
+                        body={t('shipping.connectedBody')}
+                      />
+                    ) : (
+                      <Button
+                        className="w-full bg-[#6E3DFF] hover:bg-[#4B21B6] sm:w-auto"
+                        onClick={() => setShippingOpen(true)}
+                      >
+                        {t('shipping.openWizard')}
                       </Button>
+                    )}
+                    <StepActions
+                      onBack={() => go('payments', -1)}
+                      onSkip={async () => {
+                        await onboarding.skipStep('shipping');
+                        await go('settings');
+                      }}
+                      onContinue={async () => {
+                        if (shippingConnected) {
+                          await onboarding.completeStep('shipping');
+                          await go('settings');
+                          return;
+                        }
+                        setShippingOpen(true);
+                      }}
+                      continueLabel={
+                        shippingConnected ? t('actions.continue') : t('actions.completeSetup')
+                      }
+                    />
+                  </StepFrame>
+                )}
+
+                {step === 'settings' && (
+                  <StepFrame
+                    eyebrow={t('settings.eyebrow')}
+                    title={t('settings.title')}
+                    body={t('settings.body')}
+                    icon={Sparkles}
+                  >
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>{t('settings.storeName')}</Label>
+                        <Input
+                          value={
+                            isDefaultStoreName(onboarding.profile?.store_name)
+                              ? storeName
+                              : onboarding.profile?.store_name || storeName
+                          }
+                          onChange={(e) => setStoreName(e.target.value)}
+                          onBlur={async () => {
+                            if (storeName.trim() && !isDefaultStoreName(storeName)) {
+                              await onboarding.saveStoreName(storeName);
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>{t('settings.logo')}</Label>
+                        <p className="text-xs text-muted-foreground">{t('settings.logoHint')}</p>
+                        <label className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-dashed px-4 py-3 text-sm font-medium">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file || !user) return;
+                              setUploadingLogo(true);
+                              try {
+                                const ext = file.name.split('.').pop();
+                                const path = `${user.id}/logo-${Date.now()}.${ext}`;
+                                const { error } = await supabase.storage
+                                  .from('template-images')
+                                  .upload(path, file);
+                                if (error) throw error;
+                                const { data: pub } = supabase.storage
+                                  .from('template-images')
+                                  .getPublicUrl(path);
+                                await supabase.from('template_customization').upsert(
+                                  {
+                                    user_id: user.id,
+                                    template_id: 'elementar',
+                                    logo_url: pub.publicUrl,
+                                    store_name:
+                                      onboarding.profile?.store_name || storeName || 'My Store',
+                                  } as never,
+                                  { onConflict: 'user_id,template_id' }
+                                );
+                                toast.success(t('settings.logoUploaded'));
+                                onboarding.refreshCustomization();
+                              } catch {
+                                toast.error(t('settings.uploadFailed'));
+                              } finally {
+                                setUploadingLogo(false);
+                              }
+                            }}
+                          />
+                          {uploadingLogo ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : null}
+                          {onboarding.customization?.logo_url
+                            ? t('settings.logoUploaded')
+                            : t('settings.uploadLogo')}
+                        </label>
+                        {onboarding.customization?.logo_url && (
+                          <img
+                            src={onboarding.customization.logo_url}
+                            alt=""
+                            className="mt-2 h-12 w-12 rounded-lg object-contain"
+                          />
+                        )}
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
+                    <StepActions
+                      onBack={() => go('shipping', -1)}
+                      onSkip={async () => {
+                        await onboarding.skipStep('settings');
+                        await go('review');
+                      }}
+                      onContinue={async () => {
+                        await onboarding.completeStep('settings');
+                        await go('review');
+                      }}
+                    />
+                  </StepFrame>
+                )}
 
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={prevStep}>
-                    <ChevronLeft className="h-4 w-4 mr-2" />
-                    {tCommon('back')}
-                  </Button>
-                  <Button variant="ghost" onClick={nextStep}>
-                    {t('setup.buttons.skipForNow')}
-                  </Button>
-                  <Button onClick={nextStep} className="flex-1">
-                    {tCommon('continue')}
-                    <ChevronRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </div>
-              </div>
-            </TabsContent>
+                {step === 'review' && (
+                  <StepFrame
+                    eyebrow={t('review.eyebrow')}
+                    title={t('review.title')}
+                    body={t('review.body')}
+                    icon={CheckCircle2}
+                  >
+                    <div className="space-y-2">
+                      {PROGRESS_STEPS.filter((s) => s !== 'review').map((id) => {
+                        const status = onboarding.effectiveStatus(id);
+                        return (
+                          <button
+                            key={id}
+                            type="button"
+                            onClick={() => go(id)}
+                            className="flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition hover:border-[#6E3DFF]/35"
+                          >
+                            <div>
+                              <div className="text-sm font-medium">
+                                {t(`review.steps.${id}`)}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {status === 'completed'
+                                  ? t('status.completed')
+                                  : status === 'skipped'
+                                    ? t('status.skipped')
+                                    : t('status.notConfigured')}
+                              </div>
+                            </div>
+                            {status === 'completed' ? (
+                              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                            ) : (
+                              <span className="text-xs font-medium text-[#6E3DFF]">
+                                {t('actions.setUpLater')}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <StepActions
+                      onBack={() => go('settings', -1)}
+                      hideSkip
+                      onContinue={async () => {
+                        await onboarding.finishSetup();
+                        await go('ready');
+                      }}
+                      continueLabel={t('actions.finish')}
+                      loading={onboarding.saving}
+                    />
+                  </StepFrame>
+                )}
 
-            {/* Template Customization Step */}
-            <TabsContent value="template" className="space-y-6">
-              <div className="space-y-4">
-                <div className="text-center space-y-2">
-                  <h2 className="text-2xl font-bold">{t('setup.template.title')}</h2>
-                  <p className="text-muted-foreground">
-                    {t('setup.template.subtitle')}
-                  </p>
-                </div>
+                {step === 'ready' && (
+                  <div className="flex flex-1 flex-col items-center justify-center gap-5 py-6 text-center">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#6E3DFF]/10">
+                      <Sparkles className="h-7 w-7 text-[#6E3DFF]" />
+                    </div>
+                    <div className="space-y-2">
+                      <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
+                        {partialReady ? t('ready.titlePartial') : t('ready.title')}
+                      </h2>
+                      <p className="mx-auto max-w-md text-sm text-muted-foreground">
+                        {partialReady ? t('ready.bodyPartial') : t('ready.body')}
+                      </p>
+                    </div>
+                    <div className="grid w-full gap-2 rounded-2xl border bg-muted/30 p-4 text-left text-sm sm:grid-cols-2">
+                      <ReadyRow
+                        label={t('ready.store')}
+                        value={onboarding.profile?.store_name || '—'}
+                      />
+                      <ReadyRow
+                        label={t('ready.template')}
+                        value={onboarding.state.selected_template || t('ready.none')}
+                      />
+                      <ReadyRow
+                        label={t('ready.products')}
+                        value={
+                          onboarding.productCount > 0
+                            ? String(onboarding.productCount)
+                            : t('ready.none')
+                        }
+                      />
+                      <ReadyRow
+                        label={t('ready.payments')}
+                        value={
+                          paymentsConnected ? t('ready.connected') : t('ready.notConnected')
+                        }
+                      />
+                      <ReadyRow
+                        label={t('ready.shipping')}
+                        value={
+                          shippingConnected ? t('ready.connected') : t('ready.notConnected')
+                        }
+                      />
+                    </div>
+                    <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
+                      <Button
+                        className="bg-[#6E3DFF] hover:bg-[#4B21B6]"
+                        onClick={() => navigate('/app')}
+                      >
+                        {t('actions.goDashboard')}
+                      </Button>
+                      {storeUrl && (
+                        <Button variant="outline" onClick={() => window.open(storeUrl, '_blank')}>
+                          {t('actions.viewStore')}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </div>
+      </div>
 
-                <Card className="border-primary/20">
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Palette className="h-5 w-5" />
-                      {t('setup.template.configTitle')}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      {t('setup.template.intro')}
-                    </p>
-                    
-                    <ul className="space-y-2 text-sm list-disc list-inside">
-                      <li>{t('setup.template.item1')}</li>
-                      <li>{t('setup.template.item2')}</li>
-                      <li>{t('setup.template.item3')}</li>
-                      <li>{t('setup.template.item4')}</li>
-                    </ul>
-
-                    <Button variant="outline" className="w-full" onClick={() => navigate('/')}>
-                      <Palette className="h-4 w-4 mr-2" />
-                      {t('setup.template.openDesigner')}
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={prevStep}>
-                    <ChevronLeft className="h-4 w-4 mr-2" />
-                    {tCommon('back')}
-                  </Button>
-                  <Button variant="ghost" onClick={nextStep}>
-                    {t('setup.buttons.skipForNow')}
-                  </Button>
-                  <Button onClick={nextStep} className="flex-1">
-                    {tCommon('continue')}
-                    <ChevronRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </div>
-              </div>
-            </TabsContent>
-
-            {/* Complete Step */}
-            <TabsContent value="complete" className="space-y-6">
-              <div className="text-center space-y-4">
-                <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="h-10 w-10 text-green-500" />
-                </div>
-                <h2 className="text-3xl font-bold">{t('setup.complete.heading')}</h2>
-                <p className="text-muted-foreground max-w-md mx-auto">
-                  {t('setup.complete.description')}
-                </p>
-
-                <Card className="border-primary/20 bg-primary/5">
-                  <CardHeader>
-                    <CardTitle className="text-lg">{t('setup.complete.nextStepsTitle')}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm text-left">
-                    <p>✅ {t('setup.complete.step1')}</p>
-                    <p>✅ {t('setup.complete.step2')}</p>
-                    <p>✅ {t('setup.complete.step3')}</p>
-                    <p>✅ {t('setup.complete.step4')}</p>
-                  </CardContent>
-                </Card>
-
-                <div className="flex gap-3 justify-center pt-4">
-                  <Button variant="outline" onClick={prevStep}>
-                    <ChevronLeft className="h-4 w-4 mr-2" />
-                    {tCommon('back')}
-                  </Button>
-                  <Button onClick={completeSetup} disabled={loading} size="lg">
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    {t('setup.buttons.completeSetup')}
-                  </Button>
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+      <NetopiaSetupWizard
+        open={paymentOpen}
+        onOpenChange={setPaymentOpen}
+        credentials={netopiaCredentials}
+        onConnected={async () => {
+          await onboarding.refreshProfile();
+          await onboarding.completeStep('payments');
+        }}
+        onFinish={() => setPaymentOpen(false)}
+      />
+      <EawbSetupWizard
+        open={shippingOpen}
+        onOpenChange={setShippingOpen}
+        profile={onboarding.profile ?? null}
+        onApiKeySaved={async () => {
+          await onboarding.refreshProfile();
+          await onboarding.completeStep('shipping');
+        }}
+        onProfileFieldsUpdated={() => {
+          void onboarding.refreshProfile();
+        }}
+        onFinish={() => setShippingOpen(false)}
+      />
     </div>
   );
 };
+
+function WelcomeStep({ onStart, onSkip }: { onStart: () => void; onSkip: () => void }) {
+  const { t } = useTranslation('onboarding');
+  return (
+    <div className="flex flex-1 flex-col justify-center gap-6 py-4">
+      <div className="space-y-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6E3DFF]">
+          {t('welcome.eyebrow')}
+        </p>
+        <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">{t('welcome.title')}</h1>
+        <p className="max-w-lg text-sm text-muted-foreground md:text-base">{t('welcome.body')}</p>
+        <p className="text-xs text-muted-foreground">{t('welcome.saved')}</p>
+      </div>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Button className="h-11 bg-[#6E3DFF] hover:bg-[#4B21B6]" onClick={onStart}>
+          {t('actions.getStarted')}
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
+        <Button variant="ghost" className="h-11" onClick={onSkip}>
+          {t('welcome.skipSetup')}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function StepFrame({
+  eyebrow,
+  title,
+  body,
+  icon: Icon,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  body: string;
+  icon: typeof Store;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex h-full flex-col gap-6">
+      <div className="space-y-3">
+        <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[#6E3DFF]/10 text-[#6E3DFF]">
+          <Icon className="h-5 w-5" />
+        </div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6E3DFF]">
+          {eyebrow}
+        </p>
+        <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
+        <p className="text-sm text-muted-foreground">{body}</p>
+      </div>
+      <div className="flex-1 space-y-5">{children}</div>
+    </div>
+  );
+}
+
+function StepActions({
+  onBack,
+  onSkip,
+  onContinue,
+  hideSkip,
+  continueLabel,
+  loading,
+}: {
+  onBack?: () => void;
+  onSkip?: () => void;
+  onContinue: () => void;
+  hideSkip?: boolean;
+  continueLabel?: string;
+  loading?: boolean;
+}) {
+  const { t } = useTranslation('onboarding');
+  return (
+    <div className="mt-auto flex flex-col gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex gap-2">
+        {onBack && (
+          <Button variant="ghost" onClick={onBack}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            {t('actions.back')}
+          </Button>
+        )}
+        {!hideSkip && onSkip && (
+          <Button variant="ghost" onClick={onSkip}>
+            {t('actions.skip')}
+          </Button>
+        )}
+      </div>
+      <Button
+        className="bg-[#6E3DFF] hover:bg-[#4B21B6]"
+        onClick={onContinue}
+        disabled={loading}
+      >
+        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {continueLabel || t('actions.continue')}
+        <ArrowRight className="ml-2 h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
+
+function SuccessInline({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-4">
+      <div className="flex items-start gap-3">
+        <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-500" />
+        <div>
+          <div className="font-medium">{title}</div>
+          <p className="mt-1 text-sm text-muted-foreground">{body}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReadyRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{label}</div>
+      <div className="mt-1 font-medium capitalize">{value}</div>
+    </div>
+  );
+}
 
 export default SetupWizard;

@@ -1,32 +1,139 @@
 {
   "loadingStore": "Se încarcă magazinul...",
   "defaultStoreName": "Magazinul meu",
-  "yourStore": "Magazinul tău",
-  "periodRevenue": "Venit pe perioadă",
-  "ordersInPeriod": "{{count}} comenzi în perioada selectată",
-  "viewAnalytics": "+ Vezi analitice",
-  "viewAnalyticsShort": "Analitice",
-  "kpi": {
-    "products": "Produse",
-    "orders": "Comenzi",
-    "pending": "În așteptare",
-    "lowStock": "Stoc redus"
+  "header": {
+    "eyebrow": "Dashboard",
+    "greetingMorning": "Bună dimineața, {{name}}.",
+    "greetingAfternoon": "Bună ziua, {{name}}.",
+    "greetingEvening": "Bună seara, {{name}}.",
+    "subtitle": "Iată ce se întâmplă astăzi în magazinul tău.",
+    "pendingActions": "{{count}} lucruri necesită atenție",
+    "caughtUp": "Ești la zi"
   },
-  "todayOverview": "Privire de ansamblu azi",
-  "newOrders": "Comenzi noi",
-  "last24Hours": "Ultimele 24 de ore",
-  "todaysSales": "Vânzări azi",
-  "revenueGenerated": "Venit generat",
-  "lowStockAlert": "Alertă stoc redus",
-  "productsNeedRestocking": "Produse care necesită reaprovizionare",
-  "quickActions": "Acțiuni rapide",
-  "action": {
-    "settings": "Setări",
-    "settingsDesc": "Configurează magazinul și integrările",
-    "customers": "Clienți",
-    "customersDesc": "Gestionează relațiile cu clienții",
-    "templates": "Șabloane",
-    "templatesDesc": "Personalizează designul magazinului"
+  "activity": {
+    "eyebrow": "Activitatea magazinului",
+    "title": "Rezumat performanță",
+    "sales": "Vânzări · {{period}}",
+    "orders": "Comenzi · {{period}}",
+    "items": "Produse vândute · {{period}}",
+    "attention": "Acțiuni în așteptare · Acum",
+    "period": {
+      "today": "Azi",
+      "3d": "Ultimele 3 zile",
+      "7d": "Ultimele 7 zile",
+      "14d": "Ultimele 14 zile",
+      "30d": "Ultimele 30 zile",
+      "90d": "Ultimele 90 zile",
+      "year": "Anul acesta",
+      "custom": "Interval personalizat"
+    }
+  },
+  "actionCenter": {
+    "eyebrow": "Centru de acțiune",
+    "title": "Ce necesită atenția ta",
+    "allGood": "Totul arată bine",
+    "caughtUp": "Ai rezolvat tot ce era urgent.",
+    "awaitingFulfillment": "{{count}} comenzi așteaptă pregătirea pentru livrare",
+    "pendingPayments": "{{count}} clienți nu au finalizat plata",
+    "lowStock": "{{count}} produse au stoc redus",
+    "needAwb": "{{count}} comenzi au nevoie de AWB",
+    "failedPayments": "{{count}} plăți eșuate necesită verificare",
+    "viewOrders": "Vezi comenzile",
+    "reviewPayments": "Vezi plățile",
+    "checkInventory": "Verifică stocul",
+    "openShipping": "Deschide livrarea"
+  },
+  "recentOrders": {
+    "eyebrow": "Activitate recentă",
+    "title": "Comenzi recente",
+    "viewAll": "Vezi toate comenzile",
+    "emptyTitle": "Nicio comandă încă",
+    "emptyBody": "Aici va apărea activitatea recentă a vânzărilor tale."
+  },
+  "performance": {
+    "eyebrow": "Performanța magazinului",
+    "title": "Evoluția vânzărilor",
+    "empty": "Nu există date pentru această perioadă",
+    "range": {
+      "today": "Azi",
+      "7d": "7Z",
+      "30d": "30Z",
+      "90d": "90Z"
+    },
+    "metric": {
+      "sales": "Vânzări",
+      "orders": "Comenzi"
+    }
+  },
+  "inventory": {
+    "eyebrow": "Inventar",
+    "title": "Ce trebuie reaprovizionat",
+    "viewAll": "Vezi inventarul",
+    "outOfStock": "Fără stoc",
+    "lowStock": "Stoc redus",
+    "noneOut": "Niciun produs nu este fără stoc.",
+    "noneLow": "Niciun produs nu are stoc redus.",
+    "healthyTitle": "Inventarul arată bine",
+    "healthyBody": "Nu există probleme de stoc care să necesite atenție acum."
+  },
+  "abandoned": {
+    "eyebrow": "Coșuri abandonate",
+    "title": "Coșuri abandonate",
+    "view": "Vezi coșurile abandonate",
+    "activeCount": "{{count}} active",
+    "potentialValue": "{{amount}} valoare potențială",
+    "lastActivity": "Ultima activitate în coș {{time}}",
+    "emptyTitle": "Niciun coș abandonat",
+    "emptyBody": "Clienții care părăsesc checkout-ul vor apărea aici."
+  },
+  "paymentHealth": {
+    "eyebrow": "Plăți",
+    "title": "Starea plăților",
+    "view": "Vezi plățile",
+    "pending": "În așteptare",
+    "failed": "Eșuate",
+    "mix": "Card {{card}} · Numerar {{cash}}",
+    "allGood": "Toate plățile arată bine ✓"
+  },
+  "setup": {
+    "eyebrow": "Configurare magazin",
+    "title": "Finalizează configurarea magazinului",
+    "open": "Continuă configurarea",
+    "progress": "{{done}} din {{total}} finalizate",
+    "next": "Următorul: {{step}}",
+    "storefront": "Storefront configurat",
+    "products": "Primul produs adăugat",
+    "payments": "Plățile sunt conectate",
+    "shipping": "Livrarea este conectată",
+    "done": "Gata",
+    "todo": "De făcut"
+  },
+  "launchState": {
+    "eyebrow": "Început",
+    "title": "Magazinul tău este pregătit să crească",
+    "subtitle": "Finalizează lucrurile esențiale pentru ca clienții să poată cumpăra și plăti fără fricțiune.",
+    "addFirstProduct": "Adaugă primul produs",
+    "connectPayments": "Conectează plățile",
+    "connectShipping": "Conectează livrarea",
+    "customizeStorefront": "Personalizează storefront-ul"
+  },
+  "status": {
+    "paid": "Plătită",
+    "pending": "În așteptare",
+    "failed": "Eșuată",
+    "refunded": "Rambursată",
+    "cash": "Numerar",
+    "awaitingShipment": "Așteaptă livrarea",
+    "processing": "Procesare",
+    "shipped": "Expediată",
+    "delivered": "Livrată",
+    "cancelled": "Anulată"
+  },
+  "time": {
+    "justNow": "chiar acum",
+    "minutes": "acum {{count}}m",
+    "hours": "acum {{count}}h",
+    "days": "acum {{count}}z"
   },
   "unsavedStockTitle": "Modificări de stoc nesalvate",
   "unsavedStockDesc": "Ai modificări de stoc nesalvate. Vrei să le salvezi înainte de a pleca?"

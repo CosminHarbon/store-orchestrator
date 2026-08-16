@@ -1,6 +1,6 @@
 {
   "title": "Templates",
-  "description": "Customize your storefront design",
+  "description": "Build and customize your website",
   "browseTemplates": "Browse Templates",
   "customize": "Customize",
   "customizeShort": "Custom",
@@ -15,9 +15,9 @@
   "templateUrl": "Template URL:",
   "howToUse": "How to Use Templates",
   "editable": {
-    "name": "Editable Template",
-    "badge": "Editable",
-    "description": "Fully customizable storefront with live page builder, colors, hero, and content blocks. Edit everything visually.",
+    "name": "Modern Store",
+    "badge": "Visual builder",
+    "description": "Fully customizable storefront with a visual website builder — sections, colors, typography, media, and live preview.",
     "features": {
       "liveEditor": "Live visual editor",
       "customBlocks": "Custom blocks & layouts",
@@ -31,7 +31,7 @@
   "premium": {
     "name": "Premium",
     "badge": "Premium",
-    "description": "A polished, conversion-focused storefront — ready to publish. No builder: homepage, catalog, product pages, cart, and checkout are designed for you and powered by your store data.",
+    "description": "A polished, conversion-focused storefront — ready to publish. Homepage, catalog, product pages, cart, and checkout are designed for you and powered by your store data.",
     "features": {
       "homepage": "Shopify-grade homepage sections",
       "catalog": "Modern catalog with filters",
@@ -41,6 +41,12 @@
       "mobileFirst": "Mobile-first & fast",
       "publishGo": "Not editable — publish & go"
     }
+  },
+  "floral": {
+    "name": "Floral Atelier",
+    "badge": "Floral",
+    "niche": "Flower shops",
+    "description": "An ultra-premium flower boutique storefront — airy imagery, elegant typography, and full cart/checkout with Netopia, cash on delivery, home delivery, and locker pickup."
   },
   "status": {
     "active": "Active",
@@ -53,7 +59,14 @@
   "action": {
     "preview": "Preview",
     "openPublish": "Open / Publish",
-    "openTemplate": "Open Template"
+    "openTemplate": "Open Template",
+    "demo": "Demo",
+    "live": "Live store",
+    "copyLiveUrl": "Copy live URL"
+  },
+  "modes": {
+    "demoHint": "Sample photos, products & copy — show customers how the site can look.",
+    "liveHint": "Your real products, text, and checkout."
   },
   "help": {
     "step1": "1. Copy your Store API Key from above",
@@ -65,6 +78,114 @@
   },
   "toast": {
     "apiKeyCopied": "API key copied to clipboard!",
-    "premiumUrlCopied": "Premium store URL copied — share it to publish"
+    "premiumUrlCopied": "Premium store URL copied — share it to publish",
+    "floralUrlCopied": "Floral store URL copied — share it to publish"
+  },
+  "builder": {
+    "hubEyebrow": "Website",
+    "hubTitle": "Website Builder",
+    "hubSubtitle": "Design your storefront visually — edit sections, style your brand, preview instantly, and publish when you’re ready.",
+    "hubLiveBadge": "Visual editor",
+    "hubCtaTitle": "Build your website",
+    "hubCtaBody": "Tap into the editor to customize your homepage, theme, and content blocks with a live preview.",
+    "openBuilder": "Open website builder",
+    "templatesTitle": "Starting templates",
+    "customizeTemplate": "Customize website",
+    "eyebrow": "Website builder",
+    "title": "Home page",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "unsaved": "Unsaved changes",
+    "preview": "Preview",
+    "publish": "Publish",
+    "publishedToast": "Saved & live URL copied — share it with customers",
+    "addSection": "Add section",
+    "add": "Add",
+    "homepageSections": "Homepage sections",
+    "hidden": "Hidden",
+    "systemSectionHint": "This section is powered by your catalog data. Hide it or style it from Theme.",
+    "pagesHint": "Home is fully editable in the builder. Product, cart, and checkout pages inherit your theme automatically.",
+    "tabs": {
+      "sections": "Sections",
+      "theme": "Theme",
+      "pages": "Pages"
+    },
+    "catalog": {
+      "content": "Content",
+      "marketing": "Marketing",
+      "productsHint": "Product grid, collections, and reviews are built-in homepage sections — toggle them in the section list."
+    },
+    "sections": {
+      "header": "Header",
+      "hero": "Hero",
+      "collections": "Collections",
+      "products": "Featured products",
+      "reviews": "Reviews",
+      "footer": "Footer",
+      "block": {
+        "text": "Rich text",
+        "image": "Image",
+        "text-image": "Image + text",
+        "carousel": "Image carousel",
+        "banner": "Promotional banner",
+        "newsletter": "Newsletter",
+        "testimonial": "Testimonials",
+        "video": "Video",
+        "custom-html": "Custom block"
+      }
+    },
+    "fields": {
+      "heading": "Heading",
+      "description": "Description",
+      "button": "Button label",
+      "buttonUrl": "Button link",
+      "layout": "Layout",
+      "changeBackground": "Change background image",
+      "changeLogo": "Change logo",
+      "changeImage": "Replace image",
+      "gradient": "Gradient overlay",
+      "storeName": "Store name",
+      "navbarStyle": "Header style",
+      "footerText": "Footer text",
+      "title": "Section title",
+      "text": "Text",
+      "quote": "Quote",
+      "author": "Author",
+      "videoUrl": "Video URL"
+    },
+    "layouts": {
+      "center": "Centered",
+      "left": "Left",
+      "right": "Right",
+      "split": "Split"
+    },
+    "theme": {
+      "colors": "Colors",
+      "primary": "Primary",
+      "secondary": "Secondary",
+      "accent": "Muted text",
+      "background": "Background",
+      "text": "Text",
+      "typography": "Typography",
+      "headingFont": "Heading font",
+      "bodyFont": "Body font",
+      "layout": "Layout & buttons",
+      "radius": "Corner radius",
+      "buttons": "Button style"
+    },
+    "pages": {
+      "home": "Home",
+      "products": "Products",
+      "cart": "Cart",
+      "checkout": "Checkout",
+      "editable": "Editable in builder",
+      "themeLinked": "Uses your theme"
+    },
+    "media": {
+      "title": "Media library",
+      "upload": "Upload image",
+      "empty": "No images yet — upload your first asset.",
+      "uploadFailed": "Upload failed"
+    }
   }
 }

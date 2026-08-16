@@ -8,6 +8,7 @@ import {
   Star,
   Truck,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { formatRon, productReviewStats } from '@/lib/storefront/api';
 import type { StorefrontCommerce } from '@/hooks/useStorefrontCommerce';
 import { ProductCard } from './ProductCard';
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export function PremiumHome({ commerce }: Props) {
+  const { t } = useTranslation('storefront');
   const {
     customization,
     collections,
@@ -37,15 +39,17 @@ export function PremiumHome({ commerce }: Props) {
     '';
 
   const promoText = useMemo(() => {
-    if (fees.home_delivery_fee <= 0) return 'Free home delivery on every order';
-    return `Home delivery from ${formatRon(fees.home_delivery_fee)} · Lockers from ${formatRon(fees.locker_delivery_fee)}`;
-  }, [fees]);
+    if (fees.home_delivery_fee <= 0) return t('premiumHome.freeDeliveryEvery');
+    return t('premiumHome.deliveryLockers', {
+      home: formatRon(fees.home_delivery_fee),
+      locker: formatRon(fees.locker_delivery_fee),
+    });
+  }, [fees, t]);
 
   const showReviews = customization.show_reviews !== false && reviews.length > 0;
 
   return (
     <div>
-      {/* Hero */}
       <section className="relative min-h-[88vh] flex items-end overflow-hidden">
         <div className="absolute inset-0">
           {heroImage ? (
@@ -72,7 +76,7 @@ export function PremiumHome({ commerce }: Props) {
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <button type="button" className="prem-btn bg-white text-[var(--prem-ink)]" onClick={() => openCatalog()}>
-              {customization.hero_button_text || 'Shop now'}
+              {customization.hero_button_text || t('premiumHome.shopNow')}
             </button>
             {collections[0] && (
               <button
@@ -80,20 +84,21 @@ export function PremiumHome({ commerce }: Props) {
                 className="prem-btn border border-white/40 text-white bg-transparent"
                 onClick={() => openCatalog(collections[0].id)}
               >
-                Explore {collections[0].name}
+                {t('premiumHome.explore', { name: collections[0].name })}
               </button>
             )}
           </div>
         </div>
       </section>
 
-      {/* Collections */}
       {collections.length > 0 && (
         <section className="prem-container py-16 md:py-24">
           <div className="flex items-end justify-between gap-4 mb-8">
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-[var(--prem-muted)] mb-2">Collections</p>
-              <h2 className="text-3xl md:text-5xl prem-display">Featured categories</h2>
+              <p className="text-xs uppercase tracking-[0.2em] text-[var(--prem-muted)] mb-2">
+                {t('premiumHome.collections')}
+              </p>
+              <h2 className="text-3xl md:text-5xl prem-display">{t('premiumHome.featuredCategories')}</h2>
             </div>
           </div>
           <div className="prem-rail md:grid md:grid-cols-3 md:overflow-visible gap-4">
@@ -134,16 +139,17 @@ export function PremiumHome({ commerce }: Props) {
         </section>
       )}
 
-      {/* Best sellers */}
       <section className="bg-[var(--prem-surface)] py-16 md:py-24 border-y border-[var(--prem-line)]">
         <div className="prem-container">
           <div className="flex items-end justify-between gap-4 mb-8">
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-[var(--prem-muted)] mb-2">Curated</p>
-              <h2 className="text-3xl md:text-5xl prem-display">Best sellers</h2>
+              <p className="text-xs uppercase tracking-[0.2em] text-[var(--prem-muted)] mb-2">
+                {t('premiumHome.curated')}
+              </p>
+              <h2 className="text-3xl md:text-5xl prem-display">{t('premiumHome.bestSellers')}</h2>
             </div>
             <button type="button" className="prem-btn prem-btn-ghost !py-2 text-sm" onClick={() => openCatalog()}>
-              View all
+              {t('premiumHome.viewAll')}
             </button>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
@@ -160,31 +166,31 @@ export function PremiumHome({ commerce }: Props) {
             ))}
           </div>
           {!bestSellers.length && (
-            <p className="text-center text-[var(--prem-muted)] py-12">Products will appear here once added.</p>
+            <p className="text-center text-[var(--prem-muted)] py-12">{t('premiumHome.emptyProducts')}</p>
           )}
         </div>
       </section>
 
-      {/* Promo */}
       <section className="prem-container py-12 md:py-16">
         <div className="rounded-[var(--prem-radius)] bg-[var(--prem-accent)] text-white px-6 py-10 md:px-12 md:py-14 flex flex-col md:flex-row md:items-center md:justify-between gap-6 overflow-hidden relative">
           <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_20%_20%,#ffffff33,transparent_45%)]" />
           <div className="relative">
-            <p className="text-xs uppercase tracking-[0.22em] text-white/60 mb-2">Shipping</p>
+            <p className="text-xs uppercase tracking-[0.22em] text-white/60 mb-2">{t('premiumHome.shipping')}</p>
             <h2 className="text-3xl md:text-4xl prem-display max-w-xl">{promoText}</h2>
           </div>
           <button type="button" className="relative prem-btn bg-white text-[var(--prem-ink)]" onClick={() => openCatalog()}>
-            Shop the collection
+            {t('premiumHome.shopCollection')}
           </button>
         </div>
       </section>
 
-      {/* New arrivals */}
       <section className="prem-container pb-16 md:pb-24">
         <div className="flex items-end justify-between gap-4 mb-8">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-[var(--prem-muted)] mb-2">Just in</p>
-            <h2 className="text-3xl md:text-5xl prem-display">New arrivals</h2>
+            <p className="text-xs uppercase tracking-[0.2em] text-[var(--prem-muted)] mb-2">
+              {t('premiumHome.justIn')}
+            </p>
+            <h2 className="text-3xl md:text-5xl prem-display">{t('premiumHome.newArrivals')}</h2>
           </div>
         </div>
         <div className="prem-rail">
@@ -203,23 +209,21 @@ export function PremiumHome({ commerce }: Props) {
         </div>
       </section>
 
-      {/* Why shop */}
       <section className="bg-[var(--prem-surface)] border-y border-[var(--prem-line)] py-16 md:py-20">
         <div className="prem-container">
-          <h2 className="text-3xl md:text-4xl prem-display text-center mb-10">Why shop with us</h2>
+          <h2 className="text-3xl md:text-4xl prem-display text-center mb-10">{t('premiumHome.whyShop')}</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
-            <Why icon={Truck} title="Fast delivery" text="Reliable shipping across Romania" />
-            <Why icon={Lock} title="Secure payments" text="Card via Netopia & cash on delivery" />
-            <Why icon={RefreshCw} title="Easy returns" text="Hassle-free support after purchase" />
-            <Why icon={Headphones} title="Support" text="We're here when you need help" />
+            <Why icon={Truck} title={t('premiumHome.fastDelivery')} text={t('premiumHome.fastDeliveryBody')} />
+            <Why icon={Lock} title={t('premiumHome.securePayments')} text={t('premiumHome.securePaymentsBody')} />
+            <Why icon={RefreshCw} title={t('premiumHome.easyReturns')} text={t('premiumHome.easyReturnsBody')} />
+            <Why icon={Headphones} title={t('premiumHome.support')} text={t('premiumHome.supportBody')} />
           </div>
         </div>
       </section>
 
-      {/* Testimonials */}
       {showReviews && (
         <section className="prem-container py-16 md:py-24">
-          <h2 className="text-3xl md:text-5xl prem-display mb-8 text-center">What customers say</h2>
+          <h2 className="text-3xl md:text-5xl prem-display mb-8 text-center">{t('premiumHome.whatCustomersSay')}</h2>
           <div className="prem-rail md:grid md:grid-cols-3 md:overflow-visible gap-4">
             {reviews.slice(0, 6).map((r) => (
               <blockquote
@@ -235,7 +239,7 @@ export function PremiumHome({ commerce }: Props) {
                   ))}
                 </div>
                 <p className="text-sm leading-relaxed min-h-[3.5rem]">
-                  {r.comment || 'Great experience shopping here.'}
+                  {r.comment || t('premiumHome.defaultReview')}
                 </p>
                 <footer className="mt-4 text-xs text-[var(--prem-muted)]">{r.customer_name}</footer>
               </blockquote>
@@ -244,13 +248,12 @@ export function PremiumHome({ commerce }: Props) {
         </section>
       )}
 
-      {/* Newsletter */}
       <section className="prem-container pb-20">
         <div className="rounded-[var(--prem-radius)] border border-[var(--prem-line)] bg-[var(--prem-surface)] px-6 py-12 md:px-16 text-center">
           <Package className="h-8 w-8 mx-auto mb-4 text-[var(--prem-accent)]" />
-          <h2 className="text-3xl md:text-4xl prem-display">Stay in the loop</h2>
+          <h2 className="text-3xl md:text-4xl prem-display">{t('premiumHome.stayInLoop')}</h2>
           <p className="text-[var(--prem-muted)] mt-3 max-w-md mx-auto text-sm">
-            Be first to know about new arrivals and exclusive offers.
+            {t('premiumHome.newsletterBody')}
           </p>
           <form
             className="mt-6 flex flex-col sm:flex-row gap-2 max-w-md mx-auto"
@@ -259,7 +262,7 @@ export function PremiumHome({ commerce }: Props) {
               const fd = new FormData(e.currentTarget);
               if (fd.get('email')) {
                 e.currentTarget.reset();
-                toast.success('Thanks for subscribing!');
+                toast.success(t('premiumHome.subscribed'));
               }
             }}
           >
@@ -267,11 +270,11 @@ export function PremiumHome({ commerce }: Props) {
               name="email"
               type="email"
               required
-              placeholder="Email address"
+              placeholder={t('premiumHome.emailPlaceholder')}
               className="flex-1 rounded-full border border-[var(--prem-line)] px-4 py-3 text-sm"
             />
             <button type="submit" className="prem-btn prem-btn-primary">
-              Subscribe
+              {t('premiumHome.subscribe')}
             </button>
           </form>
         </div>

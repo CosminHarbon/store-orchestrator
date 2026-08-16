@@ -1,0 +1,6 @@
+Use the dark-background logo exactly as supplied for premium dark surfaces.
+Use the light-background version for white/light surfaces.
+Use the V mark alone for app icons.
+Keep at least 25% of the mark height as clear space.
+Do not stretch, rotate, crop, recolor, or add effects to the master logo.
+SVG = editable vector master. PNG = high-resolution export.

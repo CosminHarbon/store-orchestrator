@@ -1,6 +1,6 @@
 import { LogOut, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import logoImg from "@/assets/logo.png";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
@@ -38,7 +38,7 @@ export function MobileHeader({ userEmail, storeName, onTabChange }: MobileHeader
         <div className="flex items-center gap-3">
           <SidebarTrigger className="md:hidden p-2 hover:bg-muted/50 rounded-lg transition-colors" />
           <div className="flex items-center gap-3">
-            <img src={logoImg} alt={t("brandLogoAlt")} className="h-12 w-12 object-contain" />
+            <BrandLogo variant="mark" imgClassName="h-10 w-10" />
             <div className="hidden sm:block">
               <h1 className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">
                 {storeName || t("brand")}

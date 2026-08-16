@@ -1,0 +1,168 @@
+/* Floral boutique storefront — Phuler-inspired, more premium */
+.floral-store {
+  --floral-bg: #fbf8f5;
+  --floral-surface: #ffffff;
+  --floral-ink: #1f1714;
+  --floral-muted: #8a7d76;
+  --floral-line: rgba(31, 23, 20, 0.08);
+  --floral-blush: #f3e4e0;
+  --floral-rose: #c97b84;
+  --floral-rose-deep: #9e4f5a;
+  --floral-sage: #6f7d6e;
+  --floral-accent-soft: #f7ece9;
+  --floral-sale: #b5485d;
+  --floral-radius: 0;
+  --floral-radius-sm: 2px;
+  --floral-shadow: 0 24px 60px rgba(31, 23, 20, 0.08);
+  --floral-font-display: "Cormorant Garamond", "Times New Roman", Georgia, serif;
+  --floral-font-body: "Manrope", system-ui, sans-serif;
+  --floral-image-bg: #efe8e3;
+  background: var(--floral-bg);
+  color: var(--floral-ink);
+  font-family: var(--floral-font-body);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: 0.01em;
+}
+
+.dark .floral-store {
+  --floral-bg: #120e0c;
+  --floral-surface: #1c1614;
+  --floral-ink: #f6f0eb;
+  --floral-muted: #b0a39b;
+  --floral-line: rgba(246, 240, 235, 0.1);
+  --floral-blush: #2a211e;
+  --floral-rose: #e0a0a8;
+  --floral-rose-deep: #c97b84;
+  --floral-sage: #9aab98;
+  --floral-accent-soft: #2a211e;
+  --floral-sale: #f07167;
+  --floral-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  --floral-image-bg: #241c19;
+}
+
+.floral-store * {
+  box-sizing: border-box;
+}
+
+.floral-store h1,
+.floral-store h2,
+.floral-store h3,
+.floral-store .floral-display {
+  font-family: var(--floral-font-display);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.floral-store .floral-container {
+  width: min(1240px, calc(100% - 2rem));
+  margin-inline: auto;
+}
+
+.floral-store .floral-container-wide {
+  width: min(1440px, calc(100% - 1rem));
+  margin-inline: auto;
+}
+
+.floral-store .floral-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: none;
+  border-radius: 0;
+  padding: 0.95rem 1.75rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.25s ease, background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
+
+.floral-store .floral-btn:active {
+  transform: scale(0.985);
+}
+
+.floral-store .floral-btn-primary {
+  background: var(--floral-ink);
+  color: #fff;
+}
+
+.floral-store .floral-btn-primary:hover {
+  background: var(--floral-rose-deep);
+}
+
+.floral-store .floral-btn-ghost {
+  background: transparent;
+  color: var(--floral-ink);
+  border: 1px solid var(--floral-line);
+}
+
+.floral-store .floral-btn-ghost:hover {
+  border-color: var(--floral-ink);
+}
+
+.floral-store .floral-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.floral-store .floral-rail {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.floral-store .floral-rail > * {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
+
+.floral-store .floral-skeleton {
+  background: linear-gradient(90deg, var(--floral-blush), var(--floral-surface), var(--floral-blush));
+  background-size: 200% 100%;
+  animation: floralShimmer 1.2s ease infinite;
+}
+
+@keyframes floralShimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+@keyframes floralFadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.floral-store .floral-fade-up {
+  animation: floralFadeUp 0.7s ease both;
+}
+
+.floral-store .floral-rule {
+  height: 1px;
+  background: var(--floral-line);
+  width: 100%;
+}
+
+.floral-store .floral-eyebrow {
+  font-size: 0.68rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--floral-muted);
+  font-weight: 600;
+}
+
+.floral-store .floral-panel {
+  background: var(--floral-surface);
+  border: 1px solid var(--floral-line);
+}
+
+.floral-store input,
+.floral-store textarea,
+.floral-store select {
+  font-family: inherit;
+}

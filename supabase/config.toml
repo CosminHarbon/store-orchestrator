@@ -21,7 +21,7 @@ max_client_conn = 100
 
 [realtime]
 enabled = true
-ip_version = "ipv6"
+ip_version = "IPv6"
 port = 54323
 max_header_length = 4096
 
@@ -89,6 +89,18 @@ verify_jwt = true
 [functions.ai-chat]
 verify_jwt = true
 
-# Push Notifications - OneSignal push notification service
+# Push Notifications - OneSignal push notification service (legacy — keep until FCM migration)
 [functions.push-notification]
 verify_jwt = false
+
+# FCM token registration (authenticated)
+[functions.register-push-token]
+verify_jwt = true
+
+# FCM HTTP v1 send (self or internal/service-role)
+[functions.send-push-notification]
+verify_jwt = false
+
+# FCM self-test only (authenticated → own devices)
+[functions.send-test-push]
+verify_jwt = true

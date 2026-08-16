@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Capacitor } from '@capacitor/core';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 6;
@@ -27,8 +28,9 @@ const Auth = () => {
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') === 'signup' ? 'signup' : 'signin');
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, signUp, resendSignupEmail, user } = useAuth();
   const navigate = useNavigate();
+  const [canResend, setCanResend] = useState(false);
 
   useEffect(() => {
     // On native platforms, redirect to welcome if user hasn't seen it
@@ -118,19 +120,40 @@ const Auth = () => {
     const { error } = await signUp(email, password);
     
     if (error) {
-      if (error.message.includes('User already registered')) {
+      if (
+        error.message?.includes('User already registered') ||
+        error.code === 'user_already_registered'
+      ) {
         setError(t('error.alreadyRegistered'));
+        setCanResend(false);
       } else {
         setError(error.message);
       }
     } else {
       toast.success(t('toast.accountCreated'));
-      // Clear the form and switch to sign in tab
+      setCanResend(true);
       setPassword('');
       setError('');
       setActiveTab('signin');
     }
     
+    setLoading(false);
+  };
+
+  const handleResendConfirmation = async () => {
+    const emailError = validateEmail(email);
+    if (emailError) {
+      setError(emailError);
+      return;
+    }
+    setLoading(true);
+    setError('');
+    const { error } = await resendSignupEmail(email);
+    if (error) {
+      setError(error.message);
+    } else {
+      toast.success(t('toast.confirmationResent'));
+    }
     setLoading(false);
   };
 
@@ -171,7 +194,7 @@ const Auth = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <img src="/logo.png" alt="Store Logo" className="h-20 w-20 object-contain" />
+            <BrandLogo variant="mark" imgClassName="h-20 w-20" />
           </div>
           <CardTitle className="text-2xl font-bold">{t('title')}</CardTitle>
           <CardDescription>
@@ -262,6 +285,17 @@ const Auth = () => {
                 >
                   {t('action.forgotPassword')}
                 </Button>
+                {canResend && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    disabled={loading}
+                    onClick={handleResendConfirmation}
+                  >
+                    {t('action.resendConfirmation')}
+                  </Button>
+                )}
               </form>
             </TabsContent>
             
@@ -298,6 +332,17 @@ const Auth = () => {
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? t('action.creatingAccount') : t('action.createAccount')}
                 </Button>
+                {canResend && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    disabled={loading}
+                    onClick={handleResendConfirmation}
+                  >
+                    {t('action.resendConfirmation')}
+                  </Button>
+                )}
               </form>
             </TabsContent>
           </Tabs>

@@ -128,24 +128,30 @@
       "title": "Configurare plăți",
       "subtitle": "Configurează Netopia pentru plăți cu cardul",
       "configTitle": "Configurare Netopia",
-      "intro": "Pentru a accepta plăți cu cardul, creează un cont Netopia și adaugă aceste credențiale în Setări magazin → Procesator plăți:",
+      "intro": "Conectează Netopia cu asistentul ghidat. Durează circa 2–3 minute și nu părăsești SpeedVendors.",
       "step1Prefix": "Creează și activează un cont la",
       "step2": "Cheie API (obligatoriu) — Admin → Profil → Securitate",
       "step3": "Semnătură POS (obligatoriu) — Admin → Punct de vânzare → Setări tehnice",
       "step4": "Cheie publică (opțional) — aceeași pagină Setări tehnice; folosită pentru verificarea IPN",
       "step5": "Alege Sandbox pentru testare sau Live pentru producție (cheile sunt specifice mediului)",
-      "openWebsite": "Deschide site-ul Netopia"
+      "openWebsite": "Deschide site-ul Netopia",
+      "startGuidedSetup": "Începe configurarea ghidată",
+      "alreadyConnected": "Netopia este deja conectată. Poți continua sau gestiona credențialele din Setări.",
+      "manageInSettings": "Gestionează în Setări"
     },
     "shipping": {
       "title": "Configurare livrare",
       "subtitle": "Configurează eAWB.ro pentru livrări",
       "configTitle": "Configurare eAWB.ro",
-      "intro": "eAWB.ro oferă livrări integrate cu mai mulți curieri. Pașii de configurare:",
+      "intro": "Conectează eAWB cu asistentul ghidat. Durează circa 2–3 minute și nu părăsești SpeedVendors.",
       "step1Prefix": "Creează un cont la",
       "step2": "Obține cheia API din setările contului",
       "step3": "Configurează adresa de facturare și curierul implicit",
       "step4": "Adaugă credențialele în Setări magazin → Furnizor livrare",
-      "openWebsite": "Deschide site-ul eAWB"
+      "openWebsite": "Deschide site-ul eAWB",
+      "startGuidedSetup": "Începe configurarea ghidată",
+      "alreadyConnected": "eAWB este deja conectat. Poți continua sau gestiona livrarea din Setări.",
+      "manageInSettings": "Gestionează în Setări"
     },
     "invoicing": {
       "title": "Configurare facturare",
@@ -191,6 +197,270 @@
       "storeNameRequired": "Te rugăm să introduci un nume de magazin",
       "storeNameSaveFailed": "Salvarea numelui magazinului a eșuat",
       "storeNameSaved": "Numele magazinului a fost salvat! Configurare finalizată."
+    }
+  },
+  "netopiaSetup": {
+    "title": "Configurează plățile",
+    "subtitle": "Conectează-ți contul Netopia în câteva minute, în siguranță.",
+    "estimatedTime": "Timp estimat: 2–3 minute",
+    "stepOf": "Pasul {{current}} din {{total}}",
+    "complete": "Finalizat",
+    "stepperAria": "Progres configurare",
+    "show": "Arată",
+    "hide": "Ascunde",
+    "connect": "Conectează Netopia",
+    "connecting": "Se conectează…",
+    "fields": {
+      "apiKey": "Cheie API",
+      "apiKeyPlaceholder": "Lipește cheia API",
+      "posSignature": "Semnătură POS",
+      "posSignaturePlaceholder": "Lipește semnătura POS"
+    },
+    "errors": {
+      "apiKeyRequired": "Cheia API este obligatorie.",
+      "signatureRequired": "Semnătura POS este obligatorie.",
+      "openBrowserFailed": "Nu am putut deschide Netopia. Încearcă din nou."
+    },
+    "paths": {
+      "netopiaHome": "Netopia",
+      "createAccount": "Creează cont / Autentificare",
+      "dashboard": "Dashboard",
+      "pointOfSale": "Punct de vânzare",
+      "createPos": "Creează POS",
+      "technicalSettings": "Setări tehnice",
+      "security": "Securitate",
+      "api": "API",
+      "copyApiKey": "Copiază cheia API",
+      "posSignature": "Semnătură POS",
+      "verify": "Verifică conexiunea"
+    },
+    "help": {
+      "title": "Unde găsesc asta?",
+      "path": "Parcurs navigare",
+      "screenshotPlaceholder": "Loc rezervat pentru captură — în curând",
+      "troubleshooting": "Depanare"
+    },
+    "steps": {
+      "1": {
+        "title": "Creează sau autentifică-te în contul Netopia",
+        "description": "Ai nevoie de un cont Netopia înainte de a accepta plăți online cu cardul.",
+        "openNetopia": "Deschide Netopia",
+        "alreadyHaveAccount": "Am deja un cont",
+        "helpExplanation": "Deschide Netopia într-o fereastră sigură de browser, creează un cont sau autentifică-te, apoi revino aici.",
+        "tip1": "Folosește emailul pe care îl folosești pentru afacere.",
+        "tip2": "Asigură-te că contul Netopia este activat înainte de a continua.",
+        "tip3": "Poți redeschide Netopia oricând din acest pas."
+      },
+      "2": {
+        "title": "Creează un Punct de Vânzare (POS)",
+        "description": "În Netopia, creează un Punct de Vânzare nou pentru site-ul tău.",
+        "helpExplanation": "Un POS reprezintă magazinul tău online în Netopia. Creează unul pentru vitrina SpeedVendors, apoi deschide Setări tehnice.",
+        "tip1": "Alege un nume clar de POS care corespunde magazinului.",
+        "tip2": "Tipul website / e-commerce este de obicei alegerea potrivită.",
+        "tip3": "Vei avea nevoie de Setări tehnice la pașii următori pentru semnătură."
+      },
+      "3": {
+        "title": "Copiază cheia API",
+        "description": "Găsește cheia API la Securitate → API și lipește-o mai jos.",
+        "helpExplanation": "În panoul Netopia, deschide Securitate → API, apoi generează sau copiază cheia API.",
+        "tip1": "Asigură-te că contul este activat.",
+        "tip2": "Deschide Securitate → API.",
+        "tip3": "Generează o cheie nouă dacă e nevoie. Cheile Sandbox și Live sunt diferite."
+      },
+      "4": {
+        "title": "Copiază semnătura POS",
+        "description": "Găsește semnătura POS la Punct de vânzare → Setări tehnice.",
+        "helpExplanation": "Deschide Setările tehnice ale POS-ului și copiază valoarea Signature (adesea în format XXXX-XXXX-XXXX-XXXX).",
+        "tip1": "Selectează POS-ul creat pentru acest magazin.",
+        "tip2": "Deschide Setări tehnice.",
+        "tip3": "Copiază semnătura exact — fără spații suplimentare."
+      },
+      "5": {
+        "title": "Verifică conexiunea",
+        "description": "Confirmă credențialele, apoi conectează Netopia la SpeedVendors.",
+        "helpExplanation": "Vom testa în siguranță aceste credențiale la Netopia, apoi le vom salva în profilul magazinului.",
+        "tip1": "Verifică să nu amesteci credențiale Sandbox cu Live.",
+        "tip2": "Dacă testul eșuează, revino și recopiază cheile.",
+        "tip3": "Opțiunile avansate (Cheie publică, Sandbox/Live) sunt disponibile în Setări după configurare."
+      }
+    },
+    "success": {
+      "title": "Netopia a fost conectată cu succes",
+      "description": "Magazinul tău este acum pregătit să accepte plăți online cu cardul.",
+      "finish": "Finalizează",
+      "goToPayments": "Mergi la Plăți"
+    },
+    "connected": {
+      "title": "Netopia conectată",
+      "badge": "Conectat",
+      "description": "Magazinul tău este pregătit să accepte plăți online cu cardul.",
+      "credentialsSaved": "Credențiale salvate"
+    },
+    "setupCard": {
+      "title": "Conectează Netopia",
+      "description": "Configurează plățile cu cardul în câțiva pași ghidați. Timp estimat: 2–3 minute."
+    },
+    "actions": {
+      "completeSetup": "Finalizează configurarea",
+      "testConnection": "Testează conexiunea",
+      "editCredentials": "Editează credențialele",
+      "advancedSettings": "Setări avansate",
+      "disconnect": "Deconectează"
+    },
+    "advanced": {
+      "title": "Setări avansate",
+      "description": "Editează manual credențialele, setează Sandbox/Live și adaugă opțional cheia publică pentru verificarea IPN.",
+      "apiKeyHelp": "În panoul Netopia, deschide Profil → Securitate și generează sau copiază cheia API. Sandbox și Live au chei separate.",
+      "signatureHelp": "În Netopia, deschide Punct de vânzare → Setări tehnice pentru POS-ul magazinului și copiază Signature.",
+      "publicKeyHelp": "Se găsește tot în Setări tehnice. Lipește certificatul/cheia publică PEM pentru verificarea JWT IPN. Opțional pentru majoritatea comercianților.",
+      "publicKeyPlaceholder": "-----BEGIN CERTIFICATE----- sau -----BEGIN PUBLIC KEY-----",
+      "envHelp": "Folosește credențiale Sandbox doar în modul Sandbox, și Live doar în modul Live."
+    },
+    "disconnect": {
+      "title": "Deconectezi Netopia?",
+      "description": "Deconectarea Netopia va dezactiva plățile online cu cardul până când reconectezi contul."
+    },
+    "toast": {
+      "disconnected": "Netopia a fost deconectată. Poți reconecta oricând."
+    }
+  },
+  "eawbSetup": {
+    "title": "Configurare livrare",
+    "subtitle": "Conectează-ți contul eAWB în siguranță.",
+    "estimatedTime": "Timp estimat: 2–3 minute",
+    "stepOf": "Pasul {{current}} din {{total}}",
+    "complete": "Finalizat",
+    "stepperAria": "Progres configurare livrare",
+    "show": "Arată",
+    "hide": "Ascunde",
+    "skipLocker": "Sari peste acest pas",
+    "retrievePickup": "Preia adresele de ridicare",
+    "retrieveBilling": "Preia adresele de facturare",
+    "testConnection": "Testează conexiunea",
+    "testing": "Se testează…",
+    "testSuccess": "Conexiune reușită. Contul tău de livrare este pregătit.",
+    "none": "Niciuna selectată",
+    "selectedId": "Adresa selectată #{{id}}",
+    "fields": {
+      "apiKey": "Cheie API",
+      "apiKeyPlaceholder": "Lipește cheia API eAWB",
+      "pickupAddress": "Adresă de ridicare",
+      "locker": "Locker de ridicare implicit"
+    },
+    "errors": {
+      "apiKeyRequired": "Cheia API este obligatorie.",
+      "pickupRequired": "Selectează o adresă de ridicare pentru a continua.",
+      "billingRequired": "Selectează o adresă de facturare pentru a continua.",
+      "openBrowserFailed": "Nu am putut deschide eAWB. Încearcă din nou."
+    },
+    "paths": {
+      "eawbHome": "eAWB",
+      "loginRegister": "Autentificare sau înregistrare",
+      "settings": "Setări",
+      "api": "API",
+      "generateKey": "Generează cheie API",
+      "retrievePickup": "Preia adresele de ridicare",
+      "retrieveBilling": "Preia adresele de facturare",
+      "locker": "Locker de ridicare implicit",
+      "verify": "Testează conexiunea"
+    },
+    "help": {
+      "title": "Unde găsesc asta?",
+      "path": "Parcurs navigare",
+      "screenshotPlaceholder": "Loc rezervat pentru captură — în curând",
+      "troubleshooting": "Depanare"
+    },
+    "steps": {
+      "1": {
+        "title": "Creează sau autentifică-te în contul eAWB",
+        "description": "Ai nevoie de un cont eAWB înainte de a genera etichete de livrare.",
+        "openEawb": "Deschide eAWB",
+        "alreadyHaveAccount": "Am deja un cont",
+        "helpExplanation": "Deschide eAWB, creează un cont sau autentifică-te, apoi activează contul de comerciant înainte de a continua.",
+        "tip1": "Deschide eAWB într-o fereastră sigură de browser.",
+        "tip2": "Autentifică-te sau înregistrează-te cu emailul de business.",
+        "tip3": "Asigură-te că contul este activat înainte de a genera o cheie API."
+      },
+      "2": {
+        "title": "Generează și lipește cheia API",
+        "description": "Creează o cheie API în eAWB, apoi lipește-o mai jos. O salvăm în siguranță în profilul magazinului.",
+        "instruction1": "Deschide Setări → API în eAWB.",
+        "instruction2": "Generează o cheie API.",
+        "instruction3": "Lipește-o mai jos.",
+        "helpExplanation": "În panoul eAWB, deschide Setări → API, generează o cheie și lipește-o aici. Continuarea salvează cheia în profil ca pașii următori să poată prelua adresele.",
+        "tip1": "Salvează cheia undeva în siguranță — s-ar putea să nu o mai vezi.",
+        "tip2": "Cheia trebuie salvată înainte de preluarea adreselor.",
+        "tip3": "Dacă preluarea eșuează, verifică dacă cheia e pentru un cont activat."
+      },
+      "3": {
+        "title": "Preia adresele de ridicare",
+        "description": "Aici curierii vor ridica coletele. Selectează o adresă de ridicare din contul eAWB.",
+        "helpExplanation": "Folosim aceeași preluare de adrese Europarcel disponibilă deja în Setări. Creează mai întâi o adresă de shipping în eAWB dacă lista e goală.",
+        "tip1": "Creează cel puțin o adresă de ridicare în panoul eAWB.",
+        "tip2": "Apasă Preia adresele de ridicare, apoi selectează una.",
+        "tip3": "Această adresă se folosește la generarea AWB fără locker."
+      },
+      "4": {
+        "title": "Preia adresa de facturare",
+        "description": "Selectează adresa de facturare legată de contul eAWB.",
+        "helpExplanation": "Folosim aceeași preluare a adreselor de facturare disponibilă deja în Setări.",
+        "tip1": "Creează o adresă de facturare în eAWB dacă nu apare niciuna.",
+        "tip2": "Dacă ai una singură, poate fi legată automat.",
+        "tip3": "Poți schimba asta ulterior în Setări avansate."
+      },
+      "5": {
+        "title": "Locker de ridicare implicit (opțional)",
+        "description": "Dacă expediezi regulat dintr-un locker în loc de depozit, alege lockerul de ridicare implicit.",
+        "helpExplanation": "Reutilizăm același selector de locker ca în Setări. Lockerul este sugerat la crearea AWB și poate fi schimbat pe fiecare expediere.",
+        "tip1": "Sari peste acest pas dacă expediezi doar de la o adresă de depozit.",
+        "tip2": "Folosește Hartă, Listă sau Localizează-mă pentru a găsi lockerul.",
+        "tip3": "Poți actualiza lockerul oricând în Setări avansate."
+      },
+      "6": {
+        "title": "Testează conexiunea",
+        "description": "Verifică dacă SpeedVendors poate accesa contul eAWB cu credențialele salvate.",
+        "helpExplanation": "Rulează același test de conexiune folosit deja în Setări. Nu introducem un API nou.",
+        "tip1": "Asigură-te că cheia API a fost salvată la pasul 2.",
+        "tip2": "Dacă testul eșuează, revino și verifică cheia.",
+        "tip3": "Curierul și serviciul rămân opționale în Setări avansate."
+      }
+    },
+    "success": {
+      "title": "eAWB conectat cu succes",
+      "description": "Magazinul tău este acum pregătit să genereze etichete de livrare.",
+      "finish": "Finalizează",
+      "goToShipping": "Mergi la Setări livrare"
+    },
+    "connected": {
+      "title": "eAWB conectat",
+      "badge": "Conectat",
+      "description": "Contul tău de livrare este pregătit.",
+      "credentialsSaved": "Credențiale salvate"
+    },
+    "setupCard": {
+      "title": "Conectează eAWB",
+      "description": "Configurează etichetele de livrare în câțiva pași ghidați. Timp estimat: 2–3 minute."
+    },
+    "actions": {
+      "completeSetup": "Finalizează configurarea",
+      "testConnection": "Testează conexiunea",
+      "editDetails": "Editează detaliile",
+      "advancedSettings": "Setări avansate",
+      "disconnect": "Deconectează"
+    },
+    "advanced": {
+      "title": "Setări avansate",
+      "description": "Toate opțiunile eAWB existente: info companie, adrese, ID-uri opționale curier/serviciu, locker implicit, test conexiune și diagnostic."
+    },
+    "disconnect": {
+      "title": "Deconectezi eAWB?",
+      "description": "Deconectarea eAWB va elimina credențialele de livrare din SpeedVendors. Comenzile existente și AWB-urile generate nu sunt șterse."
+    },
+    "toast": {
+      "disconnected": "eAWB a fost deconectat. Poți reconecta oricând.",
+      "testOk": "Conexiunea eAWB a reușit.",
+      "pickupLinked": "Adresa de ridicare a fost legată.",
+      "lockerSaved": "Lockerul de ridicare implicit a fost salvat."
     }
   },
   "toast": {

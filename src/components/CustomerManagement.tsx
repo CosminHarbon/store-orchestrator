@@ -7,6 +7,7 @@ import {
   Lightbulb,
   Minus,
   RefreshCw,
+  Download,
   Search,
   ShoppingBag,
   TrendingUp,
@@ -51,6 +52,8 @@ import {
   type RawCustomerOrder,
 } from '@/lib/customerAnalytics';
 import { cn } from '@/lib/utils';
+import { ExportDialog } from '@/components/export/ExportDialog';
+import type { ExportRow } from '@/lib/export/types';
 import { formatShortDate } from '@/i18n/format';
 
 const CustomerTrendsCharts = lazy(() => import('@/components/CustomerTrendsCharts'));
@@ -169,6 +172,7 @@ function paymentBadge(status: string, labels: { paid: string; cash: string; fail
 
 const CustomerManagement = () => {
   const { t: tCustomers } = useTranslation('customers');
+  const { t: tExport } = useTranslation('export');
   const { t: tCommon } = useTranslation('common');
   const { dateRange, setDateRange, preset, setPreset } = useDateRangeFilter('30days');
   const [granularity, setGranularity] = useState<GrowthGranularity>('daily');
@@ -181,6 +185,7 @@ const CustomerManagement = () => {
   const [spendMax, setSpendMax] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('totalSpent');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [exportOpen, setExportOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<CustomerProfile | null>(null);
 
@@ -281,6 +286,31 @@ const CustomerManagement = () => {
     refunded: tCustomers('paymentStatus.refunded'),
   };
 
+  const exportRows = useMemo<ExportRow[]>(() => {
+    return filtered.map((c) => ({
+      name: c.name,
+      email: c.email,
+      phone: c.phone || '',
+      orders: c.totalOrders,
+      spent: Number(c.totalSpent).toFixed(2),
+      aov: Number(c.averageOrderValue).toFixed(2),
+      segment: tCustomers(`segment.${c.primarySegment}`),
+      status: c.status,
+      first_order: c.firstOrderDate,
+      last_order: c.lastOrderDate,
+      payment_method: c.favoritePaymentMethod,
+    }));
+  }, [filtered, tCustomers]);
+
+  const exportSummary = useMemo(() => {
+    const spent = exportRows.reduce((s, r) => s + Number(r.spent || 0), 0);
+    return [
+      { label: tExport('summary.customers'), value: String(exportRows.length) },
+      { label: tExport('summary.revenue'), value: `${spent.toFixed(2)} RON` },
+    ];
+  }, [exportRows, tExport]);
+
+
   if (isLoading || !analytics) {
     return (
       <div className="space-y-6">
@@ -326,6 +356,15 @@ const CustomerManagement = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setExportOpen(true)}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            {tExport('open')}
+          </Button>
           <Button
             type="button"
             variant="outline"
@@ -929,6 +968,13 @@ const CustomerManagement = () => {
           )}
         </SheetContent>
       </Sheet>
+      <ExportDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        datasetId="customers"
+        rows={exportRows}
+        summary={exportSummary}
+      />
     </div>
   );
 };

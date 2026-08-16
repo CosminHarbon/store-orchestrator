@@ -1,0 +1,154 @@
+{
+  "progress": "{{current}} of {{total}}",
+  "exit": "Exit setup",
+  "maybeLater": "Maybe later",
+  "actions": {
+    "continue": "Continue",
+    "back": "Back",
+    "skip": "Skip for now",
+    "getStarted": "Get started",
+    "finish": "Finish setup",
+    "goDashboard": "Go to Dashboard",
+    "viewStore": "View Store",
+    "tryAgain": "Try again",
+    "setUpLater": "Set up later",
+    "completeSetup": "Complete setup"
+  },
+  "status": {
+    "completed": "Completed",
+    "skipped": "Skipped",
+    "notConfigured": "Not configured"
+  },
+  "welcome": {
+    "eyebrow": "Store setup",
+    "title": "Let's build your store.",
+    "body": "We'll guide you through a few quick steps — store details, storefront, your first product, payments, and shipping.",
+    "saved": "Your progress is saved automatically.",
+    "skipSetup": "Skip setup for now"
+  },
+  "store": {
+    "eyebrow": "Store information",
+    "title": "What's your store called?",
+    "body": "This name appears on your storefront and invoices.",
+    "label": "Store name",
+    "placeholder": "e.g. Aurora Home",
+    "hint": "You can change this anytime in Settings.",
+    "required": "Please enter a store name."
+  },
+  "storefront": {
+    "eyebrow": "Storefront",
+    "title": "Choose your storefront",
+    "body": "Pick a starting template. You can customize everything later in the Website Builder.",
+    "elementar": {
+      "name": "Modern Store",
+      "badge": "Editable",
+      "description": "Fully customizable storefront with visual builder, colors, and content blocks."
+    },
+    "premium": {
+      "name": "Premium",
+      "badge": "Pre-designed",
+      "description": "Polished conversion-focused storefront — ready to publish with your products."
+    },
+    "floral": {
+      "name": "Floral Atelier",
+      "badge": "Flower shops",
+      "description": "Ultra-premium boutique storefront for florists — airy imagery and full checkout."
+    },
+    "preview": "Preview",
+    "previewDemo": "Demo",
+    "previewLive": "Live",
+    "selected": "Selected",
+    "select": "Select",
+    "needSelect": "Select a template to continue."
+  },
+  "product": {
+    "eyebrow": "First product",
+    "title": "Add your first product",
+    "body": "Your store needs at least one product before customers can shop.",
+    "fields": {
+      "title": "Product name",
+      "sku": "SKU",
+      "price": "Price (RON)",
+      "stock": "Stock",
+      "description": "Description"
+    },
+    "placeholders": {
+      "title": "Organic cotton t-shirt",
+      "sku": "SKU-001",
+      "description": "Short product description"
+    },
+    "create": "Create product",
+    "creating": "Creating…",
+    "successTitle": "Your first product is live.",
+    "successBody": "It already appears in Products. You can add images and more details anytime.",
+    "addAnother": "Add another product",
+    "errors": {
+      "title": "Product name is required.",
+      "price": "Enter a valid price."
+    }
+  },
+  "payments": {
+    "eyebrow": "Payments",
+    "title": "Accept card payments",
+    "body": "Connect Netopia so customers can pay by card at checkout.",
+    "connected": "Payments connected",
+    "connectedBody": "Netopia is linked to your store.",
+    "openWizard": "Connect Netopia",
+    "failed": "We couldn't connect your account yet."
+  },
+  "shipping": {
+    "eyebrow": "Shipping",
+    "title": "Set up delivery",
+    "body": "Connect eAWB to generate AWBs and offer delivery options to customers.",
+    "connected": "Shipping connected",
+    "connectedBody": "eAWB is linked to your store.",
+    "openWizard": "Connect eAWB",
+    "failed": "We couldn't connect your account yet."
+  },
+  "settings": {
+    "eyebrow": "Store polish",
+    "title": "Make your store feel complete",
+    "body": "Confirm your store name and add a logo. You can refine everything later.",
+    "storeName": "Store name",
+    "logo": "Store logo",
+    "logoHint": "Upload a square logo for your storefront header.",
+    "uploadLogo": "Upload logo",
+    "logoUploaded": "Logo uploaded",
+    "uploadFailed": "Logo upload failed."
+  },
+  "review": {
+    "eyebrow": "Review",
+    "title": "Your store is almost ready",
+    "body": "Here's what you've set up. You can finish skipped items anytime.",
+    "steps": {
+      "store": "Store information",
+      "storefront": "Storefront",
+      "product": "First product",
+      "payments": "Payments",
+      "shipping": "Shipping",
+      "settings": "Store settings",
+      "review": "Review"
+    }
+  },
+  "ready": {
+    "title": "Your store is ready to go.",
+    "titlePartial": "Your store is created.",
+    "body": "You're all set to keep building from the Dashboard.",
+    "bodyPartial": "You can finish payments and shipping anytime from Settings.",
+    "store": "Store",
+    "template": "Storefront",
+    "products": "Products",
+    "payments": "Payments",
+    "shipping": "Shipping",
+    "connected": "Connected",
+    "notConnected": "Not connected",
+    "none": "None yet"
+  },
+  "dashboard": {
+    "title": "Finish setting up your store",
+    "progress": "{{done}} of {{total}} completed",
+    "next": "Next: {{step}}",
+    "continue": "Continue setup",
+    "later": "Maybe later"
+  }
+}

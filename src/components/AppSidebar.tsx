@@ -1,5 +1,5 @@
 import { Home, Package, ShoppingCart, Users, BarChart3, CreditCard, Layout, Star } from "lucide-react";
-import logoImg from "@/assets/logo.png";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import {
   Sidebar,
   SidebarContent,
@@ -55,9 +55,12 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
       <SidebarContent className="pt-[env(safe-area-inset-top)]">
         <SidebarGroup>
           <div className="px-3 py-3 mb-2">
-            <div className="flex items-center gap-3">
-              <img src={logoImg} alt={t('brandLogoAlt')} className="h-10 w-10 object-contain shrink-0" />
-              {!collapsed && <span className="font-semibold text-lg truncate">{t('brand')}</span>}
+            <div className="flex items-center gap-2.5 min-w-0">
+              {collapsed ? (
+                <BrandLogo variant="mark" imgClassName="h-9 w-9" />
+              ) : (
+                <BrandLogo variant="horizontal" imgClassName="h-9 w-auto max-w-[168px]" />
+              )}
             </div>
           </div>
 
