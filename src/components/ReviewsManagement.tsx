@@ -43,6 +43,7 @@ import { ReviewEditorDrawer } from '@/components/ReviewEditorDrawer';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { useImpersonation, resolveTenantUserId } from '@/hooks/useImpersonation';
 import { chartTooltipStyle, useChartTheme } from '@/hooks/useChartTheme';
 import {
   buildReviewAnalytics,
@@ -105,6 +106,7 @@ export default function ReviewsManagement() {
   const { t: tExport } = useTranslation('export');
   const { t: tCommon } = useTranslation('common');
   const { user } = useAuth();
+  const { effectiveUserId } = useImpersonation();
   const queryClient = useQueryClient();
   const chartTheme = useChartTheme();
   const tip = chartTooltipStyle(chartTheme);
@@ -141,7 +143,7 @@ export default function ReviewsManagement() {
   };
 
   const { data: reviews = [], isLoading } = useQuery({
-    queryKey: ['reviews', user?.id],
+    queryKey: ['reviews', effectiveUserId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('reviews')
@@ -151,7 +153,7 @@ export default function ReviewsManagement() {
           product:products(id, title, image, sku, price)
         `
         )
-        .eq('user_id', user!.id)
+        .eq('user_id', effectiveUserId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data || []).map((r: any) => ({
@@ -159,7 +161,7 @@ export default function ReviewsManagement() {
         status: normalizeReviewStatus(r),
       })) as ReviewRow[];
     },
-    enabled: !!user,
+    enabled: !!user && !!effectiveUserId,
   });
 
   const liveDrawerReview = useMemo(() => {
@@ -174,18 +176,18 @@ export default function ReviewsManagement() {
   }, [drawerReview, reviews]);
 
   const { data: customization } = useQuery({
-    queryKey: ['template-customization-reviews', user?.id],
+    queryKey: ['template-customization-reviews', effectiveUserId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('template_customization')
         .select('id, show_reviews, template_id')
-        .eq('user_id', user!.id)
+        .eq('user_id', effectiveUserId!)
         .eq('template_id', 'elementar')
         .maybeSingle();
       if (error) throw error;
       return data;
     },
-    enabled: !!user,
+    enabled: !!user && !!effectiveUserId,
   });
 
   const analytics = useMemo(() => buildReviewAnalytics(reviews), [reviews]);
@@ -254,8 +256,11 @@ export default function ReviewsManagement() {
           .eq('id', customization.id);
         if (error) throw error;
       } else {
+        const userId =
+          effectiveUserId ||
+          (await resolveTenantUserId(async () => (await supabase.auth.getUser()).data.user?.id));
         const { error } = await supabase.from('template_customization').insert({
-          user_id: user?.id,
+          user_id: userId,
           template_id: 'elementar',
           show_reviews: showReviews,
         });

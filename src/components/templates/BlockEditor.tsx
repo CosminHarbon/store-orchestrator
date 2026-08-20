@@ -49,6 +49,9 @@ export interface BlockContent {
   height?: number;
   style?: 'solid' | 'dashed' | 'dotted';
   color?: string;
+  marqueeText?: string;
+  faqItems?: Array<{ q: string; a: string }>;
+  features?: Array<{ title: string; body: string; icon?: string }>;
 }
 
 const BLOCK_TYPES = [

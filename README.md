@@ -56,3 +56,7 @@ Build the project and deploy the `dist` folder to your preferred hosting provide
 ```sh
 npm run build
 ```
+
+## AI Studio
+
+Premium design agent (Claude / OpenAI / DeepSeek). See [docs/ai-studio.md](docs/ai-studio.md) for secrets and deploy steps.

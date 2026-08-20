@@ -1,0 +1,562 @@
+.ai-store {
+  min-height: 100vh;
+  background: var(--ai-bg, #fff);
+  color: var(--ai-text, #111);
+  font-family: var(--ai-body), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.ai-store h1,
+.ai-store h2,
+.ai-store h3,
+.ai-store .ai-display {
+  font-family: var(--ai-heading), serif;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+.ai-container {
+  width: min(1180px, calc(100% - 2.5rem));
+  margin-inline: auto;
+}
+
+.ai-kicker {
+  font-family: var(--ai-body), system-ui, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  margin-bottom: 1rem;
+}
+
+.ai-kicker-on-dark {
+  color: rgba(255, 255, 255, 0.72);
+  opacity: 1;
+}
+
+.ai-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 0.95rem 1.7rem;
+  transition: transform 0.2s ease, opacity 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.ai-btn:active {
+  transform: scale(0.98);
+}
+
+.ai-btn-solid {
+  background: var(--ai-primary);
+  color: #fff;
+}
+
+.ai-btn-outline {
+  background: transparent;
+  color: var(--ai-text);
+  border: 1px solid color-mix(in srgb, var(--ai-text) 22%, transparent);
+}
+
+.ai-btn-pill {
+  border-radius: 999px;
+}
+
+.ai-announcement {
+  text-align: center;
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  padding: 0.65rem 1rem;
+  background: var(--ai-secondary);
+}
+
+.ai-section {
+  padding: var(--ai-section-pad, 4.5rem) 0;
+}
+
+.ai-hero-veil-none {
+  background: transparent !important;
+}
+
+.ai-hero-veil-strong {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.88), rgba(0, 0, 0, 0.45) 45%, rgba(0, 0, 0, 0.2)) !important;
+}
+
+.ai-density-compact .ai-section {
+  padding: 3rem 0;
+}
+
+.ai-density-compact .ai-product-grid {
+  gap: 0.85rem;
+}
+
+.ai-density-cozy .ai-section {
+  padding: 4rem 0;
+}
+
+.ai-density-airy .ai-hero-title {
+  letter-spacing: -0.04em;
+}
+
+.ai-section-title {
+  font-size: clamp(2rem, 4vw, 3.15rem);
+  line-height: 0.95;
+  margin-bottom: 1.75rem;
+}
+
+.ai-section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.ai-section-head .ai-section-title {
+  margin-bottom: 0;
+}
+
+.ai-text-link {
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+
+.ai-product-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+.ai-collection-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.ai-collection-card {
+  border: 1px solid color-mix(in srgb, var(--ai-text) 8%, transparent);
+  background: color-mix(in srgb, var(--ai-bg) 70%, var(--ai-secondary));
+}
+
+.ai-collection-media {
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--ai-text) 6%, transparent);
+}
+
+.ai-collection-media img {
+  transition: transform 0.7s ease;
+}
+
+.ai-collection-card:hover .ai-collection-media img {
+  transform: scale(1.05);
+}
+
+.ai-collection-label {
+  padding: 1rem 1.1rem;
+  font-weight: 500;
+}
+
+.ai-media-fallback {
+  background: var(--ai-secondary);
+}
+
+.ai-empty-catalog {
+  text-align: center;
+  padding: 3.5rem 1.5rem;
+  border: 1px dashed color-mix(in srgb, var(--ai-text) 16%, transparent);
+  color: color-mix(in srgb, var(--ai-text) 70%, transparent);
+}
+
+.ai-reviews {
+  background: var(--ai-secondary);
+}
+
+.ai-review-grid {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.ai-review-card {
+  background: var(--ai-bg);
+  padding: 1.5rem;
+}
+
+.ai-review-card p {
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.ai-review-card footer {
+  margin-top: 1rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.ai-about-inner {
+  max-width: 42rem;
+}
+
+.ai-about-body {
+  font-size: 1.125rem;
+  line-height: 1.7;
+  opacity: 0.82;
+  white-space: pre-wrap;
+}
+
+.ai-features {
+  padding: 2.5rem 0;
+  border-block: 1px solid color-mix(in srgb, var(--ai-text) 8%, transparent);
+}
+
+.ai-features-grid {
+  display: grid;
+  gap: 1.75rem;
+}
+
+.ai-feature {
+  display: flex;
+  gap: 0.85rem;
+}
+
+.ai-feature-title {
+  font-weight: 600;
+}
+
+.ai-feature p {
+  font-size: 0.9rem;
+  opacity: 0.7;
+  margin-top: 0.25rem;
+}
+
+.ai-hero-split {
+  display: grid;
+  min-height: 78vh;
+}
+
+.ai-hero-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 2.5rem 1.5rem 3.5rem;
+  gap: 1rem;
+}
+
+.ai-hero-title {
+  font-size: clamp(3rem, 8vw, 5.5rem);
+  line-height: 0.92;
+}
+
+.ai-hero-title-on-dark,
+.ai-hero-sub-on-dark {
+  color: #fff;
+}
+
+.ai-hero-sub {
+  max-width: 28rem;
+  font-size: 1.1rem;
+  line-height: 1.55;
+  opacity: 0.8;
+}
+
+.ai-hero-media {
+  min-height: 320px;
+}
+
+.ai-hero-media img,
+.ai-hero-cover-bg img {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+
+.ai-hero-cover {
+  position: relative;
+  min-height: 82vh;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.ai-hero-cover-bg {
+  position: absolute;
+  inset: 0;
+}
+
+.ai-hero-cover-veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.28) 45%, rgba(0, 0, 0, 0.08));
+}
+
+.ai-marquee {
+  overflow: hidden;
+  white-space: nowrap;
+  border-block: 1px solid color-mix(in srgb, var(--ai-text) 10%, transparent);
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.ai-marquee span {
+  display: inline-block;
+  padding: 0.7rem 0;
+  animation: aiMarquee 22s linear infinite;
+}
+
+@keyframes aiMarquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.ai-lookbook {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 0.75rem;
+}
+
+.ai-lookbook-cell {
+  position: relative;
+}
+
+.ai-lookbook-hero {
+  grid-row: span 2;
+}
+
+.ai-lookbook img {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  min-height: 180px;
+}
+
+.ai-lookbook-caption {
+  position: absolute;
+  left: 0.75rem;
+  bottom: 0.75rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.ai-faq {
+  max-width: 42rem;
+}
+
+.ai-faq-list {
+  border-top: 1px solid color-mix(in srgb, var(--ai-text) 12%, transparent);
+}
+
+.ai-faq-item {
+  width: 100%;
+  text-align: left;
+  padding: 1.1rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--ai-text) 12%, transparent);
+}
+
+.ai-faq-answer {
+  margin-top: 0.55rem;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  opacity: 0.7;
+}
+
+.ai-nav-glass {
+  background: color-mix(in srgb, var(--ai-bg) 82%, transparent);
+  backdrop-filter: blur(18px);
+}
+
+.ai-nav-solid {
+  background: var(--ai-bg);
+}
+
+.ai-nav-transparent {
+  background: transparent;
+}
+
+/* Atelier — Floral-like, airy */
+.ai-layout-atelier .ai-container {
+  width: min(1220px, calc(100% - 2.75rem));
+}
+
+.ai-layout-atelier .ai-product-grid {
+  gap: 1.6rem;
+}
+
+.ai-layout-atelier .ai-hero-copy {
+  padding: 3rem 2rem 4.5rem;
+}
+
+.ai-layout-atelier .ai-hero-title {
+  font-size: clamp(3.4rem, 9vw, 6.4rem);
+}
+
+/* Editorial — magazine scale */
+.ai-layout-editorial .ai-display {
+  letter-spacing: -0.045em;
+}
+
+.ai-layout-editorial .ai-hero-title {
+  font-size: clamp(3.6rem, 11vw, 7.4rem);
+  max-width: 14ch;
+}
+
+.ai-layout-editorial .ai-product-grid,
+.ai-layout-editorial .ai-collection-grid {
+  gap: 0.5rem;
+}
+
+.ai-layout-editorial .ai-section {
+  padding: 5.5rem 0;
+}
+
+.ai-layout-editorial .ai-marquee {
+  font-size: 0.62rem;
+}
+
+/* Luxe dark — gold, centered */
+.ai-layout-luxeDark .ai-announcement,
+.ai-layout-luxeDark .ai-kicker {
+  letter-spacing: 0.32em;
+  color: var(--ai-primary);
+  opacity: 1;
+}
+
+.ai-layout-luxeDark .ai-btn-outline {
+  border-color: var(--ai-primary);
+  color: var(--ai-primary);
+}
+
+.ai-layout-luxeDark .ai-section-title {
+  letter-spacing: 0.02em;
+}
+
+.ai-layout-luxeDark .ai-hero-cover {
+  min-height: 88vh;
+}
+
+/* Minimal — tight Premium-like grid */
+.ai-layout-minimal .ai-container {
+  width: min(1120px, calc(100% - 2rem));
+}
+
+.ai-layout-minimal .ai-product-grid {
+  gap: 1rem;
+}
+
+.ai-layout-minimal .ai-section {
+  padding: 3.5rem 0;
+}
+
+.ai-layout-minimal .ai-hero-title {
+  font-family: var(--ai-heading), system-ui, sans-serif;
+  letter-spacing: -0.05em;
+}
+
+.ai-layout-minimal .ai-btn {
+  letter-spacing: 0.08em;
+}
+
+/* Warm market — artisan paper */
+.ai-layout-warmMarket .ai-container {
+  width: min(1080px, calc(100% - 2.25rem));
+}
+
+.ai-layout-warmMarket .ai-about-inner {
+  max-width: 46rem;
+}
+
+.ai-layout-warmMarket .ai-features {
+  background: var(--ai-secondary);
+  border: none;
+}
+
+@media (min-width: 640px) {
+  .ai-collection-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ai-features-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .ai-review-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .ai-hero-split {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .ai-hero-copy {
+    padding: 4rem 3.5rem 5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .ai-product-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .ai-collection-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .ai-layout-editorial .ai-lookbook {
+    grid-template-columns: 1.4fr 0.8fr 0.8fr;
+    min-height: 520px;
+  }
+}
+
+@media (max-width: 768px) {
+  .ai-lookbook {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Freeform AI document home */
+.ai-freeform-root {
+  min-height: 70vh;
+}
+
+.ai-freeform-host {
+  width: 100%;
+}
+
+.ai-freeform-host img {
+  max-width: 100%;
+  height: auto;
+}
+
+.ai-freeform-products.ai-product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.ai-freeform-host [data-ai-slot='products'],
+.ai-freeform-host [data-ai-slot='collections'],
+.ai-freeform-host [data-ai-slot='reviews'] {
+  min-height: 2rem;
+}
+
+.ai-freeform-host [data-ai-action] {
+  cursor: pointer;
+}
+

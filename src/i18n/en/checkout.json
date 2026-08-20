@@ -22,7 +22,8 @@
     "numberShort": "No.",
     "block": "Block",
     "apartment": "Apartment",
-    "apt": "Apt"
+    "apt": "Apt",
+    "orderNotes": "Order notes"
   },
   "placeholder": {
     "fullName": "Full Name *",
@@ -30,7 +31,8 @@
     "phone": "Phone",
     "street": "Street *",
     "number": "Number *",
-    "discount": "Discount code"
+    "discount": "Discount code",
+    "orderNotes": "Add notes for this order..."
   },
   "delivery": {
     "home": "Home delivery",
@@ -41,7 +43,20 @@
     "selectLocker": "Select a locker",
     "changeLocker": "Change locker",
     "locateMe": "Locate me",
-    "chooseCarrier": "Choose a carrier..."
+    "chooseCarrier": "Choose a carrier...",
+    "calculatedByDistance": "Calculated by distance",
+    "calculating": "Calculating delivery price…",
+    "enterAddress": "Enter a complete address to calculate delivery.",
+    "unavailable": "Delivery is not available to this location.",
+    "quoteArea": "{{county}} — {{km}} km",
+    "quoteBreakdown": "{{price}} × {{qty}} = {{total}}",
+    "quoteTransport": "{{total}} for the whole transport"
+  },
+  "billing": {
+    "title": "Billing address",
+    "help": "This address is printed on the invoice.",
+    "sameAsDelivery": "Same as the delivery address",
+    "lockerHelp": "Locker pickup needs a billing address for the invoice."
   },
   "payment": {
     "method": "Payment Method",
@@ -91,7 +106,8 @@
     "close": "Close cart"
   },
   "review": {
-    "paymentPrefix": "Payment:"
+    "paymentPrefix": "Payment:",
+    "billingPrefix": "Invoice address:"
   },
   "catalog": {
     "title": "Catalog",
@@ -118,9 +134,11 @@
     "paymentVerifyCharged": "Error verifying payment. Please contact support if you were charged.",
     "outOfStock": "Product is out of stock",
     "maxStock": "Maximum stock ({{stock}}) reached",
+    "maxQuantity": "Maximum quantity reached",
     "fillRequired": "Please fill in all required fields",
     "invalidEmail": "Please enter a valid email address",
     "fillAddress": "Please fill in address details",
+    "billingRequired": "Please fill in the billing address for the invoice",
     "selectLocker": "Please select a locker",
     "paymentSuccess": "Payment successful! Thank you for your order.",
     "paymentVerifying": "Payment verification in progress. Please check your email for order confirmation.",

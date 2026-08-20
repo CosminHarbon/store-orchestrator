@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ExportDialog } from '@/components/export/ExportDialog';
 import type { ExportRow } from '@/lib/export/types';
+import { useImpersonation } from '@/hooks/useImpersonation';
 
 interface Product {
   id: string;
@@ -42,13 +43,16 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
   const [exportOpen, setExportOpen] = useState(false);
   
   const queryClient = useQueryClient();
+  const { effectiveUserId } = useImpersonation();
 
   const { data: products, isLoading } = useQuery({
-    queryKey: ['products'],
+    queryKey: ['products', effectiveUserId],
+    enabled: !!effectiveUserId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
         .select('id, title, sku, stock, price, category, low_stock_threshold')
+        .eq('user_id', effectiveUserId!)
         .order('title');
       
       if (error) throw error;

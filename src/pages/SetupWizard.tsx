@@ -29,6 +29,8 @@ import {
   type NetopiaWizardCredentials,
 } from '@/components/payments/NetopiaSetupWizard';
 import { EawbSetupWizard } from '@/components/shipping/EawbSetupWizard';
+import { DeliveryPricingSettings } from '@/components/settings/DeliveryPricingSettings';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -46,10 +48,11 @@ const SetupWizard = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const onboarding = useStoreOnboarding();
+  const queryClient = useQueryClient();
   const [step, setStep] = useState<OnboardingStepId>('welcome');
   const [direction, setDirection] = useState(1);
   const [storeName, setStoreName] = useState('');
-  const [selectedTemplate, setSelectedTemplate] = useState<'elementar' | 'premium' | 'floral' | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<'elementar' | 'premium' | 'floral' | 'ai' | null>(null);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [shippingOpen, setShippingOpen] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -110,6 +113,7 @@ const SetupWizard = () => {
   }, [onboarding.profile?.store_api_key, onboarding.state.selected_template]);
 
   const paymentsConnected = onboarding.derived.payments;
+  const cashOnlyPayments = onboarding.profile?.payment_provider === 'none';
   const shippingConnected = onboarding.derived.shipping;
   const partialReady = !paymentsConnected || !shippingConnected;
 
@@ -230,9 +234,10 @@ const SetupWizard = () => {
                     body={t('storefront.body')}
                     icon={Palette}
                   >
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                       {(
                         [
+                          ['ai', 'from-[#1A0F2E] via-[#3D1B6E] to-[#6E3DFF]'],
                           ['elementar', 'from-stone-200 via-stone-100 to-white'],
                           ['premium', 'from-[#1c2b24] via-[#2a3d34] to-[#0f1612]'],
                           ['floral', 'from-[#f3e4e0] via-[#fbf8f5] to-[#efe8e3]'],
@@ -375,18 +380,46 @@ const SetupWizard = () => {
                     body={t('payments.body')}
                     icon={CreditCard}
                   >
-                    {paymentsConnected ? (
-                      <SuccessInline
-                        title={t('payments.connected')}
-                        body={t('payments.connectedBody')}
-                      />
-                    ) : (
-                      <Button
-                        className="w-full bg-[#6E3DFF] hover:bg-[#4B21B6] sm:w-auto"
+                    <p className="text-sm font-medium">{t('payments.choose')}</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        className="rounded-xl border p-4 text-left hover:border-[#6E3DFF]/50"
                         onClick={() => setPaymentOpen(true)}
                       >
-                        {t('payments.openWizard')}
-                      </Button>
+                        <div className="font-medium">{t('payments.netopiaTitle')}</div>
+                        <p className="mt-1 text-xs text-muted-foreground">{t('payments.netopiaBody')}</p>
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-xl border p-4 text-left hover:border-[#6E3DFF]/50"
+                        onClick={async () => {
+                          if (!user) return;
+                          const { error } = await supabase
+                            .from('profiles')
+                            .update({
+                              payment_provider: 'none',
+                              cash_payment_enabled: true,
+                            })
+                            .eq('user_id', user.id);
+                          if (error) {
+                            toast.error(t('payments.failed'));
+                            return;
+                          }
+                          await queryClient.invalidateQueries({ queryKey: ['store-onboarding-profile', user.id] });
+                          await onboarding.completeStep('payments');
+                          toast.success(t('payments.noneReady'));
+                        }}
+                      >
+                        <div className="font-medium">{t('payments.noneTitle')}</div>
+                        <p className="mt-1 text-xs text-muted-foreground">{t('payments.noneBody')}</p>
+                      </button>
+                    </div>
+                    {paymentsConnected && (
+                      <SuccessInline
+                        title={cashOnlyPayments ? t('payments.connectedNone') : t('payments.connected')}
+                        body={cashOnlyPayments ? t('payments.connectedNoneBody') : t('payments.connectedBody')}
+                      />
                     )}
                     <StepActions
                       onBack={() => go('product', -1)}
@@ -416,12 +449,60 @@ const SetupWizard = () => {
                     body={t('shipping.body')}
                     icon={Truck}
                   >
-                    {shippingConnected ? (
+                    <p className="text-sm font-medium">{t('shipping.choose')}</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        className="rounded-xl border p-4 text-left hover:border-[#6E3DFF]/50"
+                        onClick={() => setShippingOpen(true)}
+                      >
+                        <div className="font-medium">{t('shipping.eawbTitle')}</div>
+                        <p className="mt-1 text-xs text-muted-foreground">{t('shipping.eawbBody')}</p>
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-xl border p-4 text-left hover:border-[#6E3DFF]/50"
+                        onClick={async () => {
+                          if (!user) return;
+                          const { error } = await supabase
+                            .from('profiles')
+                            .update({ shipping_provider: 'manual' })
+                            .eq('user_id', user.id);
+                          if (error) {
+                            toast.error(t('shipping.failed'));
+                            return;
+                          }
+                          await supabase.from('delivery_pricing_settings').upsert({
+                            user_id: user.id,
+                            enabled: true,
+                            pricing_mode: 'distance',
+                            distance_charge: 'flat',
+                            coverage_mode: 'romania',
+                          }, { onConflict: 'user_id' });
+                          await queryClient.invalidateQueries({ queryKey: ['store-onboarding-profile', user.id] });
+                          await onboarding.completeStep('shipping');
+                          toast.success(t('shipping.manualReady'));
+                        }}
+                      >
+                        <div className="font-medium">{t('shipping.manualTitle')}</div>
+                        <p className="mt-1 text-xs text-muted-foreground">{t('shipping.manualBody')}</p>
+                      </button>
+                    </div>
+                    {onboarding.profile?.shipping_provider === 'manual' && user && (
+                      <DeliveryPricingSettings
+                        userId={user.id}
+                        apiKey={onboarding.profile.store_api_key}
+                        ownDelivery
+                        originLabel=""
+                      />
+                    )}
+                    {shippingConnected && onboarding.profile?.shipping_provider !== 'manual' && (
                       <SuccessInline
                         title={t('shipping.connected')}
                         body={t('shipping.connectedBody')}
                       />
-                    ) : (
+                    )}
+                    {onboarding.profile?.shipping_provider !== 'manual' && !shippingConnected && (
                       <Button
                         className="w-full bg-[#6E3DFF] hover:bg-[#4B21B6] sm:w-auto"
                         onClick={() => setShippingOpen(true)}

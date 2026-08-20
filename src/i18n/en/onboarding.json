@@ -54,6 +54,11 @@
       "badge": "Flower shops",
       "description": "Ultra-premium boutique storefront for florists — airy imagery and full checkout."
     },
+    "ai": {
+      "name": "AI Studio",
+      "badge": "Describe it",
+      "description": "Tell us the vibe. We generate the storefront and you publish it to your account."
+    },
     "preview": "Preview",
     "previewDemo": "Demo",
     "previewLive": "Live",
@@ -89,21 +94,36 @@
   },
   "payments": {
     "eyebrow": "Payments",
-    "title": "Accept card payments",
-    "body": "Connect Netopia so customers can pay by card at checkout.",
+    "title": "How do customers pay?",
+    "body": "Connect Netopia for card checkout, or skip the card processor and take cash / ramburs only.",
     "connected": "Payments connected",
     "connectedBody": "Netopia is linked to your store.",
+    "connectedNone": "Cash / ramburs only",
+    "connectedNoneBody": "Card will not appear on the store. Customers pay on delivery.",
     "openWizard": "Connect Netopia",
-    "failed": "We couldn't connect your account yet."
+    "failed": "We couldn't connect your account yet.",
+    "choose": "Payment options",
+    "netopiaTitle": "Netopia (card)",
+    "netopiaBody": "Customers can pay by card at checkout.",
+    "noneTitle": "No payment processor",
+    "noneBody": "No card on the store. Customers pay cash / ramburs on delivery.",
+    "noneReady": "Card payments are turned off. Cash / ramburs stays available at checkout."
   },
   "shipping": {
     "eyebrow": "Shipping",
     "title": "Set up delivery",
-    "body": "Connect eAWB to generate AWBs and offer delivery options to customers.",
+    "body": "Choose courier shipping with eAWB, or deliver orders yourself.",
     "connected": "Shipping connected",
-    "connectedBody": "eAWB is linked to your store.",
+    "connectedBody": "Delivery is set up for your store.",
     "openWizard": "Connect eAWB",
-    "failed": "We couldn't connect your account yet."
+    "failed": "We couldn't connect your account yet.",
+    "choose": "How do you deliver?",
+    "eawbTitle": "Courier (eAWB)",
+    "eawbBody": "Generate AWBs and offer home or locker delivery through carriers.",
+    "manualTitle": "Own delivery",
+    "manualBody": "You deliver with your own team. Set fees by order value or distance, and limit towns or km.",
+    "manualReady": "Own delivery is selected. Configure zones and fees below, or later in Settings.",
+    "useManual": "Use own delivery"
   },
   "settings": {
     "eyebrow": "Store polish",

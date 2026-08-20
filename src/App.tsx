@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { AuthProvider } from '@/hooks/useAuth';
+import { ImpersonationProvider } from '@/hooks/useImpersonation';
 import { useFcmPushNotifications } from '@/hooks/useFcmPushNotifications';
 import {
   AppThemeProvider,
@@ -20,6 +21,8 @@ import NotFound from './pages/NotFound';
 import TemplateViewer from './pages/TemplateViewer';
 import SetupWizard from './pages/SetupWizard';
 import PrivacyPolicy from './pages/PrivacyPolicy';
+import AdminConsole from './pages/AdminConsole';
+import AdminMfa from './pages/AdminMfa';
 
 const PushNotificationInitializer = () => {
   // FCM + Capacitor Push (native only). Legacy OneSignal hook is preserved but unused here.
@@ -39,6 +42,7 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
+      <ImpersonationProvider>
       <LanguageProvider>
         <PushNotificationInitializer />
         <TooltipProvider>
@@ -103,6 +107,22 @@ const App = () => (
                 }
               />
               <Route
+                path="/admin"
+                element={
+                  <AppThemeProvider>
+                    <AdminConsole />
+                  </AppThemeProvider>
+                }
+              />
+              <Route
+                path="/admin/mfa"
+                element={
+                  <AppThemeProvider>
+                    <AdminMfa />
+                  </AppThemeProvider>
+                }
+              />
+              <Route
                 path="/privacy"
                 element={
                   <AppThemeProvider>
@@ -122,6 +142,7 @@ const App = () => (
           </BrowserRouter>
         </TooltipProvider>
       </LanguageProvider>
+      </ImpersonationProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

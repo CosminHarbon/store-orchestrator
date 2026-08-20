@@ -89,6 +89,15 @@ verify_jwt = true
 [functions.ai-chat]
 verify_jwt = true
 
+[functions.ai-studio-generate]
+verify_jwt = true
+
+[functions.ai-studio-refine]
+verify_jwt = true
+
+[functions.ai-studio-publish]
+verify_jwt = true
+
 # Push Notifications - OneSignal push notification service (legacy — keep until FCM migration)
 [functions.push-notification]
 verify_jwt = false

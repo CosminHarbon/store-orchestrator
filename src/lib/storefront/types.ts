@@ -17,6 +17,7 @@ export interface StorefrontProduct {
   category: string;
   collection_ids: string[];
   created_at?: string;
+  show_stock_to_customers?: boolean;
 }
 
 export interface StorefrontCollection {
@@ -45,6 +46,30 @@ export interface StorefrontFeeSettings {
   card_enabled: boolean;
 }
 
+export type DeliveryCoverageMode = 'romania' | 'counties' | 'localities';
+
+export interface StorefrontDeliveryConfig {
+  custom_pricing_enabled: boolean;
+  locker_enabled: boolean;
+  coverage_mode: DeliveryCoverageMode;
+  covered_counties: string[];
+  covered_localities: { county: string; locality: string }[];
+}
+
+export interface DeliveryQuote {
+  enabled: boolean;
+  available: boolean;
+  error?: string;
+  error_message?: string | null;
+  delivery_fee?: number;
+  distance_km?: number;
+  quantity?: number;
+  price_per_unit?: number;
+  charge_mode?: 'flat' | 'per_unit';
+  county?: string;
+  locality?: string;
+}
+
 export interface StorefrontCustomization {
   store_name: string;
   logo_url: string | null;
@@ -55,6 +80,14 @@ export interface StorefrontCustomization {
   show_reviews: boolean;
   footer_text: string;
   primary_color?: string;
+  background_color?: string;
+  text_color?: string;
+  accent_color?: string;
+  secondary_color?: string;
+  font_family?: string;
+  heading_font?: string;
+  border_radius?: string;
+  button_style?: string;
 }
 
 export interface CartItem {
@@ -77,6 +110,14 @@ export interface CheckoutFormState {
   locker_id: string;
   locker_name: string;
   locker_address: string;
+  notes: string;
+  billing_same_as_delivery: boolean;
+  billing_city: string;
+  billing_county: string;
+  billing_street: string;
+  billing_street_number: string;
+  billing_block: string;
+  billing_apartment: string;
 }
 
 export const emptyCheckoutForm = (): CheckoutFormState => ({
@@ -94,4 +135,12 @@ export const emptyCheckoutForm = (): CheckoutFormState => ({
   locker_id: '',
   locker_name: '',
   locker_address: '',
+  notes: '',
+  billing_same_as_delivery: true,
+  billing_city: '',
+  billing_county: '',
+  billing_street: '',
+  billing_street_number: '',
+  billing_block: '',
+  billing_apartment: '',
 });

@@ -1,6 +1,8 @@
 import type {
+  DeliveryQuote,
   StorefrontCollection,
   StorefrontCustomization,
+  StorefrontDeliveryConfig,
   StorefrontFeeSettings,
   StorefrontProduct,
   StorefrontReview,
@@ -50,17 +52,24 @@ function mapProduct(p: any): StorefrontProduct {
     category: p.category || '',
     collection_ids: Array.isArray(p.collection_ids) ? p.collection_ids : [],
     created_at: p.created_at,
+    show_stock_to_customers: p.show_stock_to_customers !== false,
   };
 }
 
-export async function fetchStoreConfig(apiKey: string): Promise<{
+export async function fetchStoreConfig(apiKey: string, opts?: { templateId?: string }): Promise<{
   storeName: string;
   preferredLanguage: string;
   mapboxToken: string;
   fees: StorefrontFeeSettings;
   customization: StorefrontCustomization;
+  showStockToCustomers: boolean;
+  allowOrderNotes: boolean;
+  deliveryConfig: StorefrontDeliveryConfig;
+  aiSpec: unknown | null;
+  activeTemplate: string | null;
 }> {
-  const res = await fetch(`${STORE_API_BASE}/config`, {
+  const qs = opts?.templateId ? `?template_id=${encodeURIComponent(opts.templateId)}` : '';
+  const res = await fetch(`${STORE_API_BASE}/config${qs}`, {
     headers: storeApiHeaders(apiKey),
   });
   const data = await res.json();
@@ -92,6 +101,27 @@ export async function fetchStoreConfig(apiKey: string): Promise<{
       show_reviews: c.show_reviews !== false,
       footer_text: c.footer_text || 'All rights reserved.',
       primary_color: c.primary_color,
+      background_color: c.background_color,
+      text_color: c.text_color,
+      accent_color: c.accent_color,
+      secondary_color: c.secondary_color,
+      font_family: c.font_family,
+      heading_font: c.heading_font,
+      border_radius: c.border_radius,
+      button_style: c.button_style,
+    },
+    aiSpec: data.ai_spec || null,
+    activeTemplate: data.active_template || null,
+    showStockToCustomers: data.show_stock_to_customers !== false,
+    allowOrderNotes: data.allow_order_notes !== false,
+    deliveryConfig: {
+      custom_pricing_enabled: !!(delivery.custom_pricing_enabled),
+      locker_enabled: delivery.locker_enabled !== false,
+      coverage_mode: delivery.coverage_mode || 'romania',
+      covered_counties: Array.isArray(delivery.covered_counties) ? delivery.covered_counties : [],
+      covered_localities: Array.isArray(delivery.covered_localities)
+        ? delivery.covered_localities
+        : [],
     },
   };
 }
@@ -193,4 +223,47 @@ export function productReviewStats(
 
 export function formatRon(amount: number) {
   return `${Number(amount || 0).toFixed(2)} RON`;
+}
+
+export async function fetchDeliveryQuote(
+  apiKey: string,
+  payload: {
+    county: string;
+    city: string;
+    street?: string;
+    street_number?: string;
+    items: { quantity: number; price?: number }[];
+    subtotal?: number;
+  }
+): Promise<DeliveryQuote> {
+  const res = await fetch(`${STORE_API_BASE}/delivery-quote`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...storeApiHeaders(apiKey),
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    return {
+      enabled: true,
+      available: false,
+      error: data.code,
+      error_message: data.error,
+    };
+  }
+  return {
+    enabled: data.enabled !== false,
+    available: !!data.available,
+    error: data.error,
+    error_message: data.error_message,
+    delivery_fee: Number(data.delivery_fee || 0),
+    distance_km: data.distance_km,
+    quantity: data.quantity,
+    price_per_unit: data.price_per_unit,
+    charge_mode: data.charge_mode === 'per_unit' || data.snapshot?.distance_charge === 'per_unit' ? 'per_unit' : 'flat',
+    county: data.county,
+    locality: data.locality,
+  };
 }

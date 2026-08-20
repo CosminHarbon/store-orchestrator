@@ -187,5 +187,46 @@
       "empty": "No images yet — upload your first asset.",
       "uploadFailed": "Upload failed"
     }
+  },
+  "studio": {
+    "badge": "AI Studio",
+    "title": "AI Studio",
+    "hubTitle": "Describe your store",
+    "hubBody": "Tell us what kind of shop you want — like talking to a friend. We design it, preview it live, and publish it to your account.",
+    "open": "Open AI Studio",
+    "cardTitle": "Describe & generate",
+    "cardTag": "Chat + preview",
+    "cardBody": "Type a sentence. We pick colors, layout, and copy, then connect checkout to your products.",
+    "back": "Templates",
+    "placeholder": "I want a calm flower shop, blush pink, elegant…",
+    "empty": "Say what the store should feel like. We'll fill in the rest.",
+    "previewEmpty": "Your live preview will appear here after the first message.",
+    "publish": "Publish to my account",
+    "published": "Published — live URL copied",
+    "publishError": "Could not publish this design",
+    "viewLive": "View live",
+    "openEditor": "Open visual editor",
+    "fast": "Fast",
+    "studioQuality": "Studio",
+    "qualityLabel": "First-generate quality",
+    "qualityFastHint": "Cheaper models for a quick first draft",
+    "qualityStudioHint": "Claude / GPT design pass (recommended)",
+    "error": "Something went wrong. Try again in a moment.",
+    "startOver": "Start over",
+    "usingLayout": "Using {{layout}} layout",
+    "modelUsed": "Model: {{model}}",
+    "catalogLive": "Live catalog",
+    "catalogSample": "Sample catalog",
+    "llmFallback": "A premium layout was still composed from your words. Add ANTHROPIC_API_KEY or OPENAI_API_KEY (and optionally DEEPSEEK_API_KEY) for full AI.",
+    "llmNoCredit": "The AI provider has no credit left. Top up the key in use, then try again.",
+    "llmNotConnected": "No design LLM connected. Add ANTHROPIC_API_KEY or OPENAI_API_KEY in Supabase → Edge Functions → Secrets.",
+    "steps": {
+      "understanding": "Understanding you",
+      "designing": "Designing",
+      "verifying": "Verifying",
+      "building": "Building the page",
+      "ready": "Ready",
+      "error": "Couldn't finish"
+    }
   }
 }

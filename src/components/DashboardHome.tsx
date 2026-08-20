@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
@@ -6,6 +6,7 @@ import { format, startOfYear, subDays } from 'date-fns';
 import { enUS, ro } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useImpersonation } from '@/hooks/useImpersonation';
 import { useStoreOnboarding } from '@/hooks/useStoreOnboarding';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -45,6 +46,50 @@ const DashboardRevenueChart = lazy(() => import('./DashboardRevenueChart'));
 type PerformanceRange = 'today' | '7d' | '30d' | '90d';
 type PerformanceMetric = 'sales' | 'orders';
 type ActivityPreset = 'today' | '3d' | '7d' | '14d' | '30d' | '90d' | 'year' | 'custom';
+
+const DASHBOARD_FILTERS_KEY = 'sv-dashboard-filters';
+
+type PersistedDashboardFilters = {
+  range?: PerformanceRange;
+  metric?: PerformanceMetric;
+  activityPreset?: ActivityPreset;
+  customFrom?: string;
+  customTo?: string;
+};
+
+const PERFORMANCE_RANGES: PerformanceRange[] = ['today', '7d', '30d', '90d'];
+const PERFORMANCE_METRICS: PerformanceMetric[] = ['sales', 'orders'];
+const ACTIVITY_PRESETS: ActivityPreset[] = [
+  'today',
+  '3d',
+  '7d',
+  '14d',
+  '30d',
+  '90d',
+  'year',
+  'custom',
+];
+
+function readDashboardFilters(): PersistedDashboardFilters {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(DASHBOARD_FILTERS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as PersistedDashboardFilters;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeDashboardFilters(next: PersistedDashboardFilters) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(DASHBOARD_FILTERS_KEY, JSON.stringify(next));
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
 
 type ProductRow = {
   id: string;
@@ -157,13 +202,38 @@ export default function DashboardHome({ onTabChange, storeName }: DashboardHomeP
   const navigate = useNavigate();
   const onboarding = useStoreOnboarding();
   const { user } = useAuth();
-  const [range, setRange] = useState<PerformanceRange>('7d');
-  const [metric, setMetric] = useState<PerformanceMetric>('sales');
-  const [activityPreset, setActivityPreset] = useState<ActivityPreset>('today');
-  const [customRange, setCustomRange] = useState({
-    from: subDays(new Date(), 7),
-    to: new Date(),
+  const { effectiveUserId } = useImpersonation();
+  const [range, setRange] = useState<PerformanceRange>(() => {
+    const saved = readDashboardFilters().range;
+    return saved && PERFORMANCE_RANGES.includes(saved) ? saved : '7d';
   });
+  const [metric, setMetric] = useState<PerformanceMetric>(() => {
+    const saved = readDashboardFilters().metric;
+    return saved && PERFORMANCE_METRICS.includes(saved) ? saved : 'sales';
+  });
+  const [activityPreset, setActivityPreset] = useState<ActivityPreset>(() => {
+    const saved = readDashboardFilters().activityPreset;
+    return saved && ACTIVITY_PRESETS.includes(saved) ? saved : 'today';
+  });
+  const [customRange, setCustomRange] = useState(() => {
+    const saved = readDashboardFilters();
+    const from = saved.customFrom ? new Date(saved.customFrom) : null;
+    const to = saved.customTo ? new Date(saved.customTo) : null;
+    return {
+      from: from && !Number.isNaN(from.getTime()) ? from : subDays(new Date(), 7),
+      to: to && !Number.isNaN(to.getTime()) ? to : new Date(),
+    };
+  });
+
+  useEffect(() => {
+    writeDashboardFilters({
+      range,
+      metric,
+      activityPreset,
+      customFrom: customRange.from.toISOString(),
+      customTo: customRange.to.toISOString(),
+    });
+  }, [range, metric, activityPreset, customRange]);
 
   const windowRange = useMemo(() => performanceWindow(range), [range]);
   const activityRange = useMemo(
@@ -188,13 +258,13 @@ export default function DashboardHome({ onTabChange, storeName }: DashboardHomeP
   const { data, isLoading } = useQuery({
     queryKey: [
       'dashboard-command-center',
-      user?.id,
+      effectiveUserId,
       range,
       activityPreset,
       activityRange.start.toISOString(),
       activityRange.end.toISOString(),
     ],
-    enabled: !!user,
+    enabled: !!user && !!effectiveUserId,
     staleTime: 30_000,
     queryFn: async () => {
       const orderFilter = 'order_status.is.null,order_status.neq.awaiting_payment';
@@ -212,45 +282,52 @@ export default function DashboardHome({ onTabChange, storeName }: DashboardHomeP
         supabase
           .from('profiles')
           .select(
-            'store_name, setup_completed, welcome_dismissed, netpopia_api_key, netpopia_signature, eawb_api_key'
+            'store_name, setup_completed, welcome_dismissed, netpopia_api_key, netpopia_signature, eawb_api_key, shipping_provider, payment_provider'
           )
-          .eq('user_id', user!.id)
+          .eq('user_id', effectiveUserId!)
           .single(),
         supabase
           .from('products')
           .select('id, title, sku, stock, low_stock_threshold, image', { count: 'exact' })
+          .eq('user_id', effectiveUserId!)
           .order('updated_at', { ascending: false }),
         supabase
           .from('orders')
           .select(
             'id, customer_name, customer_email, total, payment_status, shipping_status, order_status, awb_number, created_at'
           )
+          .eq('user_id', effectiveUserId!)
           .or(orderFilter)
           .order('created_at', { ascending: false })
           .limit(8),
         supabase
           .from('orders')
           .select('id, total, payment_status, shipping_status, created_at, order_items(quantity)')
+          .eq('user_id', effectiveUserId!)
           .or(orderFilter)
           .gte('created_at', activityRange.start.toISOString())
           .lte('created_at', activityRange.end.toISOString()),
         supabase
           .from('orders')
           .select('id, total, created_at')
+          .eq('user_id', effectiveUserId!)
           .or(orderFilter)
           .gte('created_at', windowRange.start.toISOString())
           .lte('created_at', windowRange.end.toISOString()),
         supabase
           .from('orders')
           .select('id, total, payment_status, shipping_status, awb_number, created_at')
+          .eq('user_id', effectiveUserId!)
           .or(orderFilter),
         supabase
           .from('checkout_sessions' as never)
           .select('id, total, expires_at, created_at, status')
+          .eq('user_id', effectiveUserId!)
           .eq('status', 'pending'),
         supabase
           .from('abandoned_carts' as never)
           .select('id, estimated_total, last_activity_at, status')
+          .eq('user_id', effectiveUserId!)
           .eq('status', 'active'),
       ]);
 
@@ -389,9 +466,12 @@ export default function DashboardHome({ onTabChange, storeName }: DashboardHomeP
       }
 
       const paymentsConnected = Boolean(
-        profile?.netpopia_api_key?.trim() && profile?.netpopia_signature?.trim()
+        profile?.payment_provider === 'none' ||
+          (profile?.netpopia_api_key?.trim() && profile?.netpopia_signature?.trim())
       );
-      const shippingConnected = Boolean(profile?.eawb_api_key?.trim());
+      const shippingConnected = Boolean(
+        profile?.shipping_provider === 'manual' || profile?.eawb_api_key?.trim()
+      );
       const hasProducts = (productsRes.count || 0) > 0;
 
       return {

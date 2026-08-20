@@ -17,6 +17,8 @@ export interface AddressLocalityFieldsProps {
   countyLabel?: string;
   localityLabel?: string;
   labelClassName?: string;
+  allowedCounties?: string[];
+  allowedLocalities?: { county: string; locality: string }[];
 }
 
 /**
@@ -34,6 +36,8 @@ export function AddressLocalityFields({
   countyLabel,
   localityLabel,
   labelClassName,
+  allowedCounties,
+  allowedLocalities,
 }: AddressLocalityFieldsProps) {
   const { t } = useTranslation('shipping');
 
@@ -47,6 +51,7 @@ export function AddressLocalityFields({
           apiKey={apiKey}
           value={county}
           disabled={disabled}
+          allowedCounties={allowedCounties}
           onChange={(c) => onCountyChange(c)}
         />
       </div>
@@ -60,6 +65,7 @@ export function AddressLocalityFields({
           value={city}
           disabled={disabled || !county}
           placeholder={county ? t('locality.searchLocality') : t('locality.selectCountyFirst')}
+          allowedLocalities={allowedLocalities}
           onChange={onLocalityChange}
         />
       </div>

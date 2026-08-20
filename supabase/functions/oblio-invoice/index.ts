@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.53.0';
+import { resolveActingOwnerId } from '../_shared/actingAs.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,6 +18,7 @@ interface OblioTokenResponse {
 interface OblioInvoiceRequest {
   orderId: string;
   action: 'generate' | 'send';
+  acting_as_user_id?: string;
 }
 
 interface OrderWithItems {
@@ -25,6 +27,15 @@ interface OrderWithItems {
   customer_email: string;
   customer_address: string;
   customer_phone: string;
+  billing_address?: string | null;
+  billing_city?: string | null;
+  billing_county?: string | null;
+  billing_street?: string | null;
+  billing_street_number?: string | null;
+  billing_block?: string | null;
+  billing_apartment?: string | null;
+  customer_city?: string | null;
+  customer_county?: string | null;
   total: number;
   created_at: string;
   order_items: Array<{
@@ -38,6 +49,27 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
+
+class OblioApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'OblioApiError';
+    this.status = status;
+  }
+}
+
+function parseOblioErrorMessage(errorText: string, status: number): string {
+  try {
+    const parsed = JSON.parse(errorText);
+    const msg = parsed?.statusMessage || parsed?.message || parsed?.error;
+    if (msg) return String(msg).replace(/\r\n/g, ' ').trim();
+  } catch {
+    /* not JSON */
+  }
+  const trimmed = (errorText || '').replace(/\r\n/g, ' ').trim();
+  return trimmed || `Oblio invoice creation failed (${status})`;
+}
 
 async function getOblioAccessToken(email: string, secretKey: string): Promise<string> {
   console.log('Getting Oblio access token...');
@@ -106,12 +138,32 @@ async function createOblioInvoice(
     productType: "Serviciu"
   }));
 
+  const billingAddress = [
+    order.billing_street,
+    order.billing_street_number,
+    order.billing_block ? `bl. ${order.billing_block}` : '',
+    order.billing_apartment ? `ap. ${order.billing_apartment}` : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+  const invoiceAddress =
+    order.billing_address ||
+    (billingAddress
+      ? `${billingAddress}, ${[order.billing_city, order.billing_county].filter(Boolean).join(', ')}`
+      : order.customer_address);
+  const invoiceCity = order.billing_city || order.customer_city || '';
+  const invoiceCounty = order.billing_county || order.customer_county || '';
+
   const invoiceData = {
     cif: cif,
     client: {
       name: order.customer_name,
       email: order.customer_email,
-      address: order.customer_address,
+      address: invoiceAddress,
+      city: invoiceCity,
+      state: invoiceCounty,
+      country: 'Romania',
       phone: order.customer_phone || "",
       vatPayer: false,
       save: 1,
@@ -145,7 +197,7 @@ async function createOblioInvoice(
   if (!response.ok) {
     const errorText = await response.text();
     console.error('Oblio invoice creation failed:', errorText);
-    throw new Error(`Oblio invoice creation failed: ${response.status} - ${errorText}`);
+    throw new OblioApiError(response.status, parseOblioErrorMessage(errorText, response.status));
   }
 
   const result = await response.json();
@@ -177,11 +229,18 @@ const handler = async (req: Request): Promise<Response> => {
       if (authErr || !user) {
         return new Response('Unauthorized', { status: 401, headers: corsHeaders });
       }
+      const actingAs = url.searchParams.get('acting_as_user_id');
+      let ownerId = user.id;
+      try {
+        ownerId = await resolveActingOwnerId(supabase, user, jwt, actingAs);
+      } catch {
+        return new Response('Unauthorized', { status: 401, headers: corsHeaders });
+      }
       const { data: ord, error: ordErr } = await supabase
         .from('orders')
         .select('invoice_link')
         .eq('id', orderId)
-        .eq('user_id', user.id)
+        .eq('user_id', ownerId)
         .single();
       if (ordErr || !ord?.invoice_link) {
         return new Response('Invoice not found', { status: 404, headers: corsHeaders });
@@ -207,13 +266,14 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Invalid authentication');
     }
 
-    const { orderId, action }: OblioInvoiceRequest = await req.json();
+    const { orderId, action, acting_as_user_id }: OblioInvoiceRequest = await req.json();
+    const ownerId = await resolveActingOwnerId(supabase, user, jwt, acting_as_user_id);
 
     // Get user's Oblio configuration
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('oblio_email, oblio_api_key, oblio_series_name')
-      .eq('user_id', user.id)
+      .eq('user_id', ownerId)
       .single();
 
     if (profileError || !profile) {
@@ -236,7 +296,7 @@ const handler = async (req: Request): Promise<Response> => {
         )
       `)
       .eq('id', orderId)
-      .eq('user_id', user.id)
+      .eq('user_id', ownerId)
       .single();
 
     if (orderError || !order) {
@@ -304,7 +364,7 @@ const handler = async (req: Request): Promise<Response> => {
           updated_at: new Date().toISOString()
         })
         .eq('id', orderId)
-        .eq('user_id', user.id);
+        .eq('user_id', ownerId);
 
       if (updateError) {
         console.error('Error updating order:', updateError);
@@ -377,7 +437,7 @@ const handler = async (req: Request): Promise<Response> => {
           updated_at: new Date().toISOString()
         })
         .eq('id', orderId)
-        .eq('user_id', user.id);
+        .eq('user_id', ownerId);
 
       if (updateError) {
         console.error('Error updating order (send action):', updateError);
@@ -406,14 +466,16 @@ const handler = async (req: Request): Promise<Response> => {
 
   } catch (error: any) {
     console.error('Error in oblio-invoice function:', error);
-    
+    const isOblio = error instanceof OblioApiError;
+    const status = isOblio && error.status >= 400 && error.status < 500 ? 400 : 500;
+
     return new Response(
       JSON.stringify({
         success: false,
         error: error.message || 'Internal server error'
       }),
       {
-        status: 500,
+        status,
         headers: {
           'Content-Type': 'application/json',
           ...corsHeaders,

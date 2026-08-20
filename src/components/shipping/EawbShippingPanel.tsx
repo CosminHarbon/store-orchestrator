@@ -27,6 +27,8 @@ import {
 import { EawbSetupWizard } from '@/components/shipping/EawbSetupWizard';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useImpersonation } from '@/hooks/useImpersonation';
+import { withActingAsUserId } from '@/lib/actingAs';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { goToShippingSettings } from '@/lib/openExternalUrl';
@@ -60,6 +62,7 @@ export function EawbShippingPanel({
   const { t } = useTranslation('settings');
   const { t: tCommon } = useTranslation('common');
   const { user } = useAuth();
+  const { effectiveUserId } = useImpersonation();
   const queryClient = useQueryClient();
 
   const isConnected = Boolean(profile?.eawb_api_key?.trim());
@@ -74,6 +77,7 @@ export function EawbShippingPanel({
     setTestLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('test-eawb-connection', {
+        body: withActingAsUserId({}),
         headers: {
           Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
         },
@@ -92,7 +96,7 @@ export function EawbShippingPanel({
   };
 
   const handleDisconnect = async () => {
-    if (!user) return;
+    if (!user || !effectiveUserId) return;
     setDisconnecting(true);
     try {
       const { error } = await supabase
@@ -115,7 +119,7 @@ export function EawbShippingPanel({
           eawb_pickup_locker_county: null,
           eawb_pickup_locker_city: null,
         })
-        .eq('user_id', user.id);
+        .eq('user_id', effectiveUserId);
 
       if (error) throw error;
 

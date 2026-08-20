@@ -58,6 +58,7 @@ import {
   type ProductStockStatus,
 } from '@/lib/productAnalytics';
 import { cn } from '@/lib/utils';
+import { useImpersonation, resolveTenantUserId } from '@/hooks/useImpersonation';
 
 const ProductTrendsCharts = lazy(() => import('./ProductTrendsCharts'));
 
@@ -71,6 +72,7 @@ interface Product {
   stock: number;
   sku: string;
   low_stock_threshold: number;
+  show_stock_to_customers?: boolean | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -167,13 +169,16 @@ const ProductManagement = () => {
   });
 
   const queryClient = useQueryClient();
+  const { effectiveUserId } = useImpersonation();
 
   const { data: products, isLoading } = useQuery({
-    queryKey: ['products'],
+    queryKey: ['products', effectiveUserId],
+    enabled: !!effectiveUserId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
         .select('*')
+        .eq('user_id', effectiveUserId!)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -182,12 +187,22 @@ const ProductManagement = () => {
   });
 
   const { data: productImages } = useQuery({
-    queryKey: ['all-product-images'],
+    queryKey: ['all-product-images', effectiveUserId],
+    enabled: !!effectiveUserId,
     queryFn: async () => {
+      const { data: tenantProducts, error: productsError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('user_id', effectiveUserId!);
+      if (productsError) throw productsError;
+      const productIds = (tenantProducts || []).map((p) => p.id);
+      if (productIds.length === 0) return [] as ProductImage[];
+
       const { data, error } = await supabase
         .from('product_images')
         .select('*')
-        .eq('is_primary', true);
+        .eq('is_primary', true)
+        .in('product_id', productIds);
 
       if (error) throw error;
       return data as ProductImage[];
@@ -195,11 +210,13 @@ const ProductManagement = () => {
   });
 
   const { data: discounts } = useQuery({
-    queryKey: ['discounts-for-products'],
+    queryKey: ['discounts-for-products', effectiveUserId],
+    enabled: !!effectiveUserId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('discounts')
         .select('*')
+        .eq('user_id', effectiveUserId!)
         .eq('is_active', true);
 
       if (error) throw error;
@@ -215,41 +232,78 @@ const ProductManagement = () => {
   });
 
   const { data: productDiscounts } = useQuery({
-    queryKey: ['product-discounts-for-products'],
+    queryKey: ['product-discounts-for-products', effectiveUserId],
+    enabled: !!effectiveUserId,
     queryFn: async () => {
-      const { data, error } = await supabase.from('product_discounts').select('*');
+      const { data: tenantProducts, error: productsError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('user_id', effectiveUserId!);
+      if (productsError) throw productsError;
+      const productIds = (tenantProducts || []).map((p) => p.id);
+      if (productIds.length === 0) return [] as Array<{ product_id: string; discount_id: string }>;
+
+      const { data, error } = await supabase
+        .from('product_discounts')
+        .select('*')
+        .in('product_id', productIds);
       if (error) throw error;
       return data as Array<{ product_id: string; discount_id: string }>;
     },
   });
 
   const { data: collections } = useQuery({
-    queryKey: ['collections-for-products-filter'],
+    queryKey: ['collections-for-products-filter', effectiveUserId],
+    enabled: !!effectiveUserId,
     queryFn: async () => {
-      const { data, error } = await supabase.from('collections').select('id, name').order('name');
+      const { data, error } = await supabase
+        .from('collections')
+        .select('id, name')
+        .eq('user_id', effectiveUserId!)
+        .order('name');
       if (error) throw error;
       return data as Array<{ id: string; name: string }>;
     },
   });
 
   const { data: productCollections } = useQuery({
-    queryKey: ['product-collections-map'],
+    queryKey: ['product-collections-map', effectiveUserId],
+    enabled: !!effectiveUserId,
     queryFn: async () => {
+      const { data: tenantProducts, error: productsError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('user_id', effectiveUserId!);
+      if (productsError) throw productsError;
+      const productIds = (tenantProducts || []).map((p) => p.id);
+      if (productIds.length === 0) return [] as Array<{ product_id: string; collection_id: string }>;
+
       const { data, error } = await supabase
         .from('product_collections')
-        .select('product_id, collection_id');
+        .select('product_id, collection_id')
+        .in('product_id', productIds);
       if (error) throw error;
       return data as Array<{ product_id: string; collection_id: string }>;
     },
   });
 
   const { data: orderItems } = useQuery({
-    queryKey: ['order-items-for-product-analytics'],
+    queryKey: ['order-items-for-product-analytics', effectiveUserId],
+    enabled: !!effectiveUserId,
     staleTime: 60_000,
     queryFn: async () => {
+      const { data: tenantProducts, error: productsError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('user_id', effectiveUserId!);
+      if (productsError) throw productsError;
+      const productIds = (tenantProducts || []).map((p) => p.id);
+      if (productIds.length === 0) return [] as ProductSaleRow[];
+
       const { data, error } = await supabase
         .from('order_items')
-        .select('product_id, product_title, product_price, quantity, created_at');
+        .select('product_id, product_title, product_price, quantity, created_at')
+        .in('product_id', productIds);
       if (error) throw error;
       return (data || []) as ProductSaleRow[];
     },
@@ -334,6 +388,9 @@ const ProductManagement = () => {
 
   const createProductMutation = useMutation({
     mutationFn: async (productData: any) => {
+      const userId =
+        effectiveUserId ||
+        (await resolveTenantUserId(async () => (await supabase.auth.getUser()).data.user?.id));
       const { data, error } = await supabase
         .from('products')
         .insert({
@@ -341,7 +398,7 @@ const ProductManagement = () => {
           price: parseFloat(productData.price),
           stock: parseInt(productData.stock),
           low_stock_threshold: parseInt(productData.low_stock_threshold || '5'),
-          user_id: (await supabase.auth.getUser()).data.user?.id,
+          user_id: userId,
         })
         .select();
 
@@ -425,7 +482,12 @@ const ProductManagement = () => {
       toast.error(tProducts('toast.skuRequired'));
       return false;
     }
-    let query = supabase.from('products').select('id').eq('sku', trimmed).limit(1);
+    let query = supabase
+      .from('products')
+      .select('id')
+      .eq('sku', trimmed)
+      .eq('user_id', effectiveUserId!)
+      .limit(1);
     if (excludeId) query = query.neq('id', excludeId);
     const { data, error } = await query;
     if (error) {
@@ -548,7 +610,9 @@ const ProductManagement = () => {
   const duplicateSelected = async () => {
     if (!selectedProducts.length) return;
     try {
-      const userId = (await supabase.auth.getUser()).data.user?.id;
+      const userId =
+        effectiveUserId ||
+        (await resolveTenantUserId(async () => (await supabase.auth.getUser()).data.user?.id));
       const payload = selectedProducts.map((p) => ({
         title: tProducts('duplicate.copyOf', { title: p.title }),
         description: p.description,
@@ -597,7 +661,7 @@ const ProductManagement = () => {
     try {
       const { error } = await supabase
         .from('products')
-        .update(patch)
+        .update(patch as { stock?: number; price?: number; category?: string | null })
         .in(
           'id',
           selectedProducts.map((p) => p.id)

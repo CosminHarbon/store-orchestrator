@@ -35,6 +35,7 @@ import {
   type ReviewStatus,
 } from '@/lib/reviewAnalytics';
 import { cn } from '@/lib/utils';
+import { getStoredImpersonationUserId, resolveTenantUserId } from '@/hooks/useImpersonation';
 
 export interface EditorProduct {
   id: string;
@@ -46,6 +47,7 @@ export interface EditorProduct {
   stock: number;
   sku: string;
   low_stock_threshold: number;
+  show_stock_to_customers?: boolean | null;
 }
 
 interface ProductImage {
@@ -88,6 +90,7 @@ type FormState = {
   low_stock_threshold: string;
   category: string;
   description: string;
+  show_stock_override: 'inherit' | 'show' | 'hide';
 };
 
 function toForm(product: EditorProduct): FormState {
@@ -99,6 +102,12 @@ function toForm(product: EditorProduct): FormState {
     low_stock_threshold: String(product.low_stock_threshold ?? 5),
     category: product.category || '',
     description: product.description || '',
+    show_stock_override:
+      product.show_stock_to_customers == null
+        ? 'inherit'
+        : product.show_stock_to_customers
+          ? 'show'
+          : 'hide',
   };
 }
 
@@ -260,7 +269,8 @@ export function ProductEditorDrawer({
       form.stock !== baseline.stock ||
       form.low_stock_threshold !== baseline.low_stock_threshold ||
       form.category !== baseline.category ||
-      form.description !== baseline.description);
+      form.description !== baseline.description ||
+      form.show_stock_override !== baseline.show_stock_override);
 
   const dirtyCollections =
     selectedCollectionIds.slice().sort().join(',') !==
@@ -330,6 +340,10 @@ export function ProductEditorDrawer({
           low_stock_threshold: parseInt(form.low_stock_threshold, 10) || 5,
           category: form.category.trim() || null,
           description: form.description,
+          show_stock_to_customers:
+            form.show_stock_override === 'inherit'
+              ? null
+              : form.show_stock_override === 'show',
         })
         .eq('id', product.id);
       if (error) throw error;
@@ -410,6 +424,7 @@ export function ProductEditorDrawer({
     try {
       const user = await supabase.auth.getUser();
       if (!user.data.user) throw new Error('Not authenticated');
+      const tenantUserId = getStoredImpersonationUserId() || user.data.user.id;
       let maxOrder = images.length ? Math.max(...images.map((i) => i.display_order)) : 0;
       for (const file of list) {
         if (file.size > 10 * 1024 * 1024) {
@@ -417,7 +432,7 @@ export function ProductEditorDrawer({
           continue;
         }
         const fileExt = file.name.split('.').pop();
-        const fileName = `${user.data.user.id}/${product.id}/${Date.now()}-${Math.random()
+        const fileName = `${tenantUserId}/${product.id}/${Date.now()}-${Math.random()
           .toString(36)
           .slice(2)}.${fileExt}`;
         const { error: uploadError } = await supabase.storage
@@ -844,6 +859,27 @@ export function ProductEditorDrawer({
                         ? 'Low Stock'
                         : 'In Stock'}
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="drawer-show-stock">Show stock to customers</Label>
+                    <select
+                      id="drawer-show-stock"
+                      className="w-full h-10 rounded-md border bg-background px-3 text-sm"
+                      value={form.show_stock_override}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          show_stock_override: e.target.value as FormState['show_stock_override'],
+                        })
+                      }
+                    >
+                      <option value="inherit">Use store default</option>
+                      <option value="show">Always show stock</option>
+                      <option value="hide">Hide stock on storefront</option>
+                    </select>
+                    <p className="text-xs text-muted-foreground">
+                      Inventory management still works. This only hides quantity from customers.
+                    </p>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="organization" className="space-y-4 mt-4">
@@ -1001,7 +1037,9 @@ export function ProductEditorDrawer({
                   variant="outline"
                   onClick={async () => {
                     try {
-                      const userId = (await supabase.auth.getUser()).data.user?.id;
+                      const userId = await resolveTenantUserId(
+                        async () => (await supabase.auth.getUser()).data.user?.id
+                      );
                       const skuBase = (form.sku || 'SKU').trim() || 'SKU';
                       const { error } = await supabase.from('products').insert({
                         title: `Copy of ${form.title}`,

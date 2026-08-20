@@ -49,6 +49,7 @@ interface AWBCreationModalProps {
     carrier_name?: string | null;
     service_name?: string | null;
     shipping_cost?: number | null;
+    estimated_delivery_date?: string | null;
   }) => void;
 }
 
@@ -234,6 +235,7 @@ export const AWBCreationModal = ({ isOpen, onClose, order, onSuccess }: AWBCreat
           carrier_name: data.carrier_name,
           service_name: data.service_name,
           shipping_cost: data.shipping_cost,
+          estimated_delivery_date: data.estimated_delivery_date,
         });
         onClose();
         // Reset state

@@ -19,6 +19,8 @@ import { AWBCreationModal } from './AWBCreationModal';
 import { PendingCheckoutsSection } from './PendingCheckoutsSection';
 import { AbandonedCartsSection } from './AbandonedCartsSection';
 import { CodOrderBanner, ShippingSummaryCard } from '@/components/shipping/ShippingSummaryCard';
+import { useImpersonation, resolveTenantUserId } from '@/hooks/useImpersonation';
+import { withActingAsUserId } from '@/lib/actingAs';
 
 interface Order {
   id: string;
@@ -28,6 +30,14 @@ interface Order {
   customer_address: string;
   customer_city?: string | null;
   customer_county?: string | null;
+  billing_same_as_delivery?: boolean | null;
+  billing_address?: string | null;
+  billing_city?: string | null;
+  billing_county?: string | null;
+  billing_street?: string | null;
+  billing_street_number?: string | null;
+  billing_block?: string | null;
+  billing_apartment?: string | null;
   delivery_type?: 'home' | 'locker' | string | null;
   selected_carrier_code?: string | null;
   locker_id?: string | null;
@@ -49,6 +59,19 @@ interface Order {
   awb_shipping_cost?: number | null;
   awb_cod_amount?: number | null;
   locker_deposit_code?: string | null;
+  customer_notes?: string | null;
+  delivery_fee?: number | null;
+  delivery_distance_km?: number | null;
+  delivery_pricing_snapshot?: {
+    method?: string;
+    provider?: string;
+    county?: string;
+    locality?: string;
+    distance_km?: number;
+    quantity?: number;
+    price_per_unit?: number;
+    delivery_fee?: number;
+  } | null;
 }
 
 interface OrderItem {
@@ -79,22 +102,41 @@ const OrderManagement = () => {
   const [dashboardRequestedOrderId, setDashboardRequestedOrderId] = useState<string | null>(null);
   
   const queryClient = useQueryClient();
+  const { effectiveUserId } = useImpersonation();
 
   const generateAndSendInvoice = async (orderId: string) => {
     try {
-      const response = await supabase.functions.invoke('oblio-invoice', {
-        body: {
+      const { data, error } = await supabase.functions.invoke('oblio-invoice', {
+        body: withActingAsUserId({
           orderId,
           action: 'send'
-        }
+        })
       });
 
-      if (response.error) {
-        throw new Error(response.error.message);
+      const message =
+        data?.error ||
+        data?.message ||
+        error?.message ||
+        'Failed to generate and send invoice';
+
+      if (error || data?.success === false) {
+        throw new Error(message);
       }
 
       toast.success('Invoice generated and sent to customer successfully');
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      const invoice = data?.invoice?.data;
+      if (invoice) {
+        setSelectedOrder((prev) =>
+          prev && prev.id === orderId
+            ? {
+                ...prev,
+                invoice_link: invoice.link || prev.invoice_link,
+                payment_status: 'paid',
+              }
+            : prev
+        );
+      }
     } catch (error: any) {
       console.error('Error generating and sending invoice:', error);
       toast.error(error.message || 'Failed to generate and send invoice');
@@ -160,12 +202,14 @@ const OrderManagement = () => {
   };
 
   const { data: orders, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['orders'],
+    queryKey: ['orders', effectiveUserId],
+    enabled: !!effectiveUserId,
     queryFn: async () => {
       // Hide legacy unpaid card attempts; checkout sessions never become orders until paid
       const { data, error } = await supabase
         .from('orders')
         .select('*')
+        .eq('user_id', effectiveUserId!)
         .or('order_status.is.null,order_status.neq.awaiting_payment')
         .order('created_at', { ascending: false });
       
@@ -231,11 +275,11 @@ const OrderManagement = () => {
 
       // Call the payment status function
       const { data, error: statusError } = await supabase.functions.invoke('netopia-payment', {
-        body: {
+        body: withActingAsUserId({
           action: 'payment_status',
           payment_id: transaction.netopia_payment_id,
           user_id: transaction.user_id
-        }
+        })
       });
 
       if (statusError) throw statusError;
@@ -266,16 +310,17 @@ const OrderManagement = () => {
 
   const handleManualComplete = async (orderId: string) => {
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
+      const userId =
+        effectiveUserId ||
+        (await resolveTenantUserId(async () => (await supabase.auth.getUser()).data.user?.id));
 
       const { data, error } = await supabase.functions.invoke('netopia-payment', {
-        body: {
+        body: withActingAsUserId({
           action: 'manual_update',
           order_id: orderId,
           // Provide user_id as a fallback for edge function auth
           user_id: userId,
-        }
+        })
       });
 
       if (error) throw error;
@@ -317,10 +362,10 @@ const OrderManagement = () => {
     
     try {
       const { data, error } = await supabase.functions.invoke('eawb-delivery', {
-        body: {
+        body: withActingAsUserId({
           action: 'cancel_order',
           order_id: orderId
-        }
+        })
       });
 
       if (error) {
@@ -569,6 +614,7 @@ const OrderManagement = () => {
                     carrier_name: result?.carrier_name || prev.carrier_name,
                     awb_service_name: result?.service_name ?? prev.awb_service_name,
                     awb_shipping_cost: result?.shipping_cost ?? prev.awb_shipping_cost,
+                    estimated_delivery_date: result?.estimated_delivery_date || prev.estimated_delivery_date,
                   }
                 : null
             );
@@ -666,6 +712,10 @@ const OrderManagement = () => {
                           Cancel AWB
                         </Button>
                       )}
+                    </div>
+                  ) : selectedOrder.delivery_pricing_snapshot?.provider === 'manual' ? (
+                    <div className="flex-1 rounded-md border px-3 py-2 text-sm text-muted-foreground">
+                      Own delivery — no AWB
                     </div>
                   ) : (
                     <Button
@@ -784,6 +834,63 @@ const OrderManagement = () => {
                       </div>
                     ) : (
                       <div><strong>Address:</strong> {selectedOrder.customer_address}</div>
+                    )}
+                    {(selectedOrder.billing_address || selectedOrder.billing_city) && (
+                      <div className="rounded-lg border bg-muted/30 p-3 mt-2 space-y-1">
+                        <div className="font-medium">Invoice / billing address</div>
+                        {selectedOrder.billing_same_as_delivery && selectedOrder.delivery_type !== 'locker' ? (
+                          <div className="text-muted-foreground">Same as delivery address</div>
+                        ) : null}
+                        <div>
+                          {selectedOrder.billing_address ||
+                            [
+                              selectedOrder.billing_street,
+                              selectedOrder.billing_street_number,
+                              selectedOrder.billing_city,
+                              selectedOrder.billing_county,
+                            ]
+                              .filter(Boolean)
+                              .join(', ')}
+                        </div>
+                      </div>
+                    )}
+                    {selectedOrder.customer_notes && (
+                      <div className="rounded-lg border bg-muted/30 p-3 mt-2">
+                        <div className="font-medium">Order notes</div>
+                        <p className="text-muted-foreground whitespace-pre-wrap mt-1">
+                          {selectedOrder.customer_notes}
+                        </p>
+                      </div>
+                    )}
+                    {selectedOrder.delivery_pricing_snapshot && (
+                      <div className="rounded-lg border bg-muted/30 p-3 mt-2 space-y-1">
+                        <div className="font-medium">Delivery pricing</div>
+                        {selectedOrder.delivery_distance_km != null && (
+                          <div>
+                            Distance: {Number(selectedOrder.delivery_distance_km).toFixed(1)} km
+                          </div>
+                        )}
+                        {selectedOrder.delivery_pricing_snapshot.county && (
+                          <div>
+                            Area: {[
+                              selectedOrder.delivery_pricing_snapshot.locality,
+                              selectedOrder.delivery_pricing_snapshot.county,
+                            ]
+                              .filter(Boolean)
+                              .join(', ')}
+                          </div>
+                        )}
+                        {selectedOrder.delivery_fee != null && (
+                          <div>Delivery fee: {Number(selectedOrder.delivery_fee).toFixed(2)} RON</div>
+                        )}
+                        {selectedOrder.delivery_pricing_snapshot.price_per_unit != null && (
+                          <div>
+                            {Number(selectedOrder.delivery_pricing_snapshot.price_per_unit).toFixed(2)} RON
+                            {' × '}
+                            {selectedOrder.delivery_pricing_snapshot.quantity || 1}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </CardContent>
                 </Card>

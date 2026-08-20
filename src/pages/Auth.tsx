@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { Capacitor } from '@capacitor/core';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { BrandLogo } from '@/components/brand/BrandLogo';
+import { resolvePostLoginPath } from '@/hooks/useSuperadminGate';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 6;
@@ -43,7 +44,7 @@ const Auth = () => {
     }
     
     if (user) {
-      navigate('/app');
+      void resolvePostLoginPath().then((path) => navigate(path, { replace: true }));
     }
   }, [user, navigate]);
 
@@ -92,7 +93,8 @@ const Auth = () => {
       setError(error.message);
     } else {
       toast.success(t('toast.signedIn'));
-      navigate('/app');
+      const path = await resolvePostLoginPath();
+      navigate(path, { replace: true });
     }
     
     setLoading(false);

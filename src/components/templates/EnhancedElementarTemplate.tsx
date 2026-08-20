@@ -24,8 +24,12 @@ import { fetchStoreReviews } from "@/lib/storefront/api";
 import type { StorefrontReview } from "@/lib/storefront/types";
 import { LockerPicker } from "@/components/lockers/LockerPicker";
 import { AddressLocalityFields } from "@/components/address/AddressLocalityFields";
+import { CheckoutNotesField, CheckoutBillingFields, DeliveryQuoteDetails, deliveryQuoteSummary } from "@/components/storefront/CheckoutExtras";
 import { applyStorefrontLanguage } from "@/i18n/LanguageProvider";
 import { getDemoCatalog } from "@/lib/storefront/demoCatalog";
+import { fetchDeliveryQuote } from "@/lib/storefront/api";
+import { isBillingComplete, resolvedBilling } from "@/lib/storefront/billing";
+import type { DeliveryQuote, StorefrontDeliveryConfig } from "@/lib/storefront/types";
 import { isAppLanguage, type AppLanguage } from "@/i18n/types";
 import { StorefrontDemoBanner } from "@/components/templates/StorefrontDemoBanner";
 import { StorefrontLanguageToggle } from "@/components/templates/StorefrontLanguageToggle";
@@ -39,6 +43,7 @@ interface Product {
   stock: number;
   category: string;
   collection_ids?: string[];
+  show_stock_to_customers?: boolean;
 }
 
 interface Collection {
@@ -143,8 +148,19 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
     cash_payment_enabled: true,
     cash_payment_fee: 0,
     home_delivery_fee: 0,
-    locker_delivery_fee: 0
+    locker_delivery_fee: 0,
+    card_enabled: true,
   });
+  const [allowOrderNotes, setAllowOrderNotes] = useState(true);
+  const [deliveryConfig, setDeliveryConfig] = useState<StorefrontDeliveryConfig>({
+    custom_pricing_enabled: false,
+    locker_enabled: true,
+    coverage_mode: 'romania',
+    covered_counties: [],
+    covered_localities: [],
+  });
+  const [deliveryQuote, setDeliveryQuote] = useState<DeliveryQuote | null>(null);
+  const [deliveryQuoteLoading, setDeliveryQuoteLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash'>('card');
 
   const [checkoutForm, setCheckoutForm] = useState({
@@ -162,6 +178,14 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
     locker_id: "",
     locker_name: "",
     locker_address: "",
+    notes: "",
+    billing_same_as_delivery: true,
+    billing_city: "",
+    billing_county: "",
+    billing_street: "",
+    billing_street_number: "",
+    billing_block: "",
+    billing_apartment: "",
   });
 
   const SUPABASE_URL = "https://mkkqbekhvcnwcheegjpy.supabase.co";
@@ -252,6 +276,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
         cash_payment_fee: catalog.fees.cash_payment_fee,
         home_delivery_fee: catalog.fees.home_delivery_fee,
         locker_delivery_fee: catalog.fees.locker_delivery_fee,
+        card_enabled: catalog.fees.card_enabled !== false,
       });
       setProducts(
         catalog.products.map((p) => ({
@@ -263,6 +288,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
           stock: p.stock,
           category: p.category,
           collection_ids: p.collection_ids,
+          show_stock_to_customers: p.show_stock_to_customers !== false,
         }))
       );
       const collectionMap: Record<string, string[]> = {};
@@ -300,14 +326,28 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
           }
         }
         void applyStorefrontLanguage(data.preferred_language);
-        if (data.cash_payment_enabled !== undefined) {
+        if (data.cash_payment_enabled !== undefined || data.payment) {
+          const cardEnabled = data.payment?.card_enabled !== false;
+          const cashEnabled = data.payment?.cash_enabled ?? data.cash_payment_enabled ?? true;
           setFeeSettings({
-            cash_payment_enabled: data.cash_payment_enabled,
-            cash_payment_fee: data.cash_payment_fee || 0,
-            home_delivery_fee: data.home_delivery_fee || 0,
-            locker_delivery_fee: data.locker_delivery_fee || 0
+            cash_payment_enabled: cashEnabled,
+            cash_payment_fee: data.cash_payment_fee || data.payment?.cash_fee || 0,
+            home_delivery_fee: data.home_delivery_fee || data.delivery?.home_fee || 0,
+            locker_delivery_fee: data.locker_delivery_fee || data.delivery?.locker_fee || 0,
+            card_enabled: cardEnabled,
           });
+          if (!cardEnabled && cashEnabled) {
+            setPaymentMethod('cash');
+          }
         }
+        setAllowOrderNotes(data.allow_order_notes !== false);
+        setDeliveryConfig({
+          custom_pricing_enabled: !!data.delivery?.custom_pricing_enabled,
+          locker_enabled: data.delivery?.locker_enabled !== false,
+          coverage_mode: data.delivery?.coverage_mode || 'romania',
+          covered_counties: data.delivery?.covered_counties || [],
+          covered_localities: data.delivery?.covered_localities || [],
+        });
       } catch (error) {
         console.error('Failed to fetch config:', error);
       }
@@ -403,6 +443,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
           stock: p.stock || 0,
           category: p.category || "",
           collection_ids: p.collection_ids || [],
+          show_stock_to_customers: p.show_stock_to_customers !== false,
         }));
         
         setProducts(mappedProducts);
@@ -478,10 +519,70 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
   };
 
   const cartTotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const deliveryFee = checkoutForm.delivery_type === 'home' ? feeSettings.home_delivery_fee : feeSettings.locker_delivery_fee;
+  const customHomePricing =
+    deliveryConfig.custom_pricing_enabled && checkoutForm.delivery_type === 'home';
+  const deliveryFee = customHomePricing
+    ? deliveryQuote?.available
+      ? Number(deliveryQuote.delivery_fee || 0)
+      : 0
+    : checkoutForm.delivery_type === 'home' ? feeSettings.home_delivery_fee : feeSettings.locker_delivery_fee;
   const paymentFee = paymentMethod === 'cash' && feeSettings.cash_payment_enabled ? feeSettings.cash_payment_fee : 0;
   const orderTotal = cartTotal + deliveryFee + paymentFee;
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  useEffect(() => {
+    if (demo || !deliveryConfig.custom_pricing_enabled || checkoutForm.delivery_type !== 'home') {
+      setDeliveryQuote(null);
+      setDeliveryQuoteLoading(false);
+      return;
+    }
+    const ready =
+      !!checkoutForm.county &&
+      !!checkoutForm.city &&
+      !!checkoutForm.street &&
+      !!checkoutForm.street_number &&
+      cart.length > 0;
+    if (!ready) {
+      setDeliveryQuote(null);
+      return;
+    }
+    let cancelled = false;
+    setDeliveryQuoteLoading(true);
+    const timer = window.setTimeout(() => {
+      void fetchDeliveryQuote(apiKey, {
+        county: checkoutForm.county,
+        city: checkoutForm.city,
+        street: checkoutForm.street,
+        street_number: checkoutForm.street_number,
+        items: cart.map((item) => ({ quantity: item.quantity, price: item.product.price })),
+      })
+        .then((quote) => {
+          if (!cancelled) setDeliveryQuote(quote);
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setDeliveryQuote({ enabled: true, available: false, error: 'DISTANCE_UNAVAILABLE' });
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setDeliveryQuoteLoading(false);
+        });
+    }, 350);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    apiKey,
+    cart,
+    checkoutForm.city,
+    checkoutForm.county,
+    checkoutForm.delivery_type,
+    checkoutForm.street,
+    checkoutForm.street_number,
+    demo,
+    deliveryConfig.custom_pricing_enabled,
+  ]);
 
   const abandonedCartItems = useMemo(
     () =>
@@ -571,11 +672,19 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
         toast.error(t("toast.fillAddress"));
         return;
       }
+      if (customHomePricing && (deliveryQuoteLoading || !deliveryQuote?.available)) {
+        toast.error(deliveryQuote?.error_message || t("delivery.unavailable"));
+        return;
+      }
     } else {
       if (!checkoutForm.selected_carrier_code || !checkoutForm.locker_id) {
         toast.error(t("toast.selectLocker"));
         return;
       }
+    }
+    if (!isBillingComplete(checkoutForm)) {
+      toast.error(t("toast.billingRequired"));
+      return;
     }
 
     try {
@@ -594,6 +703,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
         customer_street_number: checkoutForm.street_number,
         customer_block: checkoutForm.block || null,
         customer_apartment: checkoutForm.apartment || null,
+        ...resolvedBilling(checkoutForm),
         delivery_type: checkoutForm.delivery_type,
         selected_carrier_code: checkoutForm.selected_carrier_code || null,
         locker_id: checkoutForm.locker_id || null,
@@ -601,6 +711,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
         locker_address: checkoutForm.locker_address || null,
         total: orderTotal,
         payment_method: paymentMethod,
+        customer_notes: checkoutForm.notes || null,
         session_token: getSessionToken() || undefined,
         items: cart.map((item) => ({
           product_id: item.product.id,
@@ -862,7 +973,11 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
                   className={`text-xs px-2 py-1 ${colors.border_radius}`}
                   style={{ backgroundColor: colors.secondary_color, color: colors.accent_color }}
                 >
-                  {product.stock < 5 ? `Only ${product.stock} left` : 'In Stock'}
+                  {product.show_stock_to_customers === false
+                    ? t("product.inStock")
+                    : product.stock < 5
+                      ? `Only ${product.stock} left`
+                      : 'In Stock'}
                 </span>
               ) : (
                 <span 
@@ -1248,7 +1363,9 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
                       className={`text-sm px-3 py-1 ${colors.border_radius}`}
                       style={{ backgroundColor: colors.secondary_color }}
                     >
-                      ✓ {selectedProduct.stock} in stock
+                      {selectedProduct.show_stock_to_customers === false
+                        ? `✓ ${t("product.inStock")}`
+                        : `✓ ${selectedProduct.stock} in stock`}
                     </span>
                   ) : (
                     <span 
@@ -1433,6 +1550,11 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
                       <span style={{ color: colors.accent_color }}>{t("summary.delivery")}</span>
                       <span>{formatPrice(deliveryFee)}</span>
                     </div>
+                    {customHomePricing && deliveryQuote?.available && (
+                      <p className="text-xs" style={{ color: colors.accent_color }}>
+                        {deliveryQuoteSummary(deliveryQuote, t)}
+                      </p>
+                    )}
                   </div>
                   <div className="border-t pt-4 mb-6" style={{ borderColor: `${colors.primary_color}20` }}>
                     <div className="flex justify-between text-lg font-semibold">
@@ -1522,6 +1644,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
                       <HomeIcon className="h-5 w-5" />
                       {t("delivery.home")}
                     </button>
+                    {deliveryConfig.locker_enabled !== false && (
                     <button
                       onClick={() => setCheckoutForm({ ...checkoutForm, delivery_type: "locker" })}
                       className={`flex-1 p-4 ${colors.border_radius} flex items-center gap-2 ${animationClass}`}
@@ -1534,6 +1657,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
                       <MapPin className="h-5 w-5" />
                       {t("delivery.locker")}
                     </button>
+                    )}
                   </div>
 
                   {checkoutForm.delivery_type === "home" && (
@@ -1542,6 +1666,21 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
                         apiKey={apiKey}
                         county={checkoutForm.county}
                         city={checkoutForm.city}
+                        allowedCounties={
+                          deliveryConfig.custom_pricing_enabled &&
+                          deliveryConfig.coverage_mode === 'counties'
+                            ? deliveryConfig.covered_counties
+                            : deliveryConfig.custom_pricing_enabled &&
+                                deliveryConfig.coverage_mode === 'localities'
+                              ? deliveryConfig.covered_localities.map((item) => item.county)
+                              : undefined
+                        }
+                        allowedLocalities={
+                          deliveryConfig.custom_pricing_enabled &&
+                          deliveryConfig.coverage_mode === 'localities'
+                            ? deliveryConfig.covered_localities
+                            : undefined
+                        }
                         onCountyChange={(county) =>
                           setCheckoutForm({ ...checkoutForm, county, city: "" })
                         }
@@ -1583,6 +1722,12 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
                           style={{ backgroundColor: colors.background_color, border: `1px solid ${colors.primary_color}20` }}
                         />
                       </div>
+                      <DeliveryQuoteDetails
+                        quote={deliveryQuote}
+                        loading={deliveryQuoteLoading}
+                        customEnabled={deliveryConfig.custom_pricing_enabled}
+                        deliveryType={checkoutForm.delivery_type}
+                      />
                     </div>
                   )}
 
@@ -1617,13 +1762,30 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
                       }}
                     />
                   )}
+                  <CheckoutBillingFields
+                    form={checkoutForm}
+                    onChange={setCheckoutForm}
+                    apiKey={apiKey}
+                    inputClassName={`mt-1 w-full p-3 ${colors.border_radius}`}
+                  />
                 </div>
               </div>
+
+              {allowOrderNotes && (
+                <div className={`p-6 ${colors.border_radius}`} style={{ backgroundColor: colors.secondary_color }}>
+                  <CheckoutNotesField
+                    value={checkoutForm.notes}
+                    onChange={(notes) => setCheckoutForm({ ...checkoutForm, notes })}
+                    inputClassName={`mt-1 w-full p-3 ${colors.border_radius}`}
+                  />
+                </div>
+              )}
 
               {/* Payment */}
               <div className={`p-6 ${colors.border_radius}`} style={{ backgroundColor: colors.secondary_color }}>
                 <h2 className="text-xl font-semibold mb-4">{t("payment.method")}</h2>
                 <div className="flex gap-4">
+                  {feeSettings.card_enabled && (
                   <button
                     onClick={() => setPaymentMethod("card")}
                     className={`flex-1 p-4 ${colors.border_radius} flex items-center gap-2 ${animationClass}`}
@@ -1636,6 +1798,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
                     <CreditCard className="h-5 w-5" />
                     {t("payment.card")}
                   </button>
+                  )}
                   {feeSettings.cash_payment_enabled && (
                     <button
                       onClick={() => setPaymentMethod("cash")}
@@ -1672,6 +1835,11 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
                       <span style={{ color: colors.accent_color }}>{t("summary.delivery")}</span>
                       <span>{formatPrice(deliveryFee)}</span>
                     </div>
+                    {customHomePricing && deliveryQuote?.available && (
+                      <p className="text-xs" style={{ color: colors.accent_color }}>
+                        {deliveryQuoteSummary(deliveryQuote, t)}
+                      </p>
+                    )}
                     {paymentFee > 0 && (
                       <div className="flex justify-between">
                         <span style={{ color: colors.accent_color }}>{t("payment.fee")}</span>
@@ -1688,7 +1856,8 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
                 </div>
                 <button
                   onClick={handleCheckout}
-                  className={`w-full py-4 ${getButtonStyles('primary')}`}
+                  disabled={customHomePricing && (deliveryQuoteLoading || !deliveryQuote?.available)}
+                  className={`w-full py-4 ${getButtonStyles('primary')} disabled:opacity-50`}
                 >
                   {paymentMethod === 'card' ? t("payNow") : t("action.placeOrder")}
                 </button>

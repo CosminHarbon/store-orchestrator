@@ -33,6 +33,8 @@ import {
 import { NetopiaSetupWizard, type NetopiaWizardCredentials } from '@/components/payments/NetopiaSetupWizard';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useImpersonation } from '@/hooks/useImpersonation';
+import { withActingAsUserId } from '@/lib/actingAs';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type { ReactNode } from 'react';
@@ -97,6 +99,7 @@ export function NetopiaPaymentPanel({
   const { t } = useTranslation('settings');
   const { t: tCommon } = useTranslation('common');
   const { user } = useAuth();
+  const { effectiveUserId } = useImpersonation();
   const queryClient = useQueryClient();
 
   const isConnected = Boolean(savedApiKey?.trim() && savedSignature?.trim());
@@ -127,13 +130,13 @@ export function NetopiaPaymentPanel({
     setTestLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('netopia-payment', {
-        body: {
+        body: withActingAsUserId({
           action: 'test_connection',
           api_key: config.api_key,
           signature: config.signature,
           public_key: config.public_key || null,
           sandbox: config.sandbox,
-        },
+        }),
       });
 
       if (error) {
@@ -153,7 +156,7 @@ export function NetopiaPaymentPanel({
   };
 
   const handleDisconnect = async () => {
-    if (!user) return;
+    if (!user || !effectiveUserId) return;
     setDisconnecting(true);
     try {
       const { error } = await supabase
@@ -163,7 +166,7 @@ export function NetopiaPaymentPanel({
           netpopia_signature: null,
           netpopia_public_key: null,
         })
-        .eq('user_id', user.id);
+        .eq('user_id', effectiveUserId);
 
       if (error) throw error;
 

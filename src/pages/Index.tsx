@@ -6,6 +6,7 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { MobileHeader } from '@/components/MobileHeader';
 import { useAuth } from '@/hooks/useAuth';
+import { useImpersonation } from '@/hooks/useImpersonation';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,6 +23,7 @@ import { MessageCircle } from 'lucide-react';
 import AIChat from '@/components/AIChat';
 import DashboardHome from '@/components/DashboardHome';
 import { BottomNavigation } from '@/components/BottomNavigation';
+import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +39,12 @@ const Index = () => {
   const { t } = useTranslation('dashboard');
   const { t: tCommon } = useTranslation('common');
   const { user, loading } = useAuth();
+  const {
+    isImpersonating,
+    impersonatedLabel,
+    effectiveUserId,
+    stopImpersonation,
+  } = useImpersonation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState(() => {
@@ -111,14 +119,30 @@ const Index = () => {
     }
   }, [user, loading, navigate]);
 
+  // Platform operators use /admin unless they are impersonating a merchant store
+  useEffect(() => {
+    const routeSuperadmin = async () => {
+      if (!user) return;
+      if (isImpersonating) return;
+      const { data: isSuper } = await supabase.rpc('is_superadmin_user');
+      if (isSuper) {
+        navigate('/admin', { replace: true });
+      }
+    };
+    void routeSuperadmin();
+  }, [user, navigate, isImpersonating]);
+
   // Auto-open store setup for first-time merchants only
   useEffect(() => {
     const checkSetup = async () => {
-      if (!user) return;
+      if (!user || !effectiveUserId) return;
+      if (isImpersonating) return;
+      const { data: isSuper } = await supabase.rpc('is_superadmin_user');
+      if (isSuper) return;
       const { data: profile } = await supabase
         .from('profiles')
         .select('setup_completed, welcome_dismissed')
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
         .single();
 
       if (
@@ -131,15 +155,19 @@ const Index = () => {
     };
 
     checkSetup();
-  }, [user, navigate]);
+  }, [user, navigate, effectiveUserId, isImpersonating]);
 
   const { data: profileData } = useQuery({
-    queryKey: ['dashboard-profile'],
+    queryKey: ['dashboard-profile', effectiveUserId],
     queryFn: async () => {
-      const { data } = await supabase.from('profiles').select('store_name').eq('user_id', user?.id).single();
+      const { data } = await supabase
+        .from('profiles')
+        .select('store_name')
+        .eq('user_id', effectiveUserId!)
+        .single();
       return data;
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   if (loading) {
@@ -227,6 +255,28 @@ const Index = () => {
         <AppSidebar activeTab={activeTab} onTabChange={handleTabChange} />
         
         <div className="flex-1 flex flex-col min-w-0">
+          {isImpersonating ? (
+            <div className="sticky top-0 z-50 flex flex-wrap items-center justify-between gap-2 border-b bg-amber-500/15 px-3 py-2 text-sm">
+              <div className="flex items-center gap-2 min-w-0">
+                <Badge variant="secondary">Superadmin</Badge>
+                <span className="truncate">
+                  Acting as {impersonatedLabel || profileData?.store_name || 'merchant store'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    stopImpersonation();
+                    navigate('/admin');
+                  }}
+                >
+                  Exit to platform admin
+                </Button>
+              </div>
+            </div>
+          ) : null}
           <MobileHeader 
             userEmail={user.email || undefined} 
             storeName={profileData?.store_name || t('defaultStoreName')}

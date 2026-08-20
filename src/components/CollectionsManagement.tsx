@@ -37,6 +37,7 @@ import { toast } from 'sonner';
 import { formatRon } from '@/lib/paymentAnalytics';
 import { cn } from '@/lib/utils';
 import { formatShortDate } from '@/i18n/format';
+import { useImpersonation, resolveTenantUserId } from '@/hooks/useImpersonation';
 
 type SortKey = 'name' | 'product_count' | 'inventory_value' | 'revenue' | 'updated_at';
 
@@ -73,6 +74,7 @@ const CollectionsManagement = () => {
   const { t: tCollections } = useTranslation('collections');
   const { t: tCommon } = useTranslation('common');
   const queryClient = useQueryClient();
+  const { effectiveUserId } = useImpersonation();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('updated_at');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -99,11 +101,13 @@ const CollectionsManagement = () => {
   };
 
   const { data: rawCollections, isLoading } = useQuery({
-    queryKey: ['collections'],
+    queryKey: ['collections', effectiveUserId],
+    enabled: !!effectiveUserId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('collections')
         .select('*')
+        .eq('user_id', effectiveUserId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
@@ -111,11 +115,13 @@ const CollectionsManagement = () => {
   });
 
   const { data: products = [] } = useQuery({
-    queryKey: ['products-for-collections'],
+    queryKey: ['products-for-collections', effectiveUserId],
+    enabled: !!effectiveUserId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
         .select('id, title, sku, price, category, stock')
+        .eq('user_id', effectiveUserId!)
         .order('title');
       if (error) throw error;
       return data || [];
@@ -123,22 +129,42 @@ const CollectionsManagement = () => {
   });
 
   const { data: productCollections = [] } = useQuery({
-    queryKey: ['product-collections-map'],
+    queryKey: ['product-collections-map', effectiveUserId],
+    enabled: !!effectiveUserId,
     queryFn: async () => {
+      const { data: tenantProducts, error: productsError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('user_id', effectiveUserId!);
+      if (productsError) throw productsError;
+      const productIds = (tenantProducts || []).map((p) => p.id);
+      if (productIds.length === 0) return [];
+
       const { data, error } = await supabase
         .from('product_collections')
-        .select('product_id, collection_id, created_at');
+        .select('product_id, collection_id, created_at')
+        .in('product_id', productIds);
       if (error) throw error;
       return data || [];
     },
   });
 
   const { data: orderItems = [] } = useQuery({
-    queryKey: ['order-items-for-collections'],
+    queryKey: ['order-items-for-collections', effectiveUserId],
+    enabled: !!effectiveUserId,
     queryFn: async () => {
+      const { data: tenantProducts, error: productsError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('user_id', effectiveUserId!);
+      if (productsError) throw productsError;
+      const productIds = (tenantProducts || []).map((p) => p.id);
+      if (productIds.length === 0) return [];
+
       const { data, error } = await supabase
         .from('order_items')
-        .select('product_id, quantity, price');
+        .select('product_id, quantity, price')
+        .in('product_id', productIds);
       if (error) throw error;
       return data || [];
     },
@@ -283,9 +309,12 @@ const CollectionsManagement = () => {
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof createForm) => {
+      const userId =
+        effectiveUserId ||
+        (await resolveTenantUserId(async () => (await supabase.auth.getUser()).data.user?.id));
       const { data: result, error } = await supabase
         .from('collections')
-        .insert([{ ...data, user_id: (await supabase.auth.getUser()).data.user?.id }])
+        .insert([{ ...data, user_id: userId }])
         .select()
         .single();
       if (error) throw error;

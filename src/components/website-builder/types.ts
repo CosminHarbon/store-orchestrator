@@ -285,6 +285,14 @@ export function getDefaultBlockContent(type: string): BlockContent {
       };
     case 'video':
       return { videoUrl: '', videoType: 'youtube' };
+    case 'faq':
+      return { faqItems: [{ q: 'How fast is shipping?', a: 'Orders leave within 24–48h.' }] };
+    case 'about':
+      return { text: 'Tell the story of your shop.' };
+    case 'features':
+      return { features: [{ title: 'Fast delivery', body: 'Home or locker, nationwide.' }] };
+    case 'custom-html':
+      return { html: '<div class="welcome">Hello</div>', css: '.welcome { padding: 2rem; text-align: center; }' };
     default:
       return { text: '' };
   }

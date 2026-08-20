@@ -7,27 +7,28 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { VisualEditor } from './VisualEditor';
+import AIStudio from '@/components/ai-studio/AIStudio';
 import '@/styles/website-builder.css';
+import { useImpersonation } from '@/hooks/useImpersonation';
 
-type BuilderView = 'gallery' | 'editor';
+type BuilderView = 'gallery' | 'editor' | 'studio';
 
 export default function WebsiteBuilder() {
   const { t } = useTranslation('templates');
   const { t: tCommon } = useTranslation('common');
+  const { effectiveUserId } = useImpersonation();
   const [view, setView] = useState<BuilderView>('gallery');
+  const [editorTemplateId, setEditorTemplateId] = useState('elementar');
   const [copiedKey, setCopiedKey] = useState(false);
 
   const { data: profile } = useQuery({
-    queryKey: ['profile'],
+    queryKey: ['profile', effectiveUserId],
+    enabled: !!effectiveUserId,
     queryFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
       const { data, error } = await supabase
         .from('profiles')
         .select('store_api_key, store_name')
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId!)
         .single();
       if (error) throw error;
       return data;
@@ -46,7 +47,21 @@ export default function WebsiteBuilder() {
     return (
       <VisualEditor
         apiKey={profile?.store_api_key}
+        templateId={editorTemplateId}
         onBack={() => setView('gallery')}
+      />
+    );
+  }
+
+  if (view === 'studio') {
+    return (
+      <AIStudio
+        apiKey={profile?.store_api_key}
+        onBack={() => setView('gallery')}
+        onOpenEditor={() => {
+          setEditorTemplateId('ai');
+          setView('editor');
+        }}
       />
     );
   }
@@ -92,7 +107,9 @@ export default function WebsiteBuilder() {
               ? t('toast.floralUrlCopied')
               : id === 'premium'
                 ? t('toast.premiumUrlCopied')
-                : t('toast.apiKeyCopied')
+                : id === 'ai'
+                  ? t('studio.published')
+                  : t('toast.apiKeyCopied')
           );
         }}
       >
@@ -119,14 +136,37 @@ export default function WebsiteBuilder() {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70">
               <Sparkles className="h-3.5 w-3.5 text-[#C4B5FF]" />
-              {t('builder.hubLiveBadge')}
+              {t('studio.badge')}
             </div>
-            <h2 className="text-xl font-semibold">{t('builder.hubCtaTitle')}</h2>
-            <p className="max-w-xl text-sm text-white/65">{t('builder.hubCtaBody')}</p>
+            <h2 className="text-xl font-semibold">{t('studio.hubTitle')}</h2>
+            <p className="max-w-xl text-sm text-white/65">{t('studio.hubBody')}</p>
           </div>
           <Button
             className="h-11 rounded-full bg-white px-5 text-[#1A0F2E] hover:bg-white/90"
-            onClick={() => setView('editor')}
+            onClick={() => setView('studio')}
+            disabled={!profile?.store_api_key}
+          >
+            {t('studio.open')}
+          </Button>
+        </div>
+      </div>
+
+      <div className="rounded-3xl border bg-gradient-to-br from-[#F4F0FF] to-white p-5 shadow-sm md:p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 rounded-full border bg-white px-3 py-1 text-xs text-[#6E3DFF]">
+              <LayoutTemplate className="h-3.5 w-3.5" />
+              {t('builder.hubLiveBadge')}
+            </div>
+            <h2 className="text-xl font-semibold">{t('builder.hubCtaTitle')}</h2>
+            <p className="max-w-xl text-sm text-muted-foreground">{t('builder.hubCtaBody')}</p>
+          </div>
+          <Button
+            className="h-11 rounded-full px-5"
+            onClick={() => {
+              setEditorTemplateId('elementar');
+              setView('editor');
+            }}
             disabled={!profile?.store_api_key}
           >
             {t('builder.openBuilder')}
@@ -175,6 +215,27 @@ export default function WebsiteBuilder() {
         <h3 className="mb-3 text-lg font-semibold">{t('builder.templatesTitle')}</h3>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <article className="overflow-hidden rounded-3xl border bg-card shadow-sm">
+            <div className="relative h-40 bg-gradient-to-br from-[#1A0F2E] via-[#3D1B6E] to-[#6E3DFF]">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,#ffffff44,transparent_55%)]" />
+              <div className="absolute bottom-4 left-4 right-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-white/70">{t('studio.badge')}</p>
+                <p className="font-serif text-2xl text-white">{t('studio.cardTitle')}</p>
+              </div>
+            </div>
+            <div className="space-y-4 p-5">
+              <div className="flex flex-wrap gap-2">
+                <Badge>{t('studio.badge')}</Badge>
+                <Badge variant="outline">{t('studio.cardTag')}</Badge>
+              </div>
+              <p className="text-sm text-muted-foreground">{t('studio.cardBody')}</p>
+              <Button className="w-full" onClick={() => setView('studio')} disabled={!profile?.store_api_key}>
+                {t('studio.open')}
+              </Button>
+              <TemplateActions id="ai" />
+            </div>
+          </article>
+
+          <article className="overflow-hidden rounded-3xl border bg-card shadow-sm">
             <div className="relative h-40 bg-gradient-to-br from-stone-200 via-stone-100 to-white">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,#ffffff88,transparent_55%)]" />
               <div className="absolute bottom-4 left-4 right-4">
@@ -188,7 +249,10 @@ export default function WebsiteBuilder() {
                 <Badge variant="outline">{t('badge.editable')}</Badge>
               </div>
               <p className="text-sm text-muted-foreground">{t('editable.description')}</p>
-              <Button className="w-full" onClick={() => setView('editor')}>
+              <Button className="w-full" onClick={() => {
+                setEditorTemplateId('elementar');
+                setView('editor');
+              }}>
                 {t('builder.customizeTemplate')}
               </Button>
               <TemplateActions id="elementar" />

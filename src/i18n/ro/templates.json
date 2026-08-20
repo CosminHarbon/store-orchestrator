@@ -187,5 +187,46 @@
       "empty": "Nicio imagine încă — încarcă primul asset.",
       "uploadFailed": "Încărcarea a eșuat"
     }
+  },
+  "studio": {
+    "badge": "AI Studio",
+    "title": "AI Studio",
+    "hubTitle": "Descrie-ți magazinul",
+    "hubBody": "Spune ce fel de magazin vrei — ca unui prieten. Noi îl desenăm, îl previzualizăm live și îl publicăm în contul tău.",
+    "open": "Deschide AI Studio",
+    "cardTitle": "Descrie și generează",
+    "cardTag": "Chat + preview",
+    "cardBody": "Scrie o propoziție. Alegem culori, layout și texte, apoi conectăm checkout-ul la produsele tale.",
+    "back": "Șabloane",
+    "placeholder": "Vreau un magazin de flori liniștit, roz pal, elegant…",
+    "empty": "Spune cum ar trebui să se simtă magazinul. Completăm restul.",
+    "previewEmpty": "Previzualizarea apare aici după primul mesaj.",
+    "publish": "Publică în contul meu",
+    "published": "Publicat — URL-ul live a fost copiat",
+    "publishError": "Nu am putut publica designul",
+    "viewLive": "Vezi live",
+    "openEditor": "Deschide editorul vizual",
+    "fast": "Rapid",
+    "studioQuality": "Studio",
+    "qualityLabel": "Calitate la prima generare",
+    "qualityFastHint": "Modele mai ieftine pentru un draft rapid",
+    "qualityStudioHint": "Pass Claude / GPT (recomandat)",
+    "error": "A apărut o eroare. Încearcă din nou.",
+    "startOver": "Reîncepe",
+    "usingLayout": "Folosesc layout-ul {{layout}}",
+    "modelUsed": "Model: {{model}}",
+    "catalogLive": "Catalog live",
+    "catalogSample": "Catalog exemplu",
+    "llmFallback": "Am compus totuși un magazin premium din ce ai scris. Adaugă ANTHROPIC_API_KEY sau OPENAI_API_KEY (și opțional DEEPSEEK_API_KEY) pentru AI complet.",
+    "llmNoCredit": "Providerul AI nu mai are credit. Reîncarcă cheia folosită, apoi încearcă din nou.",
+    "llmNotConnected": "Niciun LLM de design conectat. Adaugă ANTHROPIC_API_KEY sau OPENAI_API_KEY în Supabase → Edge Functions → Secrets.",
+    "steps": {
+      "understanding": "Te înțeleg",
+      "designing": "Design",
+      "verifying": "Verificare",
+      "building": "Construiesc pagina",
+      "ready": "Gata",
+      "error": "Nu s-a putut finaliza"
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Copy, RefreshCw, Eye, Code, Settings, ChevronDown, FileText, CreditCard, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,15 +8,18 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { useImpersonation } from '@/hooks/useImpersonation';
 import { EAWBConnectionTest } from './EAWBConnectionTest';
 import { EAWBDiagnosis } from './EAWBDiagnosis';
 import { ThemeSelector } from '@/components/theme/ThemeSelector';
 import { LanguageSelector } from '@/components/settings/LanguageSelector';
 import { DefaultPickupLockerSection } from '@/components/settings/DefaultPickupLockerSection';
+import { DeliveryPricingSettings } from '@/components/settings/DeliveryPricingSettings';
 import { NetopiaPaymentPanel } from '@/components/payments/NetopiaPaymentPanel';
 import { EawbShippingPanel } from '@/components/shipping/EawbShippingPanel';
 import { useTranslation } from 'react-i18next';
@@ -32,8 +35,125 @@ function isValidFeeInput(raw: string): boolean {
   return raw === '' || /^\d*\.?\d*$/.test(raw);
 }
 
+type FeeSettingsState = {
+  cash_payment_enabled: boolean;
+  cash_payment_fee: string;
+  home_delivery_fee: string;
+  locker_delivery_fee: string;
+};
+
+function CashOnDeliveryFees({
+  fees,
+  onChange,
+  cashRequired = false,
+}: {
+  fees: FeeSettingsState;
+  onChange: (next: FeeSettingsState) => void;
+  cashRequired?: boolean;
+}) {
+  const { t } = useTranslation('settings');
+  return (
+    <div className="space-y-4 rounded-lg border bg-background/70 p-4">
+      <div>
+        <p className="text-sm font-medium">{t('fees.cashTitle')}</p>
+        <p className="text-xs text-muted-foreground">
+          {cashRequired ? t('fees.cashRequiredHelp') : t('fees.cashSectionHelp')}
+        </p>
+      </div>
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-0.5">
+          <Label htmlFor="cash-enabled">{t('fees.enableCash')}</Label>
+          <p className="text-xs text-muted-foreground">{t('fees.enableCashHelp')}</p>
+        </div>
+        <Switch
+          id="cash-enabled"
+          checked={cashRequired || fees.cash_payment_enabled}
+          disabled={cashRequired}
+          onCheckedChange={(checked) => onChange({ ...fees, cash_payment_enabled: checked })}
+        />
+      </div>
+      {(cashRequired || fees.cash_payment_enabled) && (
+        <div className="space-y-2">
+          <Label htmlFor="cash-fee">{t('fees.cashFee')}</Label>
+          <Input
+            id="cash-fee"
+            type="text"
+            inputMode="decimal"
+            value={fees.cash_payment_fee}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (isValidFeeInput(v)) onChange({ ...fees, cash_payment_fee: v });
+            }}
+            placeholder="0.00"
+          />
+          <p className="text-xs text-muted-foreground">{t('fees.cashFeeHelp')}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FlatDeliveryFees({
+  fees,
+  onChange,
+  showLocker,
+  fallbackHome,
+}: {
+  fees: FeeSettingsState;
+  onChange: (next: FeeSettingsState) => void;
+  showLocker: boolean;
+  fallbackHome?: boolean;
+}) {
+  const { t } = useTranslation('settings');
+  return (
+    <div className="space-y-4 rounded-lg border bg-background/70 p-4">
+      <div>
+        <p className="text-sm font-medium">{t('fees.flatTitle')}</p>
+        <p className="text-xs text-muted-foreground">
+          {fallbackHome ? t('fees.flatDescManual') : t('fees.flatDesc')}
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="home-delivery-fee">{t('fees.homeDelivery')}</Label>
+        <Input
+          id="home-delivery-fee"
+          type="text"
+          inputMode="decimal"
+          value={fees.home_delivery_fee}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (isValidFeeInput(v)) onChange({ ...fees, home_delivery_fee: v });
+          }}
+          placeholder="0.00"
+        />
+        <p className="text-xs text-muted-foreground">
+          {fallbackHome ? t('fees.homeDeliveryFallbackHelp') : t('fees.homeDeliveryHelp')}
+        </p>
+      </div>
+      {showLocker && (
+        <div className="space-y-2">
+          <Label htmlFor="locker-delivery-fee">{t('fees.lockerDelivery')}</Label>
+          <Input
+            id="locker-delivery-fee"
+            type="text"
+            inputMode="decimal"
+            value={fees.locker_delivery_fee}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (isValidFeeInput(v)) onChange({ ...fees, locker_delivery_fee: v });
+            }}
+            placeholder="0.00"
+          />
+          <p className="text-xs text-muted-foreground">{t('fees.lockerDeliveryHelp')}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface Profile {
   id: string;
+  user_id?: string;
   store_name: string;
   store_api_key: string;
   invoicing_provider?: string;
@@ -76,6 +196,12 @@ interface Profile {
   cash_payment_fee?: number;
   home_delivery_fee?: number;
   locker_delivery_fee?: number;
+  show_stock_to_customers?: boolean;
+  allow_order_notes?: boolean;
+  eawb_city?: string | null;
+  eawb_county?: string | null;
+  eawb_street?: string | null;
+  eawb_street_number?: string | null;
 }
 
 const StoreSettings = () => {
@@ -107,6 +233,7 @@ const StoreSettings = () => {
     home_delivery_fee: '',
     locker_delivery_fee: '',
   });
+  const openedManualDelivery = useRef(false);
   
   // eAWB fetch states
   const [eawbData, setEawbData] = useState<{ billingAddresses: any[]; shippingAddresses: any[]; carriers: any[]; services: any[] }>({
@@ -125,6 +252,7 @@ const StoreSettings = () => {
   const [selectedCarrierForServices, setSelectedCarrierForServices] = useState('');
   
   const { user } = useAuth();
+  const { effectiveUserId } = useImpersonation();
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -156,18 +284,18 @@ const StoreSettings = () => {
   }, []);
 
   const { data: profile, isLoading } = useQuery({
-    queryKey: ['profile'],
+    queryKey: ['profile', effectiveUserId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('user_id', effectiveUserId)
         .single();
       
       if (error) throw error;
       return data as Profile;
     },
-    enabled: !!user
+    enabled: !!user && !!effectiveUserId
   });
 
   // Initialize provider configs when profile data loads
@@ -218,6 +346,10 @@ const StoreSettings = () => {
         shipping: profile.shipping_provider || 'sameday',
         payment: profile.payment_provider || 'netpopia'
       });
+      if (!openedManualDelivery.current && profile.shipping_provider === 'manual') {
+        openedManualDelivery.current = true;
+        setOpenCollapsibles((prev) => ({ ...prev, delivery: true }));
+      }
       setFeeSettings({
         cash_payment_enabled: profile.cash_payment_enabled ?? true,
         cash_payment_fee:
@@ -235,7 +367,7 @@ const StoreSettings = () => {
       const { data, error } = await supabase
         .from('profiles')
         .update(updates)
-        .eq('user_id', user?.id)
+        .eq('user_id', effectiveUserId)
         .select();
       
       if (error) throw error;
@@ -763,6 +895,43 @@ class StoreAPI {
 
           <Card>
             <CardHeader>
+              <CardTitle>{tSettings('storefront.title')}</CardTitle>
+              <CardDescription>{tSettings('storefront.desc')}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-0.5">
+                  <Label>{tSettings('storefront.showStock')}</Label>
+                  <p className="text-xs text-muted-foreground">{tSettings('storefront.showStockHelp')}</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={profile.show_stock_to_customers !== false}
+                  onChange={(e) =>
+                    updateProfileMutation.mutate({ show_stock_to_customers: e.target.checked })
+                  }
+                  className="h-4 w-4 mt-1"
+                />
+              </div>
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-0.5">
+                  <Label>{tSettings('storefront.allowNotes')}</Label>
+                  <p className="text-xs text-muted-foreground">{tSettings('storefront.allowNotesHelp')}</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={profile.allow_order_notes !== false}
+                  onChange={(e) =>
+                    updateProfileMutation.mutate({ allow_order_notes: e.target.checked })
+                  }
+                  className="h-4 w-4 mt-1"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>{tSettings('store.title')}</CardTitle>
               <CardDescription>{tSettings('store.desc')}</CardDescription>
             </CardHeader>
@@ -870,9 +1039,7 @@ class StoreAPI {
               <CardDescription>{tSettings('services.desc')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Desktop View - Collapsible Layout */}
-              <div className="hidden md:block">
-                <div className="grid gap-4">
+              <div className="grid gap-4">
                   {/* Invoicing Section */}
                   <Collapsible
                     open={openCollapsibles.invoicing}
@@ -1006,17 +1173,25 @@ class StoreAPI {
                         <Label htmlFor="shipping-provider">{tSettings('label.shippingProvider')}</Label>
                         <Select
                           value={integrations.shipping}
-                          onValueChange={(value) => setIntegrations({ ...integrations, shipping: value })}
+                          onValueChange={(value) => {
+                            setIntegrations({ ...integrations, shipping: value });
+                            updateProfileMutation.mutate({ shipping_provider: value });
+                            if (value === 'manual') {
+                              openedManualDelivery.current = true;
+                              setOpenCollapsibles((prev) => ({ ...prev, delivery: true }));
+                            }
+                          }}
                         >
                            <SelectTrigger>
                              <SelectValue placeholder={tSettings('select.shipping')} />
                            </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="eawb">eAWB.ro</SelectItem>
+                              <SelectItem value="manual">{tSettings('config.manual')}</SelectItem>
                             </SelectContent>
                         </Select>
                         <p className="text-sm text-muted-foreground">
-                          Manages shipping and delivery for your orders
+                          {tSettings('deliveryPricing.providerHelp')}
                         </p>
                         
                          {integrations.shipping === 'sameday' && (
@@ -1386,6 +1561,22 @@ class StoreAPI {
                             </EawbShippingPanel>
                           )}
                       </div>
+                      <DeliveryPricingSettings
+                        userId={effectiveUserId || profile.user_id || ''}
+                        apiKey={profile.store_api_key}
+                        ownDelivery={integrations.shipping === 'manual'}
+                        originLabel={
+                          [profile.eawb_street, profile.eawb_street_number, profile.eawb_city, profile.eawb_county]
+                            .filter(Boolean)
+                            .join(', ') || profile.eawb_address || ''
+                        }
+                      />
+                      <FlatDeliveryFees
+                        fees={feeSettings}
+                        onChange={setFeeSettings}
+                        showLocker={integrations.shipping !== 'manual'}
+                        fallbackHome={integrations.shipping === 'manual'}
+                      />
                     </CollapsibleContent>
                   </Collapsible>
 
@@ -1410,22 +1601,39 @@ class StoreAPI {
                       </Button>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="mt-2 space-y-4 p-4 border rounded-lg bg-muted/30">
-                      <div className="space-y-2">
+                      <div className="space-y-4">
                         <Label htmlFor="payment-provider">{tSettings('label.paymentProcessor')}</Label>
                         <Select
                           value={integrations.payment}
-                          onValueChange={(value) => setIntegrations({ ...integrations, payment: value })}
+                          onValueChange={(value) => {
+                            setIntegrations({ ...integrations, payment: value });
+                            const patch: Partial<Profile> = { payment_provider: value };
+                            if (value === 'none') {
+                              setFeeSettings((prev) => ({ ...prev, cash_payment_enabled: true }));
+                              patch.cash_payment_enabled = true;
+                            }
+                            updateProfileMutation.mutate(patch);
+                          }}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder={tSettings('select.payment')} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="netpopia">Netpopia Payments</SelectItem>
+                            <SelectItem value="netpopia">{tSettings('config.netopia')}</SelectItem>
+                            <SelectItem value="none">{tSettings('config.none')}</SelectItem>
                           </SelectContent>
                         </Select>
                         <p className="text-sm text-muted-foreground">
-                          {tSettings('help.paymentOnline')}
+                          {integrations.payment === 'none'
+                            ? tSettings('help.paymentNone')
+                            : tSettings('help.paymentOnline')}
                         </p>
+
+                        <CashOnDeliveryFees
+                          fees={feeSettings}
+                          onChange={setFeeSettings}
+                          cashRequired={integrations.payment === 'none'}
+                        />
                         
                         {integrations.payment === 'netpopia' && (
                           <NetopiaPaymentPanel
@@ -1442,654 +1650,6 @@ class StoreAPI {
                       </div>
                     </CollapsibleContent>
                   </Collapsible>
-
-                  {/* Payment Options */}
-                  <Card className="mt-4">
-                    <CardHeader>
-                      <CardTitle className="text-base">{tSettings('fees.title')}</CardTitle>
-                      <CardDescription>{tSettings('fees.desc')}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-0.5">
-                            <Label>{tSettings('fees.enableCash')}</Label>
-                            <p className="text-xs text-muted-foreground">{tSettings('fees.enableCashHelp')}</p>
-                          </div>
-                          <input
-                            type="checkbox"
-                            checked={feeSettings.cash_payment_enabled}
-                            onChange={(e) => setFeeSettings({ ...feeSettings, cash_payment_enabled: e.target.checked })}
-                            className="h-4 w-4"
-                          />
-                        </div>
-                        {feeSettings.cash_payment_enabled && (
-                          <div className="space-y-2">
-                            <Label htmlFor="cash-fee">{tSettings('fees.cashFee')}</Label>
-                            <Input
-                              id="cash-fee"
-                              type="text"
-                              inputMode="decimal"
-                              value={feeSettings.cash_payment_fee}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                if (isValidFeeInput(v)) {
-                                  setFeeSettings({ ...feeSettings, cash_payment_fee: v });
-                                }
-                              }}
-                              placeholder="0.00"
-                            />
-                            <p className="text-xs text-muted-foreground">
-                              {tSettings('fees.cashFeeHelp')}
-                            </p>
-                          </div>
-                        )}
-                        <div className="space-y-2">
-                          <Label htmlFor="home-delivery-fee">{tSettings('fees.homeDelivery')}</Label>
-                          <Input
-                            id="home-delivery-fee"
-                            type="text"
-                            inputMode="decimal"
-                            value={feeSettings.home_delivery_fee}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              if (isValidFeeInput(v)) {
-                                setFeeSettings({ ...feeSettings, home_delivery_fee: v });
-                              }
-                            }}
-                            placeholder="0.00"
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            {tSettings('fees.homeDeliveryHelp')}
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="locker-delivery-fee">{tSettings('fees.lockerDelivery')}</Label>
-                          <Input
-                            id="locker-delivery-fee"
-                            type="text"
-                            inputMode="decimal"
-                            value={feeSettings.locker_delivery_fee}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              if (isValidFeeInput(v)) {
-                                setFeeSettings({ ...feeSettings, locker_delivery_fee: v });
-                              }
-                            }}
-                            placeholder="0.00"
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            {tSettings('fees.lockerDeliveryHelp')}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-
-              {/* Mobile View - Collapsible Sections */}
-              <div className="md:hidden space-y-4">
-                {/* Invoicing Section */}
-                <Collapsible
-                  open={openCollapsibles.invoicing}
-                  onOpenChange={(isOpen) => setOpenCollapsibles(prev => ({ ...prev, invoicing: isOpen }))}
-                >
-                  <CollapsibleTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      className="w-full justify-between h-auto p-4 bg-background/95 backdrop-blur-xl border border-border/50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-5 w-5 text-primary" />
-                        <div className="text-left">
-                          <div className="font-medium">{tSettings('section.invoicing')}</div>
-                          <div className="text-sm text-muted-foreground">{tSettings('section.invoicingSub')}</div>
-                        </div>
-                      </div>
-                      <ChevronDown className={`h-4 w-4 transition-transform ${openCollapsibles.invoicing ? 'rotate-180' : ''}`} />
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-2 space-y-4 p-4 border rounded-lg bg-muted/30">
-                    <div className="space-y-2">
-                      <Label htmlFor="mobile-invoicing-provider">{tSettings('label.invoicingProvider')}</Label>
-                      <Select
-                        value={integrations.invoicing}
-                        onValueChange={(value) => setIntegrations({ ...integrations, invoicing: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={tSettings('select.invoicing')} />
-                        </SelectTrigger>
-                        <SelectContent className="z-50 bg-background border border-border/50">
-                          <SelectItem value="oblio.eu">Oblio.eu</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-sm text-muted-foreground">
-                        {tSettings('help.invoicingAuto')}
-                      </p>
-                    </div>
-                    
-                    {integrations.invoicing === 'oblio.eu' && (
-                      <div className="space-y-4">
-                        <h4 className="font-medium">{tSettings('config.oblio')}</h4>
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="mobile-oblio-email">Oblio Email Address</Label>
-                            <Input
-                              id="mobile-oblio-email"
-                              type="email"
-                              value={providerConfigs.oblio.email}
-                              onChange={(e) => updateProviderConfig('oblio', 'email', e.target.value)}
-                              placeholder="Enter your Oblio.eu account email"
-                            />
-                            <p className="text-xs text-muted-foreground">
-                              This is your Oblio.eu login email (client_id)
-                            </p>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="mobile-oblio-api-key">API Secret Key</Label>
-                            <Input
-                              id="mobile-oblio-api-key"
-                              type="password"
-                              value={providerConfigs.oblio.api_key}
-                              onChange={(e) => updateProviderConfig('oblio', 'api_key', e.target.value)}
-                              placeholder="Enter your Oblio.eu API secret key"
-                            />
-                            <p className="text-xs text-muted-foreground">
-                              Found in Oblio.eu Settings → Account Data (client_secret)
-                            </p>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="mobile-oblio-series-name">Invoice Series</Label>
-                            <Input
-                              id="mobile-oblio-series-name"
-                              value={providerConfigs.oblio.series_name}
-                              onChange={(e) => updateProviderConfig('oblio', 'series_name', e.target.value)}
-                              placeholder="e.g., APM"
-                            />
-                            <p className="text-xs text-muted-foreground">
-                              Series prefix for your invoices (e.g., APM, FCT)
-                            </p>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="mobile-oblio-first-number">First Invoice Number</Label>
-                            <Input
-                              id="mobile-oblio-first-number"
-                              value={providerConfigs.oblio.first_number}
-                              onChange={(e) => updateProviderConfig('oblio', 'first_number', e.target.value)}
-                              placeholder="e.g., 001"
-                            />
-                            <p className="text-xs text-muted-foreground">
-                              Starting number for your invoices (e.g., 001, 0001)
-                            </p>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="mobile-oblio-name">Company Name</Label>
-                            <Input
-                              id="mobile-oblio-name"
-                              value={providerConfigs.oblio.name}
-                              onChange={(e) => updateProviderConfig('oblio', 'name', e.target.value)}
-                              placeholder="Enter your company name"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </CollapsibleContent>
-                </Collapsible>
-
-                {/* Payment Section */}
-                <Collapsible
-                  open={openCollapsibles.payment}
-                  onOpenChange={(isOpen) => setOpenCollapsibles(prev => ({ ...prev, payment: isOpen }))}
-                >
-                  <CollapsibleTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      className="w-full justify-between h-auto p-4 bg-background/95 backdrop-blur-xl border border-border/50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <CreditCard className="h-5 w-5 text-primary" />
-                        <div className="text-left">
-                          <div className="font-medium">{tSettings('section.payment')}</div>
-                          <div className="text-sm text-muted-foreground">{tSettings('section.paymentSub')}</div>
-                        </div>
-                      </div>
-                      <ChevronDown className={`h-4 w-4 transition-transform ${openCollapsibles.payment ? 'rotate-180' : ''}`} />
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-2 space-y-4 p-4 border rounded-lg bg-muted/30">
-                    <div className="space-y-2">
-                      <Label htmlFor="mobile-payment-provider">{tSettings('label.paymentProcessor')}</Label>
-                      <Select
-                        value={integrations.payment}
-                        onValueChange={(value) => setIntegrations({ ...integrations, payment: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={tSettings('select.payment')} />
-                        </SelectTrigger>
-                        <SelectContent className="z-50 bg-background border border-border/50">
-                          <SelectItem value="netpopia">Netpopia Payments</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-sm text-muted-foreground">
-                        {tSettings('help.paymentOnline')}
-                      </p>
-                    </div>
-                    
-                    {integrations.payment === 'netpopia' && (
-                      <NetopiaPaymentPanel
-                        idPrefix="mobile-netopia"
-                        savedApiKey={profile?.netpopia_api_key}
-                        savedSignature={profile?.netpopia_signature}
-                        config={providerConfigs.netpopia}
-                        onConfigChange={(field, value) =>
-                          updateProviderConfig('netpopia', field as any, value)
-                        }
-                        onGoToPayments={goToPaymentsTab}
-                      />
-                    )}
-                  </CollapsibleContent>
-                </Collapsible>
-
-                {/* Delivery Section */}
-                <Collapsible
-                  open={openCollapsibles.delivery}
-                  onOpenChange={(isOpen) => setOpenCollapsibles(prev => ({ ...prev, delivery: isOpen }))}
-                >
-                  <CollapsibleTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      className="w-full justify-between h-auto p-4 bg-background/95 backdrop-blur-xl border border-border/50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Truck className="h-5 w-5 text-primary" />
-                        <div className="text-left">
-                          <div className="font-medium">{tSettings('section.delivery')}</div>
-                          <div className="text-sm text-muted-foreground">{tSettings('section.deliverySubSameday')}</div>
-                        </div>
-                      </div>
-                      <ChevronDown className={`h-4 w-4 transition-transform ${openCollapsibles.delivery ? 'rotate-180' : ''}`} />
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-2 space-y-4 p-4 border rounded-lg bg-muted/30">
-                    <div className="space-y-2">
-                      <Label htmlFor="mobile-shipping-provider">{tSettings('label.shippingProvider')}</Label>
-                      <Select
-                        value={integrations.shipping}
-                        onValueChange={(value) => setIntegrations({ ...integrations, shipping: value })}
-                      >
-                         <SelectTrigger>
-                           <SelectValue placeholder={tSettings('select.shipping')} />
-                         </SelectTrigger>
-                         <SelectContent className="z-50 bg-background border border-border/50">
-                           <SelectItem value="eawb">eAWB.ro</SelectItem>
-                         </SelectContent>
-                      </Select>
-                      <p className="text-sm text-muted-foreground">
-                        Manages shipping and delivery for your orders
-                      </p>
-                    </div>
-                    
-                     {integrations.shipping === 'sameday' && (
-                       <div className="space-y-4">
-                         <h4 className="font-medium">{tSettings('config.sameday')}</h4>
-                         <div className="space-y-4">
-                           <div className="space-y-2">
-                             <Label htmlFor="mobile-sameday-api-key">API Key</Label>
-                             <Input
-                               id="mobile-sameday-api-key"
-                               type="password"
-                               value={providerConfigs.sameday.api_key}
-                               onChange={(e) => updateProviderConfig('sameday', 'api_key', e.target.value)}
-                               placeholder="Enter your Sameday API key"
-                             />
-                           </div>
-                           <div className="space-y-2">
-                             <Label htmlFor="mobile-sameday-name">Company Name</Label>
-                             <Input
-                               id="mobile-sameday-name"
-                               value={providerConfigs.sameday.name}
-                               onChange={(e) => updateProviderConfig('sameday', 'name', e.target.value)}
-                               placeholder="Enter your company name"
-                             />
-                           </div>
-                           <div className="space-y-2">
-                             <Label htmlFor="mobile-sameday-email">Email Address</Label>
-                             <Input
-                               id="mobile-sameday-email"
-                               type="email"
-                               value={providerConfigs.sameday.email}
-                               onChange={(e) => updateProviderConfig('sameday', 'email', e.target.value)}
-                               placeholder="Enter your email address"
-                             />
-                           </div>
-                         </div>
-                       </div>
-                     )}
-
-                     {integrations.shipping === 'woot' && (
-                       <div className="space-y-4">
-                         <h4 className="font-medium">{tSettings('config.woot')}</h4>
-                         <div className="space-y-4">
-                           <div className="space-y-2">
-                             <Label htmlFor="mobile-woot-api-key">API Key</Label>
-                             <Input
-                               id="mobile-woot-api-key"
-                               type="password"
-                               value={providerConfigs.woot?.api_key || ''}
-                               onChange={(e) => updateProviderConfig('woot', 'api_key', e.target.value)}
-                               placeholder="Enter your Woot.ro API key"
-                             />
-                             <p className="text-xs text-muted-foreground">
-                               Your Woot.ro API authentication key
-                             </p>
-                           </div>
-                           <div className="space-y-2">
-                             <Label htmlFor="mobile-woot-name">Company Name</Label>
-                             <Input
-                               id="mobile-woot-name"
-                               value={providerConfigs.woot?.name || ''}
-                               onChange={(e) => updateProviderConfig('woot', 'name', e.target.value)}
-                               placeholder="Enter your company name"
-                             />
-                           </div>
-                           <div className="space-y-2">
-                             <Label htmlFor="mobile-woot-email">Email Address</Label>
-                             <Input
-                               id="mobile-woot-email"
-                               type="email"
-                               value={providerConfigs.woot?.email || ''}
-                               onChange={(e) => updateProviderConfig('woot', 'email', e.target.value)}
-                               placeholder="Enter your email address"
-                             />
-                           </div>
-                         </div>
-                       </div>
-                      )}
-                      
-                      {integrations.shipping === 'eawb' && (
-                        <EawbShippingPanel
-                          profile={profile}
-                          onApiKeySynced={(apiKey) => updateProviderConfig('eawb', 'api_key', apiKey)}
-                          onLocalConfigCleared={() => {
-                            setProviderConfigs((prev) => ({
-                              ...prev,
-                              eawb: {
-                                api_key: '',
-                                name: '',
-                                email: '',
-                                phone: '',
-                                address: '',
-                                billing_address_id: '',
-                                shipping_address_id: '',
-                                default_carrier_id: '',
-                                default_service_id: '',
-                              },
-                            }));
-                          }}
-                        >
-                        <div className="space-y-4">
-                          <h4 className="font-medium">{tSettings('config.eawb')}</h4>
-                          <div className="space-y-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="mobile-eawb-api-key">API Key</Label>
-                              <Input
-                                id="mobile-eawb-api-key"
-                                type="password"
-                                value={providerConfigs.eawb?.api_key || ''}
-                                onChange={(e) => updateProviderConfig('eawb', 'api_key', e.target.value)}
-                                placeholder="Enter your eAWB.ro API key"
-                              />
-                              <p className="text-xs text-muted-foreground">
-                                Your eAWB.ro API authentication key from europarcel.com
-                              </p>
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="mobile-eawb-name">Company Name</Label>
-                              <Input
-                                id="mobile-eawb-name"
-                                value={providerConfigs.eawb?.name || ''}
-                                onChange={(e) => updateProviderConfig('eawb', 'name', e.target.value)}
-                                placeholder="Enter your company name"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="mobile-eawb-email">Email Address</Label>
-                              <Input
-                                id="mobile-eawb-email"
-                                type="email"
-                                value={providerConfigs.eawb?.email || ''}
-                                onChange={(e) => updateProviderConfig('eawb', 'email', e.target.value)}
-                                placeholder="Enter your email address"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="mobile-eawb-phone">Phone Number</Label>
-                              <Input
-                                id="mobile-eawb-phone"
-                                type="tel"
-                                value={providerConfigs.eawb?.phone || ''}
-                                onChange={(e) => updateProviderConfig('eawb', 'phone', e.target.value)}
-                                placeholder="Enter your phone number"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="mobile-eawb-address">Pickup Address</Label>
-                              <Input
-                                id="mobile-eawb-address"
-                                value={providerConfigs.eawb?.address || ''}
-                                onChange={(e) => updateProviderConfig('eawb', 'address', e.target.value)}
-                                placeholder="Enter your pickup address"
-                              />
-                              <p className="text-xs text-muted-foreground">
-                                Default address for package pickup
-                              </p>
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Billing Address</Label>
-                              {eawbData.billingAddresses.length > 1 ? (
-                                <Select
-                                  value={providerConfigs.eawb?.billing_address_id || ''}
-                                  onValueChange={(v) => updateProviderConfig('eawb', 'billing_address_id', v)}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select a billing address" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {eawbData.billingAddresses.map((addr: any) => (
-                                <SelectItem key={addr.id} value={String(addr.id)}>
-                                  {addr.company_name || addr.name || addr.contact || `Address ${addr.id}`}
-                                </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <p className="text-sm text-muted-foreground">
-                                  {providerConfigs.eawb?.billing_address_id
-                                    ? 'Billing address linked automatically from your Europarcel account.'
-                                    : 'Not linked yet — click the button below to retrieve it from your Europarcel account.'}
-                                </p>
-                              )}
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={fetchEawbBillingAddresses}
-                                disabled={eawbLoading.billingAddresses}
-                              >
-                                {eawbLoading.billingAddresses ? 'Retrieving...' : 'Retrieve billing address'}
-                              </Button>
-                                  </div>
-                            <div className="space-y-2">
-                              <Label>Pickup Address</Label>
-                              {eawbData.shippingAddresses.length > 1 ? (
-                                <div className="space-y-2">
-                                  <Input
-                                    value={shippingAddressSearch}
-                                    onChange={(e) => setShippingAddressSearch(e.target.value)}
-                                    placeholder="Search pickup addresses..."
-                                  />
-                                  <Select
-                                    value={providerConfigs.eawb?.shipping_address_id || ''}
-                                    onValueChange={saveShippingAddressId}
-                                  >
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select a pickup address" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {eawbData.shippingAddresses
-                                        .filter((addr: any) => {
-                                          if (!shippingAddressSearch.trim()) return true;
-                                          return formatShippingAddressLabel(addr)
-                                            .toLowerCase()
-                                            .includes(shippingAddressSearch.trim().toLowerCase());
-                                        })
-                                        .map((addr: any) => (
-                                          <SelectItem key={addr.id} value={String(addr.id)}>
-                                            {formatShippingAddressLabel(addr)}
-                                          </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                              ) : providerConfigs.eawb?.shipping_address_id ? (
-                                <p className="text-sm text-muted-foreground">
-                                  {(() => {
-                                    const selected = eawbData.shippingAddresses.find(
-                                      (a: any) => String(a.id) === providerConfigs.eawb?.shipping_address_id
-                                    );
-                                    return selected
-                                      ? `${formatShippingAddressLabel(selected)}. This pickup address will be used for all future AWB generation.`
-                                      : `Pickup address #${providerConfigs.eawb.shipping_address_id} linked. It will be used for all future AWB generation.`;
-                                  })()}
-                                </p>
-                              ) : (
-                                <p className="text-sm text-muted-foreground">
-                                  Not linked yet — click the button below to retrieve shipping (pickup) addresses from your Europarcel account. At least one pickup address is required for AWB generation.
-                                </p>
-                              )}
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={fetchEawbShippingAddresses}
-                                disabled={eawbLoading.shippingAddresses}
-                              >
-                                {eawbLoading.shippingAddresses ? 'Retrieving...' : 'Retrieve Pickup Addresses'}
-                              </Button>
-                            </div>
-                            <DefaultPickupLockerSection
-                              profile={profile}
-                              saving={updateProfileMutation.isPending}
-                              onSave={async (fields) => {
-                                await updateProfileMutation.mutateAsync(fields);
-                              }}
-                            />
-                            <div className="grid grid-cols-1 gap-4">
-                              <div className="space-y-2">
-                                <Label htmlFor="mobile-eawb-default-carrier">Default Carrier ID</Label>
-                                <Input
-                                  id="mobile-eawb-default-carrier"
-                                  value={providerConfigs.eawb?.default_carrier_id || ''}
-                                  onChange={(e) => updateProviderConfig('eawb', 'default_carrier_id', e.target.value)}
-                                  placeholder="Optional"
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                  Default carrier ID for pricing (optional)
-                                </p>
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="mobile-eawb-default-service">Default Service ID</Label>
-                                <Input
-                                  id="mobile-eawb-default-service"
-                                  value={providerConfigs.eawb?.default_service_id || ''}
-                                  onChange={(e) => updateProviderConfig('eawb', 'default_service_id', e.target.value)}
-                                  placeholder="Optional"
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                  Default service ID for pricing (optional)
-                                </p>
-                              </div>
-                            </div>
-                            <div className="space-y-4">
-                                <div className="flex flex-col gap-2">
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={fetchEawbCarriers}
-                                    disabled={eawbLoading.carriers || !providerConfigs.eawb?.api_key}
-                                  >
-                                    {eawbLoading.carriers ? 'Fetching...' : 'Fetch Carriers'}
-                                  </Button>
-                                  {eawbData.carriers.length > 0 && (
-                                    <Select
-                                      value={providerConfigs.eawb?.default_carrier_id || ''}
-                                      onValueChange={(value) => {
-                                        updateProviderConfig('eawb', 'default_carrier_id', value);
-                                        setSelectedCarrierForServices(value);
-                                        setEawbData(prev => ({ ...prev, services: [] }));
-                                      }}
-                                    >
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Select default carrier" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {eawbData.carriers.map((carrier: any) => (
-                                          <SelectItem key={carrier.id} value={carrier.id.toString()}>
-                                            {carrier.name}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  )}
-                                </div>
-                                
-                                <div className="flex flex-col gap-2">
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => fetchEawbServices(selectedCarrierForServices || providerConfigs.eawb?.default_carrier_id)}
-                                    disabled={
-                                      eawbLoading.services || 
-                                      !providerConfigs.eawb?.api_key || 
-                                      (!selectedCarrierForServices && !providerConfigs.eawb?.default_carrier_id)
-                                    }
-                                  >
-                                    {eawbLoading.services ? 'Fetching...' : 'Fetch Services'}
-                                  </Button>
-                                  {eawbData.services.length > 0 && (
-                                    <Select
-                                      value={providerConfigs.eawb?.default_service_id || ''}
-                                      onValueChange={(value) => updateProviderConfig('eawb', 'default_service_id', value)}
-                                    >
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Select default service" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {eawbData.services.map((service: any) => (
-                                          <SelectItem key={service.id} value={service.id.toString()}>
-                                            {service.name}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  )}
-                                </div>
-                            </div>
-                            
-                            <div className="border-t pt-4 mt-4 space-y-4">
-                              <EAWBConnectionTest />
-                              <EAWBDiagnosis />
-                            </div>
-                          </div>
-                        </div>
-                        </EawbShippingPanel>
-                      )}
-                  </CollapsibleContent>
-                </Collapsible>
               </div>
 
               <Button onClick={updateIntegrations} className="w-full">

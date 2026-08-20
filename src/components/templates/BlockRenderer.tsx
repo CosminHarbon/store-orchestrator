@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Quote } from 'lucide-react';
-import type { TemplateBlock, BlockContent } from './BlockEditor';
+import { ChevronDown, ChevronLeft, ChevronRight, Quote } from 'lucide-react';
+import type { TemplateBlock } from './BlockEditor';
+import { SandboxedHtml } from './SandboxedHtml';
 
 interface BlockRendererProps {
   block: TemplateBlock;
@@ -263,23 +264,96 @@ export const BlockRenderer = ({ block, customization }: BlockRendererProps) => {
     );
   };
 
-  const renderCustomHtmlBlock = () => {
-    // Sanitize and render custom HTML
-    // Note: In production, you'd want to use a proper sanitizer like DOMPurify
+  const renderCustomHtmlBlock = () => (
+    <div className="py-8 px-4">
+      <div className={`container mx-auto max-w-5xl ${borderRadius} overflow-hidden`}>
+        <SandboxedHtml html={content.html} css={content.css} />
+      </div>
+    </div>
+  );
+
+  const renderFaqBlock = () => {
+    const items = content.faqItems || [];
+    if (!items.length) return null;
     return (
-      <div className={`py-8 px-4`}>
-        <div className="container mx-auto max-w-5xl">
-          {content.css && (
-            <style dangerouslySetInnerHTML={{ __html: content.css }} />
-          )}
-          <div 
-            className={`custom-html-block ${borderRadius}`}
-            dangerouslySetInnerHTML={{ __html: content.html || '' }}
-          />
+      <div className="py-16 px-4">
+        <div className="container mx-auto max-w-3xl space-y-3">
+          {items.map((item) => (
+            <details key={item.q} className="border-b py-3" style={{ borderColor: `${customization.text_color}22` }}>
+              <summary className="cursor-pointer font-medium flex items-center justify-between">
+                {item.q}
+                <ChevronDown className="h-4 w-4" />
+              </summary>
+              <p className="mt-2 text-sm opacity-80 leading-relaxed">{item.a}</p>
+            </details>
+          ))}
         </div>
       </div>
     );
   };
+
+  const renderAboutBlock = () => (
+    <div className="py-16 px-4">
+      <div className="container mx-auto max-w-3xl">
+        {block.title && (
+          <h3 className="text-3xl mb-4" style={{ fontFamily: customization.heading_font }}>
+            {block.title}
+          </h3>
+        )}
+        <p className="text-lg leading-relaxed whitespace-pre-wrap" style={{ color: customization.text_color }}>
+          {content.text}
+        </p>
+      </div>
+    </div>
+  );
+
+  const renderFeaturesBlock = () => {
+    const features = content.features || [];
+    if (!features.length) return null;
+    return (
+      <div className="py-12 px-4">
+        <div className="container mx-auto max-w-5xl grid sm:grid-cols-3 gap-6">
+          {features.map((f) => (
+            <div key={f.title}>
+              <div className="font-medium">{f.title}</div>
+              <p className="text-sm mt-1 opacity-70">{f.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderLookbookBlock = () => {
+    const images = content.images || [];
+    if (!images.length) return null;
+    return (
+      <div className="py-12 px-4">
+        <div className="container mx-auto max-w-6xl grid grid-cols-2 md:grid-cols-4 gap-3">
+          {images.map((img, i) => (
+            <div key={i} className={`${borderRadius} overflow-hidden`}>
+              <img src={img.url} alt={img.alt || ''} className="w-full h-full object-cover aspect-square" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderMarqueeBlock = () => (
+    <div className="overflow-hidden py-3 text-xs uppercase tracking-[0.2em] whitespace-nowrap border-y">
+      <span>{`${content.marqueeText || content.text || ''}   ·   `.repeat(10)}</span>
+    </div>
+  );
+
+  const renderAnnouncementBlock = () => (
+    <div
+      className="text-center text-xs tracking-[0.16em] uppercase py-2 px-4"
+      style={{ backgroundColor: content.backgroundColor || customization.secondary_color, color: content.textColor || customization.text_color }}
+    >
+      {content.text}
+    </div>
+  );
 
   switch (block.block_type) {
     case 'text':
@@ -291,6 +365,7 @@ export const BlockRenderer = ({ block, customization }: BlockRendererProps) => {
     case 'carousel':
       return renderCarouselBlock();
     case 'banner':
+    case 'newsletter':
       return renderBannerBlock();
     case 'testimonial':
       return renderTestimonialBlock();
@@ -298,6 +373,20 @@ export const BlockRenderer = ({ block, customization }: BlockRendererProps) => {
       return renderVideoBlock();
     case 'custom-html':
       return renderCustomHtmlBlock();
+    case 'faq':
+      return renderFaqBlock();
+    case 'about':
+      return renderAboutBlock();
+    case 'features':
+      return renderFeaturesBlock();
+    case 'lookbook':
+    case 'featured-collection':
+      return renderLookbookBlock();
+    case 'marquee':
+      return renderMarqueeBlock();
+    case 'announcement':
+    case 'contact':
+      return block.block_type === 'announcement' ? renderAnnouncementBlock() : renderAboutBlock();
     default:
       return null;
   }

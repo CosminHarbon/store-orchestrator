@@ -362,7 +362,13 @@ serve(async (req) => {
       const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
       if (user && !authError) {
-        userId = user.id;
+        const { resolveActingOwnerId } = await import('../_shared/actingAs.ts');
+        userId = await resolveActingOwnerId(
+          supabase,
+          user,
+          token,
+          payload.acting_as_user_id || null
+        );
       } else if (payload.user_id) {
         userId = payload.user_id;
       } else {

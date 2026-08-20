@@ -7,7 +7,7 @@ import type {
 } from '@/lib/storefront/types';
 import type { AppLanguage } from '@/i18n/types';
 
-export type DemoTheme = 'floral' | 'premium' | 'elementar';
+export type DemoTheme = 'floral' | 'premium' | 'elementar' | 'ai';
 
 const img = {
   floral1: 'https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=1200&q=80',
@@ -221,7 +221,8 @@ export type DemoCatalog = {
 };
 
 export function getDemoCatalog(theme: DemoTheme, lang: AppLanguage): DemoCatalog {
-  const pack = copy[lang][theme];
+  const resolved: Exclude<DemoTheme, 'ai'> = theme === 'ai' ? 'premium' : theme;
+  const pack = copy[lang][resolved];
   const collections: StorefrontCollection[] = pack.collections.map((c) => ({
     id: c.id,
     name: c.name,
@@ -233,7 +234,7 @@ export function getDemoCatalog(theme: DemoTheme, lang: AppLanguage): DemoCatalog
           : c.id.includes('season') || c.id.includes('sezon')
             ? img.floral2
             : img.floral4
-        : theme === 'premium'
+        : theme === 'premium' || theme === 'ai'
           ? img.lifestyle1
           : img.home1,
     product_count: pack.products.filter((p) => p.col === c.id).length,
@@ -271,7 +272,7 @@ export function getDemoCatalog(theme: DemoTheme, lang: AppLanguage): DemoCatalog
     customization: {
       store_name: pack.store,
       logo_url: null,
-      hero_image_url: theme === 'floral' ? img.floral3 : theme === 'premium' ? img.lifestyle1 : img.home1,
+      hero_image_url: resolved === 'floral' ? img.floral3 : resolved === 'premium' ? img.lifestyle1 : img.home1,
       hero_title: pack.hero,
       hero_subtitle: pack.sub,
       hero_button_text: pack.cta,

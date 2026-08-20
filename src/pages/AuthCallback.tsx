@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BrandLogo } from '@/components/brand/BrandLogo';
+import { resolvePostLoginPath } from '@/hooks/useSuperadminGate';
 
 const AuthCallback = () => {
   const [searchParams] = useSearchParams();
@@ -50,7 +51,9 @@ const AuthCallback = () => {
         if (session) {
           setStatus('success');
           setMessage('Email verified successfully! Redirecting...');
-          setTimeout(() => navigate('/app'), 2000);
+          setTimeout(() => {
+            void resolvePostLoginPath().then((path) => navigate(path));
+          }, 2000);
           return;
         }
 

@@ -23,6 +23,8 @@ import { cn } from '@/lib/utils';
 import { EAWB_ACCOUNT_URL, openExternalUrl } from '@/lib/openExternalUrl';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useImpersonation } from '@/hooks/useImpersonation';
+import { withActingAsUserId } from '@/lib/actingAs';
 import { toast } from 'sonner';
 import { SetupWizardShell } from '@/components/onboarding/SetupWizardShell';
 import {
@@ -90,6 +92,7 @@ export function EawbSetupWizard({
   const { t } = useTranslation('settings');
   const { t: tCommon } = useTranslation('common');
   const { user } = useAuth();
+  const { effectiveUserId } = useImpersonation();
   const queryClient = useQueryClient();
 
   const [step, setStep] = useState<WizardStep>(1);
@@ -156,7 +159,7 @@ export function EawbSetupWizard({
       setApiKeyError(t('eawbSetup.errors.apiKeyRequired'));
       return false;
     }
-    if (!user) {
+    if (!user || !effectiveUserId) {
       toast.error(t('toast.updateFailed'));
       return false;
     }
@@ -168,7 +171,7 @@ export function EawbSetupWizard({
           eawb_api_key: apiKey.trim(),
           shipping_provider: 'eawb',
         })
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
         .select('id');
 
       if (error) throw error;
@@ -194,7 +197,7 @@ export function EawbSetupWizard({
     setBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke('eawb-delivery', {
-        body: { action: 'fetch_shipping_addresses' },
+        body: withActingAsUserId({ action: 'fetch_shipping_addresses' }),
       });
       const payload: any = data ?? (error as any)?.context ?? null;
 
@@ -225,13 +228,13 @@ export function EawbSetupWizard({
   };
 
   const savePickupSelection = async (id: string) => {
-    if (!user || !id) return false;
+    if (!user || !effectiveUserId || !id) return false;
     setBusy(true);
     try {
       const { error } = await supabase
         .from('profiles')
         .update({ eawb_shipping_address_id: parseInt(id, 10) })
-        .eq('user_id', user.id);
+        .eq('user_id', effectiveUserId);
       if (error) throw error;
       setSelectedPickupId(id);
       onProfileFieldsUpdated();
@@ -249,7 +252,7 @@ export function EawbSetupWizard({
     setBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke('eawb-delivery', {
-        body: { action: 'fetch_billing_addresses' },
+        body: withActingAsUserId({ action: 'fetch_billing_addresses' }),
       });
       const payload: any = data ?? (error as any)?.context ?? null;
 
@@ -280,13 +283,13 @@ export function EawbSetupWizard({
   };
 
   const saveBillingSelection = async (id: string) => {
-    if (!user || !id) return false;
+    if (!user || !effectiveUserId || !id) return false;
     setBusy(true);
     try {
       const { error } = await supabase
         .from('profiles')
         .update({ eawb_billing_address_id: parseInt(id, 10) })
-        .eq('user_id', user.id);
+        .eq('user_id', effectiveUserId);
       if (error) throw error;
       setSelectedBillingId(id);
       onProfileFieldsUpdated();
@@ -301,10 +304,10 @@ export function EawbSetupWizard({
   };
 
   const saveLocker = async (fields: DefaultPickupLockerFields) => {
-    if (!user) return;
+    if (!user || !effectiveUserId) return;
     setLockerSaving(true);
     try {
-      const { error } = await supabase.from('profiles').update(fields).eq('user_id', user.id);
+      const { error } = await supabase.from('profiles').update(fields).eq('user_id', effectiveUserId);
       if (error) throw error;
       setLockerProfile((prev) => ({ ...(prev || {}), ...fields }));
       onProfileFieldsUpdated();
@@ -322,6 +325,7 @@ export function EawbSetupWizard({
     setTestPassed(false);
     try {
       const { data, error } = await supabase.functions.invoke('test-eawb-connection', {
+        body: withActingAsUserId({}),
         headers: {
           Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
         },

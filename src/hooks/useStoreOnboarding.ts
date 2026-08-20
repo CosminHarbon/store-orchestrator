@@ -22,6 +22,8 @@ type ProfileRow = {
   netpopia_signature: string | null;
   eawb_api_key: string | null;
   store_api_key: string;
+  shipping_provider?: string | null;
+  payment_provider?: string | null;
   eawb_shipping_address_id?: number | null;
   eawb_billing_address_id?: number | null;
   eawb_pickup_locker_id?: string | null;
@@ -44,7 +46,7 @@ export function useStoreOnboarding() {
       const { data, error } = await supabase
         .from('profiles')
         .select(
-          'store_name, setup_completed, welcome_dismissed, onboarding_state, netpopia_api_key, netpopia_signature, eawb_api_key, store_api_key, eawb_shipping_address_id, eawb_billing_address_id, eawb_pickup_locker_id, eawb_pickup_locker_name, eawb_pickup_locker_address, eawb_pickup_locker_carrier_id, eawb_pickup_locker_carrier_code, eawb_pickup_locker_county, eawb_pickup_locker_city'
+          'store_name, setup_completed, welcome_dismissed, onboarding_state, netpopia_api_key, netpopia_signature, eawb_api_key, store_api_key, shipping_provider, payment_provider, eawb_shipping_address_id, eawb_billing_address_id, eawb_pickup_locker_id, eawb_pickup_locker_name, eawb_pickup_locker_address, eawb_pickup_locker_carrier_id, eawb_pickup_locker_carrier_code, eawb_pickup_locker_county, eawb_pickup_locker_city'
         )
         .eq('user_id', user!.id)
         .single();
@@ -89,10 +91,13 @@ export function useStoreOnboarding() {
   const derived = useMemo(() => {
     const storeDone = !isDefaultStoreName(profileQuery.data?.store_name);
     const paymentsDone = Boolean(
-      profileQuery.data?.netpopia_api_key?.trim() &&
-        profileQuery.data?.netpopia_signature?.trim()
+      profileQuery.data?.payment_provider === 'none' ||
+        (profileQuery.data?.netpopia_api_key?.trim() &&
+          profileQuery.data?.netpopia_signature?.trim())
     );
-    const shippingDone = Boolean(profileQuery.data?.eawb_api_key?.trim());
+    const shippingDone = Boolean(
+      profileQuery.data?.shipping_provider === 'manual' || profileQuery.data?.eawb_api_key?.trim()
+    );
     const productDone = (productsQuery.data || 0) > 0;
     const storefrontDone = Boolean(
       state.selected_template || customizationQuery.data?.id
@@ -294,18 +299,19 @@ export function useStoreOnboarding() {
   );
 
   const selectTemplate = useCallback(
-    async (templateId: 'elementar' | 'premium' | 'floral') => {
+    async (templateId: 'elementar' | 'premium' | 'floral' | 'ai') => {
       if (!user) return;
-      if (templateId === 'elementar') {
+      if (templateId === 'elementar' || templateId === 'ai') {
         await supabase.from('template_customization').upsert(
           {
             user_id: user.id,
-            template_id: 'elementar',
+            template_id: templateId === 'ai' ? 'ai' : 'elementar',
             store_name: profileQuery.data?.store_name || 'My Store',
           } as never,
           { onConflict: 'user_id,template_id' }
         );
       }
+      await supabase.from('profiles').update({ active_template: templateId } as never).eq('user_id', user.id);
       const next: OnboardingState = {
         ...state,
         selected_template: templateId,

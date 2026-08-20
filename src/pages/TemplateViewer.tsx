@@ -5,6 +5,7 @@ import { isDemoModeFromSearch } from "@/lib/storefront/demoCatalog";
 
 const PremiumTemplate = lazy(() => import("@/components/templates/premium/PremiumTemplate"));
 const FloralTemplate = lazy(() => import("@/components/templates/floral/FloralTemplate"));
+const AiStorefrontTemplate = lazy(() => import("@/components/templates/ai/AiStorefrontTemplate"));
 
 const TemplateViewer = () => {
   const [searchParams] = useSearchParams();
@@ -12,6 +13,7 @@ const TemplateViewer = () => {
   const apiKey = searchParams.get("api_key");
   const editMode = searchParams.get("edit") === "true";
   const demo = isDemoModeFromSearch(searchParams);
+  const draft = searchParams.get("draft") === "1";
   const templateKey = (routeTemplateId || "").split("?")[0].toLowerCase();
 
   if (!apiKey) {
@@ -44,6 +46,20 @@ const TemplateViewer = () => {
         }
       >
         <PremiumTemplate apiKey={apiKey} demo={demo} />
+      </Suspense>
+    );
+  }
+
+  if (templateKey === "ai") {
+    return (
+      <Suspense
+        fallback={
+          <div className="min-h-screen flex items-center justify-center bg-background">
+            <p className="text-sm text-muted-foreground animate-pulse">Loading AI storefront…</p>
+          </div>
+        }
+      >
+        <AiStorefrontTemplate apiKey={apiKey} demo={demo} draft={draft} />
       </Suspense>
     );
   }

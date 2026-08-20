@@ -88,6 +88,132 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_storefronts: {
+        Row: {
+          id: string
+          user_id: string
+          draft_spec: Json | null
+          published_spec: Json | null
+          draft_customization: Json | null
+          status: string
+          active: boolean
+          version: number
+          quality: string
+          created_at: string
+          updated_at: string
+          published_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          draft_spec?: Json | null
+          published_spec?: Json | null
+          draft_customization?: Json | null
+          status?: string
+          active?: boolean
+          version?: number
+          quality?: string
+          created_at?: string
+          updated_at?: string
+          published_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          draft_spec?: Json | null
+          published_spec?: Json | null
+          draft_customization?: Json | null
+          status?: string
+          active?: boolean
+          version?: number
+          quality?: string
+          created_at?: string
+          updated_at?: string
+          published_at?: string | null
+        }
+        Relationships: []
+      }
+      ai_conversations: {
+        Row: {
+          id: string
+          user_id: string
+          storefront_id: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          storefront_id: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          storefront_id?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_messages: {
+        Row: {
+          id: string
+          conversation_id: string
+          user_id: string
+          role: string
+          content: string | null
+          brief_json: Json | null
+          spec_json: Json | null
+          patches_json: Json | null
+          model: string | null
+          prompt_tokens: number | null
+          completion_tokens: number | null
+          estimated_cost_usd: number | null
+          quality: string | null
+          kind: string
+          status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          conversation_id: string
+          user_id: string
+          role: string
+          content?: string | null
+          brief_json?: Json | null
+          spec_json?: Json | null
+          patches_json?: Json | null
+          model?: string | null
+          prompt_tokens?: number | null
+          completion_tokens?: number | null
+          estimated_cost_usd?: number | null
+          quality?: string | null
+          kind?: string
+          status?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          conversation_id?: string
+          user_id?: string
+          role?: string
+          content?: string | null
+          brief_json?: Json | null
+          spec_json?: Json | null
+          patches_json?: Json | null
+          model?: string | null
+          prompt_tokens?: number | null
+          completion_tokens?: number | null
+          estimated_cost_usd?: number | null
+          quality?: string | null
+          kind?: string
+          status?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       collections: {
         Row: {
           created_at: string
@@ -115,6 +241,123 @@ export type Database = {
           name?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      delivery_pricing_settings: {
+        Row: {
+          user_id: string
+          enabled: boolean
+          coverage_mode: string
+          covered_counties: string[]
+          covered_localities: Json
+          pricing_mode: string
+          distance_charge: string
+          max_distance_km: number | null
+          origin_street: string | null
+          origin_street_number: string | null
+          origin_city: string | null
+          origin_county: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          enabled?: boolean
+          coverage_mode?: string
+          covered_counties?: string[]
+          covered_localities?: Json
+          pricing_mode?: string
+          distance_charge?: string
+          max_distance_km?: number | null
+          origin_street?: string | null
+          origin_street_number?: string | null
+          origin_city?: string | null
+          origin_county?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          enabled?: boolean
+          coverage_mode?: string
+          covered_counties?: string[]
+          covered_localities?: Json
+          pricing_mode?: string
+          distance_charge?: string
+          max_distance_km?: number | null
+          origin_street?: string | null
+          origin_street_number?: string | null
+          origin_city?: string | null
+          origin_county?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      delivery_pricing_rules: {
+        Row: {
+          id: string
+          user_id: string
+          county: string | null
+          locality: string | null
+          min_distance_km: number
+          max_distance_km: number
+          price_per_unit: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          county?: string | null
+          locality?: string | null
+          min_distance_km?: number
+          max_distance_km: number
+          price_per_unit: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          county?: string | null
+          locality?: string | null
+          min_distance_km?: number
+          max_distance_km?: number
+          price_per_unit?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      delivery_order_value_rules: {
+        Row: {
+          id: string
+          user_id: string
+          min_order_value: number
+          max_order_value: number | null
+          delivery_fee: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          min_order_value?: number
+          max_order_value?: number | null
+          delivery_fee: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          min_order_value?: number
+          max_order_value?: number | null
+          delivery_fee?: number
+          created_at?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -213,6 +456,14 @@ export type Database = {
           created_at: string
           customer_address: string
           customer_apartment: string | null
+          billing_same_as_delivery: boolean
+          billing_address: string | null
+          billing_city: string | null
+          billing_county: string | null
+          billing_street: string | null
+          billing_street_number: string | null
+          billing_block: string | null
+          billing_apartment: string | null
           customer_block: string | null
           customer_city: string | null
           customer_county: string | null
@@ -247,6 +498,10 @@ export type Database = {
           tracking_url: string | null
           updated_at: string
           user_id: string
+          customer_notes: string | null
+          delivery_fee: number | null
+          delivery_distance_km: number | null
+          delivery_pricing_snapshot: Json | null
         }
         Insert: {
           awb_number?: string | null
@@ -263,6 +518,14 @@ export type Database = {
           customer_phone?: string | null
           customer_street?: string | null
           customer_street_number?: string | null
+          billing_same_as_delivery?: boolean
+          billing_address?: string | null
+          billing_city?: string | null
+          billing_county?: string | null
+          billing_street?: string | null
+          billing_street_number?: string | null
+          billing_block?: string | null
+          billing_apartment?: string | null
           delivery_type?: string | null
           eawb_order_id?: number | null
           estimated_delivery_date?: string | null
@@ -289,6 +552,10 @@ export type Database = {
           tracking_url?: string | null
           updated_at?: string
           user_id: string
+          customer_notes?: string | null
+          delivery_fee?: number | null
+          delivery_distance_km?: number | null
+          delivery_pricing_snapshot?: Json | null
         }
         Update: {
           awb_number?: string | null
@@ -305,6 +572,14 @@ export type Database = {
           customer_phone?: string | null
           customer_street?: string | null
           customer_street_number?: string | null
+          billing_same_as_delivery?: boolean
+          billing_address?: string | null
+          billing_city?: string | null
+          billing_county?: string | null
+          billing_street?: string | null
+          billing_street_number?: string | null
+          billing_block?: string | null
+          billing_apartment?: string | null
           delivery_type?: string | null
           eawb_order_id?: number | null
           estimated_delivery_date?: string | null
@@ -331,6 +606,10 @@ export type Database = {
           tracking_url?: string | null
           updated_at?: string
           user_id?: string
+          customer_notes?: string | null
+          delivery_fee?: number | null
+          delivery_distance_km?: number | null
+          delivery_pricing_snapshot?: Json | null
         }
         Relationships: []
       }
@@ -485,6 +764,7 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string
+          show_stock_to_customers: boolean | null
         }
         Insert: {
           category?: string | null
@@ -499,6 +779,7 @@ export type Database = {
           title: string
           updated_at?: string
           user_id: string
+          show_stock_to_customers?: boolean | null
         }
         Update: {
           category?: string | null
@@ -513,6 +794,7 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+          show_stock_to_customers?: boolean | null
         }
         Relationships: []
       }
@@ -574,6 +856,9 @@ export type Database = {
           woot_api_key: string | null
           woot_email: string | null
           woot_name: string | null
+          show_stock_to_customers: boolean
+          allow_order_notes: boolean
+          active_template: string
         }
         Insert: {
           cash_payment_enabled?: boolean | null
@@ -632,6 +917,9 @@ export type Database = {
           woot_api_key?: string | null
           woot_email?: string | null
           woot_name?: string | null
+          show_stock_to_customers?: boolean
+          allow_order_notes?: boolean
+          active_template?: string
         }
         Update: {
           cash_payment_enabled?: boolean | null
@@ -690,6 +978,9 @@ export type Database = {
           woot_api_key?: string | null
           woot_email?: string | null
           woot_name?: string | null
+          show_stock_to_customers?: boolean
+          allow_order_notes?: boolean
+          active_template?: string
         }
         Relationships: []
       }
@@ -929,11 +1220,47 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          id: string
+          user_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      admin_list_merchants: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: string
+          store_name: string
+          email: string
+          setup_completed: boolean
+          active_template: string
+          shipping_provider: string
+          payment_provider: string
+          created_at: string
+          order_count: number
+          product_count: number
+        }[]
+      }
       bulk_update_stock: {
         Args: { updates: Json }
         Returns: {
@@ -944,8 +1271,21 @@ export type Database = {
           success: boolean
         }[]
       }
+      has_role: {
+        Args: { _role: Database["public"]["Enums"]["app_role"] }
+        Returns: boolean
+      }
+      is_superadmin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_superadmin_user: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
     }
     Enums: {
+      app_role: "superadmin"
       order_status_enum: "draft" | "awaiting_payment" | "paid" | "cancelled"
     }
     CompositeTypes: {
@@ -1074,6 +1414,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["superadmin"],
       order_status_enum: ["draft", "awaiting_payment", "paid", "cancelled"],
     },
   },

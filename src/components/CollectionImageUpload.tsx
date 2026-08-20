@@ -4,6 +4,7 @@ import { Plus, Upload, Trash2, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getStoredImpersonationUserId } from '@/hooks/useImpersonation';
 
 interface CollectionImageUploadProps {
   collectionId?: string;
@@ -24,9 +25,10 @@ const CollectionImageUpload = ({
     mutationFn: async (file: File) => {
       const user = await supabase.auth.getUser();
       if (!user.data.user) throw new Error('Not authenticated');
+      const tenantUserId = getStoredImpersonationUserId() || user.data.user.id;
       
       const fileExt = file.name.split('.').pop();
-      const fileName = `collections/${user.data.user.id}/${collectionId || 'temp'}/${Date.now()}.${fileExt}`;
+      const fileName = `collections/${tenantUserId}/${collectionId || 'temp'}/${Date.now()}.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
         .from('product-images')

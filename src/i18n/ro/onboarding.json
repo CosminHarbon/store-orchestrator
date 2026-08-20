@@ -54,6 +54,11 @@
       "badge": "Florării",
       "description": "Storefront boutique ultra-premium pentru florării — imagini aerisite și checkout complet."
     },
+    "ai": {
+      "name": "AI Studio",
+      "badge": "Descrie-l",
+      "description": "Spune atmosfera. Generăm storefront-ul și îl publici în cont."
+    },
     "preview": "Previzualizare",
     "previewDemo": "Demo",
     "previewLive": "Live",
@@ -89,21 +94,36 @@
   },
   "payments": {
     "eyebrow": "Plăți",
-    "title": "Acceptă plăți cu cardul",
-    "body": "Conectează Netopia ca clienții să poată plăti cu cardul la checkout.",
+    "title": "Cum plătesc clienții?",
+    "body": "Conectează Netopia pentru card la checkout sau fără procesator — doar cash / ramburs.",
     "connected": "Plățile sunt conectate",
     "connectedBody": "Netopia este legat de magazinul tău.",
+    "connectedNone": "Doar cash / ramburs",
+    "connectedNoneBody": "Cardul nu va apărea în magazin. Clienții plătesc la livrare.",
     "openWizard": "Conectează Netopia",
-    "failed": "Nu am putut conecta contul încă."
+    "failed": "Nu am putut conecta contul încă.",
+    "choose": "Opțiuni de plată",
+    "netopiaTitle": "Netopia (card)",
+    "netopiaBody": "Clienții pot plăti cu cardul la checkout.",
+    "noneTitle": "Fără procesator de plăți",
+    "noneBody": "Fără card în magazin. Clienții plătesc cash / ramburs la livrare.",
+    "noneReady": "Plățile cu cardul sunt oprite. Rambursul rămâne disponibil la checkout."
   },
   "shipping": {
     "eyebrow": "Livrare",
     "title": "Configurează livrarea",
-    "body": "Conectează eAWB pentru a genera AWB-uri și a oferi opțiuni de livrare.",
+    "body": "Alege curier prin eAWB sau livrează tu comenzile.",
     "connected": "Livrarea este conectată",
-    "connectedBody": "eAWB este legat de magazinul tău.",
+    "connectedBody": "Livrarea este configurată pentru magazinul tău.",
     "openWizard": "Conectează eAWB",
-    "failed": "Nu am putut conecta contul încă."
+    "failed": "Nu am putut conecta contul încă.",
+    "choose": "Cum livrezi?",
+    "eawbTitle": "Curier (eAWB)",
+    "eawbBody": "Generezi AWB-uri și oferi livrare acasă sau la locker prin curieri.",
+    "manualTitle": "Livrare proprie",
+    "manualBody": "Livrezi tu. Setezi taxa după valoarea comenzii sau distanță și limitezi orașe sau km.",
+    "manualReady": "Livrarea proprie este selectată. Configurează zonele și taxele mai jos sau mai târziu în Setări.",
+    "useManual": "Folosesc livrare proprie"
   },
   "settings": {
     "eyebrow": "Finisaje magazin",

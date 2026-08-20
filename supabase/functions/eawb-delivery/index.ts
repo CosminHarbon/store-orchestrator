@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { resolveActingOwnerId } from '../_shared/actingAs.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,6 +8,25 @@ const corsHeaders = {
 };
 
 const EAWB_BASE_URL = 'https://api.europarcel.com/api/public';
+
+/** eAWB returns DD-MM-YYYY; Postgres DATE requires YYYY-MM-DD. */
+function toIsoDate(value: unknown): string | null {
+  if (value == null) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+
+  const dmy = raw.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+  if (dmy) {
+    const day = dmy[1].padStart(2, '0');
+    const month = dmy[2].padStart(2, '0');
+    return `${dmy[3]}-${month}-${day}`;
+  }
+
+  return null;
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -47,12 +67,19 @@ serve(async (req) => {
       throw new Error('Authentication failed');
     }
 
+    const ownerId = await resolveActingOwnerId(
+      supabase,
+      user,
+      authHeader,
+      body.acting_as_user_id || null
+    );
+
     // Fetch billing addresses from eAWB API
     if (action === 'fetch_billing_addresses') {
       const { data: profile } = await supabase
         .from('profiles')
         .select('eawb_api_key')
-        .eq('user_id', user.id)
+        .eq('user_id', ownerId)
         .single();
 
       if (!profile?.eawb_api_key) {
@@ -139,7 +166,7 @@ serve(async (req) => {
         await supabase
           .from('profiles')
           .update({ eawb_billing_address_id: savedId })
-          .eq('user_id', user.id);
+          .eq('user_id', ownerId);
         console.log('Auto-saved billing_address_id:', savedId);
       }
 
@@ -157,7 +184,7 @@ serve(async (req) => {
       const { data: profile } = await supabase
         .from('profiles')
         .select('eawb_api_key')
-        .eq('user_id', user.id)
+        .eq('user_id', ownerId)
         .single();
 
       if (!profile?.eawb_api_key) {
@@ -241,7 +268,7 @@ serve(async (req) => {
         await supabase
           .from('profiles')
           .update({ eawb_shipping_address_id: savedId })
-          .eq('user_id', user.id);
+          .eq('user_id', ownerId);
         console.log('Auto-saved shipping_address_id:', savedId);
       }
 
@@ -259,7 +286,7 @@ serve(async (req) => {
       const { data: profile } = await supabase
         .from('profiles')
         .select('eawb_api_key')
-        .eq('user_id', user.id)
+        .eq('user_id', ownerId)
         .single();
 
       if (!profile?.eawb_api_key) {
@@ -354,7 +381,7 @@ serve(async (req) => {
       const { data: profile } = await supabase
         .from('profiles')
         .select('eawb_api_key')
-        .eq('user_id', user.id)
+        .eq('user_id', ownerId)
         .single();
 
       if (!profile?.eawb_api_key) {
@@ -488,8 +515,8 @@ serve(async (req) => {
     if (action === 'create_order') {
       // Get user profile and order
       const [profileResult, orderResult] = await Promise.all([
-        supabase.from('profiles').select('*').eq('user_id', user.id).single(),
-        supabase.from('orders').select('*').eq('id', order_id).eq('user_id', user.id).single()
+        supabase.from('profiles').select('*').eq('user_id', ownerId).single(),
+        supabase.from('orders').select('*').eq('id', order_id).eq('user_id', ownerId).single()
       ]);
 
       if (profileResult.error || !profileResult.data) {
@@ -883,7 +910,7 @@ serve(async (req) => {
           await supabase
             .from('profiles')
             .update({ eawb_billing_address_id: billingAddressId })
-            .eq('user_id', user.id);
+            .eq('user_id', ownerId);
           console.log('Auto-resolved billing_address_id:', billingAddressId);
         } else if (bList.length > 1) {
           return new Response(JSON.stringify({
@@ -1139,15 +1166,27 @@ serve(async (req) => {
           updateData.carrier_name = awbData.carrier;
         }
 
-        if (awbData.estimated_delivery_date) {
-          updateData.estimated_delivery_date = awbData.estimated_delivery_date;
+        const estimatedDeliveryDate = toIsoDate(awbData.estimated_delivery_date);
+        if (estimatedDeliveryDate) {
+          updateData.estimated_delivery_date = estimatedDeliveryDate;
         }
 
-        const { error: updateError } = await supabase
+        let { error: updateError } = await supabase
           .from('orders')
           .update(updateData)
           .eq('id', order_id)
-          .eq('user_id', user.id);
+          .eq('user_id', ownerId);
+
+        if (updateError && updateData.estimated_delivery_date) {
+          console.error('Order update error, retrying without delivery date:', updateError);
+          const { estimated_delivery_date: _ignored, ...withoutDate } = updateData;
+          const retry = await supabase
+            .from('orders')
+            .update(withoutDate)
+            .eq('id', order_id)
+            .eq('user_id', ownerId);
+          updateError = retry.error;
+        }
 
         if (updateError) {
           console.error('Order update error:', updateError);
@@ -1158,7 +1197,7 @@ serve(async (req) => {
           success: true,
           awb_number: awbData.awb_number,
           tracking_url: awbData.track_url,
-          estimated_delivery_date: awbData.estimated_delivery_date,
+          estimated_delivery_date: estimatedDeliveryDate || awbData.estimated_delivery_date,
           carrier_name: awbData.carrier,
           service_name: awbData.service_name || null,
           label_url: labelUrl,
@@ -1196,8 +1235,8 @@ serve(async (req) => {
       }
 
       const [profileResult, orderResult] = await Promise.all([
-        supabase.from('profiles').select('eawb_api_key').eq('user_id', user.id).single(),
-        supabase.from('orders').select('*').eq('id', order_id).eq('user_id', user.id).single()
+        supabase.from('profiles').select('eawb_api_key').eq('user_id', ownerId).single(),
+        supabase.from('orders').select('*').eq('id', order_id).eq('user_id', ownerId).single()
       ]);
 
       if (profileResult.error || !profileResult.data) {
@@ -1284,7 +1323,7 @@ serve(async (req) => {
         .from('orders')
         .update({ shipping_status: 'cancelled' })
         .eq('id', order_id)
-        .eq('user_id', user.id);
+        .eq('user_id', ownerId);
 
       if (updateError) {
         console.error('Order status update error after cancel:', updateError);
@@ -1306,7 +1345,7 @@ serve(async (req) => {
       const { data: profile } = await supabase
         .from('profiles')
         .select('eawb_api_key')
-        .eq('user_id', user.id)
+        .eq('user_id', ownerId)
         .single();
 
       if (!profile?.eawb_api_key) {
@@ -1326,7 +1365,7 @@ serve(async (req) => {
           .from('orders')
           .select('awb_number, awb_label_url')
           .eq('id', targetOrderId)
-          .eq('user_id', user.id)
+          .eq('user_id', ownerId)
           .single();
         if (ord?.awb_label_url && !body.refresh) {
           return new Response(JSON.stringify({
@@ -1379,7 +1418,7 @@ serve(async (req) => {
           .from('orders')
           .update({ awb_label_url: downloadUrl })
           .eq('id', targetOrderId)
-          .eq('user_id', user.id);
+          .eq('user_id', ownerId);
       }
 
       return new Response(JSON.stringify({

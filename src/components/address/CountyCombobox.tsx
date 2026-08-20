@@ -58,6 +58,7 @@ export interface CountyComboboxProps {
   disabled?: boolean;
   className?: string;
   placeholder?: string;
+  allowedCounties?: string[];
 }
 
 export function CountyCombobox({
@@ -67,6 +68,7 @@ export function CountyCombobox({
   disabled,
   className,
   placeholder,
+  allowedCounties,
 }: CountyComboboxProps) {
   const { t } = useTranslation('shipping');
   const resolvedPlaceholder = placeholder ?? t('locality.county');
@@ -103,14 +105,16 @@ export function CountyCombobox({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = counties.length
+    const allowed = (allowedCounties || []).map((n) => n.toLowerCase());
+    const list = (counties.length
       ? counties
-      : ROMANIA_COUNTIES.map((name) => ({ id: name, code: '', name }));
+      : ROMANIA_COUNTIES.map((name) => ({ id: name, code: '', name }))
+    ).filter((c) => allowed.length === 0 || allowed.includes(c.name.toLowerCase()));
     if (!q) return list;
     return list.filter(
       (c) => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q)
     );
-  }, [counties, query]);
+  }, [allowedCounties, counties, query]);
 
   const select = (name: string) => {
     onChange(name);

@@ -4,17 +4,21 @@ import { toast } from 'sonner';
 import { applyStorefrontLanguage } from '@/i18n/LanguageProvider';
 import {
   STORE_API_BASE,
+  fetchDeliveryQuote,
   fetchStoreCollections,
   fetchStoreConfig,
   fetchStoreProducts,
   fetchStoreReviews,
   storeApiHeaders,
 } from '@/lib/storefront/api';
+import { isBillingComplete, resolvedBilling } from '@/lib/storefront/billing';
 import type {
   CartItem,
   CheckoutFormState,
+  DeliveryQuote,
   StorefrontCollection,
   StorefrontCustomization,
+  StorefrontDeliveryConfig,
   StorefrontFeeSettings,
   StorefrontProduct,
   StorefrontReview,
@@ -49,6 +53,16 @@ export function useStorefrontCommerce(apiKey: string, options: StorefrontCommerc
     locker_delivery_fee: 0,
     card_enabled: true,
   });
+  const [allowOrderNotes, setAllowOrderNotes] = useState(true);
+  const [deliveryConfig, setDeliveryConfig] = useState<StorefrontDeliveryConfig>({
+    custom_pricing_enabled: false,
+    locker_enabled: true,
+    coverage_mode: 'romania',
+    covered_counties: [],
+    covered_localities: [],
+  });
+  const [deliveryQuote, setDeliveryQuote] = useState<DeliveryQuote | null>(null);
+  const [deliveryQuoteLoading, setDeliveryQuoteLoading] = useState(false);
   const [customization, setCustomization] = useState<StorefrontCustomization>({
     store_name: 'Store',
     logo_url: null,
@@ -174,6 +188,14 @@ export function useStorefrontCommerce(apiKey: string, options: StorefrontCommerc
           if (cancelled) return;
           setMapboxToken(catalog.mapboxToken);
           setFees(catalog.fees);
+          setAllowOrderNotes(true);
+          setDeliveryConfig({
+            custom_pricing_enabled: false,
+            locker_enabled: true,
+            coverage_mode: 'romania',
+            covered_counties: [],
+            covered_localities: [],
+          });
           setCustomization(catalog.customization);
           setProducts(catalog.products);
           setCollections(catalog.collections);
@@ -192,6 +214,8 @@ export function useStorefrontCommerce(apiKey: string, options: StorefrontCommerc
         void applyStorefrontLanguage(cfg.preferredLanguage);
         setMapboxToken(cfg.mapboxToken);
         setFees(cfg.fees);
+        setAllowOrderNotes(cfg.allowOrderNotes);
+        setDeliveryConfig(cfg.deliveryConfig);
         setCustomization(cfg.customization);
         const enriched = prods.map((p) => ({
           ...p,
@@ -222,7 +246,11 @@ export function useStorefrontCommerce(apiKey: string, options: StorefrontCommerc
       if (existing) {
         const nextQty = existing.quantity + qty;
         if (nextQty > product.stock) {
-          toast.error(t('toast.maxStock', { stock: product.stock }));
+          toast.error(
+            product.show_stock_to_customers === false
+              ? t('toast.maxQuantity')
+              : t('toast.maxStock', { stock: product.stock })
+          );
           return prev;
         }
         toast.success(t('toast.updatedInCart', { title: product.title }));
@@ -246,7 +274,11 @@ export function useStorefrontCommerce(apiKey: string, options: StorefrontCommerc
       if (!item) return prev;
       if (quantity <= 0) return prev.filter((i) => i.product.id !== productId);
       if (quantity > item.product.stock) {
-        toast.error(t('toast.maxStock', { stock: item.product.stock }));
+        toast.error(
+          item.product.show_stock_to_customers === false
+            ? t('toast.maxQuantity')
+            : t('toast.maxStock', { stock: item.product.stock })
+        );
         return prev;
       }
       return prev.map((i) => (i.product.id === productId ? { ...i, quantity } : i));
@@ -281,12 +313,91 @@ export function useStorefrontCommerce(apiKey: string, options: StorefrontCommerc
     () => cart.reduce((s, i) => s + i.product.price * i.quantity, 0),
     [cart]
   );
-  const deliveryFee =
-    checkoutForm.delivery_type === 'home' ? fees.home_delivery_fee : fees.locker_delivery_fee;
+  const customHomePricing =
+    deliveryConfig.custom_pricing_enabled && checkoutForm.delivery_type === 'home';
+  const deliveryFee = customHomePricing
+    ? deliveryQuote?.available
+      ? Number(deliveryQuote.delivery_fee || 0)
+      : 0
+    : checkoutForm.delivery_type === 'home'
+      ? fees.home_delivery_fee
+      : fees.locker_delivery_fee;
   const paymentFee =
     paymentMethod === 'cash' && fees.cash_payment_enabled ? fees.cash_payment_fee : 0;
   const orderTotal = cartSubtotal + deliveryFee + paymentFee;
   const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
+
+  useEffect(() => {
+    if (deliveryConfig.locker_enabled === false && checkoutForm.delivery_type === 'locker') {
+      setCheckoutForm((prev) => ({ ...prev, delivery_type: 'home' }));
+    }
+  }, [deliveryConfig.locker_enabled, checkoutForm.delivery_type]);
+
+  useEffect(() => {
+    if (!fees.card_enabled && fees.cash_payment_enabled && paymentMethod === 'card') {
+      setPaymentMethod('cash');
+    }
+  }, [fees.card_enabled, fees.cash_payment_enabled, paymentMethod]);
+
+  useEffect(() => {
+    if (demo || !deliveryConfig.custom_pricing_enabled || checkoutForm.delivery_type !== 'home') {
+      setDeliveryQuote(null);
+      setDeliveryQuoteLoading(false);
+      return;
+    }
+    const ready =
+      !!checkoutForm.county &&
+      !!checkoutForm.city &&
+      !!checkoutForm.street &&
+      !!checkoutForm.street_number &&
+      cart.length > 0;
+    if (!ready) {
+      setDeliveryQuote(null);
+      return;
+    }
+    let cancelled = false;
+    setDeliveryQuoteLoading(true);
+    const timer = window.setTimeout(() => {
+      void fetchDeliveryQuote(apiKey, {
+        county: checkoutForm.county,
+        city: checkoutForm.city,
+        street: checkoutForm.street,
+        street_number: checkoutForm.street_number,
+        items: cart.map((item) => ({ quantity: item.quantity, price: item.product.price })),
+        subtotal: cartSubtotal,
+      })
+        .then((quote) => {
+          if (!cancelled) setDeliveryQuote(quote);
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setDeliveryQuote({
+              enabled: true,
+              available: false,
+              error: 'DISTANCE_UNAVAILABLE',
+            });
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setDeliveryQuoteLoading(false);
+        });
+    }, 350);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    apiKey,
+    cart,
+    checkoutForm.city,
+    checkoutForm.county,
+    checkoutForm.delivery_type,
+    checkoutForm.street,
+    checkoutForm.street_number,
+    demo,
+    deliveryConfig.custom_pricing_enabled,
+    cartSubtotal,
+  ]);
 
   const abandonedItems = useMemo(
     () =>
@@ -336,8 +447,16 @@ export function useStorefrontCommerce(apiKey: string, options: StorefrontCommerc
       toast.error(t('toast.selectLocker'));
       return;
     }
+    if (!isBillingComplete(checkoutForm)) {
+      toast.error(t('toast.billingRequired'));
+      return;
+    }
     if (!cart.length) {
       toast.error(t('toast.cartEmpty'));
+      return;
+    }
+    if (customHomePricing && (deliveryQuoteLoading || !deliveryQuote?.available)) {
+      toast.error(deliveryQuote?.error_message || t('delivery.unavailable'));
       return;
     }
 
@@ -361,13 +480,15 @@ export function useStorefrontCommerce(apiKey: string, options: StorefrontCommerc
         customer_street_number: checkoutForm.street_number,
         customer_block: checkoutForm.block || null,
         customer_apartment: checkoutForm.apartment || null,
+        ...resolvedBilling(checkoutForm),
         delivery_type: checkoutForm.delivery_type,
         selected_carrier_code: checkoutForm.selected_carrier_code || null,
         locker_id: checkoutForm.locker_id || null,
         locker_name: checkoutForm.locker_name || null,
         locker_address: checkoutForm.locker_address || null,
         total: orderTotal,
-        payment_method: paymentMethod,
+        payment_method: fees.card_enabled ? paymentMethod : 'cash',
+        customer_notes: checkoutForm.notes || null,
         session_token: getSessionToken() || undefined,
         items: cart.map((item) => ({
           product_id: item.product.id,
@@ -412,7 +533,11 @@ export function useStorefrontCommerce(apiKey: string, options: StorefrontCommerc
     apiKey,
     cart,
     checkoutForm,
+    customHomePricing,
+    deliveryQuote,
+    deliveryQuoteLoading,
     demo,
+    fees.card_enabled,
     getSessionToken,
     markConvertedLocally,
     orderTotal,
@@ -480,6 +605,11 @@ export function useStorefrontCommerce(apiKey: string, options: StorefrontCommerc
     setCheckoutStep,
     placeOrder,
     placingOrder,
+    allowOrderNotes,
+    deliveryConfig,
+    deliveryQuote,
+    deliveryQuoteLoading,
+    customHomePricing,
     bestSellers,
     newestProducts,
     recentProducts,

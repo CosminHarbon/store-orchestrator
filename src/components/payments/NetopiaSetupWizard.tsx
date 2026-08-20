@@ -19,6 +19,8 @@ import { cn } from '@/lib/utils';
 import { NETOPIA_ACCOUNT_URL, openExternalUrl } from '@/lib/openExternalUrl';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useImpersonation } from '@/hooks/useImpersonation';
+import { withActingAsUserId } from '@/lib/actingAs';
 import { toast } from 'sonner';
 import { SetupWizardShell } from '@/components/onboarding/SetupWizardShell';
 import {
@@ -68,6 +70,7 @@ export function NetopiaSetupWizard({
   const { t } = useTranslation('settings');
   const { t: tCommon } = useTranslation('common');
   const { user } = useAuth();
+  const { effectiveUserId } = useImpersonation();
 
   const [step, setStep] = useState<WizardStep>(1);
   const [phase, setPhase] = useState<Phase>('steps');
@@ -136,18 +139,18 @@ export function NetopiaSetupWizard({
       else if (!signature.trim()) goTo(4);
       return;
     }
-    if (!user) return;
+    if (!user || !effectiveUserId) return;
 
     setConnecting(true);
     try {
       const { data, error } = await supabase.functions.invoke('netopia-payment', {
-        body: {
+        body: withActingAsUserId({
           action: 'test_connection',
           api_key: apiKey.trim(),
           signature: signature.trim(),
           public_key: credentials.public_key || null,
           sandbox: credentials.sandbox,
-        },
+        }),
       });
 
       if (error) {
@@ -166,7 +169,7 @@ export function NetopiaSetupWizard({
           netpopia_signature: signature.trim(),
           payment_provider: 'netpopia',
         })
-        .eq('user_id', user.id);
+        .eq('user_id', effectiveUserId);
 
       if (saveError) {
         toast.error(saveError.message || t('toast.updateFailed'));

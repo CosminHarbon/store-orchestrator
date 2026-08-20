@@ -38,7 +38,7 @@ export type OnboardingState = {
   version: 1;
   current_step: OnboardingStepId;
   steps: Partial<Record<OnboardingStepId, StepStatus>>;
-  selected_template?: 'elementar' | 'premium' | 'floral' | null;
+  selected_template?: 'elementar' | 'premium' | 'floral' | 'ai' | null;
 };
 
 export function emptyOnboardingState(): OnboardingState {
@@ -78,7 +78,8 @@ export function parseOnboardingState(raw: unknown): OnboardingState {
   const selected =
     obj.selected_template === 'elementar' ||
     obj.selected_template === 'premium' ||
-    obj.selected_template === 'floral'
+    obj.selected_template === 'floral' ||
+    obj.selected_template === 'ai'
       ? obj.selected_template
       : null;
   return {

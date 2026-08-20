@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useImpersonation, resolveTenantUserId } from '@/hooks/useImpersonation';
 import type { TemplateBlock } from '@/components/templates/BlockEditor';
 import {
   BuilderSection,
@@ -25,8 +26,9 @@ function cloneSnapshot(snapshot: BuilderSnapshot): BuilderSnapshot {
   };
 }
 
-export function useWebsiteBuilderState() {
+export function useWebsiteBuilderState(templateId = 'elementar') {
   const { user } = useAuth();
+  const { effectiveUserId } = useImpersonation();
   const queryClient = useQueryClient();
   const [customization, setCustomization] = useState<WebsiteCustomization | null>(null);
   const [blocks, setBlocks] = useState<TemplateBlock[]>([]);
@@ -42,14 +44,14 @@ export function useWebsiteBuilderState() {
   const hydratedRef = useRef(false);
 
   const customizationQuery = useQuery({
-    queryKey: ['template-customization', user?.id],
-    enabled: !!user,
+    queryKey: ['template-customization', effectiveUserId, templateId],
+    enabled: !!user && !!effectiveUserId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('template_customization')
         .select('*')
-        .eq('user_id', user!.id)
-        .eq('template_id', 'elementar')
+        .eq('user_id', effectiveUserId!)
+        .eq('template_id', templateId)
         .maybeSingle();
       if (error) throw error;
       return data;
@@ -57,14 +59,14 @@ export function useWebsiteBuilderState() {
   });
 
   const blocksQuery = useQuery({
-    queryKey: ['template-blocks', user?.id],
-    enabled: !!user,
+    queryKey: ['template-blocks', effectiveUserId, templateId],
+    enabled: !!user && !!effectiveUserId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('template_blocks')
         .select('*')
-        .eq('user_id', user!.id)
-        .eq('template_id', 'elementar')
+        .eq('user_id', effectiveUserId!)
+        .eq('template_id', templateId)
         .order('block_order', { ascending: true });
       if (error) throw error;
       return (data || []) as unknown as TemplateBlock[];
@@ -72,14 +74,14 @@ export function useWebsiteBuilderState() {
   });
 
   const previewProductsQuery = useQuery({
-    queryKey: ['builder-preview-products', user?.id],
-    enabled: !!user,
+    queryKey: ['builder-preview-products', effectiveUserId],
+    enabled: !!user && !!effectiveUserId,
     staleTime: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
         .select('id, title, price, image, stock')
-        .eq('user_id', user!.id)
+        .eq('user_id', effectiveUserId!)
         .order('created_at', { ascending: false })
         .limit(8);
       if (error) throw error;
@@ -88,14 +90,14 @@ export function useWebsiteBuilderState() {
   });
 
   const previewCollectionsQuery = useQuery({
-    queryKey: ['builder-preview-collections', user?.id],
-    enabled: !!user,
+    queryKey: ['builder-preview-collections', effectiveUserId],
+    enabled: !!user && !!effectiveUserId,
     staleTime: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('collections')
         .select('id, name, image_url')
-        .eq('user_id', user!.id)
+        .eq('user_id', effectiveUserId!)
         .order('name', { ascending: true })
         .limit(8);
       if (error) throw error;
@@ -104,20 +106,20 @@ export function useWebsiteBuilderState() {
   });
 
   useEffect(() => {
-    if (!user || customizationQuery.isLoading || blocksQuery.isLoading) return;
+    if (!user || !effectiveUserId || customizationQuery.isLoading || blocksQuery.isLoading) return;
     if (hydratedRef.current) return;
 
     const loadedBlocks = blocksQuery.data || [];
-    const base = DEFAULT_CUSTOMIZATION(user.id);
+    const base = DEFAULT_CUSTOMIZATION(effectiveUserId);
     const row = customizationQuery.data;
     const nextCustomization: WebsiteCustomization = row
       ? {
           ...base,
           ...(row as unknown as WebsiteCustomization),
-          user_id: user.id,
-          template_id: 'elementar',
+          user_id: effectiveUserId,
+          template_id: templateId,
         }
-      : base;
+      : { ...base, template_id: templateId };
 
     const nextSections = parseBuilderConfig(
       nextCustomization.builder_config,
@@ -131,7 +133,7 @@ export function useWebsiteBuilderState() {
     hydratedRef.current = true;
     historyRef.current = [];
     futureRef.current = [];
-  }, [user, customizationQuery.data, customizationQuery.isLoading, blocksQuery.data, blocksQuery.isLoading]);
+  }, [user, effectiveUserId, customizationQuery.data, customizationQuery.isLoading, blocksQuery.data, blocksQuery.isLoading, templateId]);
 
   const [historyVersion, setHistoryVersion] = useState(0);
 
@@ -201,7 +203,7 @@ export function useWebsiteBuilderState() {
       sections: BuilderSection[];
     }) => {
       const { data: sessionData } = await supabase.auth.getSession();
-      const userId = sessionData.session?.user?.id;
+      const userId = await resolveTenantUserId(async () => sessionData.session?.user?.id);
       if (!userId) throw new Error('Not authenticated');
 
       const synced = syncCustomizationFlags(payload.customization, payload.sections);
@@ -212,7 +214,7 @@ export function useWebsiteBuilderState() {
       const upsertPayload = {
         ...rest,
         user_id: userId,
-        template_id: 'elementar',
+        template_id: templateId,
         builder_config: toBuilderConfig(payload.sections),
         updated_at: new Date().toISOString(),
       };
@@ -226,7 +228,7 @@ export function useWebsiteBuilderState() {
         .from('template_blocks')
         .delete()
         .eq('user_id', userId)
-        .eq('template_id', 'elementar');
+        .eq('template_id', templateId);
       if (deleteError) throw deleteError;
 
       const orderedBlockIds = payload.sections
@@ -241,7 +243,7 @@ export function useWebsiteBuilderState() {
           const section = payload.sections.find((s) => s.blockId === id);
           return {
             user_id: userId,
-            template_id: 'elementar',
+            template_id: templateId,
             block_type: block.block_type,
             block_order: index,
             title: block.title,
@@ -328,12 +330,12 @@ export function useWebsiteBuilderState() {
 
   const addSection = useCallback(
     (blockType: string, title: string) => {
-      if (!user) return;
+      if (!effectiveUserId) return;
       const id = crypto.randomUUID();
       const newBlock: TemplateBlock = {
         id,
-        user_id: user.id,
-        template_id: 'elementar',
+        user_id: effectiveUserId,
+        template_id: templateId,
         block_type: blockType === 'newsletter' ? 'banner' : blockType,
         block_order: blocks.length,
         title,
@@ -362,19 +364,20 @@ export function useWebsiteBuilderState() {
       });
       setSelectedSectionId(`block-${id}`);
     },
-    [blocks.length, commitChange, user]
+    [blocks.length, commitChange, effectiveUserId, templateId]
   );
 
   const duplicateSection = useCallback(
     (sectionId: string) => {
       const section = sections.find((s) => s.id === sectionId);
-      if (!section || section.type !== 'block' || !section.blockId || !user) return;
+      if (!section || section.type !== 'block' || !section.blockId || !effectiveUserId) return;
       const source = blocks.find((b) => b.id === section.blockId);
       if (!source) return;
       const id = crypto.randomUUID();
       const clone: TemplateBlock = {
         ...source,
         id,
+        user_id: effectiveUserId,
         title: `${source.title || 'Section'} copy`,
         content: { ...source.content },
         created_at: new Date().toISOString(),
@@ -398,7 +401,7 @@ export function useWebsiteBuilderState() {
       });
       setSelectedSectionId(`block-${id}`);
     },
-    [blocks, commitChange, sections, user]
+    [blocks, commitChange, sections, effectiveUserId]
   );
 
   const deleteSection = useCallback(

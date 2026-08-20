@@ -72,6 +72,7 @@ export interface LocalityComboboxProps {
   disabled?: boolean;
   className?: string;
   placeholder?: string;
+  allowedLocalities?: { county: string; locality: string }[];
 }
 
 export function LocalityCombobox({
@@ -82,6 +83,7 @@ export function LocalityCombobox({
   disabled,
   className,
   placeholder,
+  allowedLocalities,
 }: LocalityComboboxProps) {
   const { t } = useTranslation('shipping');
   const resolvedPlaceholder = placeholder ?? t('locality.searchLocality');
@@ -165,16 +167,26 @@ export function LocalityCombobox({
 
   const options = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const allow = (allowedLocalities || []).map((item) => ({
+      county: item.county.toLowerCase(),
+      locality: item.locality.toLowerCase(),
+    }));
+    const inAllowList = (l: EawbLocality) =>
+      allow.length === 0 ||
+      allow.some(
+        (item) =>
+          item.county === l.county.toLowerCase() && item.locality === l.name.toLowerCase()
+      );
 
     if (county && countyLocalities.length > 0) {
-      if (!q) return countyLocalities.slice(0, 80);
-      return countyLocalities
-        .filter((l) => localitySearchHaystack(l).includes(q))
-        .slice(0, 100);
+      const base = !q
+        ? countyLocalities
+        : countyLocalities.filter((l) => localitySearchHaystack(l).includes(q));
+      return base.filter(inAllowList).slice(0, 100);
     }
 
-    return searchResults;
-  }, [county, countyLocalities, query, searchResults]);
+    return searchResults.filter(inAllowList);
+  }, [allowedLocalities, county, countyLocalities, query, searchResults]);
 
   const loading = loadingCounty || loadingSearch;
 

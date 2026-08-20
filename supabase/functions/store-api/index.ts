@@ -1,4 +1,10 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
+import {
+  buildOriginAddress,
+  calculateDeliveryQuote,
+  roundMoney,
+  sanitizeCustomerNotes,
+} from '../_shared/geoDelivery.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -86,6 +92,14 @@ interface Database {
           customer_street_number: string | null
           customer_block: string | null
           customer_apartment: string | null
+          billing_same_as_delivery?: boolean
+          billing_address?: string | null
+          billing_city?: string | null
+          billing_county?: string | null
+          billing_street?: string | null
+          billing_street_number?: string | null
+          billing_block?: string | null
+          billing_apartment?: string | null
           total: number
           payment_status: string
           shipping_status: string
@@ -249,6 +263,176 @@ async function convertAbandonedCart(
   }
 }
 
+async function loadCustomDelivery(supabase: any, userId: string) {
+  const [{ data: settings }, { data: rules }, { data: orderValueRules }] = await Promise.all([
+    supabase.from('delivery_pricing_settings').select('*').eq('user_id', userId).maybeSingle(),
+    supabase.from('delivery_pricing_rules').select('*').eq('user_id', userId),
+    supabase.from('delivery_order_value_rules').select('*').eq('user_id', userId),
+  ])
+  return { settings: settings || null, rules: rules || [], orderValueRules: orderValueRules || [] }
+}
+
+async function quoteCustomHomeDelivery(
+  supabase: any,
+  profile: any,
+  destination: {
+    street?: string | null
+    street_number?: string | null
+    city?: string | null
+    county?: string | null
+  },
+  items: Array<{ quantity?: number | string; price?: number | string }>
+) {
+  const { settings, rules, orderValueRules } = await loadCustomDelivery(supabase, profile.user_id)
+  const manual = profile.shipping_provider === 'manual'
+  if (!settings?.enabled && !manual) {
+    return { enabled: false as const, quote: null }
+  }
+  const effectiveSettings = settings?.enabled
+    ? settings
+    : manual
+      ? { enabled: true, coverage_mode: 'romania', covered_counties: [], covered_localities: [], pricing_mode: 'order_value' }
+      : settings
+  if (!effectiveSettings?.enabled) {
+    return { enabled: false as const, quote: null }
+  }
+  const quantity = (items || []).reduce(
+    (sum, item) => sum + (parseInt(String(item.quantity ?? 0), 10) || 0),
+    0
+  )
+  const orderSubtotal = (items || []).reduce(
+    (sum, item) => sum + (Number(item.price) || 0) * (parseInt(String(item.quantity ?? 0), 10) || 0),
+    0
+  )
+  const quote = await calculateDeliveryQuote({
+    settings: effectiveSettings,
+    rules,
+    orderValueRules,
+    originAddress: buildOriginAddress(profile, settings),
+    destination: {
+      street: destination.street,
+      street_number: destination.street_number,
+      city: String(destination.city || ''),
+      county: String(destination.county || ''),
+    },
+    quantity,
+    orderSubtotal,
+    mapboxToken: Deno.env.get('MAPBOX_PUBLIC_TOKEN') || '',
+    shippingProvider: profile.shipping_provider,
+  })
+  if (
+    manual &&
+    quote &&
+    !quote.available &&
+    (quote.error === 'NO_RULE' || quote.error === 'CUSTOM_PRICING_DISABLED')
+  ) {
+    const fee = Number(profile.home_delivery_fee || 0)
+    return {
+      enabled: true as const,
+      quote: {
+        available: true,
+        delivery_fee: fee,
+        county: String(destination.county || ''),
+        locality: String(destination.city || ''),
+        quantity,
+        charge_mode: 'flat' as const,
+        snapshot: {
+          method: 'flat_home',
+          provider: 'manual',
+          distance_charge: 'flat',
+          delivery_fee: fee,
+        },
+      },
+    }
+  }
+  return { enabled: true as const, quote }
+}
+
+function composeStreetAddress(input: {
+  street?: string | null
+  street_number?: string | null
+  block?: string | null
+  apartment?: string | null
+  city?: string | null
+  county?: string | null
+}) {
+  const line = [input.street, input.street_number].filter(Boolean)
+  if (input.block) line.push(`bl. ${input.block}`)
+  if (input.apartment) line.push(`ap. ${input.apartment}`)
+  const locality = [input.city, input.county].filter(Boolean).join(', ')
+  return [line.join(' '), locality].filter(Boolean).join(', ')
+}
+
+function resolveOrderBilling(
+  body: any,
+  deliveryType: string,
+  deliveryComposite: string
+) {
+  const sameAsDelivery = deliveryType === 'home' && body.billing_same_as_delivery !== false
+  if (sameAsDelivery) {
+    return {
+      ok: true as const,
+      billing_same_as_delivery: true,
+      billing_city: body.customer_city || null,
+      billing_county: body.customer_county || null,
+      billing_street: body.customer_street || null,
+      billing_street_number: body.customer_street_number || null,
+      billing_block: body.customer_block || null,
+      billing_apartment: body.customer_apartment || null,
+      billing_address: deliveryComposite,
+    }
+  }
+  const city = String(body.billing_city || '').trim()
+  const county = String(body.billing_county || '').trim()
+  const street = String(body.billing_street || '').trim()
+  const streetNumber = String(body.billing_street_number || '').trim()
+  if (!city || !county || !street || !streetNumber) {
+    return {
+      ok: false as const,
+      error: 'A billing address is required for the invoice.',
+    }
+  }
+  const block = String(body.billing_block || '').trim() || null
+  const apartment = String(body.billing_apartment || '').trim() || null
+  return {
+    ok: true as const,
+    billing_same_as_delivery: false,
+    billing_city: city,
+    billing_county: county,
+    billing_street: street,
+    billing_street_number: streetNumber,
+    billing_block: block,
+    billing_apartment: apartment,
+    billing_address: composeStreetAddress({
+      street,
+      street_number: streetNumber,
+      block,
+      apartment,
+      city,
+      county,
+    }),
+  }
+}
+
+function quoteErrorMessage(code?: string) {
+  switch (code) {
+    case 'OUT_OF_COVERAGE':
+      return 'Delivery is not available to this location.'
+    case 'NO_RULE':
+      return 'Delivery is not available to this location.'
+    case 'DISTANCE_UNAVAILABLE':
+      return 'Could not calculate delivery distance for this address. Please check the address or try again.'
+    case 'TOO_FAR':
+      return 'This address is farther than the store delivers.'
+    case 'ORIGIN_MISSING':
+      return 'This store has not configured a delivery origin address yet.'
+    case 'ADDRESS_INCOMPLETE':
+      return 'Please complete the delivery address.'
+    default:
+      return 'Delivery is not available for this order.'
+  }
+}
+
 /** Normalize eAWB locality payloads (search + getLocalities + postal reverse). */
 function normalizeEawbLocality(l: any, fallbackCounty = '') {
   const name = String(
@@ -316,13 +500,24 @@ Deno.serve(async (req) => {
       .select(`
         user_id, 
         store_name,
+        preferred_language,
         netpopia_api_key,
         netpopia_signature,
         netpopia_sandbox,
         cash_payment_enabled,
         cash_payment_fee,
+        shipping_provider,
+        payment_provider,
         home_delivery_fee,
-        locker_delivery_fee
+        locker_delivery_fee,
+        show_stock_to_customers,
+        allow_order_notes,
+        eawb_street,
+        eawb_street_number,
+        eawb_city,
+        eawb_county,
+        eawb_address,
+        active_template
       `)
       .eq('store_api_key', apiKey)
       .single()
@@ -340,6 +535,7 @@ Deno.serve(async (req) => {
 
     // Check if Netopia is configured for payment endpoints
     const isNetopiaConfigured = profile.netpopia_api_key && profile.netpopia_signature
+    const cardEnabled = profile.payment_provider !== 'none' && !!isNetopiaConfigured
 
     const userId = profile.user_id
 
@@ -350,14 +546,39 @@ Deno.serve(async (req) => {
       case 'config': {
         // Return comprehensive store configuration
         const mapboxToken = Deno.env.get('MAPBOX_PUBLIC_TOKEN') || '';
+        const requestedTemplate = url.searchParams.get('template_id') || profile.active_template || 'elementar';
+        const templateId = ['elementar', 'premium', 'floral', 'ai'].includes(requestedTemplate)
+          ? requestedTemplate
+          : 'elementar';
         
         // Fetch template customization
         const { data: customization } = await supabase
           .from('template_customization')
           .select('*')
           .eq('user_id', userId)
-          .eq('template_id', 'elementar')
-          .single();
+          .eq('template_id', templateId === 'ai' ? 'ai' : templateId === 'elementar' ? 'elementar' : templateId)
+          .maybeSingle();
+
+        const fallbackCustomization = await (async () => {
+          if (customization) return customization;
+          const { data } = await supabase
+            .from('template_customization')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('template_id', 'elementar')
+            .maybeSingle();
+          return data;
+        })();
+
+        let aiSpec = null;
+        if (templateId === 'ai') {
+          const { data: storefront } = await supabase
+            .from('ai_storefronts')
+            .select('published_spec')
+            .eq('user_id', userId)
+            .maybeSingle();
+          aiSpec = storefront?.published_spec || null;
+        }
 
         // Fetch template blocks for the store
         const { data: templateBlocks } = await supabase
@@ -367,8 +588,11 @@ Deno.serve(async (req) => {
           .eq('is_visible', true)
           .order('block_order', { ascending: true });
 
-        // Check payment provider configuration
-        const isNetopiaConfigured = profile.netpopia_api_key && profile.netpopia_signature;
+        const { data: deliverySettings } = await supabase
+          .from('delivery_pricing_settings')
+          .select('enabled, coverage_mode, covered_counties, covered_localities, distance_charge')
+          .eq('user_id', userId)
+          .maybeSingle();
         
         return new Response(
           JSON.stringify({
@@ -376,22 +600,30 @@ Deno.serve(async (req) => {
             store_name: profile.store_name || 'My Store',
             preferred_language: profile.preferred_language || 'ro',
             mapbox_token: mapboxToken,
+            show_stock_to_customers: profile.show_stock_to_customers !== false,
+            allow_order_notes: profile.allow_order_notes !== false,
             // Payment configuration
             payment: {
-              card_enabled: !!isNetopiaConfigured,
+              card_enabled: cardEnabled,
               cash_enabled: profile.cash_payment_enabled ?? true,
               cash_fee: profile.cash_payment_fee || 0,
-              provider: isNetopiaConfigured ? 'netopia' : null
+              provider: cardEnabled ? 'netopia' : (profile.payment_provider === 'none' ? 'none' : null)
             },
             // Delivery configuration
             delivery: {
               home_fee: profile.home_delivery_fee || 0,
               locker_fee: profile.locker_delivery_fee || 0,
               home_enabled: true,
-              locker_enabled: true
+              locker_enabled: profile.shipping_provider !== 'manual',
+              provider: profile.shipping_provider || 'eawb',
+              custom_pricing_enabled: profile.shipping_provider === 'manual' || !!deliverySettings?.enabled,
+              charge_mode: deliverySettings?.distance_charge === 'per_unit' ? 'per_unit' : 'flat',
+              coverage_mode: deliverySettings?.coverage_mode || 'romania',
+              covered_counties: deliverySettings?.covered_counties || [],
+              covered_localities: deliverySettings?.covered_localities || [],
             },
             // Template customization
-            customization: customization || {
+            customization: fallbackCustomization || {
               primary_color: '#000000',
               background_color: '#FFFFFF',
               text_color: '#000000',
@@ -416,6 +648,8 @@ Deno.serve(async (req) => {
               gradient_enabled: true,
               footer_text: 'All rights reserved.'
             },
+            active_template: profile.active_template || 'elementar',
+            ai_spec: aiSpec,
             // Template blocks for custom sections
             template_blocks: templateBlocks || [],
             // API capabilities
@@ -436,14 +670,15 @@ Deno.serve(async (req) => {
               'reviews',
               'product-reviews',
               'template-blocks',
-              'cleanup-abandoned-orders'
+              'cleanup-abandoned-orders',
+              'delivery-quote',
             ],
             features: {
               products: true,
               collections: true,
               discounts: true,
               reviews: customization?.show_reviews ?? true,
-              online_payments: !!isNetopiaConfigured,
+              online_payments: cardEnabled,
               cash_payments: profile.cash_payment_enabled ?? true,
               home_delivery: true,
               locker_delivery: true,
@@ -521,6 +756,8 @@ Deno.serve(async (req) => {
             
             return {
               ...product,
+              show_stock_to_customers:
+                product.show_stock_to_customers ?? (profile.show_stock_to_customers !== false),
               images: images,
               primary_image: primaryImage?.image_url || product.image || null,
               image_count: images.length,
@@ -592,6 +829,42 @@ Deno.serve(async (req) => {
           )
         }
         break
+      }
+
+      case 'delivery-quote': {
+        if (req.method !== 'POST') {
+          return new Response(
+            JSON.stringify({ error: 'Method not allowed' }),
+            { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+        const body = await req.json()
+        const items = Array.isArray(body.items) ? body.items : []
+        const { enabled, quote } = await quoteCustomHomeDelivery(
+          supabase,
+          profile,
+          {
+            street: body.street || body.customer_street,
+            street_number: body.street_number || body.customer_street_number,
+            city: body.city || body.customer_city,
+            county: body.county || body.customer_county,
+          },
+          items
+        )
+        if (!enabled) {
+          return new Response(
+            JSON.stringify({ enabled: false, available: false }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+        return new Response(
+          JSON.stringify({
+            enabled: true,
+            ...quote,
+            error_message: quote?.available ? null : quoteErrorMessage(quote?.error),
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
       }
 
       case 'orders': {
@@ -711,6 +984,13 @@ Deno.serve(async (req) => {
 
           // Validate delivery type
           const effectiveDeliveryType = delivery_type || 'home';
+
+          if (profile.shipping_provider === 'manual' && effectiveDeliveryType === 'locker') {
+            return new Response(
+              JSON.stringify({ error: 'This store only offers its own home delivery.' }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
           
           // Validate required fields based on delivery type
           if (!customer_name || !customer_email || !total || !items) {
@@ -766,6 +1046,14 @@ Deno.serve(async (req) => {
             compositeAddress = `${addressParts.join(' ')}, ${customer_city}, ${customer_county}`;
           }
 
+          const billing = resolveOrderBilling(body, effectiveDeliveryType, compositeAddress)
+          if (!billing.ok) {
+            return new Response(
+              JSON.stringify({ error: billing.error, code: 'BILLING_REQUIRED' }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+
           const snapshotItems = (items as any[]).map((item: any) => ({
             product_id: item.product_id || null,
             title: item.title,
@@ -773,9 +1061,56 @@ Deno.serve(async (req) => {
             quantity: parseInt(item.quantity, 10),
           }));
 
+          const customerNotes =
+            profile.allow_order_notes === false
+              ? null
+              : sanitizeCustomerNotes(body.customer_notes)
+
+          let orderTotal = parseFloat(total)
+          let deliveryFeeToPersist: number | null = null
+          let deliveryDistanceKm: number | null = null
+          let deliverySnapshot: Record<string, unknown> | null = null
+
+          if (effectiveDeliveryType === 'home') {
+            const quoted = await quoteCustomHomeDelivery(
+              supabase,
+              profile,
+              {
+                street: customer_street,
+                street_number: customer_street_number,
+                city: customer_city,
+                county: customer_county,
+              },
+              snapshotItems
+            )
+            if (quoted.enabled) {
+              if (!quoted.quote?.available) {
+                return new Response(
+                  JSON.stringify({
+                    error: quoteErrorMessage(quoted.quote?.error),
+                    code: quoted.quote?.error || 'DELIVERY_UNAVAILABLE',
+                  }),
+                  { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                )
+              }
+              const subtotal = snapshotItems.reduce(
+                (sum: number, item: any) => sum + item.price * item.quantity,
+                0
+              )
+              const cashFee =
+                payment_method !== 'card' && (profile.cash_payment_enabled ?? true)
+                  ? Number(profile.cash_payment_fee || 0)
+                  : 0
+              deliveryFeeToPersist = Number(quoted.quote.delivery_fee || 0)
+              deliveryDistanceKm = quoted.quote.distance_km ?? null
+              deliverySnapshot = quoted.quote.snapshot || null
+              orderTotal = roundMoney(subtotal + deliveryFeeToPersist + cashFee)
+            }
+          }
+
           // ===== CARD: Checkout Session only (no Order until payment confirms) =====
           if (payment_method === 'card') {
-            if (!isNetopiaConfigured) {
+            if (!cardEnabled) {
               return new Response(
                 JSON.stringify({
                   error: 'Netopia payment gateway not configured. Please configure API Key and POS Signature in Store Settings → Payment.',
@@ -807,9 +1142,14 @@ Deno.serve(async (req) => {
                       .sort((a, b) =>
                         String(a.product_id || a.title).localeCompare(String(b.product_id || b.title))
                       ),
-                    total: parseFloat(total),
+                    total: orderTotal,
                     delivery_type: effectiveDeliveryType,
                     locker_id: locker_id || null,
+                    billing_address: billing.billing_address,
+                    billing_city: billing.billing_city,
+                    billing_county: billing.billing_county,
+                    billing_street: billing.billing_street,
+                    billing_street_number: billing.billing_street_number,
                   })
                 )
               )
@@ -834,6 +1174,24 @@ Deno.serve(async (req) => {
 
             let session = existingSession;
 
+            const billingPersist = {
+              billing_same_as_delivery: billing.billing_same_as_delivery,
+              billing_address: billing.billing_address,
+              billing_city: billing.billing_city,
+              billing_county: billing.billing_county,
+              billing_street: billing.billing_street,
+              billing_street_number: billing.billing_street_number,
+              billing_block: billing.billing_block,
+              billing_apartment: billing.billing_apartment,
+            }
+
+            if (session) {
+              await supabase
+                .from('checkout_sessions')
+                .update(billingPersist)
+                .eq('id', session.id)
+            }
+
             if (session?.netopia_payment_url) {
               await convertAbandonedCart(supabase, userId, session_token, {
                 checkout_session_id: session.id,
@@ -853,7 +1211,10 @@ Deno.serve(async (req) => {
                 (sum: number, i: any) => sum + i.price * i.quantity,
                 0
               );
-              const shippingAmount = Math.max(0, parseFloat(total) - subtotal);
+              const shippingAmount =
+                deliveryFeeToPersist != null
+                  ? deliveryFeeToPersist
+                  : Math.max(0, orderTotal - subtotal);
               const { data: createdSession, error: sessionError } = await supabase
                 .from('checkout_sessions')
                 .insert({
@@ -871,6 +1232,7 @@ Deno.serve(async (req) => {
                   customer_street_number: customer_street_number || null,
                   customer_block: customer_block || null,
                   customer_apartment: customer_apartment || null,
+                  ...billingPersist,
                   delivery_type: effectiveDeliveryType,
                   selected_carrier_code: selected_carrier_code || null,
                   locker_id: locker_id || null,
@@ -882,7 +1244,10 @@ Deno.serve(async (req) => {
                   shipping_amount: shippingAmount,
                   discount_amount: 0,
                   tax_amount: 0,
-                  total: parseFloat(total),
+                  total: orderTotal,
+                  customer_notes: customerNotes,
+                  delivery_distance_km: deliveryDistanceKm,
+                  delivery_pricing_snapshot: deliverySnapshot,
                   expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
                 })
                 .select()
@@ -937,7 +1302,7 @@ Deno.serve(async (req) => {
                   action: 'create_payment',
                   user_id: userId,
                   checkout_session_id: session.id,
-                  amount: parseFloat(total),
+                  amount: orderTotal,
                   currency: 'RON',
                   customer_email,
                   customer_name,
@@ -992,7 +1357,7 @@ Deno.serve(async (req) => {
               customer_email,
               customer_address: compositeAddress,
               customer_phone: customer_phone || null,
-              total: parseFloat(total),
+              total: orderTotal,
               payment_status: 'cash',
               order_status: 'paid',
               shipping_status: 'pending',
@@ -1007,6 +1372,18 @@ Deno.serve(async (req) => {
               customer_street_number: customer_street_number || null,
               customer_block: customer_block || null,
               customer_apartment: customer_apartment || null,
+              billing_same_as_delivery: billing.billing_same_as_delivery,
+              billing_address: billing.billing_address,
+              billing_city: billing.billing_city,
+              billing_county: billing.billing_county,
+              billing_street: billing.billing_street,
+              billing_street_number: billing.billing_street_number,
+              billing_block: billing.billing_block,
+              billing_apartment: billing.billing_apartment,
+              customer_notes: customerNotes,
+              delivery_fee: deliveryFeeToPersist,
+              delivery_distance_km: deliveryDistanceKm,
+              delivery_pricing_snapshot: deliverySnapshot,
             })
             .select()
             .single();
@@ -1043,11 +1420,11 @@ Deno.serve(async (req) => {
                 action: 'send',
                 user_ids: [userId],
                 title: '🛒 Comandă nouă!',
-                message: `Comandă nouă de ${parseFloat(total).toFixed(2)} RON de la ${customer_name}`,
+                message: `Comandă nouă de ${orderTotal.toFixed(2)} RON de la ${customer_name}`,
                 notification_type: 'order_update',
                 data: {
                   order_id: order.id,
-                  total: total.toString(),
+                  total: orderTotal.toString(),
                   customer_name,
                 },
               },

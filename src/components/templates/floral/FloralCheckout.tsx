@@ -3,7 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { Check, CreditCard, Home, MapPin, Truck } from 'lucide-react';
 import { LockerPicker } from '@/components/lockers/LockerPicker';
 import { AddressLocalityFields } from '@/components/address/AddressLocalityFields';
+import { CheckoutNotesField, CheckoutBillingFields, DeliveryQuoteDetails, deliveryQuoteSummary } from '@/components/storefront/CheckoutExtras';
 import { formatRon } from '@/lib/storefront/api';
+import { isBillingComplete, resolvedBilling } from '@/lib/storefront/billing';
 import type { StorefrontCommerce } from '@/hooks/useStorefrontCommerce';
 
 interface Props {
@@ -32,6 +34,11 @@ export function FloralCheckout({ commerce }: Props) {
     apiKey,
     setView,
     setCartOpen,
+    allowOrderNotes,
+    deliveryConfig,
+    deliveryQuote,
+    deliveryQuoteLoading,
+    customHomePricing,
   } = commerce;
 
   const [discountCode, setDiscountCode] = useState('');
@@ -55,9 +62,11 @@ export function FloralCheckout({ commerce }: Props) {
     }
     if (checkoutStep === 2) {
       if (checkoutForm.delivery_type === 'home') {
-        return !!(checkoutForm.county && checkoutForm.city && checkoutForm.street);
+        if (!(checkoutForm.county && checkoutForm.city && checkoutForm.street)) return false;
+        if (customHomePricing && (deliveryQuoteLoading || !deliveryQuote?.available)) return false;
+        return isBillingComplete(checkoutForm);
       }
-      return !!(checkoutForm.locker_id && checkoutForm.selected_carrier_code);
+      return !!(checkoutForm.locker_id && checkoutForm.selected_carrier_code) && isBillingComplete(checkoutForm);
     }
     return true;
   };
@@ -152,8 +161,13 @@ export function FloralCheckout({ commerce }: Props) {
                 >
                   <Home className="h-5 w-5 mb-2" />
                   <div className="font-medium text-sm">{t('delivery.home')}</div>
-                  <div className="text-xs text-[var(--floral-muted)] mt-1">{formatRon(fees.home_delivery_fee)}</div>
+                  <div className="text-xs text-[var(--floral-muted)] mt-1">
+                    {customHomePricing
+                      ? t('delivery.calculatedByDistance')
+                      : formatRon(fees.home_delivery_fee)}
+                  </div>
                 </button>
+                {deliveryConfig.locker_enabled !== false && (
                 <button
                   type="button"
                   className={`rounded-[var(--floral-radius-sm)] border p-4 text-left ${
@@ -167,6 +181,7 @@ export function FloralCheckout({ commerce }: Props) {
                   <div className="font-medium text-sm">{t('delivery.locker')}</div>
                   <div className="text-xs text-[var(--floral-muted)] mt-1">{formatRon(fees.locker_delivery_fee)}</div>
                 </button>
+                )}
               </div>
 
               {checkoutForm.delivery_type === 'home' ? (
@@ -176,6 +191,21 @@ export function FloralCheckout({ commerce }: Props) {
                     county={checkoutForm.county}
                     city={checkoutForm.city}
                     labelClassName="text-[var(--floral-muted)] font-normal"
+                    allowedCounties={
+                      deliveryConfig.custom_pricing_enabled &&
+                      deliveryConfig.coverage_mode === 'counties'
+                        ? deliveryConfig.covered_counties
+                        : deliveryConfig.custom_pricing_enabled &&
+                            deliveryConfig.coverage_mode === 'localities'
+                          ? deliveryConfig.covered_localities.map((item) => item.county)
+                          : undefined
+                    }
+                    allowedLocalities={
+                      deliveryConfig.custom_pricing_enabled &&
+                      deliveryConfig.coverage_mode === 'localities'
+                        ? deliveryConfig.covered_localities
+                        : undefined
+                    }
                     onCountyChange={(county) =>
                       setCheckoutForm({ ...checkoutForm, county, city: '' })
                     }
@@ -213,6 +243,12 @@ export function FloralCheckout({ commerce }: Props) {
                       onChange={(v) => setCheckoutForm({ ...checkoutForm, apartment: v })}
                     />
                   </div>
+                  <DeliveryQuoteDetails
+                    quote={deliveryQuote}
+                    loading={deliveryQuoteLoading}
+                    customEnabled={deliveryConfig.custom_pricing_enabled}
+                    deliveryType={checkoutForm.delivery_type}
+                  />
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -248,6 +284,14 @@ export function FloralCheckout({ commerce }: Props) {
                   />
                 </div>
               )}
+
+              <CheckoutBillingFields
+                form={checkoutForm}
+                onChange={setCheckoutForm}
+                apiKey={apiKey}
+                labelClassName="text-[var(--floral-muted)] font-normal"
+                inputClassName="mt-1 w-full rounded-[var(--floral-radius-sm)] border border-[var(--floral-line)] bg-white px-3 py-2.5 text-sm"
+              />
 
               <div className="flex items-start gap-2 text-sm text-[var(--floral-muted)] bg-[var(--floral-bg)] rounded-[var(--floral-radius-sm)] p-3">
                 <Truck className="h-4 w-4 mt-0.5 shrink-0" />
@@ -314,8 +358,20 @@ export function FloralCheckout({ commerce }: Props) {
                   : checkoutForm.locker_address || checkoutForm.locker_name}
               </p>
               <p className="text-sm">
+                {t('review.billingPrefix')}{' '}
+                {resolvedBilling(checkoutForm).billing_address}
+              </p>
+              <p className="text-sm">
                 {t('review.paymentPrefix')} {reviewPaymentLabel}
               </p>
+              {allowOrderNotes && (
+                <CheckoutNotesField
+                  value={checkoutForm.notes}
+                  onChange={(notes) => setCheckoutForm({ ...checkoutForm, notes })}
+                  labelClassName="text-[var(--floral-muted)]"
+                  inputClassName="mt-1 w-full rounded-[var(--floral-radius-sm)] border border-[var(--floral-line)] bg-white px-3 py-2.5 text-sm"
+                />
+              )}
             </section>
           )}
 
@@ -342,7 +398,10 @@ export function FloralCheckout({ commerce }: Props) {
               <button
                 type="button"
                 className="floral-btn floral-btn-primary"
-                disabled={placingOrder}
+                disabled={
+                  placingOrder ||
+                  (customHomePricing && (deliveryQuoteLoading || !deliveryQuote?.available))
+                }
                 onClick={() => void placeOrder()}
               >
                 {placingOrder
@@ -385,6 +444,11 @@ export function FloralCheckout({ commerce }: Props) {
           <div className="space-y-2 text-sm border-t border-[var(--floral-line)] pt-3">
             <Row label={t('summary.subtotal')} value={formatRon(cartSubtotal)} />
             <Row label={t('summary.shipping')} value={formatRon(deliveryFee)} />
+            {customHomePricing && deliveryQuote?.available && (
+              <p className="text-xs text-[var(--floral-muted)]">
+                {deliveryQuoteSummary(deliveryQuote, t)}
+              </p>
+            )}
             {paymentFee > 0 && (
               <Row
                 label={

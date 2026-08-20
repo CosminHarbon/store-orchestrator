@@ -51,6 +51,7 @@ import { toast } from 'sonner';
 import { formatRon } from '@/lib/paymentAnalytics';
 import { cn } from '@/lib/utils';
 import { formatShortDate } from '@/i18n/format';
+import { useImpersonation, resolveTenantUserId } from '@/hooks/useImpersonation';
 
 type SortKey =
   | 'name'
@@ -99,6 +100,7 @@ const DiscountManagement = () => {
   const { t } = useTranslation('discounts');
   const { t: tCommon } = useTranslation('common');
   const queryClient = useQueryClient();
+  const { effectiveUserId } = useImpersonation();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | DiscountLifecycle>('all');
   const [sortKey, setSortKey] = useState<SortKey>('updated_at');
@@ -136,11 +138,13 @@ const DiscountManagement = () => {
   };
 
   const { data: rawDiscounts, isLoading } = useQuery({
-    queryKey: ['discounts'],
+    queryKey: ['discounts', effectiveUserId],
+    enabled: !!effectiveUserId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('discounts')
         .select('*')
+        .eq('user_id', effectiveUserId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
@@ -148,11 +152,13 @@ const DiscountManagement = () => {
   });
 
   const { data: products = [] } = useQuery({
-    queryKey: ['products-for-discounts'],
+    queryKey: ['products-for-discounts', effectiveUserId],
+    enabled: !!effectiveUserId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
         .select('id, title, price, sku')
+        .eq('user_id', effectiveUserId!)
         .order('title');
       if (error) throw error;
       return data || [];
@@ -160,20 +166,42 @@ const DiscountManagement = () => {
   });
 
   const { data: productDiscounts = [] } = useQuery({
-    queryKey: ['product-discounts'],
+    queryKey: ['product-discounts', effectiveUserId],
+    enabled: !!effectiveUserId,
     queryFn: async () => {
-      const { data, error } = await supabase.from('product_discounts').select('*');
+      const { data: tenantProducts, error: productsError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('user_id', effectiveUserId!);
+      if (productsError) throw productsError;
+      const productIds = (tenantProducts || []).map((p) => p.id);
+      if (productIds.length === 0) return [];
+
+      const { data, error } = await supabase
+        .from('product_discounts')
+        .select('*')
+        .in('product_id', productIds);
       if (error) throw error;
       return data || [];
     },
   });
 
   const { data: orderItems = [] } = useQuery({
-    queryKey: ['order-items-for-discounts'],
+    queryKey: ['order-items-for-discounts', effectiveUserId],
+    enabled: !!effectiveUserId,
     queryFn: async () => {
+      const { data: tenantProducts, error: productsError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('user_id', effectiveUserId!);
+      if (productsError) throw productsError;
+      const productIds = (tenantProducts || []).map((p) => p.id);
+      if (productIds.length === 0) return [];
+
       const { data, error } = await supabase
         .from('order_items')
-        .select('product_id, quantity, price, order_id');
+        .select('product_id, quantity, price, order_id')
+        .in('product_id', productIds);
       if (error) throw error;
       return data || [];
     },
@@ -334,6 +362,9 @@ const DiscountManagement = () => {
 
   const createMutation = useMutation({
     mutationFn: async () => {
+      const userId =
+        effectiveUserId ||
+        (await resolveTenantUserId(async () => (await supabase.auth.getUser()).data.user?.id));
       const { data, error } = await supabase
         .from('discounts')
         .insert({
@@ -341,7 +372,7 @@ const DiscountManagement = () => {
           description: createForm.description,
           discount_type: createForm.discount_type,
           discount_value: parseFloat(createForm.discount_value),
-          user_id: (await supabase.auth.getUser()).data.user?.id,
+          user_id: userId,
           start_date: new Date(createForm.start_date).toISOString(),
           end_date: createForm.end_date
             ? new Date(createForm.end_date).toISOString()
@@ -424,6 +455,9 @@ const DiscountManagement = () => {
     mutationFn: async (id: string) => {
       const source = discounts.find((d) => d.id === id);
       if (!source) throw new Error(t('toast.notFound'));
+      const userId =
+        effectiveUserId ||
+        (await resolveTenantUserId(async () => (await supabase.auth.getUser()).data.user?.id));
       const { data, error } = await supabase
         .from('discounts')
         .insert({
@@ -431,7 +465,7 @@ const DiscountManagement = () => {
           description: source.description,
           discount_type: source.discount_type,
           discount_value: source.discount_value,
-          user_id: (await supabase.auth.getUser()).data.user?.id,
+          user_id: userId,
           start_date: source.start_date,
           end_date: source.end_date,
           is_active: source.is_active,

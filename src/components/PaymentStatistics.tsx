@@ -29,6 +29,7 @@ import { DateRangeFilter, useDateRangeFilter } from '@/components/DateRangeFilte
 import { PendingCheckoutsSection } from '@/components/PendingCheckoutsSection';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useImpersonation } from '@/hooks/useImpersonation';
 import {
   buildPaymentAnalytics,
   formatPct,
@@ -135,17 +136,18 @@ const PaymentStatistics = () => {
   const { t: tExport } = useTranslation('export');
   const [exportOpen, setExportOpen] = useState(false);
   const { user } = useAuth();
+  const { effectiveUserId } = useImpersonation();
   const { dateRange, setDateRange, preset, setPreset } = useDateRangeFilter('30days');
   const prevRange = useMemo(() => previousPeriod(dateRange), [dateRange]);
 
   const { data, isLoading } = useQuery({
     queryKey: [
       'payment-analytics',
-      user?.id,
+      effectiveUserId,
       dateRange.from.toISOString(),
       dateRange.to.toISOString(),
     ],
-    enabled: !!user,
+    enabled: !!user && !!effectiveUserId,
     staleTime: 30_000,
     queryFn: async () => {
       const fromIso = dateRange.from.toISOString();
@@ -166,7 +168,7 @@ const PaymentStatistics = () => {
           .select(
             'id, customer_name, customer_email, total, payment_status, shipping_status, order_status, checkout_session_id, created_at'
           )
-          .eq('user_id', user!.id)
+          .eq('user_id', effectiveUserId!)
           .gte('created_at', fromIso)
           .lte('created_at', toIso)
           .order('created_at', { ascending: false }),
@@ -175,19 +177,19 @@ const PaymentStatistics = () => {
           .select(
             'id, customer_name, customer_email, total, payment_status, shipping_status, order_status, checkout_session_id, created_at'
           )
-          .eq('user_id', user!.id)
+          .eq('user_id', effectiveUserId!)
           .gte('created_at', prevFrom)
           .lte('created_at', prevTo),
         supabase
           .from('payment_transactions')
           .select('*')
-          .eq('user_id', user!.id)
+          .eq('user_id', effectiveUserId!)
           .gte('created_at', fromIso)
           .lte('created_at', toIso),
         supabase
           .from('payment_transactions')
           .select('*')
-          .eq('user_id', user!.id)
+          .eq('user_id', effectiveUserId!)
           .gte('created_at', prevFrom)
           .lte('created_at', prevTo),
         supabase
@@ -195,7 +197,7 @@ const PaymentStatistics = () => {
           .select(
             'id, status, payment_status, total, customer_name, customer_email, created_at, expires_at, updated_at, order_id'
           )
-          .eq('user_id', user!.id)
+          .eq('user_id', effectiveUserId!)
           .gte('created_at', fromIso)
           .lte('created_at', toIso),
         supabase
@@ -203,7 +205,7 @@ const PaymentStatistics = () => {
           .select(
             'id, status, payment_status, total, customer_name, customer_email, created_at, expires_at, updated_at, order_id'
           )
-          .eq('user_id', user!.id)
+          .eq('user_id', effectiveUserId!)
           .gte('created_at', prevFrom)
           .lte('created_at', prevTo),
       ]);

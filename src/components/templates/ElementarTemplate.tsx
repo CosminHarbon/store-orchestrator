@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { calculateProductPrice, formatPrice, formatDiscount } from "@/lib/discountUtils";
 import { LockerPicker } from "@/components/lockers/LockerPicker";
 import { AddressLocalityFields } from "@/components/address/AddressLocalityFields";
+import { CheckoutBillingFields } from "@/components/storefront/CheckoutExtras";
+import { isBillingComplete, resolvedBilling } from "@/lib/storefront/billing";
 import { Skeleton } from "@/components/ui/skeleton";
 import { applyStorefrontLanguage } from "@/i18n/LanguageProvider";
 
@@ -80,7 +82,8 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
     cash_payment_enabled: true,
     cash_payment_fee: 0,
     home_delivery_fee: 0,
-    locker_delivery_fee: 0
+    locker_delivery_fee: 0,
+    card_enabled: true,
   });
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash'>('card');
 
@@ -99,6 +102,14 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
     locker_id: "",
     locker_name: "",
     locker_address: "",
+    notes: "",
+    billing_same_as_delivery: true,
+    billing_city: "",
+    billing_county: "",
+    billing_street: "",
+    billing_street_number: "",
+    billing_block: "",
+    billing_apartment: "",
   });
 
   const SUPABASE_URL = "https://mkkqbekhvcnwcheegjpy.supabase.co";
@@ -136,13 +147,19 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
           setCustomization(data.customization);
         }
         void applyStorefrontLanguage(data.preferred_language);
-        if (data.cash_payment_enabled !== undefined) {
+        if (data.cash_payment_enabled !== undefined || data.payment) {
+          const cardEnabled = data.payment?.card_enabled !== false;
+          const cashEnabled = data.payment?.cash_enabled ?? data.cash_payment_enabled ?? true;
           setFeeSettings({
-            cash_payment_enabled: data.cash_payment_enabled,
-            cash_payment_fee: data.cash_payment_fee || 0,
+            cash_payment_enabled: cashEnabled,
+            cash_payment_fee: data.cash_payment_fee || data.payment?.cash_fee || 0,
             home_delivery_fee: data.home_delivery_fee || 0,
-            locker_delivery_fee: data.locker_delivery_fee || 0
+            locker_delivery_fee: data.locker_delivery_fee || 0,
+            card_enabled: cardEnabled,
           });
+          if (!cardEnabled && cashEnabled) {
+            setPaymentMethod('cash');
+          }
         }
       } catch (error) {
         console.error('Failed to fetch config:', error);
@@ -377,6 +394,10 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
         return;
       }
     }
+    if (!isBillingComplete(checkoutForm)) {
+      toast.error(t("toast.billingRequired"));
+      return;
+    }
 
     try {
       const orderData = {
@@ -399,6 +420,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
         customer_street_number: checkoutForm.street_number,
         customer_block: checkoutForm.block || null,
         customer_apartment: checkoutForm.apartment || null,
+        ...resolvedBilling(checkoutForm),
         delivery_type: checkoutForm.delivery_type,
         selected_carrier_code: checkoutForm.selected_carrier_code || null,
         locker_id: checkoutForm.locker_id || null,
@@ -1218,6 +1240,13 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                     )}
                   </div>
                 )}
+                <CheckoutBillingFields
+                  form={checkoutForm}
+                  onChange={setCheckoutForm}
+                  apiKey={apiKey}
+                  className="space-y-3 pt-4"
+                  inputClassName="mt-1 w-full px-4 py-3 bg-background border border-border rounded-lg outline-none"
+                />
               </div>
             </div>
 
@@ -1231,6 +1260,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                 <div className="mb-6">
                   <h3 className="text-sm font-medium mb-3" style={{ color: customization.text_color }}>{t("payment.method")}</h3>
                   <div className="flex gap-3">
+                    {feeSettings.card_enabled && (
                     <button
                       onClick={() => setPaymentMethod('card')}
                       className={`flex-1 px-4 py-2 border text-sm ${paymentMethod === 'card' ? '' : 'opacity-50'}`}
@@ -1241,6 +1271,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
                     >
                       {t("payment.card")}
                     </button>
+                    )}
                     {feeSettings.cash_payment_enabled && (
                       <button
                         onClick={() => setPaymentMethod('cash')}

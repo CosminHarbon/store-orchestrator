@@ -76,11 +76,12 @@ const ADDABLE_SECTIONS: Array<{
 interface VisualEditorProps {
   onBack: () => void;
   apiKey?: string | null;
+  templateId?: string;
 }
 
-export function VisualEditor({ onBack, apiKey }: VisualEditorProps) {
+export function VisualEditor({ onBack, apiKey, templateId = 'elementar' }: VisualEditorProps) {
   const { t } = useTranslation('templates');
-  const builder = useWebsiteBuilderState();
+  const builder = useWebsiteBuilderState(templateId);
   const [device, setDevice] = useState<DeviceMode>('mobile');
   const [panel, setPanel] = useState<BuilderPanel>('sections');
   const [addOpen, setAddOpen] = useState(false);
@@ -96,7 +97,7 @@ export function VisualEditor({ onBack, apiKey }: VisualEditorProps) {
   }, []);
 
   const storeUrl = apiKey
-    ? `${window.location.origin}/templates/elementar?api_key=${apiKey}`
+    ? `${window.location.origin}/templates/${templateId}?api_key=${apiKey}`
     : null;
 
   const sectionLabel = (type: string, blockType?: string) => {

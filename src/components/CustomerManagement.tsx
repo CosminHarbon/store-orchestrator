@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useImpersonation } from '@/hooks/useImpersonation';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -188,9 +189,11 @@ const CustomerManagement = () => {
   const [exportOpen, setExportOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<CustomerProfile | null>(null);
+  const { effectiveUserId } = useImpersonation();
 
   const { data: orders, isLoading, error, isFetching, refetch } = useQuery({
-    queryKey: ['customer-details'],
+    queryKey: ['customer-details', effectiveUserId],
+    enabled: !!effectiveUserId,
     staleTime: 30_000,
     queryFn: async () => {
       const { data, error: qError } = await supabase
@@ -214,6 +217,7 @@ const CustomerManagement = () => {
           )
         `
         )
+        .eq('user_id', effectiveUserId!)
         .order('created_at', { ascending: false });
 
       if (qError) throw qError;

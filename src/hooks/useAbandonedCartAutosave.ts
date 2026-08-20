@@ -19,6 +19,7 @@ export interface AbandonedCartFormSnapshot {
   locker_id: string;
   locker_name: string;
   locker_address: string;
+  notes?: string;
 }
 
 export interface AbandonedCartItemSnapshot {

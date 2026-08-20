@@ -22,7 +22,8 @@
     "numberShort": "Nr.",
     "block": "Bloc",
     "apartment": "Apartament",
-    "apt": "Ap."
+    "apt": "Ap.",
+    "orderNotes": "Observații comandă"
   },
   "placeholder": {
     "fullName": "Nume complet *",
@@ -30,7 +31,8 @@
     "phone": "Telefon",
     "street": "Stradă *",
     "number": "Număr *",
-    "discount": "Cod reducere"
+    "discount": "Cod reducere",
+    "orderNotes": "Adaugă observații pentru comandă..."
   },
   "delivery": {
     "home": "Livrare la domiciliu",
@@ -41,7 +43,20 @@
     "selectLocker": "Selectează un locker",
     "changeLocker": "Schimbă lockerul",
     "locateMe": "Localizează-mă",
-    "chooseCarrier": "Alege un curier..."
+    "chooseCarrier": "Alege un curier...",
+    "calculatedByDistance": "Calculat după distanță",
+    "calculating": "Se calculează prețul livrării…",
+    "enterAddress": "Completează adresa pentru a calcula livrarea.",
+    "unavailable": "Livrarea nu este disponibilă către această locație.",
+    "quoteArea": "{{county}} — {{km}} km",
+    "quoteBreakdown": "{{price}} × {{qty}} = {{total}}",
+    "quoteTransport": "{{total}} pentru tot transportul"
+  },
+  "billing": {
+    "title": "Adresă de facturare",
+    "help": "Această adresă apare pe factură.",
+    "sameAsDelivery": "Aceeași cu adresa de livrare",
+    "lockerHelp": "Pentru locker este nevoie de o adresă de facturare."
   },
   "payment": {
     "method": "Metodă de plată",
@@ -91,7 +106,8 @@
     "close": "Închide coșul"
   },
   "review": {
-    "paymentPrefix": "Plată:"
+    "paymentPrefix": "Plată:",
+    "billingPrefix": "Adresă factură:"
   },
   "catalog": {
     "title": "Catalog",
@@ -118,9 +134,11 @@
     "paymentVerifyCharged": "Eroare la verificarea plății. Contactează suportul dacă ai fost debitat.",
     "outOfStock": "Produsul nu este în stoc",
     "maxStock": "Stoc maxim atins ({{stock}})",
+    "maxQuantity": "Cantitatea maximă a fost atinsă",
     "fillRequired": "Te rugăm să completezi toate câmpurile obligatorii",
     "invalidEmail": "Te rugăm să introduci o adresă de email validă",
     "fillAddress": "Te rugăm să completezi detaliile adresei",
+    "billingRequired": "Te rugăm să completezi adresa de facturare pentru factură",
     "selectLocker": "Te rugăm să selectezi un locker",
     "paymentSuccess": "Plată reușită! Mulțumim pentru comandă.",
     "paymentVerifying": "Verificarea plății este în curs. Verifică emailul pentru confirmare.",

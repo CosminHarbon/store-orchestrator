@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getStoredImpersonationUserId } from '@/hooks/useImpersonation';
 
 interface ProductImage {
   id: string;
@@ -50,9 +51,10 @@ const ProductImageUpload = ({ productId, onImagesChange }: ProductImageUploadPro
     mutationFn: async (file: File) => {
       const user = await supabase.auth.getUser();
       if (!user.data.user) throw new Error('Not authenticated');
+      const tenantUserId = getStoredImpersonationUserId() || user.data.user.id;
       
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.data.user.id}/${productId}/${Date.now()}.${fileExt}`;
+      const fileName = `${tenantUserId}/${productId}/${Date.now()}.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
         .from('product-images')

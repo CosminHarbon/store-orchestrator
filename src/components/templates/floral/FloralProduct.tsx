@@ -178,7 +178,11 @@ export function FloralProduct({ commerce }: Props) {
             )}
             <span className="rounded-full border border-[var(--floral-line)] px-3 py-1 inline-flex items-center gap-1">
               <Package className="h-3.5 w-3.5" />
-              {selectedProduct.stock > 0 ? `${selectedProduct.stock} in stock` : 'Out of stock'}
+              {selectedProduct.stock > 0
+                ? selectedProduct.show_stock_to_customers === false
+                  ? 'In stock'
+                  : `${selectedProduct.stock} in stock`
+                : 'Out of stock'}
             </span>
             {inCollections.map((c) => (
               <span key={c.id} className="rounded-full bg-[var(--floral-accent-soft)] px-3 py-1">
