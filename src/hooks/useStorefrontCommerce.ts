@@ -7,6 +7,7 @@ import {
   fetchDeliveryQuote,
   fetchStoreCollections,
   fetchStoreConfig,
+  fetchStoreProduct,
   fetchStoreProducts,
   fetchStoreReviews,
   storeApiHeaders,
@@ -22,12 +23,21 @@ import type {
   StorefrontFeeSettings,
   StorefrontProduct,
   StorefrontReview,
+  StorefrontVariant,
   StorefrontView,
 } from '@/lib/storefront/types';
 import { emptyCheckoutForm } from '@/lib/storefront/types';
 import { useAbandonedCartAutosave } from '@/hooks/useAbandonedCartAutosave';
 import { getDemoCatalog, type DemoTheme } from '@/lib/storefront/demoCatalog';
 import { isAppLanguage, type AppLanguage } from '@/i18n/types';
+import {
+  cartLineKey,
+  cartStockLimit,
+  cartUnitPrice,
+  variantOptionSnapshot,
+  variantSubtitle,
+} from '@/lib/storefront/variantSelection';
+import { productWithResolvedCartImage } from '@/lib/storefront/variantImages';
 
 const RECENT_KEY = 'premium_recently_viewed';
 
@@ -240,56 +250,92 @@ export function useStorefrontCommerce(apiKey: string, options: StorefrontCommerc
     };
   }, [apiKey, checkPaymentStatus, demo, theme, lang, t]);
 
-  const addToCart = useCallback((product: StorefrontProduct, qty = 1) => {
+  const addToCart = useCallback((product: StorefrontProduct, qty = 1, variant: StorefrontVariant | null = null) => {
+    if (product.has_variants && !variant) {
+      void (async () => {
+        let detailed = product;
+        if (!product.options) {
+          try {
+            detailed = await fetchStoreProduct(apiKey, product.id);
+            setProducts((prev) => prev.map((row) => (row.id === detailed.id ? { ...row, ...detailed } : row)));
+          } catch {
+            detailed = { ...product, options: product.options ?? [], variants: product.variants ?? [] };
+          }
+        }
+        setSelectedProduct(detailed);
+        setView('product');
+        setCartOpen(false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      })();
+      return;
+    }
+
+    const lineKey = cartLineKey(product.id, variant?.id);
+    const unitPrice = cartUnitPrice(product, variant);
+    const maxStock = cartStockLimit(product, variant);
+    const pricedProduct = productWithResolvedCartImage(
+      { ...product, price: unitPrice, sku: variant?.sku || product.sku },
+      variant
+    );
+
     setCart((prev) => {
-      const existing = prev.find((i) => i.product.id === product.id);
+      const existing = prev.find((i) => i.lineKey === lineKey);
       if (existing) {
         const nextQty = existing.quantity + qty;
-        if (nextQty > product.stock) {
+        if (nextQty > maxStock) {
           toast.error(
             product.show_stock_to_customers === false
               ? t('toast.maxQuantity')
-              : t('toast.maxStock', { stock: product.stock })
+              : t('toast.maxStock', { stock: maxStock })
           );
           return prev;
         }
         toast.success(t('toast.updatedInCart', { title: product.title }));
         return prev.map((i) =>
-          i.product.id === product.id ? { ...i, quantity: nextQty } : i
+          i.lineKey === lineKey ? { ...i, quantity: nextQty, product: pricedProduct, variant } : i
         );
       }
-      if (product.stock <= 0) {
+      if (maxStock <= 0) {
         toast.error(t('toast.outOfStock'));
         return prev;
       }
       toast.success(t('toast.added', { title: product.title }));
-      return [...prev, { product, quantity: Math.min(qty, product.stock) }];
+      return [
+        ...prev,
+        {
+          lineKey,
+          product: pricedProduct,
+          variant,
+          quantity: Math.min(qty, maxStock),
+        },
+      ];
     });
     setCartOpen(true);
-  }, [t]);
+  }, [apiKey, t]);
 
-  const updateQty = useCallback((productId: string, quantity: number) => {
+  const updateQty = useCallback((lineKey: string, quantity: number) => {
     setCart((prev) => {
-      const item = prev.find((i) => i.product.id === productId);
+      const item = prev.find((i) => i.lineKey === lineKey);
       if (!item) return prev;
-      if (quantity <= 0) return prev.filter((i) => i.product.id !== productId);
-      if (quantity > item.product.stock) {
+      if (quantity <= 0) return prev.filter((i) => i.lineKey !== lineKey);
+      const maxStock = cartStockLimit(item.product, item.variant);
+      if (quantity > maxStock) {
         toast.error(
           item.product.show_stock_to_customers === false
             ? t('toast.maxQuantity')
-            : t('toast.maxStock', { stock: item.product.stock })
+            : t('toast.maxStock', { stock: maxStock })
         );
         return prev;
       }
-      return prev.map((i) => (i.product.id === productId ? { ...i, quantity } : i));
+      return prev.map((i) => (i.lineKey === lineKey ? { ...i, quantity } : i));
     });
   }, [t]);
 
-  const removeFromCart = useCallback((productId: string) => {
+  const removeFromCart = useCallback((lineKey: string) => {
     setCart((prev) => {
-      const item = prev.find((i) => i.product.id === productId);
+      const item = prev.find((i) => i.lineKey === lineKey);
       if (item) toast.success(t('toast.removed', { title: item.product.title }));
-      return prev.filter((i) => i.product.id !== productId);
+      return prev.filter((i) => i.lineKey !== lineKey);
     });
   }, [t]);
 
@@ -299,8 +345,22 @@ export function useStorefrontCommerce(apiKey: string, options: StorefrontCommerc
       setView('product');
       trackRecent(product.id);
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (product.has_variants && product.options == null && !demo) {
+        void fetchStoreProduct(apiKey, product.id)
+          .then((detailed) => {
+            setSelectedProduct(detailed);
+            setProducts((prev) => prev.map((row) => (row.id === detailed.id ? { ...row, ...detailed } : row)));
+          })
+          .catch(() => {
+            setSelectedProduct((prev) =>
+              prev && prev.id === product.id
+                ? { ...prev, options: prev.options ?? [], variants: prev.variants ?? [] }
+                : prev
+            );
+          });
+      }
     },
-    [trackRecent]
+    [apiKey, demo, trackRecent]
   );
 
   const openCatalog = useCallback((collectionId?: string | null) => {
@@ -310,7 +370,7 @@ export function useStorefrontCommerce(apiKey: string, options: StorefrontCommerc
   }, []);
 
   const cartSubtotal = useMemo(
-    () => cart.reduce((s, i) => s + i.product.price * i.quantity, 0),
+    () => cart.reduce((s, i) => s + cartUnitPrice(i.product, i.variant) * i.quantity, 0),
     [cart]
   );
   const customHomePricing =
@@ -403,8 +463,16 @@ export function useStorefrontCommerce(apiKey: string, options: StorefrontCommerc
     () =>
       cart.map((i) => ({
         product_id: i.product.id,
+        variant_id: i.variant?.id || null,
         title: i.product.title,
-        price: i.product.price,
+        variant_title: i.variant
+          ? variantSubtitle(i.product.options, i.variant)
+          : null,
+        variant_options: i.variant && i.product.options
+          ? variantOptionSnapshot(i.product.options, i.variant)
+          : null,
+        image_url: i.product.image || null,
+        price: cartUnitPrice(i.product, i.variant),
         quantity: i.quantity,
       })),
     [cart]
@@ -492,8 +560,9 @@ export function useStorefrontCommerce(apiKey: string, options: StorefrontCommerc
         session_token: getSessionToken() || undefined,
         items: cart.map((item) => ({
           product_id: item.product.id,
+          variant_id: item.variant?.id || undefined,
           title: item.product.title,
-          price: item.product.price,
+          price: cartUnitPrice(item.product, item.variant),
           quantity: item.quantity,
         })),
       };

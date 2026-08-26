@@ -15,8 +15,10 @@ import type { TFunction } from 'i18next';
 
 export interface CheckoutSessionItem {
   product_id?: string | null;
+  variant_id?: string | null;
   title?: string;
   product_title?: string;
+  variant_title?: string | null;
   price?: number;
   product_price?: number;
   quantity?: number;
@@ -65,6 +67,10 @@ function formatRemaining(
 
 function itemTitle(item: CheckoutSessionItem, fallback: string) {
   return item.title || item.product_title || fallback;
+}
+
+function itemVariantLabel(item: CheckoutSessionItem) {
+  return item.variant_title || '';
 }
 
 function itemPrice(item: CheckoutSessionItem) {
@@ -390,7 +396,12 @@ export function PendingCheckoutsSection() {
                       <TableBody>
                         {items.map((item, idx) => (
                           <TableRow key={`${itemTitle(item, itemFallback)}-${idx}`}>
-                            <TableCell>{itemTitle(item, itemFallback)}</TableCell>
+                            <TableCell>
+                              <div>{itemTitle(item, itemFallback)}</div>
+                              {itemVariantLabel(item) ? (
+                                <div className="text-xs text-muted-foreground">{itemVariantLabel(item)}</div>
+                              ) : null}
+                            </TableCell>
                             <TableCell>{formatMoney(itemPrice(item))}</TableCell>
                             <TableCell>{itemQty(item)}</TableCell>
                             <TableCell>{formatMoney(itemPrice(item) * itemQty(item))}</TableCell>
@@ -403,6 +414,9 @@ export function PendingCheckoutsSection() {
                     {items.map((item, idx) => (
                       <div key={`${itemTitle(item, itemFallback)}-${idx}`} className="border rounded-md p-3 text-sm">
                         <div className="font-medium">{itemTitle(item, itemFallback)}</div>
+                        {itemVariantLabel(item) ? (
+                          <div className="text-xs text-muted-foreground">{itemVariantLabel(item)}</div>
+                        ) : null}
                         <div className="text-muted-foreground">
                           {itemQty(item)} × {formatMoney(itemPrice(item))} ={' '}
                           {formatMoney(itemPrice(item) * itemQty(item))}

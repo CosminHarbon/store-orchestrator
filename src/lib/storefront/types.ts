@@ -2,6 +2,41 @@
 
 export type StorefrontView = 'home' | 'catalog' | 'product' | 'checkout';
 
+export interface StorefrontProductImage {
+  id?: string;
+  image_url: string;
+  is_primary?: boolean;
+}
+
+export interface StorefrontProductOptionValue {
+  id: string;
+  value: string;
+  position: number;
+  swatch_hex?: string | null;
+  /** Ordered product_images.id values. Detail payload only. */
+  image_ids?: string[];
+}
+
+export interface StorefrontProductOption {
+  id: string;
+  name: string;
+  position: number;
+  values: StorefrontProductOptionValue[];
+}
+
+export interface StorefrontVariant {
+  id: string;
+  sku?: string | null;
+  price_override?: number | null;
+  effective_price: number;
+  final_price: number;
+  original_price: number;
+  has_discount: boolean;
+  stock: number;
+  active: boolean;
+  option_value_ids: string[];
+}
+
 export interface StorefrontProduct {
   id: string;
   title: string;
@@ -11,13 +46,19 @@ export interface StorefrontProduct {
   has_discount: boolean;
   discount_percentage: number;
   image: string;
-  images: { id?: string; image_url: string; is_primary?: boolean }[];
+  images: StorefrontProductImage[];
   stock: number;
   sku: string;
   category: string;
   collection_ids: string[];
   created_at?: string;
   show_stock_to_customers?: boolean;
+  has_variants?: boolean;
+  variant_count?: number;
+  price_min?: number | null;
+  price_max?: number | null;
+  options?: StorefrontProductOption[];
+  variants?: StorefrontVariant[];
 }
 
 export interface StorefrontCollection {
@@ -91,7 +132,9 @@ export interface StorefrontCustomization {
 }
 
 export interface CartItem {
+  lineKey: string;
   product: StorefrontProduct;
+  variant: StorefrontVariant | null;
   quantity: number;
 }
 

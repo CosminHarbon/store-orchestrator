@@ -21,6 +21,7 @@ import { LanguageSelector } from '@/components/settings/LanguageSelector';
 import { DefaultPickupLockerSection } from '@/components/settings/DefaultPickupLockerSection';
 import { DeliveryPricingSettings } from '@/components/settings/DeliveryPricingSettings';
 import { NetopiaPaymentPanel } from '@/components/payments/NetopiaPaymentPanel';
+import { StripeConnectPanel } from '@/components/payments/StripeConnectPanel';
 import { EawbShippingPanel } from '@/components/shipping/EawbShippingPanel';
 import { useTranslation } from 'react-i18next';
 import { goToPaymentsTab } from '@/lib/openExternalUrl';
@@ -1647,6 +1648,8 @@ class StoreAPI {
                             onGoToPayments={goToPaymentsTab}
                           />
                         )}
+
+                        <StripeConnectPanel />
                       </div>
                     </CollapsibleContent>
                   </Collapsible>

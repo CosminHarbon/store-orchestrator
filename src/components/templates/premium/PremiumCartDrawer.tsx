@@ -3,6 +3,7 @@ import { Minus, Plus, ShoppingBag, Trash2, X } from 'lucide-react';
 import { formatRon, productReviewStats } from '@/lib/storefront/api';
 import type { StorefrontCommerce } from '@/hooks/useStorefrontCommerce';
 import { ProductCard } from './ProductCard';
+import { cartUnitPrice, variantSubtitle } from '@/lib/storefront/variantSelection';
 
 interface Props {
   commerce: StorefrontCommerce;
@@ -68,7 +69,7 @@ export function PremiumCartDrawer({ commerce }: Props) {
           )}
 
           {cart.map((item) => (
-            <div key={item.product.id} className="flex gap-3">
+            <div key={item.lineKey} className="flex gap-3">
               <div className="h-24 w-20 rounded-[var(--prem-radius-sm)] overflow-hidden bg-[var(--prem-image-bg)] shrink-0">
                 {item.product.image && (
                   <img src={item.product.image} alt="" className="h-full w-full object-cover" loading="lazy" />
@@ -76,18 +77,25 @@ export function PremiumCartDrawer({ commerce }: Props) {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between gap-2">
-                  <p className="text-sm font-medium line-clamp-2">{item.product.title}</p>
-                  <button type="button" onClick={() => removeFromCart(item.product.id)} className="text-[var(--prem-muted)]">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium line-clamp-2">{item.product.title}</p>
+                    {variantSubtitle(item.product.options, item.variant) ? (
+                      <p className="text-xs text-[var(--prem-muted)] mt-0.5">
+                        {variantSubtitle(item.product.options, item.variant)}
+                      </p>
+                    ) : null}
+                  </div>
+                  <button type="button" onClick={() => removeFromCart(item.lineKey)} className="text-[var(--prem-muted)]">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
-                <p className="text-sm mt-1 tabular-nums">{formatRon(item.product.price)}</p>
+                <p className="text-sm mt-1 tabular-nums">{formatRon(cartUnitPrice(item.product, item.variant))}</p>
                 <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-[var(--prem-line)] px-2 py-1">
-                  <button type="button" onClick={() => updateQty(item.product.id, item.quantity - 1)}>
+                  <button type="button" onClick={() => updateQty(item.lineKey, item.quantity - 1)}>
                     <Minus className="h-3.5 w-3.5" />
                   </button>
                   <span className="text-sm w-6 text-center tabular-nums">{item.quantity}</span>
-                  <button type="button" onClick={() => updateQty(item.product.id, item.quantity + 1)}>
+                  <button type="button" onClick={() => updateQty(item.lineKey, item.quantity + 1)}>
                     <Plus className="h-3.5 w-3.5" />
                   </button>
                 </div>

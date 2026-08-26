@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
@@ -6,6 +7,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { AuthProvider } from '@/hooks/useAuth';
 import { ImpersonationProvider } from '@/hooks/useImpersonation';
 import { useFcmPushNotifications } from '@/hooks/useFcmPushNotifications';
+import { useStripeConnectReturn } from '@/hooks/useStripeConnectReturn';
 import {
   AppThemeProvider,
   MarketingThemeProvider,
@@ -24,9 +26,22 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import AdminConsole from './pages/AdminConsole';
 import AdminMfa from './pages/AdminMfa';
 
+const AiStudioV2Showcase = import.meta.env.DEV
+  ? lazy(() => import('./pages/ai-studio-v2/AiStudioV2Showcase'))
+  : null;
+
+const AiStudioV2GenerateLab = import.meta.env.DEV
+  ? lazy(() => import('./pages/ai-studio-v2/AiStudioV2GenerateLab'))
+  : null;
+
 const PushNotificationInitializer = () => {
   // FCM + Capacitor Push (native only). Legacy OneSignal hook is preserved but unused here.
   useFcmPushNotifications();
+  return null;
+};
+
+const StripeConnectReturnListener = () => {
+  useStripeConnectReturn();
   return null;
 };
 
@@ -49,6 +64,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <StripeConnectReturnListener />
             <Routes>
               <Route
                 path="/"
@@ -130,6 +146,30 @@ const App = () => (
                   </AppThemeProvider>
                 }
               />
+              {import.meta.env.DEV && AiStudioV2Showcase ? (
+                <Route
+                  path="/ai-studio-v2-showcase"
+                  element={
+                    <StorefrontThemeProvider>
+                      <Suspense fallback={<div style={{ padding: 24 }}>Loading V2 showcase…</div>}>
+                        <AiStudioV2Showcase />
+                      </Suspense>
+                    </StorefrontThemeProvider>
+                  }
+                />
+              ) : null}
+              {import.meta.env.DEV && AiStudioV2GenerateLab ? (
+                <Route
+                  path="/ai-studio-v2-generate"
+                  element={
+                    <StorefrontThemeProvider>
+                      <Suspense fallback={<div style={{ padding: 24 }}>Loading V2 generate lab…</div>}>
+                        <AiStudioV2GenerateLab />
+                      </Suspense>
+                    </StorefrontThemeProvider>
+                  }
+                />
+              ) : null}
               <Route
                 path="*"
                 element={

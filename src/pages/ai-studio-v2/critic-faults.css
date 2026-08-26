@@ -1,0 +1,108 @@
+/* DEV-ONLY critic calibration faults — scoped to .v2gen-preview host */
+
+.v2gen-preview.v2-fault-invisible-hero-heading .ai-v2-hero h1,
+.v2gen-preview.v2-fault-invisible-hero-heading .ai-v2-hero-copy h1,
+.v2gen-preview.v2-fault-invisible-hero-heading .ai-v2-hero-luxury-copy h1,
+.v2gen-preview.v2-fault-invisible-hero-heading .ai-v2-hero-product-copy h1 {
+  color: rgba(255, 255, 255, 0.06) !important;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.06) !important;
+  text-shadow: none !important;
+  opacity: 0.12 !important;
+}
+
+.v2gen-preview.v2-fault-excessive-gap .ai-v2-section + .ai-v2-section,
+.v2gen-preview.v2-fault-excessive-gap .ai-v2-hero + .ai-v2-section {
+  margin-top: 14rem !important;
+  padding-top: 10rem !important;
+}
+
+.v2gen-preview.v2-fault-broken-crop .ai-v2-hero-product-figure img,
+.v2gen-preview.v2-fault-broken-crop .ai-v2-hero-media img,
+.v2gen-preview.v2-fault-broken-crop .ai-v2-merch img,
+.v2gen-preview.v2-fault-broken-crop .ai-v2-spotlight img,
+.v2gen-preview.v2-fault-broken-crop .ai-v2-rail-section img {
+  object-fit: none !important;
+  object-position: 140% 140% !important;
+  transform: scale(2.6) !important;
+  transform-origin: top left !important;
+}
+
+/* Fault D — only during mobile capture (data-capture-viewport set by screenshot.ts) */
+.v2gen-preview.v2-fault-oversized-mobile-type[data-capture-viewport='mobile'] {
+  font-size: 1.7rem !important;
+}
+.v2gen-preview.v2-fault-oversized-mobile-type[data-capture-viewport='mobile'] h1,
+.v2gen-preview.v2-fault-oversized-mobile-type[data-capture-viewport='mobile'] h2,
+.v2gen-preview.v2-fault-oversized-mobile-type[data-capture-viewport='mobile'] .ai-v2-hero h1 {
+  font-size: 4.75rem !important;
+  line-height: 1.02 !important;
+  word-break: break-word !important;
+}
+
+.v2gen-preview.v2-fault-bad-typography,
+.v2gen-preview.v2-fault-bad-typography * {
+  font-family: "Comic Sans MS", Papyrus, cursive !important;
+  letter-spacing: 0.14em !important;
+  font-weight: 400 !important;
+}
+
+.v2gen-shot-debug {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px dashed #c9a962;
+  border-radius: 8px;
+  background: #141416;
+}
+.v2gen-shot-debug h3 {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.85rem;
+  color: #c9a962;
+}
+.v2gen-shot-debug figure {
+  margin: 0;
+}
+.v2gen-shot-debug img {
+  width: 100%;
+  border: 1px solid #333;
+  border-radius: 4px;
+  background: #000;
+}
+.v2gen-shot-debug figcaption {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin-top: 0.35rem;
+  font-family: ui-monospace, monospace;
+}
+.v2gen-fault-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.75rem 0 0;
+  padding: 0.75rem;
+  background: #1a1a1c;
+  border-radius: 8px;
+  border: 1px solid #333;
+}
+.v2gen-fault-bar label {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+.v2gen-fault-bar select {
+  max-width: min(100%, 28rem);
+}
+.v2gen-fault-hint {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.75rem;
+  opacity: 0.65;
+}
+@media (max-width: 900px) {
+  .v2gen-shot-debug {
+    grid-template-columns: 1fr;
+  }
+}

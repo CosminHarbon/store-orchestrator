@@ -1,0 +1,258 @@
+.sv2-showcase {
+  min-height: 100vh;
+  background: #0f1115;
+  color: #e8e6e3;
+  font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+}
+
+.sv2-chrome {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 1.25rem 1.5rem 1rem;
+  background: rgba(15, 17, 21, 0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sv2-badge {
+  display: inline-block;
+  margin: 0 0 0.5rem;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border: 1px solid #f59e0b;
+  color: #f59e0b;
+  border-radius: 999px;
+}
+
+.sv2-chrome h1 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.sv2-lede {
+  margin: 0.45rem 0 0;
+  max-width: 62ch;
+  opacity: 0.7;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.sv2-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sv2-gen-link {
+  color: var(--sv2-accent, #c9a962);
+  text-decoration: none;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+}
+
+.sv2-gen-link:hover {
+  border-color: var(--sv2-accent, #c9a962);
+}
+
+.sv2-tabs,
+.sv2-viewport-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.sv2-viewport-toggles span {
+  font-size: 0.75rem;
+  opacity: 0.55;
+  margin-right: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.sv2-tabs button,
+.sv2-viewport-toggles button,
+.sv2-store-picker button {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: transparent;
+  color: inherit;
+  padding: 0.45rem 0.75rem;
+  border-radius: 0.4rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.sv2-tabs button.active,
+.sv2-viewport-toggles button.active,
+.sv2-store-picker button.active {
+  background: #e8e6e3;
+  color: #0f1115;
+  border-color: #e8e6e3;
+}
+
+.sv2-panel {
+  padding: 1.25rem 1.5rem 3rem;
+}
+
+.sv2-store-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+
+.sv2-store-picker button {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 4.2rem;
+}
+
+.sv2-store-picker button span {
+  font-size: 0.75rem;
+  opacity: 0.65;
+}
+
+.sv2-store-meta {
+  margin-bottom: 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.6rem;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.sv2-store-meta h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.1rem;
+}
+
+.sv2-store-meta p {
+  margin: 0.35rem 0 0;
+  line-height: 1.5;
+}
+
+.sv2-muted {
+  opacity: 0.6;
+  font-size: 0.85rem;
+}
+
+.sv2-viewport-shell {
+  background: #1a1d24;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  overflow: auto;
+}
+
+.sv2-viewport-frame {
+  margin-inline: auto;
+  background: #fff;
+  border-radius: 0.35rem;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  transition: width 0.25s ease;
+}
+
+.sv2-viewport-shell[data-viewport='mobile'] .sv2-viewport-frame,
+.sv2-viewport-shell[data-viewport='tablet'] .sv2-viewport-frame {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.sv2-group {
+  margin-top: 2rem;
+}
+
+.sv2-group h2 {
+  margin: 0 0 1rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.sv2-gallery-item {
+  margin-bottom: 1.75rem;
+}
+
+.sv2-gallery-label {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: baseline;
+  margin-bottom: 0.55rem;
+}
+
+.sv2-gallery-label code {
+  font-size: 0.75rem;
+  opacity: 0.55;
+}
+
+.sv2-gallery-label span {
+  margin-left: auto;
+  font-size: 0.8rem;
+  opacity: 0.55;
+}
+
+.sv2-gallery-frame {
+  min-height: 80px;
+}
+
+.sv2-warn {
+  padding: 1rem;
+  color: #f87171;
+}
+
+.sv2-checklist-panel .sv2-checklist {
+  margin-top: 1rem;
+  padding: 1.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.sv2-checklist h3 {
+  margin: 0 0 0.35rem;
+}
+
+.sv2-checklist ul {
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.sv2-check-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+
+.sv2-check-row select {
+  background: #0f1115;
+  color: #e8e6e3;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.35rem;
+  padding: 0.35rem 0.5rem;
+}
+
+.sv2-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  opacity: 0.6;
+  line-height: 1.45;
+}

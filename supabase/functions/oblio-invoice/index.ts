@@ -42,6 +42,7 @@ interface OrderWithItems {
     product_title: string;
     product_price: number;
     quantity: number;
+    variant_title?: string | null;
   }>;
 }
 
@@ -128,7 +129,9 @@ async function createOblioInvoice(
 
   // Prepare products array with VAT included
   const products = order.order_items.map(item => ({
-    name: item.product_title,
+    name: item.variant_title
+      ? `${item.product_title} — ${item.variant_title}`
+      : item.product_title,
     price: item.product_price,
     quantity: item.quantity,
     measuringUnit: "buc",
@@ -292,7 +295,8 @@ const handler = async (req: Request): Promise<Response> => {
         order_items (
           product_title,
           product_price,
-          quantity
+          quantity,
+          variant_title
         )
       `)
       .eq('id', orderId)

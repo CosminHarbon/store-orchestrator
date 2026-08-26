@@ -15,6 +15,9 @@
       ],
       "@/*": [
         "./src/*"
+      ],
+      "@shared/*": [
+        "./shared/*"
       ]
     },
     "noImplicitAny": false,

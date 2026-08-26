@@ -23,6 +23,7 @@ import {
   variantSummary,
   verifySpec,
 } from '../_shared/aiStudio.ts'
+import { generateV2Storefront } from '../_shared/aiStudioV2.ts'
 
 const GENERATE_SYSTEM = `You are a premium ecommerce storefront design director.
 Return JSON only with:
@@ -73,6 +74,7 @@ serve(async (req) => {
     const body = await req.json()
     const prompt = String(body.prompt || '').trim()
     const quality = body.quality === 'fast' ? 'fast' : 'studio'
+    const engine = body.engine === 'v2' || body.engineVersion === 2 ? 'v2' : 'v1'
     if (!prompt) return json({ error: 'Prompt required' }, 400)
 
     const used = await countToday(admin, user.id, 'generate')
@@ -88,6 +90,28 @@ serve(async (req) => {
       console.error('catalog context failed', err)
     }
 
+    // ── V2 pipeline: DesignSpec → SiteTree → V2 renderer (no V1 layout engine) ──
+    if (engine === 'v2') {
+      return sseResponse(async (send) => {
+        try {
+          await generateV2Storefront({
+            prompt,
+            catalog,
+            profileStoreName: profile?.store_name || undefined,
+            quality,
+            send,
+            admin,
+            userId: user.id,
+            conversationId: body.conversationId,
+          })
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err)
+          send('error', { step: 'error', error: message })
+        }
+      })
+    }
+
+    // ── V1 fallback (unchanged) ──
     return sseResponse(async (send) => {
       send('status', { step: 'understanding' })
       const heuristic = inferBrief(prompt, profile?.store_name || undefined)

@@ -106,8 +106,27 @@
     "category": "Category",
     "lowStockAlertThreshold": "Low Stock Alert Threshold",
     "skuHint": "Every product needs a unique SKU.",
+    "variantCount": "{{count}} variants",
+    "variantSkuHint": "Optional. Unique within this product, not across the store.",
     "images": "Images",
     "active": "Active"
+  },
+  "variantImages": {
+    "assignTitle": "Assign images to “{{value}}”",
+    "assignHint": "Select existing gallery images. Order here is used on the product page when this value is selected.",
+    "uploadFirst": "Upload images in the Images tab first. Mapping reuses those files — it does not upload copies.",
+    "thumbLabel": "Image {{n}}, {{selected}}",
+    "selected": "selected",
+    "notSelected": "not selected",
+    "order": "Display order",
+    "imageN": "Image {{n}}",
+    "moveEarlier": "Move earlier",
+    "moveLater": "Move later",
+    "done": "Done",
+    "closeOverlay": "Close image assignment",
+    "assignAria": "Assign images, {{count}} selected",
+    "none": "No images",
+    "count": "{{count}} images"
   },
   "toast": {
     "created": "Product created successfully",

@@ -22,6 +22,7 @@ interface Order {
   awb_number?: string;
   carrier_name?: string;
   tracking_url?: string;
+  stock_shortfall?: unknown;
 }
 
 interface ResponsiveOrderTableProps {
@@ -129,7 +130,12 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                   {order.total.toFixed(2)} {tCommon('ron')}
                 </TableCell>
                 <TableCell>
-                  {getStatusBadge(order.payment_status, 'payment')}
+                  <div className="flex flex-col gap-1 items-start">
+                    {getStatusBadge(order.payment_status, 'payment')}
+                    {Array.isArray(order.stock_shortfall) && order.stock_shortfall.length > 0 && (
+                      <Badge variant="destructive" className="text-xs">Stock shortfall</Badge>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
                   {getStatusBadge(order.shipping_status, 'shipping')}
@@ -233,8 +239,11 @@ export function ResponsiveOrderTable({ orders, onViewOrder, generateAndSendInvoi
                 </div>
                 <div className="text-right space-y-1">
                   <p className="text-lg font-semibold">{order.total.toFixed(2)} {tCommon('ron')}</p>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 flex-wrap justify-end">
                     {getStatusBadge(order.payment_status, 'payment', true)}
+                    {Array.isArray(order.stock_shortfall) && order.stock_shortfall.length > 0 && (
+                      <Badge variant="destructive" className="text-xs">Stock shortfall</Badge>
+                    )}
                   </div>
                 </div>
               </div>

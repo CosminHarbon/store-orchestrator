@@ -130,12 +130,18 @@ Get all products with images, discounts, and pricing.
       "discount_percentage": 20,
       "savings_amount": 20,
       "final_price": 79.99,
+      "has_variants": false,
+      "variant_count": 0,
+      "price_min": 79.99,
+      "price_max": 79.99,
       "created_at": "2024-01-01T00:00:00Z",
       "updated_at": "2024-01-01T00:00:00Z"
     }
   ]
 }
 ```
+
+Variant products include **summary fields only** on this list endpoint (`has_variants`, `variant_count`, `price_min`, `price_max`, parent `stock`). `final_price` is the lowest purchasable variant price after discounts. The full option/variant matrix is **not** included here — use `GET /product`.
 
 ---
 
@@ -150,19 +156,53 @@ Get detailed information about a specific product.
 {
   "product": {
     "id": "uuid",
-    "title": "Product Name",
+    "title": "Premium T-Shirt",
     "description": "Product description",
-    "price": 99.99,
-    "stock": 50,
+    "price": 59.99,
+    "stock": 27,
+    "sku": "TSHIRT",
     "images": [...],
-    "original_price": 99.99,
-    "discounted_price": 79.99,
-    "has_discount": true,
-    "discount_percentage": 20,
-    "final_price": 79.99
+    "original_price": 59.99,
+    "discounted_price": 59.99,
+    "has_discount": false,
+    "discount_percentage": 0,
+    "final_price": 59.99,
+    "has_variants": true,
+    "variant_count": 8,
+    "price_min": 59.99,
+    "price_max": 69.99,
+    "options": [
+      {
+        "id": "uuid",
+        "name": "Size",
+        "position": 0,
+        "values": [
+          { "id": "uuid", "value": "S", "position": 0, "swatch_hex": null },
+          { "id": "uuid", "value": "M", "position": 1, "swatch_hex": null }
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "id": "uuid",
+        "sku": "TSH-M-BLK",
+        "price_override": null,
+        "effective_price": 59.99,
+        "final_price": 59.99,
+        "original_price": 59.99,
+        "has_discount": false,
+        "stock": 7,
+        "active": true,
+        "option_value_ids": ["uuid", "uuid"]
+      }
+    ]
   }
 }
 ```
+
+`effective_price` is `price_override ?? products.price`. `final_price` then applies the same product-level discount rules used at checkout. The storefront can resolve customer selections from this payload without extra requests.
+
+Existing non-variant fields are unchanged. Simple products omit a meaningful options/variants matrix (`has_variants: false`).
 
 ---
 
@@ -327,8 +367,9 @@ Create a new order with optional payment processing.
   "items": [
     {
       "product_id": "uuid",
-      "title": "Product Name",
-      "price": 79.99,
+      "variant_id": "uuid",
+      "title": "Premium T-Shirt",
+      "price": 59.99,
       "quantity": 1
     }
   ],
@@ -402,6 +443,23 @@ Create a new order with optional payment processing.
 **Delivery Types**:
 - `home` - Home delivery (requires: customer_city, customer_county, customer_street, customer_street_number)
 - `locker` - Locker delivery (requires: selected_carrier_code, locker_id, locker_name)
+
+**Cart items**:
+- Simple products: `{ "product_id", "quantity" }`. Client `title` and `price` are ignored.
+- Variant products (`has_variants: true`): also send `variant_id`. Omitting it returns `VARIANT_REQUIRED`.
+- Do not send a `variant_id` for a simple product.
+
+**Authoritative pricing**:
+1. Variant products: `base = variant.price_override ?? product.price`
+2. Simple products: `base = product.price`
+3. Apply the existing product discount system
+4. Checkout/COD/card amounts use this result, never the browser-supplied price
+
+**Variant validation** (server-side):
+- Product belongs to this merchant
+- Variant exists, belongs to this product, is active, and its option combination is complete
+- Quantity is a whole number ≥ 1
+- Variant has enough stock (`INSUFFICIENT_STOCK` / HTTP 409 if not)
 
 ---
 
@@ -682,7 +740,15 @@ All endpoints return errors in this format:
 - `400` - Bad Request (missing parameters)
 - `401` - Unauthorized (invalid API key)
 - `404` - Not Found
+- `409` - Conflict (insufficient stock)
 - `500` - Internal Server Error
+
+**Order / variant `code` values**:
+- `INVALID_PRODUCT` — product missing or not owned by this merchant
+- `INVALID_QUANTITY` — quantity is not a whole number ≥ 1
+- `VARIANT_REQUIRED` — product has variants but no `variant_id` was sent
+- `INVALID_VARIANT` — variant missing, belongs to another product/merchant, inactive, or not a valid combination
+- `INSUFFICIENT_STOCK` — not enough stock on the sellable unit (parent for simple products, selected variant for variant products)
 
 ---
 
@@ -715,6 +781,8 @@ All endpoints return errors in this format:
 
 Orders with status `awaiting_payment` do NOT reduce stock until payment is confirmed.
 
+For variant products, stock is deducted from `product_variants.stock` for the selected variant. Parent `products.stock` is the mirrored sum of active variant stock and is not decremented separately. Cancellation restocks the same variant (once).
+
 ---
 
 ## Discount Calculation
@@ -724,7 +792,9 @@ Products automatically include discount information in their response:
 - `discounted_price` - Price after discount (null if no discount)
 - `has_discount` - Whether product has active discount
 - `discount_percentage` - Percentage saved
-- `final_price` - Final price to charge customer
+- `final_price` - Final price to charge customer (for catalogue lists of variant products this is the lowest purchasable variant price)
+
+Variant lines use `price_override ?? product.price` as the base, then the same discount rules. Checkout never trusts client-supplied prices.
 
 Discounts are automatically applied based on:
 1. Active discount (is_active = true)

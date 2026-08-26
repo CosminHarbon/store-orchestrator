@@ -34,8 +34,12 @@ import type { TFunction } from 'i18next';
 
 export interface AbandonedCartItem {
   product_id?: string | null;
+  variant_id?: string | null;
   title?: string;
   product_title?: string;
+  variant_title?: string | null;
+  variant_options?: { name?: string; value?: string }[] | null;
+  image_url?: string | null;
   price?: number;
   product_price?: number;
   quantity?: number;
@@ -65,6 +69,20 @@ type ConfirmMode = 'one' | 'selected' | 'all' | null;
 
 function itemTitle(item: AbandonedCartItem, fallback: string) {
   return item.title || item.product_title || fallback;
+}
+
+function itemVariantLabel(item: AbandonedCartItem) {
+  if (item.variant_title) return item.variant_title;
+  if (Array.isArray(item.variant_options) && item.variant_options.length) {
+    return item.variant_options
+      .map((entry) => {
+        if (entry.name && entry.value) return `${entry.name}: ${entry.value}`;
+        return entry.value || '';
+      })
+      .filter(Boolean)
+      .join(' · ');
+  }
+  return '';
 }
 
 function itemPrice(item: AbandonedCartItem) {
@@ -400,7 +418,10 @@ export function AbandonedCartsSection() {
                       {carts.map((cart) => {
                         const cartItems = Array.isArray(cart.items) ? cart.items : [];
                         const productSummary = cartItems
-                          .map((i) => `${itemTitle(i, itemFallback)} ×${itemQty(i)}`)
+                          .map((i) => {
+                            const variant = itemVariantLabel(i);
+                            return `${itemTitle(i, itemFallback)}${variant ? ` (${variant})` : ''} ×${itemQty(i)}`;
+                          })
                           .join(', ');
                         const isExpired = cart.status === 'expired';
                         const isChecked = selectedIds.has(cart.id);
@@ -628,7 +649,23 @@ export function AbandonedCartsSection() {
                       <TableBody>
                         {detailItems.map((item, idx) => (
                           <TableRow key={`${itemTitle(item, itemFallback)}-${idx}`}>
-                            <TableCell>{itemTitle(item, itemFallback)}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                {item.image_url ? (
+                                  <img
+                                    src={item.image_url}
+                                    alt=""
+                                    className="h-10 w-10 rounded object-cover shrink-0 bg-muted"
+                                  />
+                                ) : null}
+                                <div>
+                                  <div>{itemTitle(item, itemFallback)}</div>
+                                  {itemVariantLabel(item) ? (
+                                    <div className="text-xs text-muted-foreground">{itemVariantLabel(item)}</div>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </TableCell>
                             <TableCell>{formatMoney(itemPrice(item))}</TableCell>
                             <TableCell>{itemQty(item)}</TableCell>
                             <TableCell>{formatMoney(itemPrice(item) * itemQty(item))}</TableCell>
@@ -643,7 +680,21 @@ export function AbandonedCartsSection() {
                         key={`${itemTitle(item, itemFallback)}-${idx}`}
                         className="border rounded-md p-3 text-sm"
                       >
-                        <div className="font-medium">{itemTitle(item, itemFallback)}</div>
+                        <div className="flex items-center gap-3">
+                          {item.image_url ? (
+                            <img
+                              src={item.image_url}
+                              alt=""
+                              className="h-10 w-10 rounded object-cover shrink-0 bg-muted"
+                            />
+                          ) : null}
+                          <div>
+                            <div className="font-medium">{itemTitle(item, itemFallback)}</div>
+                            {itemVariantLabel(item) ? (
+                              <div className="text-xs text-muted-foreground">{itemVariantLabel(item)}</div>
+                            ) : null}
+                          </div>
+                        </div>
                         <div className="text-muted-foreground">
                           {itemQty(item)} × {formatMoney(itemPrice(item))} ={' '}
                           {formatMoney(itemPrice(item) * itemQty(item))}

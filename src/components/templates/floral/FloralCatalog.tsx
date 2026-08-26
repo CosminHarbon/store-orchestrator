@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Grid3X3, List, Search, SlidersHorizontal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { StorefrontCommerce } from '@/hooks/useStorefrontCommerce';
-import { productReviewStats } from '@/lib/storefront/api';
+import { productReviewStats, formatCatalogPrice } from '@/lib/storefront/api';
 import { ProductCard } from './ProductCard';
 
 interface Props {
@@ -260,7 +260,7 @@ export function FloralCatalog({ commerce }: Props) {
                     </div>
                     <div className="flex items-center justify-between gap-2 mt-2">
                       <span className="font-semibold tabular-nums text-sm">
-                        {p.price.toFixed(2)} RON
+                        {formatCatalogPrice(p)}
                       </span>
                       <button
                         type="button"
@@ -268,7 +268,7 @@ export function FloralCatalog({ commerce }: Props) {
                         disabled={p.stock <= 0}
                         onClick={() => addToCart(p)}
                       >
-                        Quick add
+                        {p.has_variants ? t('variants.chooseOptions') : t('variants.quickAdd')}
                       </button>
                     </div>
                   </div>

@@ -18,6 +18,10 @@ export default defineConfig(({ mode }) => ({
         replacement: path.resolve(__dirname, "./src/lib/supabaseClient.ts"),
       },
       {
+        find: "@shared",
+        replacement: path.resolve(__dirname, "./shared"),
+      },
+      {
         find: "@",
         replacement: path.resolve(__dirname, "./src"),
       },

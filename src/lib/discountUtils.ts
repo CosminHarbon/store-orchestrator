@@ -88,6 +88,16 @@ export const calculateProductPrice = (
   };
 };
 
+export const effectiveUnitPrice = (
+  productId: string,
+  originalPrice: number,
+  discounts: Discount[],
+  productDiscounts: ProductDiscount[]
+): number => {
+  const info = calculateProductPrice(productId, originalPrice, discounts, productDiscounts);
+  return info.hasDiscount ? (info.discountedPrice ?? 0) : info.originalPrice;
+};
+
 export const formatPrice = (price: number): string => {
   return `${price.toFixed(2)} RON`;
 };

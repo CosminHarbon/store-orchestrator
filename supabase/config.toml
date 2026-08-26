@@ -69,6 +69,11 @@ verify_jwt = true
 [functions.netopia-payment]
 verify_jwt = false
 
+# Stripe Connect — OAuth callback is an unauthenticated browser GET.
+# Merchant POSTs (start_oauth, status, disconnect, set_enabled) verify JWT in-function.
+[functions.stripe-connect]
+verify_jwt = false
+
 # eAWB Quoting - Get shipping quotes from eAWB/Europarcel
 [functions.eawb-quoting]
 verify_jwt = true
@@ -96,6 +101,9 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.ai-studio-publish]
+verify_jwt = true
+
+[functions.ai-studio-v2-critique]
 verify_jwt = true
 
 # Push Notifications - OneSignal push notification service (legacy — keep until FCM migration)

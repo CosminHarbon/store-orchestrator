@@ -20,8 +20,8 @@ import { useAbandonedCartAutosave } from "@/hooks/useAbandonedCartAutosave";
 import { useTheme } from "next-themes";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { StorefrontReviewForm } from "@/components/templates/StorefrontReviewForm";
-import { fetchStoreReviews } from "@/lib/storefront/api";
-import type { StorefrontReview } from "@/lib/storefront/types";
+import { fetchStoreReviews, fetchStoreProducts, fetchStoreProduct } from "@/lib/storefront/api";
+import type { StorefrontProduct, StorefrontReview, StorefrontVariant } from "@/lib/storefront/types";
 import { LockerPicker } from "@/components/lockers/LockerPicker";
 import { AddressLocalityFields } from "@/components/address/AddressLocalityFields";
 import { CheckoutNotesField, CheckoutBillingFields, DeliveryQuoteDetails, deliveryQuoteSummary } from "@/components/storefront/CheckoutExtras";
@@ -33,18 +33,20 @@ import type { DeliveryQuote, StorefrontDeliveryConfig } from "@/lib/storefront/t
 import { isAppLanguage, type AppLanguage } from "@/i18n/types";
 import { StorefrontDemoBanner } from "@/components/templates/StorefrontDemoBanner";
 import { StorefrontLanguageToggle } from "@/components/templates/StorefrontLanguageToggle";
+import { VariantSelector, useVariantSelection } from "@/components/storefront/VariantSelector";
+import {
+  cartLineKey,
+  cartStockLimit,
+  cartUnitPrice,
+  catalogShowsPriceRange,
+  formatStorefrontPriceRange,
+  pdpUnitPrice,
+  variantOptionSnapshot,
+  variantSubtitle,
+} from "@/lib/storefront/variantSelection";
+import { productWithResolvedCartImage, resolveVariantDisplayImage } from "@/lib/storefront/variantImages";
 
-interface Product {
-  id: string;
-  title: string;
-  description: string;
-  price: number;
-  image: string;
-  stock: number;
-  category: string;
-  collection_ids?: string[];
-  show_stock_to_customers?: boolean;
-}
+type Product = StorefrontProduct;
 
 interface Collection {
   id: string;
@@ -54,7 +56,9 @@ interface Collection {
 }
 
 interface CartItem {
+  lineKey: string;
   product: Product;
+  variant: StorefrontVariant | null;
   quantity: number;
 }
 
@@ -132,6 +136,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
   const [reviews, setReviews] = useState<StorefrontReview[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const pdpVariantUi = useVariantSelection(selectedProduct);
   const [view, setView] = useState<"home" | "product" | "cart" | "checkout">("home");
   const [loading, setLoading] = useState(true);
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
@@ -278,19 +283,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
         locker_delivery_fee: catalog.fees.locker_delivery_fee,
         card_enabled: catalog.fees.card_enabled !== false,
       });
-      setProducts(
-        catalog.products.map((p) => ({
-          id: p.id,
-          title: p.title,
-          description: p.description,
-          price: p.price,
-          image: p.image,
-          stock: p.stock,
-          category: p.category,
-          collection_ids: p.collection_ids,
-          show_stock_to_customers: p.show_stock_to_customers !== false,
-        }))
-      );
+      setProducts(catalog.products);
       const collectionMap: Record<string, string[]> = {};
       catalog.products.forEach((p) => {
         collectionMap[p.id] = p.collection_ids;
@@ -414,40 +407,20 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
       setLoading(true);
       const headers = { "X-API-Key": apiKey };
 
-      const [productsRes, collectionsRes, reviewsList] = await Promise.all([
-        fetch(`${API_BASE}/products`, { headers }),
+      const [mappedProducts, collectionsRes, reviewsList] = await Promise.all([
+        fetchStoreProducts(apiKey),
         fetch(`${API_BASE}/collections`, { headers }),
         fetchStoreReviews(apiKey).catch(() => [] as StorefrontReview[]),
       ]);
 
       setReviews(reviewsList);
 
-      if (productsRes.ok) {
-        const productsData = await productsRes.json();
-        const productsArray = Array.isArray(productsData) ? productsData : (productsData.products || []);
-        
-        const collectionMap: Record<string, string[]> = {};
-        productsArray.forEach((p: any) => {
-          if (p.collection_ids && Array.isArray(p.collection_ids)) {
-            collectionMap[p.id] = p.collection_ids;
-          }
-        });
-        setProductCollections(collectionMap);
-        
-        const mappedProducts = productsArray.map((p: any) => ({
-          id: p.id,
-          title: p.title,
-          description: p.description || "",
-          price: typeof p.final_price === "number" ? p.final_price : p.price,
-          image: p.primary_image || p.image || "",
-          stock: p.stock || 0,
-          category: p.category || "",
-          collection_ids: p.collection_ids || [],
-          show_stock_to_customers: p.show_stock_to_customers !== false,
-        }));
-        
-        setProducts(mappedProducts);
-      }
+      const collectionMap: Record<string, string[]> = {};
+      mappedProducts.forEach((p) => {
+        collectionMap[p.id] = p.collection_ids || [];
+      });
+      setProductCollections(collectionMap);
+      setProducts(mappedProducts);
 
       if (collectionsRes.ok) {
         const collectionsData = await collectionsRes.json();
@@ -463,48 +436,100 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
     }
   };
 
-  const addToCart = (product: Product) => {
-    const existingItem = cart.find((item) => item.product.id === product.id);
-    if (existingItem) {
-      if (existingItem.quantity < product.stock) {
-        setCart(cart.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        ));
-        toast.success(t("toast.addedAnother", { title: product.title }));
-      } else {
-        toast.error(t("toast.maxStock", { stock: product.stock }));
-      }
-    } else {
-      if (product.stock > 0) {
-        setCart([...cart, { product, quantity: 1 }]);
-        toast.success(t("toast.added", { title: product.title }));
-      } else {
-        toast.error(t("toast.outOfStock"));
-      }
+  const openProductPage = (product: Product) => {
+    setSelectedProduct(product);
+    setView("product");
+    if (product.has_variants && product.options == null && !demo) {
+      void fetchStoreProduct(apiKey, product.id)
+        .then((detailed) => {
+          setSelectedProduct(detailed);
+          setProducts((prev) => prev.map((row) => (row.id === detailed.id ? { ...row, ...detailed } : row)));
+        })
+        .catch(() => {
+          setSelectedProduct((prev) =>
+            prev && prev.id === product.id
+              ? { ...prev, options: prev.options ?? [], variants: prev.variants ?? [] }
+              : prev
+          );
+        });
     }
   };
 
-  const updateCartQuantity = (productId: string, newQuantity: number) => {
-    const item = cart.find((item) => item.product.id === productId);
+  const addToCart = (product: Product, qty = 1, variant: StorefrontVariant | null = null) => {
+    if (product.has_variants && !variant) {
+      openProductPage(product);
+      return;
+    }
+
+    const lineKey = cartLineKey(product.id, variant?.id);
+    const unitPrice = cartUnitPrice(product, variant);
+    const maxStock = cartStockLimit(product, variant);
+    const pricedProduct = productWithResolvedCartImage(
+      { ...product, price: unitPrice, sku: variant?.sku || product.sku },
+      variant
+    );
+
+    const existingItem = cart.find((item) => item.lineKey === lineKey);
+    if (existingItem) {
+      const nextQty = existingItem.quantity + qty;
+      if (nextQty > maxStock) {
+        toast.error(
+          product.show_stock_to_customers === false
+            ? t("toast.maxQuantity")
+            : t("toast.maxStock", { stock: maxStock })
+        );
+        return;
+      }
+      setCart(cart.map((item) =>
+        item.lineKey === lineKey
+          ? { ...item, quantity: nextQty, product: pricedProduct, variant }
+          : item
+      ));
+      toast.success(t("toast.addedAnother", { title: product.title }));
+      return;
+    }
+
+    if (maxStock <= 0) {
+      toast.error(t("toast.outOfStock"));
+      return;
+    }
+
+    setCart([
+      ...cart,
+      {
+        lineKey,
+        product: pricedProduct,
+        variant,
+        quantity: Math.min(qty, maxStock),
+      },
+    ]);
+    toast.success(t("toast.added", { title: product.title }));
+  };
+
+  const updateCartQuantity = (lineKey: string, newQuantity: number) => {
+    const item = cart.find((row) => row.lineKey === lineKey);
     if (!item) return;
     if (newQuantity <= 0) {
-      removeFromCart(productId);
+      removeFromCart(lineKey);
       return;
     }
-    if (newQuantity > item.product.stock) {
-      toast.error(t("toast.maxStock", { stock: item.product.stock }));
+    const maxStock = cartStockLimit(item.product, item.variant);
+    if (newQuantity > maxStock) {
+      toast.error(
+        item.product.show_stock_to_customers === false
+          ? t("toast.maxQuantity")
+          : t("toast.maxStock", { stock: maxStock })
+      );
       return;
     }
-    setCart(cart.map((item) =>
-      item.product.id === productId ? { ...item, quantity: newQuantity } : item
+    setCart(cart.map((row) =>
+      row.lineKey === lineKey ? { ...row, quantity: newQuantity } : row
     ));
   };
 
-  const removeFromCart = (productId: string) => {
-    const item = cart.find((item) => item.product.id === productId);
-    setCart(cart.filter((item) => item.product.id !== productId));
+  const removeFromCart = (lineKey: string) => {
+    const item = cart.find((row) => row.lineKey === lineKey);
+    setCart(cart.filter((row) => row.lineKey !== lineKey));
     if (item) {
       toast.success(t("toast.removed", { title: item.product.title }));
     }
@@ -518,7 +543,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
     );
   };
 
-  const cartTotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const cartTotal = cart.reduce((sum, item) => sum + cartUnitPrice(item.product, item.variant) * item.quantity, 0);
   const customHomePricing =
     deliveryConfig.custom_pricing_enabled && checkoutForm.delivery_type === 'home';
   const deliveryFee = customHomePricing
@@ -554,7 +579,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
         city: checkoutForm.city,
         street: checkoutForm.street,
         street_number: checkoutForm.street_number,
-        items: cart.map((item) => ({ quantity: item.quantity, price: item.product.price })),
+        items: cart.map((item) => ({ quantity: item.quantity, price: cartUnitPrice(item.product, item.variant) })),
       })
         .then((quote) => {
           if (!cancelled) setDeliveryQuote(quote);
@@ -588,8 +613,14 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
     () =>
       cart.map((item) => ({
         product_id: item.product.id,
+        variant_id: item.variant?.id || null,
         title: item.product.title,
-        price: item.product.price,
+        variant_title: item.variant ? variantSubtitle(item.product.options, item.variant) : null,
+        variant_options: item.variant && item.product.options
+          ? variantOptionSnapshot(item.product.options, item.variant)
+          : null,
+        image_url: item.product.image || null,
+        price: cartUnitPrice(item.product, item.variant),
         quantity: item.quantity,
       })),
     [cart]
@@ -715,8 +746,9 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
         session_token: getSessionToken() || undefined,
         items: cart.map((item) => ({
           product_id: item.product.id,
+          variant_id: item.variant?.id || undefined,
           title: item.product.title,
-          price: item.product.price,
+          price: cartUnitPrice(item.product, item.variant),
           quantity: item.quantity,
         })),
       };
@@ -903,7 +935,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
       <div
         className={`group cursor-pointer ${animationClass}`}
         style={{ animationDelay: `${index * 0.05}s` }}
-        onClick={() => { setSelectedProduct(product); setView("product"); }}
+        onClick={() => openProductPage(product)}
       >
         <div 
           className={`relative ${colors.border_radius} overflow-hidden ${animationClass}`}
@@ -965,7 +997,9 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
             
             <div className="flex items-center justify-between">
               <p className="text-lg font-bold" style={{ color: colors.primary_color }}>
-                {formatPrice(product.price)}
+                {catalogShowsPriceRange(product)
+                  ? formatStorefrontPriceRange(product)
+                  : formatPrice(product.price)}
               </p>
               
               {product.stock > 0 ? (
@@ -1332,7 +1366,11 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
             <div className="grid md:grid-cols-2 gap-12 items-start">
               <div className={`${colors.border_radius} overflow-hidden`} style={{ backgroundColor: colors.secondary_color }}>
                 <img
-                  src={selectedProduct.image || "/placeholder.svg"}
+                  src={
+                    resolveVariantDisplayImage(selectedProduct, pdpVariantUi.selection) ||
+                    selectedProduct.image ||
+                    "/placeholder.svg"
+                  }
                   alt={selectedProduct.title}
                   className="w-full h-full object-cover aspect-square"
                 />
@@ -1346,9 +1384,6 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
                   >
                     {selectedProduct.title}
                   </h1>
-                  <p className="text-3xl font-bold" style={{ color: colors.primary_color }}>
-                    {formatPrice(selectedProduct.price)}
-                  </p>
                 </div>
                 
                 {selectedProduct.description && (
@@ -1357,25 +1392,17 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
                   </p>
                 )}
 
-                <div className="flex items-center gap-3">
-                  {selectedProduct.stock > 0 ? (
-                    <span 
-                      className={`text-sm px-3 py-1 ${colors.border_radius}`}
-                      style={{ backgroundColor: colors.secondary_color }}
-                    >
-                      {selectedProduct.show_stock_to_customers === false
-                        ? `✓ ${t("product.inStock")}`
-                        : `✓ ${selectedProduct.stock} in stock`}
-                    </span>
-                  ) : (
-                    <span 
-                      className={`text-sm px-3 py-1 ${colors.border_radius}`}
-                      style={{ backgroundColor: '#ef444420', color: '#ef4444' }}
-                    >
-                      Out of stock
-                    </span>
-                  )}
-                </div>
+                <ElementarPdpBuy
+                  product={selectedProduct}
+                  variantUi={pdpVariantUi}
+                  buttonClassName={`${getButtonStyles('primary')} flex items-center justify-center gap-2 disabled:opacity-50`}
+                  onAdd={(prod, variant) => {
+                    addToCart(prod, 1, variant);
+                    setView("cart");
+                  }}
+                  addLabel={t("action.addToCart")}
+                  outOfStockLabel={t("action.outOfStock")}
+                />
 
                 <div className="flex gap-4">
                   <button
@@ -1387,15 +1414,6 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
                     }}
                   >
                     <Heart className={`h-6 w-6 ${wishlist.includes(selectedProduct.id) ? 'fill-current' : ''}`} />
-                  </button>
-                  
-                  <button
-                    onClick={() => { addToCart(selectedProduct); setView("cart"); }}
-                    disabled={selectedProduct.stock === 0}
-                    className={`flex-1 py-4 ${getButtonStyles('primary')} flex items-center justify-center gap-2 disabled:opacity-50`}
-                  >
-                    {selectedProduct.stock === 0 ? t("action.outOfStock") : t("action.addToCart")}
-                    {selectedProduct.stock > 0 && <ShoppingCart className="h-5 w-5" />}
                   </button>
                 </div>
 
@@ -1495,7 +1513,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
                 <div className="lg:col-span-2 space-y-4">
                   {cart.map((item) => (
                     <div 
-                      key={item.product.id}
+                      key={item.lineKey}
                       className={`flex gap-4 p-4 ${colors.border_radius}`}
                       style={{ backgroundColor: colors.secondary_color }}
                     >
@@ -1506,11 +1524,16 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
                       />
                       <div className="flex-1">
                         <h3 className="font-semibold">{item.product.title}</h3>
-                        <p style={{ color: colors.primary_color }}>{formatPrice(item.product.price)}</p>
+                        {variantSubtitle(item.product.options, item.variant) ? (
+                          <p className="text-xs mt-0.5" style={{ color: colors.accent_color }}>
+                            {variantSubtitle(item.product.options, item.variant)}
+                          </p>
+                        ) : null}
+                        <p style={{ color: colors.primary_color }}>{formatPrice(cartUnitPrice(item.product, item.variant))}</p>
                         
                         <div className="flex items-center gap-2 mt-2">
                           <button
-                            onClick={() => updateCartQuantity(item.product.id, item.quantity - 1)}
+                            onClick={() => updateCartQuantity(item.lineKey, item.quantity - 1)}
                             className={`p-1 ${colors.border_radius}`}
                             style={{ backgroundColor: colors.background_color }}
                           >
@@ -1518,14 +1541,14 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
                           </button>
                           <span className="w-8 text-center">{item.quantity}</span>
                           <button
-                            onClick={() => updateCartQuantity(item.product.id, item.quantity + 1)}
+                            onClick={() => updateCartQuantity(item.lineKey, item.quantity + 1)}
                             className={`p-1 ${colors.border_radius}`}
                             style={{ backgroundColor: colors.background_color }}
                           >
                             <Plus className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => removeFromCart(item.product.id)}
+                            onClick={() => removeFromCart(item.lineKey)}
                             className="ml-auto p-1 text-red-500"
                           >
                             <X className="h-4 w-4" />
@@ -1821,9 +1844,16 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
                 <h2 className="text-xl font-semibold mb-4">{t("summary.title")}</h2>
                 <div className="space-y-2 mb-4">
                   {cart.map((item) => (
-                    <div key={item.product.id} className="flex justify-between text-sm">
-                      <span>{item.product.title} x{item.quantity}</span>
-                      <span>{formatPrice(item.product.price * item.quantity)}</span>
+                    <div key={item.lineKey} className="flex justify-between text-sm gap-3">
+                      <span>
+                        {item.product.title} x{item.quantity}
+                        {variantSubtitle(item.product.options, item.variant) ? (
+                          <span className="block text-xs opacity-70">
+                            {variantSubtitle(item.product.options, item.variant)}
+                          </span>
+                        ) : null}
+                      </span>
+                      <span>{formatPrice(cartUnitPrice(item.product, item.variant) * item.quantity)}</span>
                     </div>
                   ))}
                   <div className="border-t pt-2 mt-2" style={{ borderColor: `${colors.primary_color}20` }}>
@@ -1869,5 +1899,65 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
     </div>
   );
 };
+
+function ElementarPdpBuy({
+  product,
+  variantUi,
+  buttonClassName,
+  onAdd,
+  addLabel,
+  outOfStockLabel,
+}: {
+  product: StorefrontProduct;
+  variantUi: ReturnType<typeof useVariantSelection>;
+  buttonClassName: string;
+  onAdd: (product: StorefrontProduct, variant: StorefrontVariant | null) => void;
+  addLabel: string;
+  outOfStockLabel: string;
+}) {
+  const pricing = pdpUnitPrice(product, variantUi.variant);
+  const canAdd = product.has_variants ? variantUi.purchasable : product.stock > 0;
+  const label = product.has_variants
+    ? variantUi.ctaLabel
+    : product.stock === 0
+      ? outOfStockLabel
+      : addLabel;
+
+  return (
+    <div className="space-y-6">
+      <p className="text-3xl font-bold" style={{ color: 'var(--template-primary, currentColor)' }}>
+        {pricing.range || formatPrice(pricing.amount)}
+        {pricing.hasDiscount && pricing.original != null ? (
+          <span className="ml-3 text-lg font-normal line-through opacity-60">
+            {formatPrice(pricing.original)}
+          </span>
+        ) : null}
+      </p>
+      <VariantSelector
+        product={product}
+        selection={variantUi.selection}
+        onSelect={variantUi.selectValue}
+        resolvedVariant={variantUi.variant}
+        tone="elementar"
+      />
+      <button
+        type="button"
+        onClick={() => {
+          if (product.has_variants) {
+            if (!variantUi.variant || !variantUi.purchasable) return;
+            onAdd(product, variantUi.variant);
+            return;
+          }
+          onAdd(product, null);
+        }}
+        disabled={product.has_variants ? variantUi.cta.disabled : !canAdd}
+        className={`w-full py-4 ${buttonClassName}`}
+      >
+        {label}
+        {canAdd && <ShoppingCart className="h-5 w-5" />}
+      </button>
+    </div>
+  );
+}
 
 export default EnhancedElementarTemplate;

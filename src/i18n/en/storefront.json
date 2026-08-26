@@ -88,6 +88,21 @@
     "soldOut": "Sold out",
     "noImage": "No image"
   },
+  "variants": {
+    "loading": "Loading product…",
+    "selectOption": "Select {{name}}",
+    "chooseOptions": "Choose options",
+    "outOfStock": "Out of stock",
+    "unavailable": "Unavailable",
+    "inStock": "In stock",
+    "inStockCount": "{{count}} in stock",
+    "onlyLeft": "Only {{count}} left",
+    "from": "From {{price}}",
+    "count": "{{count}} variants",
+    "sku": "SKU: {{sku}}",
+    "addToCart": "Add to cart",
+    "quickAdd": "Quick add"
+  },
   "catalog": {
     "collections": "Collections",
     "category": "Category",

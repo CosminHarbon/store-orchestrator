@@ -50,3 +50,7 @@ supabase functions deploy ai-studio-publish --project-ref <ref>
 
 1. **Generate / design refine** → Claude → GPT-4o → DeepSeek/heuristic
 2. **Micro refine** → DeepSeek → GPT-4o-mini → Claude
+
+## V2 (in progress)
+
+See [ai-studio-v2.md](./ai-studio-v2.md). Feature-flagged SiteTree renderer; V1 remains default when `VITE_AI_STUDIO_V2` is unset.

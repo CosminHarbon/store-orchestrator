@@ -66,6 +66,7 @@ type OrderRow = {
     product_title: string;
     product_price: number;
     quantity: number;
+    variant_title?: string | null;
   }> | null;
 };
 
@@ -210,7 +211,7 @@ export default function AdminConsole() {
           created_at, delivery_type, carrier_name, awb_number, tracking_url,
           locker_name, locker_address, invoice_number, invoice_series, invoice_link,
           customer_notes, delivery_fee,
-          order_items ( product_title, product_price, quantity )
+          order_items ( product_title, product_price, quantity, variant_title )
         `
         )
         .eq('user_id', selectedUserId!)
@@ -870,6 +871,11 @@ export default function AdminConsole() {
                                       >
                                         <span>
                                           {item.quantity}× {item.product_title}
+                                          {item.variant_title ? (
+                                            <span className="block text-xs text-muted-foreground">
+                                              {item.variant_title}
+                                            </span>
+                                          ) : null}
                                         </span>
                                         <span className="text-muted-foreground shrink-0">
                                           {money(item.product_price * item.quantity)}

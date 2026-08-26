@@ -10,6 +10,16 @@ import {
   Upload,
   X,
 } from 'lucide-react';
+import { ProductVariantsEditor } from '@/components/product-variants/ProductVariantsEditor';
+import { bundleToDraft } from '@/lib/productVariants/bundle';
+import {
+  activeVariantStockSum,
+  emptyVariantDraft,
+  serializeVariantDraft,
+  toSavePayload,
+  validateVariantDraft,
+} from '@/lib/productVariants/cartesian';
+import type { SaveProductVariantsResult, VariantDraft } from '@/lib/productVariants/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -48,6 +58,10 @@ export interface EditorProduct {
   sku: string;
   low_stock_threshold: number;
   show_stock_to_customers?: boolean | null;
+  has_variants?: boolean;
+  variant_count?: number;
+  min_variant_price?: number | null;
+  max_variant_price?: number | null;
 }
 
 interface ProductImage {
@@ -136,6 +150,9 @@ export function ProductEditorDrawer({
   const [dragOverUpload, setDragOverUpload] = useState(false);
   const [dragImageId, setDragImageId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [variantDraft, setVariantDraft] = useState<VariantDraft>(emptyVariantDraft);
+  const [variantBaseline, setVariantBaseline] = useState<VariantDraft>(emptyVariantDraft);
+  const variantHydratedFor = useRef<string | null>(null);
 
   const index = useMemo(
     () => (product ? products.findIndex((p) => p.id === product.id) : -1),
@@ -201,6 +218,67 @@ export function ProductEditorDrawer({
     },
   });
 
+  const { data: variantBundle } = useQuery({
+    queryKey: ['product-variants', product?.id, product?.has_variants],
+    enabled: !!product?.id && open,
+    queryFn: async () => {
+      const productId = product!.id;
+      const { data: options, error: optionsError } = await supabase
+        .from('product_options')
+        .select('*')
+        .eq('product_id', productId)
+        .eq('archived', false)
+        .order('position', { ascending: true });
+      if (optionsError) throw optionsError;
+
+      const optionIds = (options || []).map((o: { id: string }) => o.id);
+      const { data: values, error: valuesError } = optionIds.length
+        ? await supabase
+            .from('product_option_values')
+            .select('*')
+            .in('option_id', optionIds)
+            .eq('archived', false)
+            .order('position', { ascending: true })
+        : { data: [], error: null };
+      if (valuesError) throw valuesError;
+
+      const { data: variants, error: variantsError } = await supabase
+        .from('product_variants')
+        .select('*')
+        .eq('product_id', productId)
+        .order('position', { ascending: true });
+      if (variantsError) throw variantsError;
+
+      const variantIds = (variants || []).map((v: { id: string }) => v.id);
+      const valueIds = (values || []).map((v: { id: string }) => v.id);
+      const { data: mappings, error: mappingsError } = variantIds.length
+        ? await supabase
+            .from('product_variant_values')
+            .select('*')
+            .in('variant_id', variantIds)
+        : { data: [], error: null };
+      if (mappingsError) throw mappingsError;
+
+      const { data: valueImages, error: valueImagesError } = valueIds.length
+        ? await supabase
+            .from('product_option_value_images')
+            .select('option_value_id, image_id, position')
+            .in('option_value_id', valueIds)
+            .order('position', { ascending: true })
+        : { data: [], error: null };
+      if (valueImagesError) throw valueImagesError;
+
+      return {
+        hasVariants: !!product!.has_variants,
+        options: options || [],
+        values: values || [],
+        variants: variants || [],
+        mappings: mappings || [],
+        valueImages: valueImages || [],
+      };
+    },
+  });
+
   const reviewStats = useMemo(() => {
     const total = productReviews.length;
     const avg = total === 0 ? 0 : productReviews.reduce((s, r) => s + r.rating, 0) / total;
@@ -233,7 +311,19 @@ export function ProductEditorDrawer({
     setSkuError(null);
     setPreviewDescription(false);
     setActiveImageId(null);
+    variantHydratedFor.current = null;
+    setVariantDraft(emptyVariantDraft());
+    setVariantBaseline(emptyVariantDraft());
   }, [product?.id, open]);
+
+  useEffect(() => {
+    if (!open || !product?.id || !variantBundle) return;
+    if (variantHydratedFor.current === product.id) return;
+    const next = bundleToDraft(variantBundle);
+    setVariantDraft(next);
+    setVariantBaseline(next);
+    variantHydratedFor.current = product.id;
+  }, [open, product?.id, variantBundle]);
 
   useEffect(() => {
     if (!open) return;
@@ -278,7 +368,10 @@ export function ProductEditorDrawer({
   const dirtyDiscounts =
     selectedDiscountIds.slice().sort().join(',') !==
     baselineDiscounts.slice().sort().join(',');
-  const isDirty = dirtyForm || dirtyCollections || dirtyDiscounts;
+  const dirtyVariants =
+    serializeVariantDraft(variantDraft) !== serializeVariantDraft(variantBaseline);
+  const isDirty = dirtyForm || dirtyCollections || dirtyDiscounts || dirtyVariants;
+  const variantStockTotal = activeVariantStockSum(variantDraft);
 
   const activeImage =
     images.find((i) => i.id === activeImageId) ||
@@ -316,6 +409,7 @@ export function ProductEditorDrawer({
     setForm({ ...baseline });
     setSelectedCollectionIds([...baselineCollections]);
     setSelectedDiscountIds([...baselineDiscounts]);
+    setVariantDraft(variantBaseline);
     setSkuError(null);
   };
 
@@ -328,6 +422,12 @@ export function ProductEditorDrawer({
       return;
     }
 
+    const variantCheck = validateVariantDraft(variantDraft);
+    if (!variantCheck.ok) {
+      toast.error(variantCheck.message);
+      return;
+    }
+
     setSaving(true);
     try {
       const { error } = await supabase
@@ -336,7 +436,9 @@ export function ProductEditorDrawer({
           title: form.title.trim(),
           sku: form.sku.trim(),
           price: parseFloat(form.price) || 0,
-          stock: parseInt(form.stock, 10) || 0,
+          ...(variantDraft.enabled
+            ? {}
+            : { stock: parseInt(form.stock, 10) || 0 }),
           low_stock_threshold: parseInt(form.low_stock_threshold, 10) || 5,
           category: form.category.trim() || null,
           description: form.description,
@@ -394,17 +496,44 @@ export function ProductEditorDrawer({
         );
       }
 
+      const { data: variantSave, error: variantError } = await supabase.rpc(
+        'save_product_variants',
+        {
+          p_product_id: product.id,
+          p_payload: toSavePayload(variantDraft),
+        }
+      );
+      if (variantError) throw variantError;
+      const variantResult = variantSave as SaveProductVariantsResult;
+      if (!variantResult?.ok) {
+        toast.error(variantResult?.message || 'Could not save variants');
+        return;
+      }
+
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['product-collections'] });
       queryClient.invalidateQueries({ queryKey: ['product-discounts'] });
       queryClient.invalidateQueries({ queryKey: ['product-collections-map'] });
       queryClient.invalidateQueries({ queryKey: ['product-discounts-for-products'] });
+      queryClient.invalidateQueries({ queryKey: ['product-variant-stats'] });
+      variantHydratedFor.current = null;
+      await queryClient.invalidateQueries({ queryKey: ['product-variants', product.id] });
 
-      const nextBaseline = { ...form, sku: form.sku.trim(), title: form.title.trim() };
+      const parentStock =
+        variantDraft.enabled && typeof variantResult.parent_stock === 'number'
+          ? String(variantResult.parent_stock)
+          : form.stock;
+      const nextBaseline = {
+        ...form,
+        sku: form.sku.trim(),
+        title: form.title.trim(),
+        stock: parentStock,
+      };
       setForm(nextBaseline);
       setBaseline(nextBaseline);
       setBaselineCollections([...selectedCollectionIds]);
       setBaselineDiscounts([...selectedDiscountIds]);
+      setVariantBaseline(variantDraft);
       toast.success('Product saved');
     } catch (e) {
       console.error(e);
@@ -496,6 +625,16 @@ export function ProductEditorDrawer({
     queryClient.invalidateQueries({ queryKey: ['product-images', product.id] });
     queryClient.invalidateQueries({ queryKey: ['all-product-images'] });
     queryClient.invalidateQueries({ queryKey: ['products'] });
+    setVariantDraft((prev) => ({
+      ...prev,
+      options: prev.options.map((option) => ({
+        ...option,
+        values: option.values.map((value) => ({
+          ...value,
+          imageIds: value.imageIds.filter((id) => id !== image.id),
+        })),
+      })),
+    }));
     toast.success('Image deleted');
   };
 
@@ -709,6 +848,7 @@ export function ProductEditorDrawer({
                 <TabsList className="w-full justify-start overflow-x-auto flex-nowrap h-auto gap-1 bg-muted/40 p-1">
                   <TabsTrigger value="general">General</TabsTrigger>
                   <TabsTrigger value="pricing">Pricing</TabsTrigger>
+                  <TabsTrigger value="variants">Variants</TabsTrigger>
                   <TabsTrigger value="inventory">Inventory</TabsTrigger>
                   <TabsTrigger value="organization">Organization</TabsTrigger>
                   <TabsTrigger value="performance">Performance</TabsTrigger>
@@ -828,34 +968,79 @@ export function ProductEditorDrawer({
                   </div>
                 </TabsContent>
 
+                <TabsContent value="variants" className="space-y-4 mt-4">
+                  <ProductVariantsEditor
+                    draft={variantDraft}
+                    onChange={setVariantDraft}
+                    basePrice={parseFloat(form.price) || 0}
+                    baseSku={form.sku}
+                    productImages={images.map((image) => ({
+                      id: image.id,
+                      image_url: image.image_url,
+                    }))}
+                  />
+                </TabsContent>
+
                 <TabsContent value="inventory" className="space-y-4 mt-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="drawer-stock">Stock</Label>
-                      <Input
-                        id="drawer-stock"
-                        type="number"
-                        value={form.stock}
-                        onChange={(e) => setForm({ ...form, stock: e.target.value })}
-                      />
+                  {variantDraft.enabled ? (
+                    <div className="rounded-xl border bg-muted/20 p-4 space-y-2">
+                      <p className="text-sm font-medium">Stock is managed under Variants</p>
+                      <p className="text-sm text-muted-foreground">
+                        This product sells by combination. The figure below is the sum of active
+                        variant stock and cannot be edited here.
+                      </p>
+                      <div className="grid grid-cols-2 gap-3 pt-1">
+                        <div className="space-y-2">
+                          <Label>Total stock</Label>
+                          <Input
+                            value={String(variantStockTotal)}
+                            readOnly
+                            className="bg-muted/40 tabular-nums"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="drawer-threshold">Low stock threshold</Label>
+                          <Input
+                            id="drawer-threshold"
+                            type="number"
+                            value={form.low_stock_threshold}
+                            onChange={(e) =>
+                              setForm({ ...form, low_stock_threshold: e.target.value })
+                            }
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="drawer-threshold">Low stock threshold</Label>
-                      <Input
-                        id="drawer-threshold"
-                        type="number"
-                        value={form.low_stock_threshold}
-                        onChange={(e) =>
-                          setForm({ ...form, low_stock_threshold: e.target.value })
-                        }
-                      />
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="drawer-stock">Stock</Label>
+                        <Input
+                          id="drawer-stock"
+                          type="number"
+                          value={form.stock}
+                          onChange={(e) => setForm({ ...form, stock: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="drawer-threshold">Low stock threshold</Label>
+                        <Input
+                          id="drawer-threshold"
+                          type="number"
+                          value={form.low_stock_threshold}
+                          onChange={(e) =>
+                            setForm({ ...form, low_stock_threshold: e.target.value })
+                          }
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
                   <div className="rounded-md border bg-muted/20 p-3 text-sm">
                     Status:{' '}
-                    {Number(form.stock) <= 0
+                    {(variantDraft.enabled ? variantStockTotal : Number(form.stock)) <= 0
                       ? 'Out of Stock'
-                      : Number(form.stock) <= Number(form.low_stock_threshold || 5)
+                      : (variantDraft.enabled ? variantStockTotal : Number(form.stock)) <=
+                          Number(form.low_stock_threshold || 5)
                         ? 'Low Stock'
                         : 'In Stock'}
                   </div>

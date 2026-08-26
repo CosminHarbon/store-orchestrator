@@ -106,8 +106,27 @@
     "category": "Categorie",
     "lowStockAlertThreshold": "Prag alertă stoc redus",
     "skuHint": "Fiecare produs necesită un SKU unic.",
+    "variantCount": "{{count}} variante",
+    "variantSkuHint": "Opțional. Unic în cadrul acestui produs, nu în tot magazinul.",
     "images": "Imagini",
     "active": "Activ"
+  },
+  "variantImages": {
+    "assignTitle": "Asociază imagini cu „{{value}}”",
+    "assignHint": "Alege imagini din galeria produsului. Ordinea de aici este folosită pe pagina produsului când această valoare este selectată.",
+    "uploadFirst": "Încarcă mai întâi imagini în tab-ul Imagini. Asocierea reutilizează acele fișiere — nu creează copii.",
+    "thumbLabel": "Imagine {{n}}, {{selected}}",
+    "selected": "selectată",
+    "notSelected": "neselectată",
+    "order": "Ordine de afișare",
+    "imageN": "Imagine {{n}}",
+    "moveEarlier": "Mută mai sus",
+    "moveLater": "Mută mai jos",
+    "done": "Gata",
+    "closeOverlay": "Închide asocierea de imagini",
+    "assignAria": "Asociază imagini, {{count}} selectate",
+    "none": "Fără imagini",
+    "count": "{{count}} imagini"
   },
   "toast": {
     "created": "Produs creat cu succes",

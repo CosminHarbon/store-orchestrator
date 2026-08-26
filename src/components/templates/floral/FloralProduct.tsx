@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -13,6 +13,12 @@ import { formatRon, productReviewStats } from '@/lib/storefront/api';
 import type { StorefrontCommerce } from '@/hooks/useStorefrontCommerce';
 import { StorefrontReviewForm } from '@/components/templates/StorefrontReviewForm';
 import { ProductCard } from './ProductCard';
+import { VariantSelector, useVariantSelection } from '@/components/storefront/VariantSelector';
+import {
+  displayedSku,
+  pdpUnitPrice,
+} from '@/lib/storefront/variantSelection';
+import { resolveProductImagesForSelection } from '@/lib/storefront/variantImages';
 
 interface Props {
   commerce: StorefrontCommerce;
@@ -35,15 +41,20 @@ export function FloralProduct({ commerce }: Props) {
 
   const [imageIndex, setImageIndex] = useState(0);
   const [zoomed, setZoomed] = useState(false);
+  const variantUi = useVariantSelection(selectedProduct);
 
   const gallery = useMemo(() => {
     if (!selectedProduct) return [''];
-    const urls = selectedProduct.images?.map((i) => i.image_url).filter(Boolean) || [];
-    if (selectedProduct.image && !urls.includes(selectedProduct.image)) {
-      urls.unshift(selectedProduct.image);
-    }
+    const urls = resolveProductImagesForSelection(selectedProduct, variantUi.selection)
+      .map((image) => image.image_url)
+      .filter(Boolean);
     return urls.length ? urls : [''];
-  }, [selectedProduct]);
+  }, [selectedProduct, variantUi.selection]);
+
+  const selectionKey = JSON.stringify(variantUi.selection);
+  useEffect(() => {
+    setImageIndex(0);
+  }, [selectedProduct?.id, selectionKey]);
 
   const productReviews = useMemo(
     () => (selectedProduct ? reviews.filter((r) => r.product_id === selectedProduct.id) : []),
@@ -70,6 +81,19 @@ export function FloralProduct({ commerce }: Props) {
   if (!selectedProduct) return null;
 
   const current = gallery[Math.min(imageIndex, gallery.length - 1)];
+  const pricing = pdpUnitPrice(selectedProduct, variantUi.variant);
+  const sku = displayedSku(selectedProduct.sku, variantUi.variant);
+  const canAdd = !variantUi.cta.disabled;
+  const addLabel = variantUi.ctaLabel;
+
+  const handleAdd = () => {
+    if (selectedProduct.has_variants) {
+      if (!variantUi.variant || !variantUi.purchasable) return;
+      addToCart(selectedProduct, 1, variantUi.variant);
+      return;
+    }
+    addToCart(selectedProduct);
+  };
 
   const share = async () => {
     const url = window.location.href;
@@ -155,10 +179,12 @@ export function FloralProduct({ commerce }: Props) {
           <div className="floral-fade-up">
             <h1 className="text-4xl md:text-5xl floral-display leading-tight">{selectedProduct.title}</h1>
             <div className="mt-3 flex items-baseline gap-3">
-              <span className="text-2xl font-semibold tabular-nums">{formatRon(selectedProduct.price)}</span>
-              {selectedProduct.has_discount && (
+              <span className="text-2xl font-semibold tabular-nums">
+                {pricing.range || formatRon(pricing.amount)}
+              </span>
+              {pricing.hasDiscount && pricing.original != null && (
                 <span className="text-[var(--floral-muted)] line-through tabular-nums">
-                  {formatRon(selectedProduct.original_price)}
+                  {formatRon(pricing.original)}
                 </span>
               )}
             </div>
@@ -171,25 +197,31 @@ export function FloralProduct({ commerce }: Props) {
           )}
 
           <div className="flex flex-wrap gap-3 text-xs text-[var(--floral-muted)]">
-            {selectedProduct.sku && (
+            {sku ? (
               <span className="rounded-full border border-[var(--floral-line)] px-3 py-1">
-                SKU {selectedProduct.sku}
+                SKU {sku}
+              </span>
+            ) : null}
+            {!selectedProduct.has_variants && (
+              <span className="rounded-full border border-[var(--floral-line)] px-3 py-1 inline-flex items-center gap-1">
+                <Package className="h-3.5 w-3.5" />
+                {variantUi.stockLabel}
               </span>
             )}
-            <span className="rounded-full border border-[var(--floral-line)] px-3 py-1 inline-flex items-center gap-1">
-              <Package className="h-3.5 w-3.5" />
-              {selectedProduct.stock > 0
-                ? selectedProduct.show_stock_to_customers === false
-                  ? 'In stock'
-                  : `${selectedProduct.stock} in stock`
-                : 'Out of stock'}
-            </span>
             {inCollections.map((c) => (
               <span key={c.id} className="rounded-full bg-[var(--floral-accent-soft)] px-3 py-1">
                 {c.name}
               </span>
             ))}
           </div>
+
+          <VariantSelector
+            product={selectedProduct}
+            selection={variantUi.selection}
+            onSelect={variantUi.selectValue}
+            resolvedVariant={variantUi.variant}
+            tone="floral"
+          />
 
           <div className="flex items-start gap-3 text-sm bg-[var(--floral-surface)] border border-[var(--floral-line)] rounded-[var(--floral-radius)] p-4">
             <Truck className="h-5 w-5 shrink-0 mt-0.5" />
@@ -211,10 +243,10 @@ export function FloralProduct({ commerce }: Props) {
             <button
               type="button"
               className="floral-btn floral-btn-primary flex-1"
-              disabled={selectedProduct.stock <= 0}
-              onClick={() => addToCart(selectedProduct)}
+              disabled={!canAdd}
+              onClick={handleAdd}
             >
-              {selectedProduct.stock <= 0 ? 'Sold out' : 'Add to cart'}
+              {addLabel}
             </button>
             <button type="button" className="floral-btn floral-btn-ghost" onClick={() => void share()}>
               <Share2 className="h-4 w-4" />
@@ -318,15 +350,15 @@ export function FloralProduct({ commerce }: Props) {
         <div className="flex items-center gap-3 max-w-lg mx-auto">
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium truncate">{selectedProduct.title}</p>
-            <p className="text-sm tabular-nums">{formatRon(selectedProduct.price)}</p>
+            <p className="text-sm tabular-nums">{pricing.range || formatRon(pricing.amount)}</p>
           </div>
           <button
             type="button"
             className="floral-btn floral-btn-primary !py-2.5"
-            disabled={selectedProduct.stock <= 0}
-            onClick={() => addToCart(selectedProduct)}
+            disabled={!canAdd}
+            onClick={handleAdd}
           >
-            Add
+            {addLabel}
           </button>
         </div>
       </div>

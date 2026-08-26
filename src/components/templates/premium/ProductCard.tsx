@@ -1,6 +1,8 @@
 import { ShoppingBag, Star } from 'lucide-react';
-import { formatRon } from '@/lib/storefront/api';
+import { useTranslation } from 'react-i18next';
+import { formatCatalogPrice, formatRon } from '@/lib/storefront/api';
 import type { StorefrontProduct } from '@/lib/storefront/types';
+import { catalogShowsPriceRange } from '@/lib/storefront/variantSelection';
 
 interface ProductCardProps {
   product: StorefrontProduct;
@@ -27,7 +29,15 @@ export function ProductCard({
   cardStyle = 'minimal',
   imageRatio = '4/5',
 }: ProductCardProps) {
+  const { t } = useTranslation('storefront');
   const out = product.stock <= 0;
+  const priceLabel = formatCatalogPrice(product);
+  const showCompareAt = product.has_discount && !catalogShowsPriceRange(product);
+  const addLabel = out
+    ? t('variants.unavailable')
+    : product.has_variants
+      ? t('variants.chooseOptions')
+      : t('variants.addToCart');
   const ratioClass =
     imageRatio === '1/1' ? 'aspect-square' : imageRatio === '16/10' ? 'aspect-[16/10]' : 'aspect-[4/5]';
   const shell =
@@ -46,13 +56,13 @@ export function ProductCard({
           {product.image ? (
             <img src={product.image} alt={product.title} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
           ) : (
-            <div className="h-full w-full flex items-center justify-center text-[var(--prem-muted)] text-sm">No image</div>
+            <div className="h-full w-full flex items-center justify-center text-[var(--prem-muted)] text-sm">{t('product.noImage')}</div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 p-3.5 text-white">
             <h3 className="text-sm font-medium leading-snug line-clamp-2">{product.title}</h3>
             <div className="mt-1.5 flex items-baseline gap-2">
-              <span className="text-sm font-semibold tabular-nums">{formatRon(product.price)}</span>
+              <span className="text-sm font-semibold tabular-nums">{priceLabel}</span>
             </div>
           </div>
         </button>
@@ -82,7 +92,7 @@ export function ProductCard({
           />
         ) : (
           <div className="h-full w-full flex items-center justify-center text-[var(--prem-muted)] text-sm">
-            No image
+            {t('product.noImage')}
           </div>
         )}
         {product.has_discount && (
@@ -92,7 +102,7 @@ export function ProductCard({
         )}
         {out && (
           <span className="absolute top-3 right-3 rounded-full bg-[var(--prem-ink)] text-white text-[11px] font-medium px-2.5 py-1">
-            Sold out
+            {t('product.soldOut')}
           </span>
         )}
       </button>
@@ -111,8 +121,8 @@ export function ProductCard({
             </div>
           )}
           <div className="mt-1.5 flex items-baseline gap-2">
-            <span className="text-sm font-semibold tabular-nums">{formatRon(product.price)}</span>
-            {product.has_discount && (
+            <span className="text-sm font-semibold tabular-nums">{priceLabel}</span>
+            {showCompareAt && (
               <span className="text-xs text-[var(--prem-muted)] line-through tabular-nums">
                 {formatRon(product.original_price)}
               </span>
@@ -127,7 +137,7 @@ export function ProductCard({
             onClick={() => onAdd(product)}
           >
             <ShoppingBag className="h-3.5 w-3.5" />
-            {out ? 'Unavailable' : 'Add to cart'}
+            {addLabel}
           </button>
         )}
       </div>

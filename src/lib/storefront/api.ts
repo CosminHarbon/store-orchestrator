@@ -5,8 +5,11 @@ import type {
   StorefrontDeliveryConfig,
   StorefrontFeeSettings,
   StorefrontProduct,
+  StorefrontProductOption,
   StorefrontReview,
+  StorefrontVariant,
 } from './types';
+import { formatStorefrontPriceRange } from './variantSelection';
 
 export const STORE_API_BASE = 'https://mkkqbekhvcnwcheegjpy.supabase.co/functions/v1/store-api';
 
@@ -37,6 +40,38 @@ function mapProduct(p: any): StorefrontProduct {
         ? p.discounted_price
         : original;
 
+  const options: StorefrontProductOption[] | undefined = Array.isArray(p.options)
+    ? p.options.map((option: StorefrontProductOption) => ({
+        id: option.id,
+        name: option.name,
+        position: Number(option.position) || 0,
+        values: Array.isArray(option.values)
+          ? option.values.map((value) => ({
+              id: value.id,
+              value: value.value,
+              position: Number(value.position) || 0,
+              swatch_hex: value.swatch_hex ?? null,
+              image_ids: Array.isArray(value.image_ids) ? value.image_ids.filter(Boolean) : [],
+            }))
+          : [],
+      }))
+    : undefined;
+
+  const variants: StorefrontVariant[] | undefined = Array.isArray(p.variants)
+    ? p.variants.map((variant: StorefrontVariant) => ({
+        id: variant.id,
+        sku: variant.sku ?? null,
+        price_override: variant.price_override ?? null,
+        effective_price: Number(variant.effective_price),
+        final_price: Number(variant.final_price),
+        original_price: Number(variant.original_price ?? variant.effective_price),
+        has_discount: !!variant.has_discount,
+        stock: Number(variant.stock) || 0,
+        active: !!variant.active,
+        option_value_ids: Array.isArray(variant.option_value_ids) ? variant.option_value_ids : [],
+      }))
+    : undefined;
+
   return {
     id: p.id,
     title: p.title,
@@ -53,6 +88,12 @@ function mapProduct(p: any): StorefrontProduct {
     collection_ids: Array.isArray(p.collection_ids) ? p.collection_ids : [],
     created_at: p.created_at,
     show_stock_to_customers: p.show_stock_to_customers !== false,
+    has_variants: !!p.has_variants,
+    variant_count: Number(p.variant_count) || variants?.length || 0,
+    price_min: p.price_min != null ? Number(p.price_min) : null,
+    price_max: p.price_max != null ? Number(p.price_max) : null,
+    options,
+    variants,
   };
 }
 
@@ -134,6 +175,15 @@ export async function fetchStoreProducts(apiKey: string): Promise<StorefrontProd
   if (!res.ok) throw new Error(data.error || 'Failed to load products');
   const list = Array.isArray(data) ? data : data.products || [];
   return list.map(mapProduct);
+}
+
+export async function fetchStoreProduct(apiKey: string, productId: string): Promise<StorefrontProduct> {
+  const res = await fetch(`${STORE_API_BASE}/product?id=${encodeURIComponent(productId)}`, {
+    headers: storeApiHeaders(apiKey),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to load product');
+  return mapProduct(data.product || data);
 }
 
 export async function fetchStoreCollections(apiKey: string): Promise<{
@@ -223,6 +273,10 @@ export function productReviewStats(
 
 export function formatRon(amount: number) {
   return `${Number(amount || 0).toFixed(2)} RON`;
+}
+
+export function formatCatalogPrice(product: StorefrontProduct) {
+  return formatStorefrontPriceRange(product);
 }
 
 export async function fetchDeliveryQuote(

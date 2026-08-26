@@ -27,6 +27,10 @@ export interface AbandonedCartItemSnapshot {
   title: string;
   price: number;
   quantity: number;
+  variant_id?: string | null;
+  variant_title?: string | null;
+  variant_options?: { name: string; value: string }[] | null;
+  image_url?: string | null;
 }
 
 function storageKey(apiKey: string) {

@@ -412,6 +412,11 @@ export type Database = {
           product_price: number
           product_title: string
           quantity: number
+          variant_id: string | null
+          variant_options: Json | null
+          variant_sku: string | null
+          variant_title: string | null
+          image_url: string | null
         }
         Insert: {
           created_at?: string
@@ -421,6 +426,11 @@ export type Database = {
           product_price: number
           product_title: string
           quantity: number
+          variant_id?: string | null
+          variant_options?: Json | null
+          variant_sku?: string | null
+          variant_title?: string | null
+          image_url?: string | null
         }
         Update: {
           created_at?: string
@@ -430,6 +440,11 @@ export type Database = {
           product_price?: number
           product_title?: string
           quantity?: number
+          variant_id?: string | null
+          variant_options?: Json | null
+          variant_sku?: string | null
+          variant_title?: string | null
+          image_url?: string | null
         }
         Relationships: [
           {
@@ -494,6 +509,9 @@ export type Database = {
           payment_status: string
           selected_carrier_code: string | null
           shipping_status: string
+          stock_applied_at: string | null
+          stock_restored_at: string | null
+          stock_shortfall: Json | null
           total: number
           tracking_url: string | null
           updated_at: string
@@ -548,6 +566,9 @@ export type Database = {
           payment_status?: string
           selected_carrier_code?: string | null
           shipping_status?: string
+          stock_applied_at?: string | null
+          stock_restored_at?: string | null
+          stock_shortfall?: Json | null
           total: number
           tracking_url?: string | null
           updated_at?: string
@@ -602,6 +623,9 @@ export type Database = {
           payment_status?: string
           selected_carrier_code?: string | null
           shipping_status?: string
+          stock_applied_at?: string | null
+          stock_restored_at?: string | null
+          stock_shortfall?: Json | null
           total?: number
           tracking_url?: string | null
           updated_at?: string
@@ -610,6 +634,63 @@ export type Database = {
           delivery_fee?: number | null
           delivery_distance_km?: number | null
           delivery_pricing_snapshot?: Json | null
+        }
+        Relationships: []
+      }
+      payment_integrations: {
+        Row: {
+          id: string
+          user_id: string
+          provider: string
+          enabled: boolean
+          status: string
+          provider_account_id: string | null
+          livemode: boolean
+          charges_enabled: boolean
+          payouts_enabled: boolean
+          details_submitted: boolean
+          disabled_reason: string | null
+          metadata: Json
+          connected_at: string | null
+          disconnected_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          provider: string
+          enabled?: boolean
+          status?: string
+          provider_account_id?: string | null
+          livemode?: boolean
+          charges_enabled?: boolean
+          payouts_enabled?: boolean
+          details_submitted?: boolean
+          disabled_reason?: string | null
+          metadata?: Json
+          connected_at?: string | null
+          disconnected_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          provider?: string
+          enabled?: boolean
+          status?: string
+          provider_account_id?: string | null
+          livemode?: boolean
+          charges_enabled?: boolean
+          payouts_enabled?: boolean
+          details_submitted?: boolean
+          disabled_reason?: string | null
+          metadata?: Json
+          connected_at?: string | null
+          disconnected_at?: string | null
+          created_at?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -750,6 +831,153 @@ export type Database = {
         }
         Relationships: []
       }
+      product_options: {
+        Row: {
+          archived: boolean
+          created_at: string
+          id: string
+          name: string
+          position: number
+          product_id: string
+          updated_at: string
+        }
+        Insert: {
+          archived?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          position?: number
+          product_id: string
+          updated_at?: string
+        }
+        Update: {
+          archived?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
+          product_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      product_option_values: {
+        Row: {
+          archived: boolean
+          created_at: string
+          id: string
+          option_id: string
+          position: number
+          swatch_hex: string | null
+          value: string
+        }
+        Insert: {
+          archived?: boolean
+          created_at?: string
+          id?: string
+          option_id: string
+          position?: number
+          swatch_hex?: string | null
+          value: string
+        }
+        Update: {
+          archived?: boolean
+          created_at?: string
+          id?: string
+          option_id?: string
+          position?: number
+          swatch_hex?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
+      product_variants: {
+        Row: {
+          active: boolean
+          barcode: string | null
+          created_at: string
+          id: string
+          low_stock_threshold: number | null
+          option_key: string
+          position: number
+          price_override: number | null
+          product_id: string
+          sku: string | null
+          stock: number
+          updated_at: string
+          weight_grams: number | null
+        }
+        Insert: {
+          active?: boolean
+          barcode?: string | null
+          created_at?: string
+          id?: string
+          low_stock_threshold?: number | null
+          option_key: string
+          position?: number
+          price_override?: number | null
+          product_id: string
+          sku?: string | null
+          stock?: number
+          updated_at?: string
+          weight_grams?: number | null
+        }
+        Update: {
+          active?: boolean
+          barcode?: string | null
+          created_at?: string
+          id?: string
+          low_stock_threshold?: number | null
+          option_key?: string
+          position?: number
+          price_override?: number | null
+          product_id?: string
+          sku?: string | null
+          stock?: number
+          updated_at?: string
+          weight_grams?: number | null
+        }
+        Relationships: []
+      }
+      product_option_value_images: {
+        Row: {
+          created_at: string
+          image_id: string
+          option_value_id: string
+          position: number
+        }
+        Insert: {
+          created_at?: string
+          image_id: string
+          option_value_id: string
+          position?: number
+        }
+        Update: {
+          created_at?: string
+          image_id?: string
+          option_value_id?: string
+          position?: number
+        }
+        Relationships: []
+      }
+      product_variant_values: {
+        Row: {
+          option_id: string
+          option_value_id: string
+          variant_id: string
+        }
+        Insert: {
+          option_id: string
+          option_value_id: string
+          variant_id: string
+        }
+        Update: {
+          option_id?: string
+          option_value_id?: string
+          variant_id?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           category: string | null
@@ -765,6 +993,7 @@ export type Database = {
           updated_at: string
           user_id: string
           show_stock_to_customers: boolean | null
+          has_variants: boolean
         }
         Insert: {
           category?: string | null
@@ -780,6 +1009,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           show_stock_to_customers?: boolean | null
+          has_variants?: boolean
         }
         Update: {
           category?: string | null
@@ -795,6 +1025,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           show_stock_to_customers?: boolean | null
+          has_variants?: boolean
         }
         Relationships: []
       }
@@ -1243,7 +1474,18 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      product_variant_stats: {
+        Row: {
+          active_stock: number | null
+          active_variant_count: number | null
+          has_variants: boolean | null
+          max_price: number | null
+          min_price: number | null
+          product_id: string | null
+          variant_count: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       admin_list_merchants: {
@@ -1282,6 +1524,50 @@ export type Database = {
       is_superadmin_user: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      apply_order_stock: {
+        Args: { p_order_id: string; p_mode?: string }
+        Returns: Json
+      }
+      consume_stripe_connect_state: {
+        Args: { p_state: string }
+        Returns: {
+          id: string
+          user_id: string
+          state: string
+          return_to: string
+          expires_at: string
+          consumed_at: string | null
+          created_at: string
+        }
+      }
+      convert_checkout_session_to_order: {
+        Args: {
+          p_session_id: string
+          p_netopia_payment_id?: string
+          p_provider_response?: Json
+        }
+        Returns: Json
+      }
+      create_cod_order: {
+        Args: { p_order: Json; p_items: Json }
+        Returns: Json
+      }
+      lock_products_for_items: {
+        Args: { p_items: Json }
+        Returns: undefined
+      }
+      restore_order_stock: {
+        Args: { p_order_id: string; p_cancel_order?: boolean }
+        Returns: Json
+      }
+      save_product_variants: {
+        Args: { p_product_id: string; p_payload: Json }
+        Returns: Json
+      }
+      product_variant_limits: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
     }
     Enums: {

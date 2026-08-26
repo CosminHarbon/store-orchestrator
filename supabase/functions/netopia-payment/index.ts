@@ -464,6 +464,23 @@ async function convertCheckoutSessionToOrder(
   return data || { success: false, error: 'EMPTY_RPC_RESULT' };
 }
 
+// Orders that already existed before payment used to have their inventory moved
+// by a status trigger. Inventory is now committed explicitly, and the RPC is
+// idempotent, so calling it on an already-committed order is a no-op.
+async function commitOrderStock(supabase: any, orderId: string) {
+  const { data, error } = await supabase.rpc('apply_order_stock', {
+    p_order_id: orderId,
+    p_mode: 'lenient',
+  });
+
+  if (error) {
+    console.error('apply_order_stock RPC error:', orderId, error);
+    return;
+  }
+
+  console.log('apply_order_stock result:', orderId, data);
+}
+
 async function maybeNotifyOrderPaid(supabase: any, conversion: any) {
   if (!conversion?.success || conversion.already_converted || !conversion.order_id) return;
 
@@ -820,6 +837,8 @@ async function syncStatusFromNetopia(
             order_status: 'paid',
           })
           .eq('id', transaction.order_id);
+
+        await commitOrderStock(supabase, transaction.order_id);
       }
     }
   }
@@ -1132,6 +1151,8 @@ async function processWebhook(
           })
           .eq('id', transaction.order_id);
 
+        await commitOrderStock(supabase, transaction.order_id);
+
         if (order) {
           try {
             await supabase.functions.invoke('push-notification', {
@@ -1321,6 +1342,8 @@ async function manualUpdatePayment(supabase: any, userId: string, orderId: strin
         .update({ payment_status: 'paid' })
         .eq('id', orderId);
 
+      await commitOrderStock(supabase, orderId);
+
       return new Response(
         JSON.stringify({ success: true, message: 'Order marked as paid' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -1339,6 +1362,8 @@ async function manualUpdatePayment(supabase: any, userId: string, orderId: strin
       .from('orders')
       .update({ payment_status: 'paid' })
       .eq('id', orderId);
+
+    await commitOrderStock(supabase, orderId);
 
     return new Response(
       JSON.stringify({

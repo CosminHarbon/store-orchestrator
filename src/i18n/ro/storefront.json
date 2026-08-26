@@ -88,6 +88,21 @@
     "soldOut": "Stoc epuizat",
     "noImage": "Fără imagine"
   },
+  "variants": {
+    "loading": "Se încarcă produsul…",
+    "selectOption": "Selectează {{name}}",
+    "chooseOptions": "Alege opțiunile",
+    "outOfStock": "Stoc epuizat",
+    "unavailable": "Indisponibil",
+    "inStock": "În stoc",
+    "inStockCount": "{{count}} în stoc",
+    "onlyLeft": "Doar {{count}} rămase",
+    "from": "De la {{price}}",
+    "count": "{{count}} variante",
+    "sku": "SKU: {{sku}}",
+    "addToCart": "Adaugă în coș",
+    "quickAdd": "Adaugă rapid"
+  },
   "catalog": {
     "collections": "Colecții",
     "category": "Categorie",

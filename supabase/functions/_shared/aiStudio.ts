@@ -7,7 +7,8 @@ export const corsHeaders = {
 }
 
 export const MAX_SECTIONS = 16
-export const GENERATE_LIMIT = 5
+/** Temporary elevated limit for Phase 3–4 lab testing — restore to 5 before production hardening. */
+export const GENERATE_LIMIT = 100
 export const REFINE_LIMIT = 30
 export const DESIGN_REFINE_LIMIT = 10
 
@@ -173,7 +174,136 @@ export function designLlmConfigured() {
   return Boolean(readSecret('ANTHROPIC_API_KEY') || readSecret('OPENAI_API_KEY'))
 }
 
-export type ChatMode = 'design' | 'micro' | 'studio' | 'fast'
+export type ChatMode = 'design' | 'micro' | 'studio' | 'fast' | 'structured'
+
+export type AiStudioTask =
+  | 'brand_analysis'
+  | 'creative_direction'
+  | 'design_spec'
+  | 'site_architecture'
+  | 'site_ops'
+  | 'micro_edit'
+  | 'classify_intent'
+  | 'visual_critique'
+
+const TASK_TO_MODE: Record<AiStudioTask, ChatMode> = {
+  brand_analysis: 'design',
+  creative_direction: 'design',
+  design_spec: 'design',
+  site_architecture: 'design',
+  site_ops: 'structured',
+  micro_edit: 'micro',
+  classify_intent: 'micro',
+  visual_critique: 'design', // unused for vision path — see chatVisionJsonForTask
+}
+
+export async function chatJsonForTask(
+  task: AiStudioTask,
+  opts: Omit<Parameters<typeof chatJson>[0], 'mode'>
+) {
+  return chatJson({ ...opts, mode: TASK_TO_MODE[task] })
+}
+
+/** Vision-capable model for visual_critique — configurable via OPENAI_VISION_MODEL */
+export function visionModelId(): string {
+  return Deno.env.get('OPENAI_VISION_MODEL')?.trim() || 'gpt-4o'
+}
+
+export type VisionImagePart = {
+  mimeType: string
+  /** raw base64 without data: prefix */
+  base64: string
+  label?: string
+}
+
+/**
+ * Multimodal JSON chat for visual critique.
+ * Routes through OpenAI vision model (primary). Does not scatter provider calls in UI.
+ */
+export async function chatVisionJsonForTask(
+  task: 'visual_critique',
+  opts: {
+    system: string
+    userText: string
+    images: VisionImagePart[]
+    temperature?: number
+    maxTokens?: number
+  }
+): Promise<{ json: unknown; usage: LlmUsage; text: string }> {
+  if (task !== 'visual_critique') throw new Error('chatVisionJsonForTask only supports visual_critique')
+  const openai = readSecret('OPENAI_API_KEY')
+  if (!openai) throw new Error('OPENAI_API_KEY required for visual critique')
+  const model = visionModelId()
+  const maxTokens = opts.maxTokens ?? 4000
+  const temperature = opts.temperature ?? 0.3
+
+  if (!opts.images.length) {
+    throw new Error('visual_critique requires at least one screenshot image')
+  }
+
+  const imageMeta = opts.images.map((img) => {
+    const approxBytes = Math.floor((img.base64.length * 3) / 4)
+    if (!img.base64 || img.base64.length < 500) {
+      throw new Error(`Screenshot ${img.label || 'unknown'} base64 too small / empty`)
+    }
+    if (!img.mimeType?.startsWith('image/')) {
+      throw new Error(`Screenshot ${img.label || 'unknown'} has invalid mimeType: ${img.mimeType}`)
+    }
+    return {
+      label: img.label || 'unlabeled',
+      mimeType: img.mimeType,
+      base64Chars: img.base64.length,
+      approxBytes,
+    }
+  })
+
+  // DEV / edge logs — never include raw base64
+  console.info('[ai-studio][visual_critique] attaching images', {
+    count: imageMeta.length,
+    images: imageMeta,
+    model,
+  })
+
+  const content: Array<Record<string, unknown>> = [
+    { type: 'text', text: opts.userText },
+  ]
+  for (const img of opts.images) {
+    // Label BEFORE image so the model knows which viewport it is looking at
+    if (img.label) {
+      content.push({ type: 'text', text: `[Screenshot viewport: ${img.label}]` })
+    }
+    content.push({
+      type: 'image_url',
+      image_url: {
+        url: `data:${img.mimeType};base64,${img.base64}`,
+        detail: 'high',
+      },
+    })
+  }
+
+  const payload: Record<string, unknown> = {
+    model,
+    temperature,
+    max_tokens: maxTokens,
+    response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: opts.system },
+      { role: 'user', content },
+    ],
+  }
+
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${openai}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  const raw = await res.text()
+  if (!res.ok) throw new Error(formatLlmHttpError(res.status, raw))
+  const data = JSON.parse(raw)
+  const text = data.choices?.[0]?.message?.content || ''
+  if (!text.trim()) throw new Error('Vision LLM returned an empty response')
+  return { json: extractJson(text), usage: packUsage(model, data.usage), text }
+}
 
 export async function chatJson(opts: {
   quality?: 'fast' | 'studio'
@@ -200,6 +330,33 @@ export async function chatJson(opts: {
       errors.push(`${label}: ${message}`)
       return null
     }
+  }
+
+  // Structured ops: OpenAI → Claude → DeepSeek (schema repair, site_ops)
+  if (mode === 'structured') {
+    if (openai) {
+      const ok = await tryCall('openai', () => openaiChat(openai, 'gpt-4o', opts.system, opts.user, temperature, maxTokens))
+      if (ok) return ok
+    }
+    if (anthropic) {
+      const ok = await tryCall('anthropic', () => anthropicChat(anthropic, opts.system, opts.user, temperature, maxTokens))
+      if (ok) return ok
+    }
+    if (deepseek) {
+      const ok = await tryCall('deepseek', () =>
+        openaiCompat(
+          'https://api.deepseek.com/chat/completions',
+          deepseek,
+          'deepseek-chat',
+          opts.system,
+          opts.user,
+          temperature,
+          maxTokens
+        )
+      )
+      if (ok) return ok
+    }
+    throw new Error(errors[0] || 'All structured LLM providers failed.')
   }
 
   // Design / studio: Claude → GPT-4o → DeepSeek

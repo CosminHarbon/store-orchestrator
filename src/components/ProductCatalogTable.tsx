@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Edit, Trash2, Images, Package, ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { calculateProductPrice, formatPrice, formatDiscount } from '@/lib/discountUtils';
+import { calculateProductPrice, effectiveUnitPrice, formatPrice, formatDiscount } from '@/lib/discountUtils';
 import { formatRon, type ProductMetrics } from '@/lib/productAnalytics';
+import { formatCatalogPrice } from '@/lib/productVariants/display';
 import { cn } from '@/lib/utils';
 
 interface Product {
@@ -20,6 +22,10 @@ interface Product {
   low_stock_threshold: number;
   created_at?: string;
   updated_at?: string;
+  has_variants?: boolean;
+  variant_count?: number;
+  min_variant_price?: number | null;
+  max_variant_price?: number | null;
 }
 
 interface ProductImage {
@@ -74,6 +80,7 @@ export function ProductCatalogTable({
   onManageImages,
   onProductClick,
 }: ProductCatalogTableProps) {
+  const { t } = useTranslation('products');
   const [sortKey, setSortKey] = useState<SortKey>('updated_at');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
@@ -136,7 +143,26 @@ export function ProductCatalogTable({
 
   const priceCell = (product: Product) => {
     const info = calculateProductPrice(product.id, product.price, discounts, productDiscounts);
-    if (!info.hasDiscount || !info.discountedPrice) {
+    if (product.has_variants) {
+      const minBase = product.min_variant_price ?? product.price;
+      const maxBase = product.max_variant_price ?? product.price;
+      const listed = formatCatalogPrice({
+        ...product,
+        min_variant_price: effectiveUnitPrice(product.id, minBase, discounts, productDiscounts),
+        max_variant_price: effectiveUnitPrice(product.id, maxBase, discounts, productDiscounts),
+      });
+      return (
+        <div>
+          <span className="font-medium tabular-nums">{listed}</span>
+          {product.variant_count ? (
+            <div className="text-xs text-muted-foreground">
+              {t('field.variantCount', { count: product.variant_count })}
+            </div>
+          ) : null}
+        </div>
+      );
+    }
+    if (!info.hasDiscount || info.discountedPrice == null) {
       return <span className="font-medium tabular-nums">{formatPrice(product.price)}</span>;
     }
     return (
@@ -229,6 +255,11 @@ export function ProductCatalogTable({
                       <div className="min-w-0">
                         <div className="font-medium truncate">{product.title}</div>
                         <div className="flex flex-wrap gap-1 mt-1">
+                          {product.has_variants ? (
+                            <Badge className="text-[10px] bg-violet-500/15 text-violet-700 dark:text-violet-300 border-0">
+                              {t('field.variantCount', { count: product.variant_count || 0 })}
+                            </Badge>
+                          ) : null}
                           {metrics?.badges.includes('best_seller') && (
                             <Badge className="text-[10px] bg-amber-500/15 text-amber-700 dark:text-amber-300 border-0">Best Seller</Badge>
                           )}
@@ -309,7 +340,7 @@ export function ProductCatalogTable({
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="font-medium truncate">{product.title}</div>
-                      <div className="text-sm text-muted-foreground">{formatPrice(product.price)}</div>
+                      <div className="text-sm text-muted-foreground">{formatCatalogPrice(product)}</div>
                       <div className="flex flex-wrap gap-1 mt-2">
                         {stockBadge(product)}
                         <Badge variant="outline" className="text-[10px]">

@@ -274,7 +274,15 @@ export type StoreBrief = z.infer<typeof storeBriefSchema>;
 
 export type StudioQuality = 'fast' | 'studio';
 
-export type GenerateStatusStep = 'understanding' | 'designing' | 'verifying' | 'building' | 'ready' | 'error';
+export type GenerateStatusStep =
+  | 'understanding'
+  | 'designing'
+  | 'planning'
+  | 'composing'
+  | 'verifying'
+  | 'building'
+  | 'ready'
+  | 'error';
 
 export function isBlockSectionType(type: string): type is BlockSectionType {
   return (BLOCK_SECTION_TYPES as readonly string[]).includes(type);

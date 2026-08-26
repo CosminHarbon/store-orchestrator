@@ -43,7 +43,7 @@
     "deliverySubEawb": "Integrare eAWB.ro",
     "deliverySubSameday": "Integrare Sameday",
     "payment": "Plată",
-    "paymentSub": "Netopia sau doar ramburs"
+    "paymentSub": "Netopia, Stripe sau ramburs"
   },
   "label": {
     "invoicingProvider": "Furnizor facturare",
@@ -562,6 +562,53 @@
       "testOk": "Conexiunea eAWB a reușit.",
       "pickupLinked": "Adresa de ridicare a fost legată.",
       "lockerSaved": "Lockerul de ridicare implicit a fost salvat."
+    }
+  },
+  "stripeConnect": {
+    "setupCard": {
+      "title": "Conectează Stripe",
+      "description": "Acceptă plăți cu cardul prin propriul tău cont Stripe. Clienții te plătesc direct — SpeedVendors nu reține fondurile."
+    },
+    "connected": {
+      "title": "Stripe",
+      "badge": "Conectat",
+      "description": "Acceptă plăți cu cardul în siguranță prin contul tău Stripe.",
+      "account": "Cont Stripe",
+      "payments": "Plăți",
+      "payouts": "Încasări",
+      "enabled": "activate",
+      "disabled": "dezactivate",
+      "actionRequired": "Acțiune necesară",
+      "disconnectIncompleteBadge": "Deconectare incompletă",
+      "disconnectIncomplete": "Stripe este dezactivat pentru checkout-uri noi, dar SpeedVendors nu a putut confirma că accesul a fost revocat în Stripe. Contul rămâne legat. Apasă din nou Deconectează.",
+      "disconnectRetry": "Reîncearcă Deconectează pentru a revoca accesul Stripe.",
+      "requirements": "Stripe cere informații suplimentare ({{reason}}). Deschide Stripe Dashboard pentru a finaliza."
+    },
+    "actions": {
+      "connect": "Conectează Stripe",
+      "reconnect": "Reconectează",
+      "manage": "Gestionează Stripe",
+      "disconnect": "Deconectează"
+    },
+    "disconnect": {
+      "title": "Deconectezi Stripe?",
+      "description": "SpeedVendors nu va mai avea acces la contul tău Stripe. Comenzile deja plătite nu se schimbă. Poți reconecta oricând."
+    },
+    "toast": {
+      "connected": "Stripe a fost conectat.",
+      "disconnected": "Stripe a fost deconectat.",
+      "connectFailed": "Nu am putut porni conectarea Stripe. Încearcă din nou.",
+      "disconnectFailed": "Nu am putut deconecta Stripe. Încearcă din nou.",
+      "deauthorizeFailed": "Nu am putut revoca accesul Stripe. Verifică conexiunea și apasă din nou Deconectează."
+    },
+    "errors": {
+      "denied": "Conectarea Stripe a fost anulată.",
+      "state_invalid": "Linkul de conectare Stripe a expirat. Apasă din nou Conectează Stripe.",
+      "mode_mismatch": "Contul Stripe nu corespunde acestui mediu (test vs live).",
+      "account_in_use": "Acest cont Stripe este deja conectat la un alt magazin SpeedVendors.",
+      "server_error": "Conectarea Stripe a eșuat. Încearcă din nou.",
+      "STRIPE_NOT_CONFIGURED": "Stripe nu este încă configurat pe server.",
+      "NOT_AUTHENTICATED": "Autentifică-te din nou, apoi conectează Stripe."
     }
   },
   "toast": {

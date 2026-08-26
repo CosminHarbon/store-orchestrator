@@ -43,7 +43,7 @@
     "deliverySubEawb": "eAWB.ro Integration",
     "deliverySubSameday": "Sameday Integration",
     "payment": "Payment",
-    "paymentSub": "Netopia or cash only"
+    "paymentSub": "Netopia, Stripe, or cash"
   },
   "label": {
     "invoicingProvider": "Invoicing Provider",
@@ -562,6 +562,53 @@
       "testOk": "eAWB connection successful.",
       "pickupLinked": "Pickup address linked.",
       "lockerSaved": "Default pickup locker saved."
+    }
+  },
+  "stripeConnect": {
+    "setupCard": {
+      "title": "Connect Stripe",
+      "description": "Accept cards through your own Stripe account. Customers pay you directly — SpeedVendors never holds the funds."
+    },
+    "connected": {
+      "title": "Stripe",
+      "badge": "Connected",
+      "description": "Accept card payments securely using your Stripe account.",
+      "account": "Stripe account",
+      "payments": "Payments",
+      "payouts": "Payouts",
+      "enabled": "enabled",
+      "disabled": "not enabled",
+      "actionRequired": "Action required",
+      "disconnectIncompleteBadge": "Disconnect incomplete",
+      "disconnectIncomplete": "Stripe is disabled for new checkouts, but SpeedVendors could not confirm that Stripe revoked access. Your Stripe account is still linked. Try Disconnect again.",
+      "disconnectRetry": "Retry Disconnect to finish revoking Stripe access.",
+      "requirements": "Stripe needs more information ({{reason}}). Open your Stripe Dashboard to finish."
+    },
+    "actions": {
+      "connect": "Connect Stripe",
+      "reconnect": "Reconnect",
+      "manage": "Manage Stripe",
+      "disconnect": "Disconnect"
+    },
+    "disconnect": {
+      "title": "Disconnect Stripe?",
+      "description": "This revokes SpeedVendors access to your Stripe account. Existing paid orders are not changed. You can connect again later."
+    },
+    "toast": {
+      "connected": "Stripe connected.",
+      "disconnected": "Stripe disconnected.",
+      "connectFailed": "Could not start Stripe Connect. Try again.",
+      "disconnectFailed": "Could not disconnect Stripe. Try again.",
+      "deauthorizeFailed": "Could not revoke Stripe access. Check your connection and try Disconnect again."
+    },
+    "errors": {
+      "denied": "Stripe connection was cancelled.",
+      "state_invalid": "This Stripe connection link expired. Please try Connect Stripe again.",
+      "mode_mismatch": "That Stripe account does not match this environment (test vs live).",
+      "account_in_use": "That Stripe account is already connected to another SpeedVendors store.",
+      "server_error": "Stripe connection failed. Please try again.",
+      "STRIPE_NOT_CONFIGURED": "Stripe is not configured on the server yet.",
+      "NOT_AUTHENTICATED": "Please sign in again, then connect Stripe."
     }
   },
   "toast": {

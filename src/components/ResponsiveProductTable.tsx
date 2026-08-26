@@ -1,9 +1,11 @@
 import { Edit, Trash2, Images, Package } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { calculateProductPrice, formatPrice, formatDiscount, PriceInfo } from '@/lib/discountUtils';
+import { calculateProductPrice, effectiveUnitPrice, formatPrice, formatDiscount } from '@/lib/discountUtils';
+import { formatCatalogPrice } from '@/lib/productVariants/display';
 
 interface Product {
   id: string;
@@ -15,6 +17,10 @@ interface Product {
   stock: number;
   sku: string;
   low_stock_threshold: number;
+  has_variants?: boolean;
+  variant_count?: number;
+  min_variant_price?: number | null;
+  max_variant_price?: number | null;
 }
 
 interface ProductImage {
@@ -60,6 +66,7 @@ export function ResponsiveProductTable({
   onManageImages,
   onProductClick 
 }: ResponsiveProductTableProps) {
+  const { t } = useTranslation('products');
   const getPrimaryImage = (productId: string) => {
     return productImages?.find(img => img.product_id === productId);
   };
@@ -71,9 +78,29 @@ export function ResponsiveProductTable({
   };
 
   const renderPriceDisplay = (product: Product) => {
+    if (product.has_variants) {
+      const minBase = product.min_variant_price ?? product.price;
+      const maxBase = product.max_variant_price ?? product.price;
+      return (
+        <div>
+          <div className="text-xl font-bold text-primary">
+            {formatCatalogPrice({
+              ...product,
+              min_variant_price: effectiveUnitPrice(product.id, minBase, discounts, productDiscounts),
+              max_variant_price: effectiveUnitPrice(product.id, maxBase, discounts, productDiscounts),
+            })}
+          </div>
+          {product.variant_count ? (
+            <div className="text-xs text-muted-foreground">
+              {t('field.variantCount', { count: product.variant_count })}
+            </div>
+          ) : null}
+        </div>
+      );
+    }
     const priceInfo = calculateProductPrice(product.id, product.price, discounts, productDiscounts);
     
-    if (!priceInfo.hasDiscount || !priceInfo.discountedPrice) {
+    if (!priceInfo.hasDiscount || priceInfo.discountedPrice == null) {
       return <div className="text-xl font-bold text-primary">{formatPrice(product.price)}</div>;
     }
 
@@ -93,9 +120,29 @@ export function ResponsiveProductTable({
   };
 
   const renderMobilePriceDisplay = (product: Product) => {
+    if (product.has_variants) {
+      const minBase = product.min_variant_price ?? product.price;
+      const maxBase = product.max_variant_price ?? product.price;
+      return (
+        <div>
+          <div className="text-lg font-bold text-primary">
+            {formatCatalogPrice({
+              ...product,
+              min_variant_price: effectiveUnitPrice(product.id, minBase, discounts, productDiscounts),
+              max_variant_price: effectiveUnitPrice(product.id, maxBase, discounts, productDiscounts),
+            })}
+          </div>
+          {product.variant_count ? (
+            <div className="text-xs text-muted-foreground">
+              {t('field.variantCount', { count: product.variant_count })}
+            </div>
+          ) : null}
+        </div>
+      );
+    }
     const priceInfo = calculateProductPrice(product.id, product.price, discounts, productDiscounts);
     
-    if (!priceInfo.hasDiscount || !priceInfo.discountedPrice) {
+    if (!priceInfo.hasDiscount || priceInfo.discountedPrice == null) {
       return <div className="text-lg font-bold text-primary">{formatPrice(product.price)}</div>;
     }
 
@@ -255,7 +302,9 @@ export function ResponsiveProductTable({
                           <p className="text-xs text-muted-foreground">{product.category}</p>
                         )}
                       </div>
-                      <div className="text-lg font-bold text-primary ml-2">{formatPrice(product.price)}</div>
+                      <div className="text-lg font-bold text-primary ml-2">
+                        {formatCatalogPrice(product)}
+                      </div>
                     </div>
                     
                     <div className="flex items-center justify-between">

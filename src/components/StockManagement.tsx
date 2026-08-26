@@ -21,6 +21,7 @@ interface Product {
   price: number;
   category: string;
   low_stock_threshold: number;
+  has_variants?: boolean;
 }
 
 interface StockUpdate {
@@ -51,7 +52,7 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
-        .select('id, title, sku, stock, price, category, low_stock_threshold')
+        .select('id, title, sku, stock, price, category, low_stock_threshold, has_variants')
         .eq('user_id', effectiveUserId!)
         .order('title');
       
@@ -114,7 +115,7 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
   const handleStockChange = (productId: string, newStock: number) => {
     setStockUpdates(prev => ({
       ...prev,
-      [productId]: newStock
+      [productId]: Math.max(0, Number.isFinite(newStock) ? newStock : 0)
     }));
   };
 
@@ -143,7 +144,10 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
   }, [stockUpdates, thresholdUpdates]);
 
   const handleSaveChanges = () => {
-    const stockUpdatesArray = Object.entries(stockUpdates).map(([productId, stock]) => ({
+    const variantIds = new Set((products || []).filter((p) => p.has_variants).map((p) => p.id));
+    const stockUpdatesArray = Object.entries(stockUpdates)
+      .filter(([productId]) => !variantIds.has(productId))
+      .map(([productId, stock]) => ({
       product_id: productId,
       stock
     }));
@@ -318,6 +322,11 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
                       </span>
                     </TableCell>
                      <TableCell>
+                       {product.has_variants ? (
+                         <div className="text-xs text-muted-foreground max-w-[11rem]">
+                           Managed per variant in the product editor
+                         </div>
+                       ) : (
                        <div className="flex items-center gap-1">
                          <Button
                            size="sm"
@@ -348,6 +357,7 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
                            <Plus className="h-3 w-3" />
                          </Button>
                        </div>
+                       )}
                      </TableCell>
                      <TableCell>
                      <Input
@@ -459,7 +469,12 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
                     </div>
                     
                     <div className="space-y-3">
-                      {/* Direct input with simple +/- */}
+                      {product.has_variants ? (
+                        <p className="text-sm text-muted-foreground">
+                          Stock for this product is managed per variant in the product editor.
+                        </p>
+                      ) : (
+                      <>
                       <div className="flex items-center gap-3">
                         <Button
                           size="sm"
@@ -521,6 +536,8 @@ const StockManagement = ({ onPendingChangesChange, saveRef }: StockManagementPro
                           {tStock('quickSet.fifty')}
                         </Button>
                       </div>
+                      </>
+                      )}
                     </div>
                   </div>
                 </CardContent>

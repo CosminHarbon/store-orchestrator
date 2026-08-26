@@ -1,0 +1,22 @@
+npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn exec The following package was not found and will be installed: tsx@4.23.12
+node:net:2145
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /var/folders/x3/19bp9hy52rz50r2jz4ztt5zc0000gn/T/tsx-501/9724.pipe
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2361:5)
+    at file:///private/var/folders/x3/19bp9hy52rz50r2jz4ztt5zc0000gn/T/cursor-sandbox-cache/f11d024ca27292e8fc1c52e73b010fca/npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/cli.mjs:53:31472
+    at new Promise (<anonymous>)
+    at createIpcServer (file:///private/var/folders/x3/19bp9hy52rz50r2jz4ztt5zc0000gn/T/cursor-sandbox-cache/f11d024ca27292e8fc1c52e73b010fca/npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/cli.mjs:53:31450)
+    at async file:///private/var/folders/x3/19bp9hy52rz50r2jz4ztt5zc0000gn/T/cursor-sandbox-cache/f11d024ca27292e8fc1c52e73b010fca/npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/cli.mjs:55:542 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/var/folders/x3/19bp9hy52rz50r2jz4ztt5zc0000gn/T/tsx-501/9724.pipe',
+  port: -1
+}
+
+Node.js v26.5.1

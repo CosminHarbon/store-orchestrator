@@ -75,6 +75,10 @@ interface Product {
   show_stock_to_customers?: boolean | null;
   created_at?: string;
   updated_at?: string;
+  has_variants?: boolean;
+  variant_count?: number;
+  min_variant_price?: number | null;
+  max_variant_price?: number | null;
 }
 
 interface ProductImage {
@@ -182,7 +186,26 @@ const ProductManagement = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as Product[];
+      const rows = (data || []) as Product[];
+      const ids = rows.map((p) => p.id);
+      if (!ids.length) return rows;
+
+      const { data: stats } = await supabase
+        .from('product_variant_stats')
+        .select('*')
+        .in('product_id', ids);
+
+      const byId = new Map((stats || []).map((s: any) => [s.product_id, s]));
+      return rows.map((p) => {
+        const s = byId.get(p.id);
+        return {
+          ...p,
+          has_variants: !!p.has_variants,
+          variant_count: s?.active_variant_count ?? 0,
+          min_variant_price: s?.min_price ?? null,
+          max_variant_price: s?.max_price ?? null,
+        };
+      });
     },
   });
 
@@ -396,7 +419,7 @@ const ProductManagement = () => {
         .insert({
           ...productData,
           price: parseFloat(productData.price),
-          stock: parseInt(productData.stock),
+          stock: Math.max(0, parseInt(productData.stock) || 0),
           low_stock_threshold: parseInt(productData.low_stock_threshold || '5'),
           user_id: userId,
         })
@@ -427,7 +450,7 @@ const ProductManagement = () => {
         .update({
           ...productData,
           price: parseFloat(productData.price),
-          stock: parseInt(productData.stock),
+          stock: Math.max(0, parseInt(productData.stock) || 0),
           low_stock_threshold: parseInt(productData.low_stock_threshold || '5'),
         })
         .eq('id', id)
@@ -541,6 +564,8 @@ const ProductManagement = () => {
       fresh.sku !== drawerProduct.sku ||
       fresh.price !== drawerProduct.price ||
       fresh.stock !== drawerProduct.stock ||
+      fresh.has_variants !== drawerProduct.has_variants ||
+      fresh.variant_count !== drawerProduct.variant_count ||
       fresh.description !== drawerProduct.description ||
       fresh.category !== drawerProduct.category ||
       fresh.low_stock_threshold !== drawerProduct.low_stock_threshold
@@ -1199,9 +1224,9 @@ const ProductManagement = () => {
                           variant="secondary"
                           onClick={() =>
                             bulkStock &&
-                            bulkUpdateField({ stock: parseInt(bulkStock, 10) }).then(() =>
-                              setBulkStock('')
-                            )
+                            bulkUpdateField({
+                              stock: Math.max(0, parseInt(bulkStock, 10) || 0),
+                            }).then(() => setBulkStock(''))
                           }
                         >
                           {tProducts('bulk.setStock')}

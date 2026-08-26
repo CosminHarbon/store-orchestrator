@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Eye, Package, Truck, X, Receipt, Send, ExternalLink, Edit, Search, CreditCard, RefreshCw, Download } from 'lucide-react';
+import { Eye, Package, PackageX, Truck, X, Receipt, Send, ExternalLink, Edit, Search, CreditCard, RefreshCw, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -21,6 +21,17 @@ import { AbandonedCartsSection } from './AbandonedCartsSection';
 import { CodOrderBanner, ShippingSummaryCard } from '@/components/shipping/ShippingSummaryCard';
 import { useImpersonation, resolveTenantUserId } from '@/hooks/useImpersonation';
 import { withActingAsUserId } from '@/lib/actingAs';
+
+interface StockShortfallEntry {
+  product_id: string;
+  product_title: string;
+  variant_id?: string | null;
+  variant_title?: string | null;
+  requested: number;
+  applied: number;
+  missing: number;
+  reason?: string;
+}
 
 interface Order {
   id: string;
@@ -46,6 +57,10 @@ interface Order {
   total: number;
   payment_status: 'pending' | 'paid' | 'failed' | 'refunded' | 'invoiced' | 'cash';
   shipping_status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  order_status?: 'draft' | 'awaiting_payment' | 'paid' | 'cancelled' | null;
+  stock_applied_at?: string | null;
+  stock_restored_at?: string | null;
+  stock_shortfall?: unknown;
   created_at: string;
   invoice_link?: string;
   awb_number?: string;
@@ -74,11 +89,30 @@ interface Order {
   } | null;
 }
 
+const readStockShortfall = (order: Order): StockShortfallEntry[] =>
+  Array.isArray(order.stock_shortfall) ? (order.stock_shortfall as StockShortfallEntry[]) : [];
+
 interface OrderItem {
   id: string;
   product_title: string;
   product_price: number;
   quantity: number;
+  variant_id?: string | null;
+  variant_title?: string | null;
+  variant_sku?: string | null;
+  variant_options?: { name?: string; value?: string }[] | null;
+  image_url?: string | null;
+}
+
+function orderItemVariantLabel(item: OrderItem): string {
+  if (item.variant_title) return item.variant_title;
+  if (Array.isArray(item.variant_options) && item.variant_options.length) {
+    return item.variant_options
+      .map((entry) => (entry.name && entry.value ? `${entry.name}: ${entry.value}` : entry.value || ''))
+      .filter(Boolean)
+      .join(' · ');
+  }
+  return '';
 }
 
 const OrderManagement = () => {
@@ -97,6 +131,7 @@ const OrderManagement = () => {
     customer_address: ''
   });
   const [refreshingPayments, setRefreshingPayments] = useState<Set<string>>(new Set());
+  const [restockingOrders, setRestockingOrders] = useState<Set<string>>(new Set());
   const [creatingAWB, setCreatingAWB] = useState<Set<string>>(new Set());
   const [isAWBModalOpen, setIsAWBModalOpen] = useState(false);
   const [dashboardRequestedOrderId, setDashboardRequestedOrderId] = useState<string | null>(null);
@@ -253,6 +288,58 @@ const OrderManagement = () => {
       console.error(error);
     }
   });
+
+  // Restocking is always an explicit merchant decision: a refund does not mean
+  // the goods came back. The RPC returns inventory exactly once.
+  const restockMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      const { data, error } = await supabase.rpc('restore_order_stock', {
+        p_order_id: orderId,
+        p_cancel_order: true,
+      });
+
+      if (error) throw error;
+
+      const result = data as { success?: boolean; error?: string; already_restored?: boolean } | null;
+      if (!result?.success) throw new Error(result?.error || 'Failed to restock items');
+      return result;
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      toast.success(
+        result.already_restored
+          ? 'Items had already been restocked'
+          : 'Order cancelled and items returned to stock'
+      );
+      setSelectedOrder((prev) =>
+        prev
+          ? { ...prev, stock_restored_at: new Date().toISOString(), order_status: 'cancelled' }
+          : prev
+      );
+    },
+    onError: (error: any) => {
+      console.error('Failed to restock order:', error);
+      toast.error(error?.message || 'Failed to restock items');
+    },
+  });
+
+  const handleCancelAndRestock = async (orderId: string) => {
+    const confirmed = window.confirm(
+      'Cancel this order and return its items to stock? Only do this if the goods are back in your inventory.'
+    );
+    if (!confirmed) return;
+
+    setRestockingOrders((prev) => new Set(prev).add(orderId));
+    try {
+      await restockMutation.mutateAsync(orderId);
+    } finally {
+      setRestockingOrders((prev) => {
+        const next = new Set(prev);
+        next.delete(orderId);
+        return next;
+      });
+    }
+  };
 
   const refreshPaymentMutation = useMutation({
     mutationFn: async (orderId: string) => {
@@ -563,6 +650,19 @@ const OrderManagement = () => {
         </div>
       </CardHeader>
       <CardContent>
+        {filteredOrders.some((order) => readStockShortfall(order).length > 0) && (
+          <div className="mb-4 rounded-md border border-amber-500 bg-amber-500/15 p-3">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+              Stock shortfall on {
+                filteredOrders.filter((order) => readStockShortfall(order).length > 0).length
+              } paid order(s)
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              A card payment was captured after stock ran out, or a line could not be fulfilled.
+              Open the order — the shortage is recorded on it and will not correct itself.
+            </p>
+          </div>
+        )}
         <ResponsiveOrderTable
           orders={filteredOrders}
           onViewOrder={handleViewOrder}
@@ -675,6 +775,68 @@ const OrderManagement = () => {
                       </Select>
                     </div>
                   </div>
+                </div>
+
+                {/* Inventory */}
+                <div className="mt-4 rounded-md border p-3 space-y-2">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-medium">Inventory</p>
+                      <p className="text-xs text-muted-foreground">
+                        {selectedOrder.stock_restored_at
+                          ? `Items returned to stock on ${new Date(selectedOrder.stock_restored_at).toLocaleString()}`
+                          : selectedOrder.stock_applied_at
+                            ? `Stock committed on ${new Date(selectedOrder.stock_applied_at).toLocaleString()}`
+                            : 'No stock has been committed for this order'}
+                      </p>
+                    </div>
+                    {selectedOrder.stock_applied_at && !selectedOrder.stock_restored_at && (
+                      <Button
+                        onClick={() => handleCancelAndRestock(selectedOrder.id)}
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive hover:text-destructive-foreground"
+                        disabled={restockingOrders.has(selectedOrder.id)}
+                      >
+                        <PackageX className="h-4 w-4 mr-2" />
+                        {restockingOrders.has(selectedOrder.id)
+                          ? 'Restocking...'
+                          : 'Cancel order & restock'}
+                      </Button>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    Refunding a payment does not return items to stock.
+                  </p>
+
+                  {readStockShortfall(selectedOrder).length > 0 && (
+                    <div className="rounded-md border-2 border-amber-600 bg-amber-500/20 p-3 text-sm">
+                      <p className="font-semibold text-amber-800 dark:text-amber-300">
+                        Inventory shortfall — this order could not be fully reserved
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        The customer has already paid. Stock was reduced as far as it would go and
+                        the remainder is recorded here so it cannot be missed.
+                      </p>
+                      <ul className="mt-2 space-y-1 text-muted-foreground">
+                        {readStockShortfall(selectedOrder).map((entry) => (
+                          <li key={`${entry.product_id}:${entry.variant_id || ''}:${entry.reason || ''}`}>
+                            <span className="font-medium text-foreground">{entry.product_title}</span>
+                            {entry.variant_title ? (
+                              <span className="text-foreground"> — {entry.variant_title}</span>
+                            ) : null}
+                            {': '}
+                            {entry.requested} ordered, {entry.applied} reserved, {entry.missing} short
+                            {entry.reason === 'FOREIGN_PRODUCT' ? ' (not a product of this store)' : ''}
+                            {entry.reason === 'INSUFFICIENT_STOCK' ? ' (not enough stock)' : ''}
+                            {entry.reason === 'INVALID_VARIANT' ? ' (variant no longer valid)' : ''}
+                            {entry.reason === 'VARIANT_REQUIRED' ? ' (variant required)' : ''}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
 
                 {/* Invoice Actions */}
@@ -928,7 +1090,25 @@ const OrderManagement = () => {
                       <TableBody>
                         {orderItems.map((item) => (
                           <TableRow key={item.id}>
-                            <TableCell className="font-medium">{item.product_title}</TableCell>
+                            <TableCell className="font-medium">
+                              <div className="flex items-center gap-3">
+                                {item.image_url ? (
+                                  <img
+                                    src={item.image_url}
+                                    alt=""
+                                    className="h-10 w-10 rounded object-cover shrink-0 bg-muted"
+                                  />
+                                ) : null}
+                                <div>
+                                  <div>{item.product_title}</div>
+                                  {orderItemVariantLabel(item) ? (
+                                    <div className="text-xs text-muted-foreground font-normal mt-0.5">
+                                      {orderItemVariantLabel(item)}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </TableCell>
                             <TableCell>{item.product_price.toFixed(2)} RON</TableCell>
                             <TableCell>{item.quantity}</TableCell>
                             <TableCell>{(item.product_price * item.quantity).toFixed(2)} RON</TableCell>
@@ -942,7 +1122,21 @@ const OrderManagement = () => {
                   <div className="md:hidden space-y-3">
                     {orderItems.map((item) => (
                       <div key={item.id} className="border rounded-lg p-3 space-y-2">
-                        <div className="font-medium">{item.product_title}</div>
+                        <div className="flex items-center gap-3">
+                          {item.image_url ? (
+                            <img
+                              src={item.image_url}
+                              alt=""
+                              className="h-10 w-10 rounded object-cover shrink-0 bg-muted"
+                            />
+                          ) : null}
+                          <div>
+                            <div className="font-medium">{item.product_title}</div>
+                            {orderItemVariantLabel(item) ? (
+                              <div className="text-xs text-muted-foreground">{orderItemVariantLabel(item)}</div>
+                            ) : null}
+                          </div>
+                        </div>
                         <div className="flex justify-between text-sm">
                            <span>{item.product_price.toFixed(2)} RON × {item.quantity}</span>
                            <span className="font-medium">{(item.product_price * item.quantity).toFixed(2)} RON</span>

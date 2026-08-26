@@ -237,6 +237,524 @@ function calculateProductPrice(
   };
 }
 
+/**
+ * The one price a customer pays for one unit. Storefront listings, checkout
+ * sessions, payment amounts and order snapshots all read it from here so they
+ * cannot drift apart.
+ */
+function resolveFinalUnitPrice(
+  productId: string,
+  basePrice: number,
+  discounts: any[],
+  productDiscounts: any[]
+) {
+  const info = calculateProductPrice(productId, basePrice, discounts, productDiscounts);
+  return {
+    ...info,
+    finalPrice: info.hasDiscount ? (info.discountedPrice ?? 0) : info.originalPrice,
+  };
+}
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MAX_ORDER_LINES = 100;
+const MAX_UNITS_PER_PRODUCT = 999;
+
+interface CanonicalOrderItem {
+  product_id: string;
+  variant_id: string | null;
+  title: string;
+  variant_title: string | null;
+  variant_sku: string | null;
+  variant_options: { name: string; value: string }[] | null;
+  price: number;
+  quantity: number;
+  stock: number;
+  base_price: number;
+  has_discount: boolean;
+  image_url: string | null;
+}
+
+type StorefrontOptionRow = {
+  id: string;
+  product_id: string;
+  name: string;
+  position: number;
+  archived?: boolean;
+};
+
+type StorefrontValueRow = {
+  id: string;
+  option_id: string;
+  value: string;
+  position: number;
+  swatch_hex: string | null;
+  archived?: boolean;
+};
+
+type StorefrontVariantRow = {
+  id: string;
+  product_id: string;
+  sku: string | null;
+  price_override: number | null;
+  stock: number;
+  active: boolean;
+  position: number;
+};
+
+type StorefrontMappingRow = {
+  variant_id: string;
+  option_id: string;
+  option_value_id: string;
+};
+
+function effectiveVariantBase(productPrice: number, priceOverride: number | null | undefined): number {
+  return priceOverride == null ? Number(productPrice) || 0 : Number(priceOverride) || 0;
+}
+
+type StorefrontValueImageRow = {
+  option_value_id: string;
+  image_id: string;
+  position: number;
+};
+
+async function loadVariantBundle(
+  supabase: any,
+  productIds: string[],
+  opts?: { includeValueImages?: boolean }
+) {
+  if (productIds.length === 0) {
+    return {
+      options: [] as StorefrontOptionRow[],
+      values: [] as StorefrontValueRow[],
+      variants: [] as StorefrontVariantRow[],
+      mappings: [] as StorefrontMappingRow[],
+      valueImages: [] as StorefrontValueImageRow[],
+    };
+  }
+
+  const [{ data: options }, { data: variants }] = await Promise.all([
+    supabase
+      .from('product_options')
+      .select('id, product_id, name, position, archived')
+      .in('product_id', productIds)
+      .eq('archived', false)
+      .order('position', { ascending: true }),
+    supabase
+      .from('product_variants')
+      .select('id, product_id, sku, price_override, stock, active, position')
+      .in('product_id', productIds)
+      .order('position', { ascending: true }),
+  ]);
+
+  const optionIds = (options || []).map((o: StorefrontOptionRow) => o.id);
+  const variantIds = (variants || []).map((v: StorefrontVariantRow) => v.id);
+
+  const [{ data: values }, { data: mappings }] = await Promise.all([
+    optionIds.length
+      ? supabase
+          .from('product_option_values')
+          .select('id, option_id, value, position, swatch_hex, archived')
+          .in('option_id', optionIds)
+          .eq('archived', false)
+          .order('position', { ascending: true })
+      : Promise.resolve({ data: [] }),
+    variantIds.length
+      ? supabase
+          .from('product_variant_values')
+          .select('variant_id, option_id, option_value_id')
+          .in('variant_id', variantIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  let valueImages: StorefrontValueImageRow[] = [];
+  if (opts?.includeValueImages) {
+    const valueIds = ((values || []) as StorefrontValueRow[]).map((row) => row.id);
+    if (valueIds.length) {
+      const { data } = await supabase
+        .from('product_option_value_images')
+        .select('option_value_id, image_id, position')
+        .in('option_value_id', valueIds)
+        .order('position', { ascending: true });
+      valueImages = (data || []) as StorefrontValueImageRow[];
+    }
+  }
+
+  return {
+    options: (options || []) as StorefrontOptionRow[],
+    values: (values || []) as StorefrontValueRow[],
+    variants: (variants || []) as StorefrontVariantRow[],
+    mappings: (mappings || []) as StorefrontMappingRow[],
+    valueImages,
+  };
+}
+
+function imageIdsForValue(
+  valueId: string,
+  valueImages: StorefrontValueImageRow[]
+): string[] {
+  return valueImages
+    .filter((row) => row.option_value_id === valueId)
+    .sort((a, b) => a.position - b.position)
+    .map((row) => row.image_id)
+    .filter((id, index, list) => list.indexOf(id) === index);
+}
+
+function resolveLineImageUrl(
+  images: { id: string; image_url: string; is_primary?: boolean }[],
+  fallbackUrl: string | null | undefined,
+  options: { position: number; values: { id: string; image_ids?: string[] }[] }[],
+  selectedValueIds: string[]
+): string | null {
+  const orderedOptions = [...options].sort((a, b) => a.position - b.position);
+  const byId = new Map(images.filter((image) => image.id).map((image) => [image.id, image]));
+  const seen = new Set<string>();
+  const mapped: { id: string; image_url: string }[] = [];
+  for (const option of orderedOptions) {
+    const value = option.values.find((entry) => selectedValueIds.includes(entry.id));
+    if (!value?.image_ids?.length) continue;
+    for (const imageId of value.image_ids) {
+      if (seen.has(imageId)) continue;
+      seen.add(imageId);
+      const image = byId.get(imageId);
+      if (image) mapped.push(image);
+    }
+  }
+  if (mapped.length) return mapped[0].image_url;
+  const primary = images.find((image) => image.is_primary) || images[0];
+  return primary?.image_url || fallbackUrl || null;
+}
+
+function buildStorefrontVariantPayload(
+  product: { id: string; price: number },
+  bundle: Awaited<ReturnType<typeof loadVariantBundle>>,
+  discounts: any[],
+  productDiscounts: any[]
+) {
+  const options = bundle.options
+    .filter((option: any) => option.product_id === product.id)
+    .sort((a, b) => a.position - b.position)
+    .map((option) => ({
+      id: option.id,
+      name: option.name,
+      position: option.position,
+      values: bundle.values
+        .filter((value) => value.option_id === option.id)
+        .sort((a, b) => a.position - b.position)
+        .map((value) => ({
+          id: value.id,
+          value: value.value,
+          position: value.position,
+          swatch_hex: value.swatch_hex,
+          image_ids: imageIdsForValue(value.id, bundle.valueImages || []),
+        })),
+    }));
+
+  const optionOrder = new Map(options.map((option, index) => [option.id, index]));
+  const optionCount = options.length;
+
+  const variants = bundle.variants
+    .filter((variant) => variant.product_id === product.id)
+    .map((variant) => {
+      const mapped = bundle.mappings
+        .filter((row) => row.variant_id === variant.id)
+        .sort(
+          (a, b) =>
+            (optionOrder.get(a.option_id) ?? 0) - (optionOrder.get(b.option_id) ?? 0)
+        );
+      const option_value_ids = mapped.map((row) => row.option_value_id);
+      return { variant, option_value_ids };
+    })
+    .filter((row) => row.option_value_ids.length === optionCount && optionCount > 0)
+    .map(({ variant, option_value_ids }) => {
+      const effective = effectiveVariantBase(product.price, variant.price_override);
+      const priceInfo = resolveFinalUnitPrice(
+        product.id,
+        effective,
+        discounts,
+        productDiscounts
+      );
+      return {
+        id: variant.id,
+        sku: variant.sku,
+        price_override: variant.price_override,
+        effective_price: roundMoney(effective),
+        final_price: roundMoney(priceInfo.finalPrice),
+        original_price: roundMoney(priceInfo.originalPrice),
+        has_discount: priceInfo.hasDiscount,
+        stock: variant.stock,
+        active: variant.active,
+        option_value_ids,
+      };
+    });
+
+  // Catalogue aggregates (one rule, used by GET /products and GET /product):
+  //   variant_count  = active variants
+  //   price range    = active variants (including out-of-stock)
+  //   parent stock   = sum of active variant stock (DB trigger, not computed here)
+  // Inactive combinations are omitted from both the count and the range.
+  const activeVariants = variants.filter((variant) => variant.active);
+  const pricePool = activeVariants.map((v) => v.final_price);
+  const price_min = pricePool.length ? Math.min(...pricePool) : roundMoney(Number(product.price) || 0);
+  const price_max = pricePool.length ? Math.max(...pricePool) : price_min;
+
+  return {
+    options,
+    variants,
+    variant_count: activeVariants.length,
+    price_min,
+    price_max,
+  };
+}
+
+function snapshotOptionsForVariant(
+  options: ReturnType<typeof buildStorefrontVariantPayload>['options'],
+  optionValueIds: string[]
+): { name: string; value: string }[] {
+  return options
+    .map((option) => {
+      const value = option.values.find((entry) => optionValueIds.includes(entry.id));
+      return value ? { name: option.name, value: value.value } : null;
+    })
+    .filter((row): row is { name: string; value: string } => row !== null);
+}
+
+/** Quantities must be whole and positive: rejects 0, -1, 1.5, "", NaN, booleans. */
+function parseOrderQuantity(value: unknown): number | null {
+  if (typeof value === 'boolean' || value === null || value === undefined) return null;
+  const parsed =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? Number(value.trim())
+        : NaN;
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 1) return null;
+  return parsed;
+}
+
+/**
+ * Turns a browser cart into order lines the server is willing to stand behind:
+ * this merchant owns every product, quantities are whole and positive, repeated
+ * (product, variant) pairs become one line, and title/price come from the
+ * database — never from the request. Callers keep sending `title`/`price`; both
+ * are ignored.
+ */
+async function canonicaliseOrderItems(
+  supabase: any,
+  userId: string,
+  rawItems: unknown
+): Promise<
+  | { ok: true; items: CanonicalOrderItem[]; subtotal: number }
+  | { ok: false; status: number; body: Record<string, unknown> }
+> {
+  const invalidProduct = {
+    ok: false as const,
+    status: 400,
+    body: {
+      error: 'One or more items in your cart are no longer available',
+      code: 'INVALID_PRODUCT',
+    },
+  };
+  const invalidVariant = {
+    ok: false as const,
+    status: 400,
+    body: {
+      error: 'The selected options are no longer available',
+      code: 'INVALID_VARIANT',
+    },
+  };
+
+  if (!Array.isArray(rawItems) || rawItems.length === 0) {
+    return {
+      ok: false,
+      status: 400,
+      body: { error: 'Order must contain at least one item', code: 'INVALID_ITEMS' },
+    };
+  }
+
+  if (rawItems.length > MAX_ORDER_LINES) {
+    return {
+      ok: false,
+      status: 400,
+      body: { error: 'Too many items in a single order', code: 'INVALID_ITEMS' },
+    };
+  }
+
+  const requestedQuantities = new Map<string, { productId: string; variantId: string | null; quantity: number }>();
+
+  for (const raw of rawItems as any[]) {
+    const productId = typeof raw?.product_id === 'string' ? raw.product_id.trim() : '';
+    if (!UUID_PATTERN.test(productId)) return invalidProduct;
+
+    const rawVariant = raw?.variant_id;
+    let variantId: string | null = null;
+    if (rawVariant != null && rawVariant !== '') {
+      if (typeof rawVariant !== 'string' || !UUID_PATTERN.test(rawVariant.trim())) {
+        return invalidVariant;
+      }
+      variantId = rawVariant.trim();
+    }
+
+    const quantity = parseOrderQuantity(raw?.quantity);
+    if (quantity === null) {
+      return {
+        ok: false,
+        status: 400,
+        body: {
+          error: 'Item quantity must be a whole number of at least 1',
+          code: 'INVALID_QUANTITY',
+        },
+      };
+    }
+
+    const lineKey = variantId ? `${productId}:${variantId}` : productId;
+    const aggregated = (requestedQuantities.get(lineKey)?.quantity || 0) + quantity;
+    if (aggregated > MAX_UNITS_PER_PRODUCT) {
+      return {
+        ok: false,
+        status: 400,
+        body: {
+          error: `Quantity per product is limited to ${MAX_UNITS_PER_PRODUCT}`,
+          code: 'INVALID_QUANTITY',
+        },
+      };
+    }
+    requestedQuantities.set(lineKey, { productId, variantId, quantity: aggregated });
+  }
+
+  const productIds = Array.from(new Set(Array.from(requestedQuantities.values()).map((row) => row.productId))).sort();
+
+  const { data: products, error: productsError } = await supabase
+    .from('products')
+    .select('id, title, price, stock, has_variants, image')
+    .eq('user_id', userId)
+    .in('id', productIds);
+
+  if (productsError) {
+    console.log('Error loading products for order canonicalisation:', productsError);
+    return {
+      ok: false,
+      status: 500,
+      body: { error: 'Failed to verify cart items' },
+    };
+  }
+
+  const ownedProducts = new Map<string, any>((products || []).map((p: any) => [p.id, p]));
+  if (ownedProducts.size !== productIds.length) return invalidProduct;
+
+  const variantProductIds = productIds.filter((id) => ownedProducts.get(id)?.has_variants);
+  const bundle = await loadVariantBundle(supabase, variantProductIds, { includeValueImages: true });
+  const { data: lineImages } = await supabase
+    .from('product_images')
+    .select('id, product_id, image_url, is_primary, display_order')
+    .in('product_id', productIds)
+    .order('display_order', { ascending: true });
+
+  const [{ data: discounts }, { data: productDiscounts }] = await Promise.all([
+    supabase.from('discounts').select('*').eq('user_id', userId),
+    supabase.from('product_discounts').select('*').in('product_id', productIds),
+  ]);
+
+  const items: CanonicalOrderItem[] = [];
+
+  for (const line of Array.from(requestedQuantities.values()).sort((a, b) => {
+    const productCmp = a.productId.localeCompare(b.productId);
+    if (productCmp !== 0) return productCmp;
+    return (a.variantId || '').localeCompare(b.variantId || '');
+  })) {
+    const product = ownedProducts.get(line.productId);
+    const hasVariants = !!product.has_variants;
+
+    if (hasVariants) {
+      if (!line.variantId) {
+        return {
+          ok: false,
+          status: 400,
+          body: {
+            error: 'Please choose options for this product',
+            code: 'VARIANT_REQUIRED',
+          },
+        };
+      }
+
+      const payload = buildStorefrontVariantPayload(
+        product,
+        bundle,
+        discounts || [],
+        productDiscounts || []
+      );
+      const variant = payload.variants.find((entry) => entry.id === line.variantId);
+      if (!variant) return invalidVariant;
+      if (!variant.active) return invalidVariant;
+
+      const priceInfo = resolveFinalUnitPrice(
+        product.id,
+        variant.effective_price,
+        discounts || [],
+        productDiscounts || []
+      );
+      const snapshot = snapshotOptionsForVariant(payload.options, variant.option_value_ids);
+      const productImages = (lineImages || []).filter((image: { product_id: string }) => image.product_id === product.id);
+
+      items.push({
+        product_id: product.id,
+        variant_id: variant.id,
+        title: product.title,
+        variant_title: snapshot.map((row) => row.value).join(' / ') || null,
+        variant_sku: variant.sku || null,
+        variant_options: snapshot,
+        price: roundMoney(priceInfo.finalPrice),
+        quantity: line.quantity,
+        stock: variant.stock,
+        base_price: variant.effective_price,
+        has_discount: priceInfo.hasDiscount,
+        image_url: resolveLineImageUrl(
+          productImages,
+          product.image,
+          payload.options,
+          variant.option_value_ids
+        ),
+      });
+    } else {
+      if (line.variantId) return invalidVariant;
+
+      const basePrice = Number(product.price) || 0;
+      const priceInfo = resolveFinalUnitPrice(
+        product.id,
+        basePrice,
+        discounts || [],
+        productDiscounts || []
+      );
+
+      items.push({
+        product_id: product.id,
+        variant_id: null,
+        title: product.title,
+        variant_title: null,
+        variant_sku: null,
+        variant_options: null,
+        price: roundMoney(priceInfo.finalPrice),
+        quantity: line.quantity,
+        stock: product.stock ?? 0,
+        base_price: basePrice,
+        has_discount: priceInfo.hasDiscount,
+        image_url: resolveLineImageUrl(
+          (lineImages || []).filter((image: { product_id: string }) => image.product_id === product.id),
+          product.image,
+          [],
+          []
+        ),
+      });
+    }
+  }
+
+  const subtotal = roundMoney(
+    items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  );
+
+  return { ok: true, items, subtotal };
+}
+
 /** Mark active abandoned cart as converted. Never throws — Place Order must not fail because of this. */
 async function convertAbandonedCart(
   supabase: any,
@@ -741,18 +1259,34 @@ Deno.serve(async (req) => {
             console.log('Error fetching product discounts:', productDiscountsError)
           }
 
+          const variantProductIds = (products || [])
+            .filter((p: { has_variants?: boolean }) => p.has_variants)
+            .map((p: { id: string }) => p.id)
+          // Bounded: 4 queries total for the whole catalogue (options, variants,
+          // values, mappings) — not 1+N per product. List responses omit the
+          // full matrix; GET /product?id= returns it.
+          const variantBundle = await loadVariantBundle(supabase, variantProductIds)
+
           // Combine products with their images and discount information
           const productsWithImagesAndDiscounts = products.map(product => {
             const images = productImages?.filter(img => img.product_id === product.id) || []
             const primaryImage = images.find(img => img.is_primary) || images[0] || null
-            
-            // Calculate discount price
-            const priceInfo = calculateProductPrice(
+            const summary = product.has_variants
+              ? buildStorefrontVariantPayload(
+                  product,
+                  variantBundle,
+                  discounts || [],
+                  productDiscounts || []
+                )
+              : null
+            const priceInfo = resolveFinalUnitPrice(
               product.id,
               product.price,
               discounts || [],
               productDiscounts || []
             )
+            const rangeMin = summary?.price_min ?? priceInfo.finalPrice
+            const rangeMax = summary?.price_max ?? priceInfo.finalPrice
             
             return {
               ...product,
@@ -761,13 +1295,18 @@ Deno.serve(async (req) => {
               images: images,
               primary_image: primaryImage?.image_url || product.image || null,
               image_count: images.length,
-              // Add discount information
               original_price: priceInfo.originalPrice,
               discounted_price: priceInfo.discountedPrice,
-              has_discount: priceInfo.hasDiscount,
+              has_discount: summary
+                ? summary.variants.some((variant) => variant.has_discount)
+                : priceInfo.hasDiscount,
               discount_percentage: priceInfo.discountPercentage,
               savings_amount: priceInfo.savingsAmount,
-              final_price: priceInfo.discountedPrice || priceInfo.originalPrice
+              final_price: rangeMin,
+              has_variants: !!product.has_variants,
+              variant_count: summary?.variant_count ?? 0,
+              price_min: rangeMin,
+              price_max: rangeMax,
             }
           })
 
@@ -992,11 +1531,11 @@ Deno.serve(async (req) => {
             )
           }
           
-          // Validate required fields based on delivery type
-          if (!customer_name || !customer_email || !total || !items) {
+          // `total` is no longer required: the server prices the order itself.
+          if (!customer_name || !customer_email || !items) {
             return new Response(
               JSON.stringify({ 
-                error: 'Missing required fields: customer_name, customer_email, total, items' 
+                error: 'Missing required fields: customer_name, customer_email, items' 
               }),
               { 
                 status: 400, 
@@ -1054,11 +1593,26 @@ Deno.serve(async (req) => {
             )
           }
 
-          const snapshotItems = (items as any[]).map((item: any) => ({
-            product_id: item.product_id || null,
+          // Ownership, quantities and pricing are decided here. `title` and
+          // `price` may still arrive from the storefront; they are ignored.
+          const canonical = await canonicaliseOrderItems(supabase, userId, items)
+          if (!canonical.ok) {
+            return new Response(JSON.stringify(canonical.body), {
+              status: canonical.status,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            })
+          }
+
+          const snapshotItems = canonical.items.map((item) => ({
+            product_id: item.product_id,
+            variant_id: item.variant_id,
             title: item.title,
-            price: parseFloat(item.price),
-            quantity: parseInt(item.quantity, 10),
+            variant_title: item.variant_title,
+            variant_sku: item.variant_sku,
+            variant_options: item.variant_options,
+            image_url: item.image_url,
+            price: item.price,
+            quantity: item.quantity,
           }));
 
           const customerNotes =
@@ -1066,7 +1620,17 @@ Deno.serve(async (req) => {
               ? null
               : sanitizeCustomerNotes(body.customer_notes)
 
-          let orderTotal = parseFloat(total)
+          const cashFee =
+            payment_method !== 'card' && (profile.cash_payment_enabled ?? true)
+              ? Number(profile.cash_payment_fee || 0)
+              : 0
+
+          // The merchant's configured flat fee, unless custom home-delivery
+          // pricing is enabled and quotes the address below.
+          let deliveryFee =
+            effectiveDeliveryType === 'locker'
+              ? Number(profile.locker_delivery_fee || 0)
+              : Number(profile.home_delivery_fee || 0)
           let deliveryFeeToPersist: number | null = null
           let deliveryDistanceKm: number | null = null
           let deliverySnapshot: Record<string, unknown> | null = null
@@ -1093,18 +1657,45 @@ Deno.serve(async (req) => {
                   { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
                 )
               }
-              const subtotal = snapshotItems.reduce(
-                (sum: number, item: any) => sum + item.price * item.quantity,
-                0
-              )
-              const cashFee =
-                payment_method !== 'card' && (profile.cash_payment_enabled ?? true)
-                  ? Number(profile.cash_payment_fee || 0)
-                  : 0
-              deliveryFeeToPersist = Number(quoted.quote.delivery_fee || 0)
+              deliveryFee = Number(quoted.quote.delivery_fee || 0)
+              deliveryFeeToPersist = deliveryFee
               deliveryDistanceKm = quoted.quote.distance_km ?? null
               deliverySnapshot = quoted.quote.snapshot || null
-              orderTotal = roundMoney(subtotal + deliveryFeeToPersist + cashFee)
+            }
+          }
+
+          // Authoritative money: server-priced items + server-known fees. The
+          // client's `total` is only kept for logging.
+          const orderTotal = roundMoney(canonical.subtotal + deliveryFee + cashFee)
+          const declaredTotal = Number(total)
+          if (Number.isFinite(declaredTotal) && Math.abs(declaredTotal - orderTotal) > 0.01) {
+            console.log('Order total mismatch, using server total:', {
+              user_id: userId,
+              declared: declaredTotal,
+              server: orderTotal,
+            })
+          }
+
+          // The database is the authority on availability, but checking here lets
+          // the customer be told before a payment is attempted. Quantities are
+          // already merged per product, so split lines cannot pass this test.
+          for (const item of canonical.items) {
+            if (item.quantity > item.stock) {
+              const label = item.variant_title
+                ? `${item.title} — ${item.variant_title}`
+                : item.title;
+              return new Response(
+                JSON.stringify({
+                  error: `Insufficient stock for ${label}`,
+                  code: 'INSUFFICIENT_STOCK',
+                  product_id: item.product_id,
+                  variant_id: item.variant_id,
+                  product_title: item.title,
+                  available: item.stock,
+                  requested: item.quantity,
+                }),
+                { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              )
             }
           }
 
@@ -1135,12 +1726,15 @@ Deno.serve(async (req) => {
                     items: snapshotItems
                       .map((i) => ({
                         product_id: i.product_id,
+                        variant_id: i.variant_id,
                         title: i.title,
                         price: i.price,
                         quantity: i.quantity,
                       }))
                       .sort((a, b) =>
-                        String(a.product_id || a.title).localeCompare(String(b.product_id || b.title))
+                        `${a.product_id}:${a.variant_id || ''}`.localeCompare(
+                          `${b.product_id}:${b.variant_id || ''}`
+                        )
                       ),
                     total: orderTotal,
                     delivery_type: effectiveDeliveryType,
@@ -1207,14 +1801,10 @@ Deno.serve(async (req) => {
             }
 
             if (!session) {
-              const subtotal = snapshotItems.reduce(
-                (sum: number, i: any) => sum + i.price * i.quantity,
-                0
-              );
-              const shippingAmount =
-                deliveryFeeToPersist != null
-                  ? deliveryFeeToPersist
-                  : Math.max(0, orderTotal - subtotal);
+              // Canonical snapshot: this is what Netopia will be asked to charge
+              // and what the order lines are built from after capture.
+              const subtotal = canonical.subtotal;
+              const shippingAmount = deliveryFee;
               const { data: createdSession, error: sessionError } = await supabase
                 .from('checkout_sessions')
                 .insert({
@@ -1348,10 +1938,9 @@ Deno.serve(async (req) => {
             );
           }
 
-          // ===== CASH / COD: create Order immediately (unchanged behaviour) =====
-          const { data: order, error: orderError } = await supabase
-            .from('orders')
-            .insert({
+          // ===== CASH / COD: order, lines and inventory in one transaction =====
+          const { data: codResult, error: codError } = await supabase.rpc('create_cod_order', {
+            p_order: {
               user_id: userId,
               customer_name,
               customer_email,
@@ -1384,12 +1973,74 @@ Deno.serve(async (req) => {
               delivery_fee: deliveryFeeToPersist,
               delivery_distance_km: deliveryDistanceKm,
               delivery_pricing_snapshot: deliverySnapshot,
-            })
-            .select()
-            .single();
+            },
+            p_items: snapshotItems,
+          });
 
-          if (orderError) {
-            console.log('Error creating order:', orderError);
+          if (codError) {
+            const message = codError.message || '';
+            console.log('Error creating COD order:', codError);
+
+            if (message.includes('INSUFFICIENT_STOCK')) {
+              return new Response(
+                JSON.stringify({
+                  error: message.replace(/^.*INSUFFICIENT_STOCK:\s*/, 'Insufficient stock for '),
+                  code: 'INSUFFICIENT_STOCK',
+                }),
+                { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+
+            if (message.includes('VARIANT_REQUIRED')) {
+              return new Response(
+                JSON.stringify({
+                  error: 'Please choose options for this product',
+                  code: 'VARIANT_REQUIRED',
+                }),
+                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+
+            if (message.includes('INVALID_VARIANT')) {
+              return new Response(
+                JSON.stringify({
+                  error: 'The selected options are no longer available',
+                  code: 'INVALID_VARIANT',
+                }),
+                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+
+            if (message.includes('INVALID_PRODUCT') || message.includes('INVALID_ITEMS')) {
+              return new Response(
+                JSON.stringify({
+                  error: 'One or more items in your cart are no longer available',
+                  code: 'INVALID_PRODUCT',
+                }),
+                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+
+            if (message.includes('INVALID_QUANTITY')) {
+              return new Response(
+                JSON.stringify({
+                  error: 'Item quantity must be a whole number of at least 1',
+                  code: 'INVALID_QUANTITY',
+                }),
+                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+
+            return new Response(JSON.stringify({ error: 'Failed to create order' }), {
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+
+          const order = (codResult as any)?.order;
+
+          if (!order?.id) {
+            console.log('COD order RPC returned no order:', codResult);
             return new Response(JSON.stringify({ error: 'Failed to create order' }), {
               status: 500,
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -1403,16 +2054,6 @@ Deno.serve(async (req) => {
             product_price: item.price,
             quantity: item.quantity,
           }));
-
-          const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
-
-          if (itemsError) {
-            console.log('Error creating order items:', itemsError);
-            return new Response(JSON.stringify({ error: 'Failed to create order items' }), {
-              status: 500,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
-          }
 
           try {
             await supabase.functions.invoke('push-notification', {
@@ -1532,7 +2173,7 @@ Deno.serve(async (req) => {
                 const primaryImage = images.find(img => img.is_primary) || images[0] || null
                 
                 // Calculate discount price
-                const priceInfo = calculateProductPrice(
+                const priceInfo = resolveFinalUnitPrice(
                   product.id,
                   product.price,
                   discounts || [],
@@ -1550,7 +2191,7 @@ Deno.serve(async (req) => {
                   has_discount: priceInfo.hasDiscount,
                   discount_percentage: priceInfo.discountPercentage,
                   savings_amount: priceInfo.savingsAmount,
-                  final_price: priceInfo.discountedPrice || priceInfo.originalPrice
+                  final_price: priceInfo.finalPrice
                 }
               })
 
@@ -2011,7 +2652,11 @@ Deno.serve(async (req) => {
 
         const snapshotItems = items.map((item: any) => ({
           product_id: item.product_id || null,
+          variant_id: item.variant_id || null,
           title: item.title || item.product_title || 'Item',
+          variant_title: item.variant_title || null,
+          variant_options: Array.isArray(item.variant_options) ? item.variant_options : null,
+          image_url: item.image_url || item.image || null,
           price: parseFloat(item.price ?? item.product_price ?? 0),
           quantity: parseInt(item.quantity ?? 1, 10),
         }));
@@ -2125,13 +2770,16 @@ Deno.serve(async (req) => {
             console.warn('Abandoned cart cleanup warning:', e);
           }
 
-          // Legacy: delete old awaiting_payment orders (pre-checkout-session leftovers)
+          // Legacy: delete old awaiting_payment orders (pre-checkout-session
+          // leftovers). Never an order whose inventory is still committed —
+          // deleting one of those would silently consume the merchant's stock.
           const { data: deletedOrders, error } = await supabase
             .from('orders')
             .delete()
             .eq('user_id', userId)
             .eq('order_status', 'awaiting_payment')
             .lt('created_at', cutoffTime)
+            .is('stock_applied_at', null)
             .select();
 
           if (error) {
@@ -2707,7 +3355,7 @@ Deno.serve(async (req) => {
           }
 
           // Calculate discount price
-          const priceInfo = calculateProductPrice(
+          const priceInfo = resolveFinalUnitPrice(
             product.id,
             product.price,
             discounts || [],
@@ -2716,6 +3364,14 @@ Deno.serve(async (req) => {
 
           const images = productImages || []
           const primaryImage = images.find(img => img.is_primary) || images[0] || null
+          const variantPayload = product.has_variants
+            ? buildStorefrontVariantPayload(
+                product,
+                await loadVariantBundle(supabase, [productId], { includeValueImages: true }),
+                discounts || [],
+                productDiscounts || []
+              )
+            : { options: [], variants: [], variant_count: 0, price_min: priceInfo.finalPrice, price_max: priceInfo.finalPrice }
 
           return new Response(
             JSON.stringify({
@@ -2729,7 +3385,15 @@ Deno.serve(async (req) => {
                 has_discount: priceInfo.hasDiscount,
                 discount_percentage: priceInfo.discountPercentage,
                 savings_amount: priceInfo.savingsAmount,
-                final_price: priceInfo.discountedPrice || priceInfo.originalPrice
+                final_price: variantPayload.price_min ?? priceInfo.finalPrice,
+                show_stock_to_customers:
+                  product.show_stock_to_customers ?? (profile.show_stock_to_customers !== false),
+                has_variants: !!product.has_variants,
+                variant_count: variantPayload.variant_count,
+                price_min: variantPayload.price_min,
+                price_max: variantPayload.price_max,
+                options: variantPayload.options,
+                variants: variantPayload.variants,
               }
             }),
             { 
@@ -2832,7 +3496,7 @@ Deno.serve(async (req) => {
             const images = productImages?.filter(img => img.product_id === product.id) || []
             const primaryImage = images.find(img => img.is_primary) || images[0] || null
             
-            const priceInfo = calculateProductPrice(
+            const priceInfo = resolveFinalUnitPrice(
               product.id,
               product.price,
               discounts || [],
@@ -2849,7 +3513,7 @@ Deno.serve(async (req) => {
               has_discount: priceInfo.hasDiscount,
               discount_percentage: priceInfo.discountPercentage,
               savings_amount: priceInfo.savingsAmount,
-              final_price: priceInfo.discountedPrice || priceInfo.originalPrice
+              final_price: priceInfo.finalPrice
             }
           })
 

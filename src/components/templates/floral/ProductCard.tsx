@@ -1,6 +1,8 @@
 import { ShoppingBag, Star } from 'lucide-react';
-import { formatRon } from '@/lib/storefront/api';
+import { useTranslation } from 'react-i18next';
+import { formatCatalogPrice, formatRon } from '@/lib/storefront/api';
 import type { StorefrontProduct } from '@/lib/storefront/types';
+import { catalogShowsPriceRange } from '@/lib/storefront/variantSelection';
 
 interface ProductCardProps {
   product: StorefrontProduct;
@@ -21,7 +23,10 @@ export function ProductCard({
   ratingCount = 0,
   showReviews = true,
 }: ProductCardProps) {
+  const { t } = useTranslation('storefront');
   const out = product.stock <= 0;
+  const priceLabel = formatCatalogPrice(product);
+  const showCompareAt = product.has_discount && !catalogShowsPriceRange(product);
 
   return (
     <article
@@ -44,7 +49,7 @@ export function ProductCard({
           />
         ) : (
           <div className="h-full w-full flex items-center justify-center text-[var(--floral-muted)] text-sm">
-            No image
+            {t('product.noImage')}
           </div>
         )}
         {product.has_discount && (
@@ -54,7 +59,7 @@ export function ProductCard({
         )}
         {out && (
           <span className="absolute top-3 right-3 bg-[var(--floral-ink)] text-white text-[10px] font-semibold tracking-[0.14em] uppercase px-2.5 py-1">
-            Sold out
+            {t('product.soldOut')}
           </span>
         )}
       </button>
@@ -73,8 +78,8 @@ export function ProductCard({
             </div>
           )}
           <div className="mt-2 flex items-baseline justify-center gap-2">
-            <span className="text-sm font-semibold tabular-nums">{formatRon(product.price)}</span>
-            {product.has_discount && (
+            <span className="text-sm font-semibold tabular-nums">{priceLabel}</span>
+            {showCompareAt && (
               <span className="text-xs text-[var(--floral-muted)] line-through tabular-nums">
                 {formatRon(product.original_price)}
               </span>
@@ -88,7 +93,7 @@ export function ProductCard({
           onClick={() => onAdd(product)}
         >
           <ShoppingBag className="h-3.5 w-3.5" strokeWidth={1.5} />
-          {out ? 'Unavailable' : 'Add to cart'}
+          {out ? t('variants.unavailable') : product.has_variants ? t('variants.chooseOptions') : t('variants.addToCart')}
         </button>
       </div>
     </article>

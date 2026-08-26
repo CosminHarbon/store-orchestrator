@@ -16,6 +16,11 @@ export interface StreamEvent {
   error?: string;
   llm?: string;
   llmError?: string;
+  /** V2 Phase 3 payloads */
+  designSpec?: unknown;
+  document?: unknown;
+  brandSystem?: unknown;
+  generationMeta?: unknown;
 }
 
 async function authHeaders(): Promise<HeadersInit> {

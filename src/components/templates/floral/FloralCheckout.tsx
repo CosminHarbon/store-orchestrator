@@ -7,6 +7,7 @@ import { CheckoutNotesField, CheckoutBillingFields, DeliveryQuoteDetails, delive
 import { formatRon } from '@/lib/storefront/api';
 import { isBillingComplete, resolvedBilling } from '@/lib/storefront/billing';
 import type { StorefrontCommerce } from '@/hooks/useStorefrontCommerce';
+import { cartUnitPrice, variantSubtitle } from '@/lib/storefront/variantSelection';
 
 interface Props {
   commerce: StorefrontCommerce;
@@ -416,7 +417,7 @@ export function FloralCheckout({ commerce }: Props) {
           <h3 className="text-xl floral-display">{t('summary.title')}</h3>
           <div className="space-y-3 max-h-64 overflow-y-auto">
             {cart.map((item) => (
-              <div key={item.product.id} className="flex gap-3 text-sm">
+              <div key={item.lineKey} className="flex gap-3 text-sm">
                 <div className="h-14 w-12 rounded-md overflow-hidden bg-[var(--floral-image-bg)] shrink-0">
                   {item.product.image && (
                     <img src={item.product.image} alt="" className="h-full w-full object-cover" />
@@ -424,9 +425,14 @@ export function FloralCheckout({ commerce }: Props) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="line-clamp-1">{item.product.title}</p>
+                  {variantSubtitle(item.product.options, item.variant) ? (
+                    <p className="text-xs text-[var(--floral-muted)] line-clamp-1">
+                      {variantSubtitle(item.product.options, item.variant)}
+                    </p>
+                  ) : null}
                   <p className="text-[var(--floral-muted)]">{t('summary.qty', { count: item.quantity })}</p>
                 </div>
-                <span className="tabular-nums">{formatRon(item.product.price * item.quantity)}</span>
+                <span className="tabular-nums">{formatRon(cartUnitPrice(item.product, item.variant) * item.quantity)}</span>
               </div>
             ))}
           </div>

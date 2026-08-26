@@ -1,3 +1,13 @@
+/**
+ * LEGACY / UNREACHABLE.
+ *
+ * TemplateViewer routes `elementar` to EnhancedElementarTemplate only.
+ * This file is kept as a historical reference and is not imported anywhere.
+ * Do not add new storefront behaviour here — it cannot be reached by customers.
+ *
+ * The old "Variant products cannot be purchased yet" guard below is dead:
+ * live storefronts use EnhancedElementarTemplate + the shared VariantSelector.
+ */
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -22,6 +32,7 @@ interface Product {
   stock: number;
   category: string;
   collection_ids?: string[];
+  has_variants?: boolean;
 }
 
 interface Collection {
@@ -201,6 +212,7 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
           stock: p.stock || 0,
           category: p.category || "",
           collection_ids: p.collection_ids || [],
+          has_variants: !!p.has_variants,
         }));
         
         setProducts(mappedProducts);
@@ -226,6 +238,10 @@ const ElementarTemplate = ({ apiKey }: ElementarTemplateProps) => {
   // Cart management functions
 
   const addToCart = (product: Product) => {
+    if (product.has_variants) {
+      toast.error("Variant products cannot be purchased yet");
+      return;
+    }
     const existingItem = cart.find((item) => item.product.id === product.id);
 
     if (existingItem) {
