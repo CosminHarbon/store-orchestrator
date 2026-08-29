@@ -106,18 +106,36 @@ verify_jwt = true
 [functions.ai-studio-v2-critique]
 verify_jwt = true
 
-# Push Notifications - OneSignal push notification service (legacy — keep until FCM migration)
+# Retired OneSignal function — always 410; JWT required so it cannot be used anonymously
 [functions.push-notification]
-verify_jwt = false
+verify_jwt = true
 
 # FCM token registration (authenticated)
 [functions.register-push-token]
 verify_jwt = true
 
-# FCM HTTP v1 send (self or internal/service-role)
+# FCM HTTP v1 send. Gateway requires a JWT (user or service_role).
+# Function then allows: service_role, PUSH_INTERNAL_SECRET, or self-only user send.
 [functions.send-push-notification]
-verify_jwt = false
+verify_jwt = true
 
-# FCM self-test only (authenticated → own devices)
+# FCM self-test — Super Admin only (is_superadmin: role + AAL2)
 [functions.send-test-push]
 verify_jwt = true
+
+# SpeedVendors SaaS Billing (merchant → platform). Separate from stripe-connect.
+[functions.billing-create-checkout-session]
+verify_jwt = true
+
+[functions.billing-create-portal-session]
+verify_jwt = true
+
+[functions.billing-entitlement-status]
+verify_jwt = true
+
+[functions.billing-redeem-access-code]
+verify_jwt = true
+
+# Stripe Billing webhooks — signature verified in-function (no JWT).
+[functions.billing-stripe-webhook]
+verify_jwt = false

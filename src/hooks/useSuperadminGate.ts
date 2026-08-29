@@ -63,14 +63,7 @@ export function useSuperadminGate() {
 }
 
 export async function resolvePostLoginPath(): Promise<string> {
-  const { data: isSuper } = await supabase.rpc('is_superadmin_user');
-  if (!isSuper) return '/app';
-
-  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  if (aal?.currentLevel === 'aal2') return '/admin';
-
-  const { data: factors } = await supabase.auth.mfa.listFactors();
-  const verified = factors?.totp?.filter((f) => f.status === 'verified') ?? [];
-  if (verified.length === 0) return '/admin/mfa?mode=enroll';
-  return '/admin/mfa?mode=challenge';
+  // Entitlement-aware routing (superadmin MFA still handled inside).
+  const { resolveEntitledPostLoginPath } = await import('@/hooks/useEntitlementGate');
+  return resolveEntitledPostLoginPath();
 }

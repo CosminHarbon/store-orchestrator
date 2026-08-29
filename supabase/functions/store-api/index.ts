@@ -5,6 +5,7 @@ import {
   roundMoney,
   sanitizeCustomerNotes,
 } from '../_shared/geoDelivery.ts'
+import { formatRonAmount, notifyMerchant, shortOrderRef } from '../_shared/notifyMerchant.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -2056,18 +2057,14 @@ Deno.serve(async (req) => {
           }));
 
           try {
-            await supabase.functions.invoke('push-notification', {
-              body: {
-                action: 'send',
-                user_ids: [userId],
-                title: '🛒 Comandă nouă!',
-                message: `Comandă nouă de ${orderTotal.toFixed(2)} RON de la ${customer_name}`,
-                notification_type: 'order_update',
-                data: {
-                  order_id: order.id,
-                  total: orderTotal.toString(),
-                  customer_name,
-                },
+            await notifyMerchant({
+              userId,
+              title: 'New order received',
+              body: `Order #${shortOrderRef(order.id)} • ${formatRonAmount(orderTotal)}`,
+              data: {
+                type: 'order',
+                event: 'new_order',
+                order_id: String(order.id),
               },
             });
             console.log('Push notification sent for new order:', order.id);
@@ -3676,18 +3673,14 @@ Deno.serve(async (req) => {
           }
 
           try {
-            await supabase.functions.invoke('push-notification', {
-              body: {
-                action: 'send',
-                user_ids: [userId],
-                title: '⭐ New review pending',
-                message: `${customer_name} left a ${rating}★ review on ${product.title}`,
-                notification_type: 'review',
-                data: {
-                  review_id: review.id,
-                  product_id,
-                  rating: String(rating),
-                },
+            await notifyMerchant({
+              userId,
+              title: 'New review received',
+              body: 'Someone left a review on your store.',
+              data: {
+                type: 'review',
+                review_id: String(review.id),
+                product_id: String(product_id),
               },
             });
           } catch (pushError) {

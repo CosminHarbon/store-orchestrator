@@ -25,6 +25,8 @@ import SetupWizard from './pages/SetupWizard';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import AdminConsole from './pages/AdminConsole';
 import AdminMfa from './pages/AdminMfa';
+import Subscribe from './pages/Subscribe';
+import BillingSuccess from './pages/BillingSuccess';
 
 const AiStudioV2Showcase = import.meta.env.DEV
   ? lazy(() => import('./pages/ai-studio-v2/AiStudioV2Showcase'))
@@ -35,7 +37,6 @@ const AiStudioV2GenerateLab = import.meta.env.DEV
   : null;
 
 const PushNotificationInitializer = () => {
-  // FCM + Capacitor Push (native only). Legacy OneSignal hook is preserved but unused here.
   useFcmPushNotifications();
   return null;
 };
@@ -119,6 +120,22 @@ const App = () => (
                 element={
                   <AppThemeProvider>
                     <SetupWizard />
+                  </AppThemeProvider>
+                }
+              />
+              <Route
+                path="/subscribe"
+                element={
+                  <AppThemeProvider>
+                    <Subscribe />
+                  </AppThemeProvider>
+                }
+              />
+              <Route
+                path="/billing/success"
+                element={
+                  <AppThemeProvider>
+                    <BillingSuccess />
                   </AppThemeProvider>
                 }
               />

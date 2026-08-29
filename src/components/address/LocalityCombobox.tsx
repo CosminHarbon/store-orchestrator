@@ -10,6 +10,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
+import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -63,6 +64,16 @@ function pushRecent(item: RecentItem) {
   }
 }
 
+function isMissingEawbCredentialsError(message: string | undefined | null): boolean {
+  if (!message) return false;
+  const m = message.toLowerCase();
+  return (
+    m.includes('eawb api key') ||
+    m.includes('missing_api_key') ||
+    m.includes('not configured')
+  );
+}
+
 export interface LocalityComboboxProps {
   apiKey: string;
   /** When set, load all official localities for that county (cities + villages). */
@@ -73,6 +84,8 @@ export interface LocalityComboboxProps {
   className?: string;
   placeholder?: string;
   allowedLocalities?: { county: string; locality: string }[];
+  /** If eAWB credentials are missing, fall back to free-text city entry. */
+  allowFreeTextFallback?: boolean;
 }
 
 export function LocalityCombobox({
@@ -84,6 +97,7 @@ export function LocalityCombobox({
   className,
   placeholder,
   allowedLocalities,
+  allowFreeTextFallback = false,
 }: LocalityComboboxProps) {
   const { t } = useTranslation('shipping');
   const resolvedPlaceholder = placeholder ?? t('locality.searchLocality');
@@ -94,13 +108,13 @@ export function LocalityCombobox({
   const [loadingCounty, setLoadingCounty] = useState(false);
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [freeTextFallback, setFreeTextFallback] = useState(false);
   const [recent, setRecent] = useState<RecentItem[]>(() => loadRecent());
   const isMobile = useIsMobile();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load full county locality list (includes villages) when county is chosen
   useEffect(() => {
-    if (!county?.trim()) {
+    if (!county?.trim() || freeTextFallback) {
       setCountyLocalities([]);
       return;
     }
@@ -114,7 +128,13 @@ export function LocalityCombobox({
       .catch((e) => {
         if (!cancelled) {
           setCountyLocalities([]);
-          setError(e?.message || 'Failed to load localities');
+          const message = e?.message || 'Failed to load localities';
+          if (allowFreeTextFallback && isMissingEawbCredentialsError(message)) {
+            setFreeTextFallback(true);
+            setError(null);
+          } else {
+            setError(message);
+          }
         }
       })
       .finally(() => {
@@ -123,14 +143,13 @@ export function LocalityCombobox({
     return () => {
       cancelled = true;
     };
-  }, [apiKey, county]);
+  }, [apiKey, county, allowFreeTextFallback, freeTextFallback]);
 
-  // Debounced national search (also used when no county / postal codes)
   useEffect(() => {
+    if (freeTextFallback) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     const q = query.trim();
 
-    // Prefer local filter of county list when county is set and we have data
     if (county && countyLocalities.length > 0) {
       setSearchResults([]);
       setLoadingSearch(false);
@@ -155,7 +174,13 @@ export function LocalityCombobox({
         })
         .catch((e) => {
           setSearchResults([]);
-          setError(e?.message || 'Search failed');
+          const message = e?.message || 'Search failed';
+          if (allowFreeTextFallback && isMissingEawbCredentialsError(message)) {
+            setFreeTextFallback(true);
+            setError(null);
+          } else {
+            setError(message);
+          }
         })
         .finally(() => setLoadingSearch(false));
     }, 280);
@@ -163,7 +188,7 @@ export function LocalityCombobox({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [apiKey, query, county, countyLocalities.length]);
+  }, [apiKey, query, county, countyLocalities.length, allowFreeTextFallback, freeTextFallback]);
 
   const options = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -197,6 +222,29 @@ export function LocalityCombobox({
     setOpen(false);
     setQuery('');
   };
+
+  if (freeTextFallback) {
+    return (
+      <Input
+        value={value}
+        disabled={disabled}
+        placeholder={
+          county ? t('locality.typeLocality') : t('locality.selectCountyFirst')
+        }
+        className={cn('h-11', className)}
+        onChange={(e) =>
+          onChange({
+            id: null,
+            name: e.target.value,
+            county: county || '',
+            name_and_county: county
+              ? `${e.target.value}, ${county}`
+              : e.target.value,
+          })
+        }
+      />
+    );
+  }
 
   const triggerLabel = value || resolvedPlaceholder;
 

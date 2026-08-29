@@ -1,10 +1,11 @@
-/** Structured notification deep-link payload (infrastructure only — routing later). */
+/** Structured notification deep-link payload. */
 export type NotificationDeepLinkType =
   | 'order'
   | 'payment'
   | 'product'
   | 'dashboard'
   | 'settings'
+  | 'review'
   | 'test'
   | string;
 
@@ -14,9 +15,11 @@ export type PushPermissionStatus = 'granted' | 'denied' | 'prompt' | 'unavailabl
 
 export type NotificationDataPayload = {
   type?: NotificationDeepLinkType;
+  event?: string;
   id?: string;
   order_id?: string;
   product_id?: string;
+  review_id?: string;
   [key: string]: string | undefined;
 };
 

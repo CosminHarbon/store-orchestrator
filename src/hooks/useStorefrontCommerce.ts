@@ -67,6 +67,7 @@ export function useStorefrontCommerce(apiKey: string, options: StorefrontCommerc
   const [deliveryConfig, setDeliveryConfig] = useState<StorefrontDeliveryConfig>({
     custom_pricing_enabled: false,
     locker_enabled: true,
+    provider: null,
     coverage_mode: 'romania',
     covered_counties: [],
     covered_localities: [],
@@ -202,6 +203,7 @@ export function useStorefrontCommerce(apiKey: string, options: StorefrontCommerc
           setDeliveryConfig({
             custom_pricing_enabled: false,
             locker_enabled: true,
+            provider: null,
             coverage_mode: 'romania',
             covered_counties: [],
             covered_localities: [],

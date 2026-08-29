@@ -122,6 +122,7 @@
     "locality": "Locality / City",
     "searchCounty": "Search county...",
     "searchLocality": "Search locality...",
+    "typeLocality": "Type city, town or village...",
     "noCounties": "No counties found",
     "noLocalities": "No localities found",
     "loading": "Loading localities...",

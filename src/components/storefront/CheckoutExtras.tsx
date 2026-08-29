@@ -103,6 +103,7 @@ export function CheckoutBillingFields({
   className,
   inputClassName,
   labelClassName,
+  manualEntry = false,
 }: {
   form: CheckoutFormState;
   onChange: (next: CheckoutFormState) => void;
@@ -110,6 +111,8 @@ export function CheckoutBillingFields({
   className?: string;
   inputClassName?: string;
   labelClassName?: string;
+  /** Manual delivery stores: free-text city (no eAWB). */
+  manualEntry?: boolean;
 }) {
   const { t } = useTranslation('checkout');
   const sameAsDelivery = usesDeliveryAsBilling(form);
@@ -158,6 +161,7 @@ export function CheckoutBillingFields({
             apiKey={apiKey}
             county={form.billing_county}
             city={form.billing_city}
+            manualEntry={manualEntry}
             labelClassName={labelClassName}
             onCountyChange={(county) => patch({ billing_county: county, billing_city: '' })}
             onLocalityChange={(loc) =>

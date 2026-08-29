@@ -550,26 +550,56 @@ const OrderManagement = () => {
   }) || [];
 
   useEffect(() => {
+    const apply = (orderId: string) => setDashboardRequestedOrderId(orderId);
     try {
       const orderId = localStorage.getItem('sv-open-order-id');
-      if (orderId) setDashboardRequestedOrderId(orderId);
+      if (orderId) apply(orderId);
     } catch {
       /* ignore */
     }
+    const onOpen = (event: Event) => {
+      const id = (event as CustomEvent<string>).detail;
+      if (typeof id === 'string' && id) {
+        apply(id);
+        void queryClient.invalidateQueries({ queryKey: ['orders'] });
+      }
+    };
+    window.addEventListener('sv:open-order', onOpen);
+    return () => window.removeEventListener('sv:open-order', onOpen);
   }, []);
 
   useEffect(() => {
-    if (!dashboardRequestedOrderId || !orders?.length) return;
-    const match = orders.find((order) => order.id === dashboardRequestedOrderId);
-    if (!match) return;
-    void handleViewOrder(match);
-    try {
-      localStorage.removeItem('sv-open-order-id');
-    } catch {
-      /* ignore */
+    if (!dashboardRequestedOrderId || isLoading || !effectiveUserId) return;
+    const requestedId = dashboardRequestedOrderId;
+    const match = orders?.find((order) => order.id === requestedId);
+    const clearPending = () => {
+      try {
+        localStorage.removeItem('sv-open-order-id');
+      } catch {
+        /* ignore */
+      }
+      setDashboardRequestedOrderId(null);
+    };
+
+    if (match) {
+      void handleViewOrder(match);
+      clearPending();
+      return;
     }
-    setDashboardRequestedOrderId(null);
-  }, [dashboardRequestedOrderId, orders]);
+
+    void (async () => {
+      const { data } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('id', requestedId)
+        .eq('user_id', effectiveUserId)
+        .maybeSingle();
+      if (data) {
+        void handleViewOrder(data as Order);
+      }
+      clearPending();
+    })();
+  }, [dashboardRequestedOrderId, orders, isLoading, effectiveUserId]);
 
 
   const exportRows = useMemo<ExportRow[]>(() => {

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.53.0';
 import * as jose from 'https://esm.sh/jose@5.2.0';
+import { formatRonAmount, notifyMerchant } from '../_shared/notifyMerchant.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -481,22 +482,20 @@ async function commitOrderStock(supabase: any, orderId: string) {
   console.log('apply_order_stock result:', orderId, data);
 }
 
-async function maybeNotifyOrderPaid(supabase: any, conversion: any) {
-  if (!conversion?.success || conversion.already_converted || !conversion.order_id) return;
+async function maybeNotifyOrderPaid(_supabase: any, conversion: any) {
+  if (!conversion?.success || conversion.already_converted || !conversion.order_id || !conversion.user_id) {
+    return;
+  }
 
   try {
-    await supabase.functions.invoke('push-notification', {
-      body: {
-        action: 'send',
-        user_ids: [conversion.user_id],
-        title: '💳 Plată confirmată!',
-        message: `Comandă plătită de ${parseFloat(conversion.total).toFixed(2)} RON de la ${conversion.customer_name}`,
-        notification_type: 'order_update',
-        data: {
-          order_id: conversion.order_id,
-          total: String(conversion.total),
-          customer_name: conversion.customer_name,
-        },
+    await notifyMerchant({
+      userId: conversion.user_id,
+      title: 'Payment confirmed',
+      body: `New paid order • ${formatRonAmount(conversion.total)}`,
+      data: {
+        type: 'order',
+        event: 'order_paid',
+        order_id: String(conversion.order_id),
       },
     });
   } catch (pushError) {
@@ -1155,19 +1154,15 @@ async function processWebhook(
 
         if (order) {
           try {
-            await supabase.functions.invoke('push-notification', {
-              body: {
-                action: 'send',
-                user_ids: [order.user_id],
-                title: '💳 Plată confirmată!',
-                message: `Comandă plătită de ${parseFloat(order.total).toFixed(2)} RON de la ${order.customer_name}`,
-                notification_type: 'order_update',
-                data: {
-                  order_id: order.id,
-                  total: order.total.toString(),
-                  customer_name: order.customer_name
-                }
-              }
+            await notifyMerchant({
+              userId: order.user_id,
+              title: 'Payment confirmed',
+              body: `New paid order • ${formatRonAmount(order.total)}`,
+              data: {
+                type: 'order',
+                event: 'order_paid',
+                order_id: String(order.id),
+              },
             });
           } catch (pushError) {
             console.error('Failed to send push notification:', pushError);

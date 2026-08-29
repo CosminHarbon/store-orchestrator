@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { CountyCombobox } from '@/components/address/CountyCombobox';
 import { LocalityCombobox } from '@/components/address/LocalityCombobox';
 import type { EawbLocality } from '@/lib/localities/types';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
@@ -19,11 +20,17 @@ export interface AddressLocalityFieldsProps {
   labelClassName?: string;
   allowedCounties?: string[];
   allowedLocalities?: { county: string; locality: string }[];
+  /**
+   * Manual / own-delivery stores (no eAWB): county from static RO list,
+   * city/town/village as free text — no eAWB locality API.
+   */
+  manualEntry?: boolean;
 }
 
 /**
- * Universal county + locality selector (cities, towns, villages, communes)
- * backed by official eAWB location endpoints.
+ * County + locality selector.
+ * - Default: official eAWB localities (cities, towns, villages, communes).
+ * - manualEntry: free-text city for merchants without eAWB.
  */
 export function AddressLocalityFields({
   apiKey,
@@ -38,8 +45,18 @@ export function AddressLocalityFields({
   labelClassName,
   allowedCounties,
   allowedLocalities,
+  manualEntry = false,
 }: AddressLocalityFieldsProps) {
   const { t } = useTranslation('shipping');
+
+  const emitFreeTextCity = (name: string) => {
+    onLocalityChange({
+      id: null,
+      name: name.trim(),
+      county: county || '',
+      name_and_county: county ? `${name.trim()}, ${county}` : name.trim(),
+    });
+  };
 
   return (
     <div className={cn('space-y-3', className)}>
@@ -52,6 +69,7 @@ export function AddressLocalityFields({
           value={county}
           disabled={disabled}
           allowedCounties={allowedCounties}
+          offlineOnly={manualEntry}
           onChange={(c) => onCountyChange(c)}
         />
       </div>
@@ -59,15 +77,28 @@ export function AddressLocalityFields({
         <Label className={cn('text-sm', labelClassName)}>
           {localityLabel ?? `${t('locality.locality')} *`}
         </Label>
-        <LocalityCombobox
-          apiKey={apiKey}
-          county={county}
-          value={city}
-          disabled={disabled || !county}
-          placeholder={county ? t('locality.searchLocality') : t('locality.selectCountyFirst')}
-          allowedLocalities={allowedLocalities}
-          onChange={onLocalityChange}
-        />
+        {manualEntry ? (
+          <Input
+            value={city}
+            disabled={disabled || !county}
+            placeholder={
+              county ? t('locality.typeLocality') : t('locality.selectCountyFirst')
+            }
+            className="h-11"
+            onChange={(e) => emitFreeTextCity(e.target.value)}
+          />
+        ) : (
+          <LocalityCombobox
+            apiKey={apiKey}
+            county={county}
+            value={city}
+            disabled={disabled || !county}
+            placeholder={county ? t('locality.searchLocality') : t('locality.selectCountyFirst')}
+            allowedLocalities={allowedLocalities}
+            allowFreeTextFallback
+            onChange={onLocalityChange}
+          />
+        )}
       </div>
     </div>
   );

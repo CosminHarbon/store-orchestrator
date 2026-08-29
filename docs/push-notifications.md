@@ -1,7 +1,7 @@
 # Push Notifications (FCM + Capacitor) — SpeedVendors
 
-**Status:** infrastructure implemented in code.  
-**Push delivery is NOT verified** until Firebase + APNs credentials are configured and tested on physical devices.
+**Status:** FCM client + server send wired. Live DB has FCM columns (`provider`, `device_id`, `is_active`).  
+**Physical-device delivery still requires:** valid `FIREBASE_SERVICE_ACCOUNT_JSON`, APNs key in Firebase, and an iOS rebuild that posts the **FCM** token (not APNs hex).
 
 Canonical IDs (reconciled with App Store):
 
@@ -23,13 +23,14 @@ Token registration
   → Edge Function `register-push-token`
   → Supabase `push_tokens` (provider = fcm)
 
-Server send (later / test)
-  → Edge Function `send-push-notification` / `send-test-push`
+Business events (COD order, Netopia paid convert, review)
+  → notifyMerchant (service role)
+  → Edge Function `send-push-notification`
   → FCM HTTP v1
   → Device
 ```
 
-Legacy **OneSignal** (`usePushNotifications.ts`, `push-notification` function, `onesignal_player_id`) is **preserved** and not used by `App.tsx` anymore. Business callers in `store-api` / `netopia-payment` are **unchanged**.
+Legacy OneSignal send is **retired** (`push-notification` returns 410). Column `onesignal_player_id` remains in the database for compatibility.
 
 ---
 
@@ -189,10 +190,10 @@ RLS: users manage **only their own** rows (unchanged).
 
 | Function | Purpose |
 |----------|---------|
-| `register-push-token` | Auth user → upsert FCM token |
-| `send-push-notification` | FCM HTTP v1 send (self / internal / service role) |
+| `register-push-token` | Auth user → upsert FCM token; deactivate stale tokens for the same `device_id` |
+| `send-push-notification` | FCM HTTP v1 send (self / service role) |
 | `send-test-push` | Auth self-test only |
-| `push-notification` | **Legacy OneSignal — unchanged** |
+| `push-notification` | **Retired — 410 Gone** |
 
 ---
 

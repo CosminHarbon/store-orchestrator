@@ -512,7 +512,7 @@ export default function DashboardHome({ onTabChange, storeName }: DashboardHomeP
   const nextSetupStep = onboarding.nextRecommended;
 
   return (
-    <div className="sv-dashboard-home px-4 pb-24 pt-4 md:px-6 md:pb-8 md:pt-6 lg:px-8">
+    <div className="sv-dashboard-home px-4 pb-mobile-nav pt-4 md:px-6 md:pb-8 md:pt-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
         <section className="sv-dashboard-surface sv-dashboard-surface--hero">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">

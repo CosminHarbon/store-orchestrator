@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 /**
- * Authenticated self-test only.
+ * Super Admin self-test only (role + MFA AAL2 via public.is_superadmin()).
  * Always targets the caller — never another merchant.
  */
 serve(async (req) => {
@@ -21,6 +21,7 @@ serve(async (req) => {
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error('[send-test-push] missing Authorization');
       return new Response(JSON.stringify({ error: 'Authorization required' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -36,10 +37,31 @@ serve(async (req) => {
     } = await userClient.auth.getUser();
 
     if (authError || !user) {
+      console.error('[send-test-push] invalid auth', authError?.message);
       return new Response(JSON.stringify({ error: 'Invalid authorization' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Server-side Super Admin gate (user_roles.superadmin + JWT aal=aal2).
+    // Merchants must not be able to invoke this diagnostic endpoint directly.
+    const { data: isSuper, error: roleError } = await userClient.rpc('is_superadmin');
+    if (roleError || !isSuper) {
+      console.error('[send-test-push] forbidden', {
+        userId: user.id,
+        roleError: roleError?.message,
+      });
+      return new Response(
+        JSON.stringify({
+          error: 'Forbidden',
+          message: 'send-test-push is restricted to Super Admin accounts',
+        }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      );
     }
 
     const body = await req.json().catch(() => ({}));
@@ -47,7 +69,8 @@ serve(async (req) => {
     const message = String(body.body || 'Push infrastructure is working on this device.');
     const data = (body.data || { type: 'test', id: 'self-test' }) as Record<string, string>;
 
-    // Forward to send-push-notification as the same user (self-only path).
+    console.log('[send-test-push] forwarding', { userId: user.id, title });
+
     const response = await fetch(`${SUPABASE_URL}/functions/v1/send-push-notification`, {
       method: 'POST',
       headers: {
@@ -63,13 +86,25 @@ serve(async (req) => {
       }),
     });
 
-    const result = await response.json();
+    const result = await response.json().catch(() => ({
+      error: 'Invalid JSON from send-push-notification',
+    }));
+
+    console.log('[send-test-push] upstream', {
+      userId: user.id,
+      status: response.status,
+      success: (result as { success?: boolean })?.success,
+      sent: (result as { sent?: number })?.sent,
+      message: (result as { message?: string })?.message,
+      error: (result as { error?: string })?.error,
+    });
+
     return new Response(JSON.stringify(result), {
       status: response.status,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('[send-test-push] error', error);
+    console.error('[send-test-push] error', String(error));
     return new Response(JSON.stringify({ error: 'Internal server error', details: String(error) }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

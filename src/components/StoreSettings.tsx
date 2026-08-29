@@ -18,10 +18,12 @@ import { EAWBConnectionTest } from './EAWBConnectionTest';
 import { EAWBDiagnosis } from './EAWBDiagnosis';
 import { ThemeSelector } from '@/components/theme/ThemeSelector';
 import { LanguageSelector } from '@/components/settings/LanguageSelector';
+import { PushNotificationsCard } from '@/components/settings/PushNotificationsCard';
 import { DefaultPickupLockerSection } from '@/components/settings/DefaultPickupLockerSection';
 import { DeliveryPricingSettings } from '@/components/settings/DeliveryPricingSettings';
 import { NetopiaPaymentPanel } from '@/components/payments/NetopiaPaymentPanel';
 import { StripeConnectPanel } from '@/components/payments/StripeConnectPanel';
+import { BillingSettingsCard } from '@/components/settings/BillingSettingsCard';
 import { EawbShippingPanel } from '@/components/shipping/EawbShippingPanel';
 import { useTranslation } from 'react-i18next';
 import { goToPaymentsTab } from '@/lib/openExternalUrl';
@@ -893,6 +895,10 @@ class StoreAPI {
               <LanguageSelector />
             </CardContent>
           </Card>
+
+          <BillingSettingsCard />
+
+          <PushNotificationsCard />
 
           <Card>
             <CardHeader>

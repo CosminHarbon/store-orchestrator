@@ -141,6 +141,7 @@ export async function sendFcmMessage(params: {
             notification: {
               channel_id: 'speedvendors_default',
               sound: 'default',
+              icon: 'ic_stat_notify',
             },
           },
           apns: {
@@ -159,6 +160,7 @@ export async function sendFcmMessage(params: {
   const json = await response.json().catch(() => ({}));
 
   if (response.ok) {
+    console.log('[FCM] send ok', { projectId, httpStatus: response.status, tokenLen: token.length });
     return { token, success: true };
   }
 
@@ -169,6 +171,15 @@ export async function sendFcmMessage(params: {
     errorCode === 'INVALID_ARGUMENT' ||
     String(errorMessage).toLowerCase().includes('not a valid fcm') ||
     String(errorMessage).toLowerCase().includes('requested entity was not found');
+
+  console.error('[FCM] send failed', {
+    projectId,
+    httpStatus: response.status,
+    errorCode: String(errorCode),
+    errorMessage: String(errorMessage),
+    tokenLen: token.length,
+    tokenPrefix: token.slice(0, 8),
+  });
 
   return {
     token,

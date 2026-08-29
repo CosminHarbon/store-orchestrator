@@ -429,6 +429,7 @@ export function DeliveryPricingSettings({ userId, apiKey, originLabel, ownDelive
                     apiKey={apiKey}
                     county={originDraft.county}
                     city={originDraft.city}
+                    manualEntry={ownDelivery}
                     onCountyChange={(county) => setOriginDraft((prev) => ({ ...prev, county, city: '' }))}
                     onLocalityChange={(loc) =>
                       setOriginDraft((prev) => ({
@@ -606,6 +607,7 @@ export function DeliveryPricingSettings({ userId, apiKey, originLabel, ownDelive
                   apiKey={apiKey}
                   county={localityDraftCounty}
                   city={localityDraftCity}
+                  manualEntry={ownDelivery}
                   onCountyChange={(county) => {
                     setLocalityDraftCounty(county);
                     setLocalityDraftCity('');

@@ -191,6 +191,7 @@ export function PremiumCheckout({ commerce }: Props) {
                     apiKey={apiKey}
                     county={checkoutForm.county}
                     city={checkoutForm.city}
+                    manualEntry={deliveryConfig.provider === 'manual'}
                     labelClassName="text-[var(--prem-muted)] font-normal"
                     allowedCounties={
                       deliveryConfig.custom_pricing_enabled &&
@@ -290,6 +291,7 @@ export function PremiumCheckout({ commerce }: Props) {
                 form={checkoutForm}
                 onChange={setCheckoutForm}
                 apiKey={apiKey}
+                manualEntry={deliveryConfig.provider === 'manual'}
                 labelClassName="text-[var(--prem-muted)] font-normal"
                 inputClassName="mt-1 w-full rounded-[var(--prem-radius-sm)] border border-[var(--prem-line)] bg-white px-3 py-2.5 text-sm"
               />

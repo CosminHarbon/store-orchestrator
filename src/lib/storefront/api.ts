@@ -158,6 +158,7 @@ export async function fetchStoreConfig(apiKey: string, opts?: { templateId?: str
     deliveryConfig: {
       custom_pricing_enabled: !!(delivery.custom_pricing_enabled),
       locker_enabled: delivery.locker_enabled !== false,
+      provider: delivery.provider || null,
       coverage_mode: delivery.coverage_mode || 'romania',
       covered_counties: Array.isArray(delivery.covered_counties) ? delivery.covered_counties : [],
       covered_localities: Array.isArray(delivery.covered_localities)

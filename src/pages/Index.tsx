@@ -48,8 +48,10 @@ const Index = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState(() => {
-    // Restore last active tab from localStorage
     if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab) return tab;
       return localStorage.getItem('activeTab') || 'dashboard';
     }
     return 'dashboard';
@@ -101,7 +103,7 @@ const Index = () => {
     }
   }, [activeTab]);
 
-  // Allow other surfaces (e.g. Netopia wizard) to switch tabs without remounting
+  // Allow other surfaces (e.g. Netopia wizard, push tap) to switch tabs without remounting
   useEffect(() => {
     const onNavigateTab = (event: Event) => {
       const detail = (event as CustomEvent<string>).detail;
@@ -114,10 +116,35 @@ const Index = () => {
   }, []);
 
   useEffect(() => {
+    try {
+      if (localStorage.getItem('sv-open-order-id')) {
+        setActiveTab('orders');
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
     if (!loading && !user) {
       navigate('/');
     }
   }, [user, loading, navigate]);
+
+  // Subscription gate (no-op while enforcement_enabled is false)
+  useEffect(() => {
+    const checkEntitlement = async () => {
+      if (!user || loading) return;
+      if (isImpersonating) return;
+      const { data: isSuper } = await supabase.rpc('is_superadmin_user');
+      if (isSuper) return;
+      const { data } = await supabase.rpc('get_my_entitlement_status');
+      if (data?.enforcement_enabled && data?.has_access === false) {
+        navigate('/subscribe', { replace: true });
+      }
+    };
+    void checkEntitlement();
+  }, [user, loading, navigate, isImpersonating]);
 
   // Platform operators use /admin unless they are impersonating a merchant store
   useEffect(() => {
@@ -195,13 +222,13 @@ const Index = () => {
         return renderDashboard();
       case 'products':
         return (
-          <div className="p-3 md:p-6 pb-24 md:pb-6 safe-area-bottom">
+          <div className="p-3 md:p-6 pb-mobile-nav">
             <ProductManagement />
           </div>
         );
       case 'stock':
         return (
-          <div className="p-3 md:p-6 pb-24 md:pb-6 safe-area-bottom">
+          <div className="p-3 md:p-6 pb-mobile-nav">
             <StockManagement 
               onPendingChangesChange={setHasStockPendingChanges}
               saveRef={stockSaveRef}
@@ -210,37 +237,37 @@ const Index = () => {
         );
       case 'orders':
         return (
-          <div className="p-3 md:p-6 pb-24 md:pb-6 safe-area-bottom">
+          <div className="p-3 md:p-6 pb-mobile-nav">
             <OrderManagement />
           </div>
         );
       case 'customers':
         return (
-          <div className="p-3 md:p-6 pb-24 md:pb-6 safe-area-bottom">
+          <div className="p-3 md:p-6 pb-mobile-nav">
             <CustomerManagement />
           </div>
         );
       case 'payments':
         return (
-          <div className="p-3 md:p-6 pb-24 md:pb-6 safe-area-bottom">
+          <div className="p-3 md:p-6 pb-mobile-nav">
             <PaymentStatistics />
           </div>
         );
       case 'reviews':
         return (
-          <div className="p-3 md:p-6 pb-24 md:pb-6 safe-area-bottom">
+          <div className="p-3 md:p-6 pb-mobile-nav">
             <ReviewsManagement />
           </div>
         );
       case 'settings':
         return (
-          <div className="p-3 md:p-6 pb-24 md:pb-6 safe-area-bottom">
+          <div className="p-3 md:p-6 pb-mobile-nav">
             <StoreSettings />
           </div>
         );
       case 'templates':
         return (
-          <div className="p-3 md:p-6 pb-24 md:pb-6 safe-area-bottom">
+          <div className="p-3 md:p-6 pb-mobile-nav">
             <TemplatesManagement />
           </div>
         );
@@ -250,13 +277,13 @@ const Index = () => {
   };
 
   return (
-    <SidebarProvider>
+    <SidebarProvider className="!min-h-0 h-[100dvh] max-h-[100dvh] overflow-hidden">
       <div className="mobile-viewport flex w-full bg-background safe-area-left safe-area-right">
         <AppSidebar activeTab={activeTab} onTabChange={handleTabChange} />
         
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0">
           {isImpersonating ? (
-            <div className="sticky top-0 z-50 flex flex-wrap items-center justify-between gap-2 border-b bg-amber-500/15 px-3 py-2 text-sm">
+            <div className="sticky top-0 z-50 flex flex-wrap items-center justify-between gap-2 border-b bg-amber-500/15 px-3 py-2 text-sm shrink-0">
               <div className="flex items-center gap-2 min-w-0">
                 <Badge variant="secondary">Superadmin</Badge>
                 <span className="truncate">
@@ -283,7 +310,7 @@ const Index = () => {
             onTabChange={handleTabChange}
           />
           
-          <main className="flex-1 overflow-auto hide-scrollbar">
+          <main className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain hide-scrollbar">
             {renderContent()}
           </main>
         </div>
@@ -291,10 +318,10 @@ const Index = () => {
         {/* Bottom Navigation */}
         <BottomNavigation activeTab={activeTab} onTabChange={handleTabChange} />
         
-        {/* AI Chat Button */}
+        {/* AI Chat Button — sits above tab bar + home indicator */}
         <Button
           onClick={() => setIsChatOpen(true)}
-          className="fixed bottom-20 right-4 h-14 w-14 rounded-full bg-gradient-primary shadow-glow z-40 safe-area-right hover:shadow-elegant transition-all duration-200 border-0 md:bottom-6 md:right-6 md:h-16 md:w-16"
+          className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] right-4 h-14 w-14 rounded-full bg-gradient-primary shadow-glow z-40 safe-area-right hover:shadow-elegant transition-all duration-200 border-0 md:bottom-6 md:right-6 md:h-16 md:w-16"
           size="sm"
         >
           <MessageCircle className="h-6 w-6 text-white md:h-7 md:w-7" />

@@ -59,6 +59,8 @@ export interface CountyComboboxProps {
   className?: string;
   placeholder?: string;
   allowedCounties?: string[];
+  /** Skip eAWB fetch — use static Romanian county list (manual delivery). */
+  offlineOnly?: boolean;
 }
 
 export function CountyCombobox({
@@ -69,18 +71,27 @@ export function CountyCombobox({
   className,
   placeholder,
   allowedCounties,
+  offlineOnly = false,
 }: CountyComboboxProps) {
   const { t } = useTranslation('shipping');
   const resolvedPlaceholder = placeholder ?? t('locality.county');
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [counties, setCounties] = useState<EawbCounty[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [counties, setCounties] = useState<EawbCounty[]>(() =>
+    offlineOnly ? ROMANIA_COUNTIES.map((name) => ({ id: name, code: '', name })) : []
+  );
+  const [loading, setLoading] = useState(!offlineOnly);
   const [error, setError] = useState<string | null>(null);
   const [recent, setRecent] = useState<string[]>(() => loadRecent());
   const isMobile = useIsMobile();
 
   useEffect(() => {
+    if (offlineOnly) {
+      setCounties(ROMANIA_COUNTIES.map((name) => ({ id: name, code: '', name })));
+      setLoading(false);
+      setError(null);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -101,7 +112,7 @@ export function CountyCombobox({
     return () => {
       cancelled = true;
     };
-  }, [apiKey]);
+  }, [apiKey, offlineOnly]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

@@ -20,8 +20,8 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 bg-background/95 backdrop-blur-xl border-t border-border/50 md:hidden safe-area-bottom">
-      <div className="grid grid-cols-5 px-2 py-2">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/50 md:hidden pb-[env(safe-area-inset-bottom,0px)]">
+      <div className="grid grid-cols-5 gap-0 px-1 pt-1.5 pb-1.5">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
           const Icon = item.icon;
@@ -32,7 +32,7 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
               variant="ghost"
               size="sm"
               className={cn(
-                "flex flex-col gap-1 h-12 px-1 rounded-xl transition-colors duration-200 relative touch-manipulation",
+                "flex flex-col gap-0.5 h-12 min-w-0 px-0.5 rounded-xl transition-colors duration-200 relative touch-manipulation",
                 "focus:outline-none focus-visible:ring-0 active:scale-95",
                 "will-change-[color,background-color]",
                 isActive 
@@ -42,16 +42,16 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
               onClick={() => onTabChange(item.id)}
             >
               {isActive && (
-                <div className="absolute top-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-primary rounded-full animate-scale-in" />
+                <div className="absolute top-0.5 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-primary rounded-full animate-scale-in" />
               )}
               <Icon 
                 className={cn(
-                  "h-5 w-5 transition-colors duration-200",
+                  "h-5 w-5 shrink-0 transition-colors duration-200",
                   isActive && "text-primary"
                 )} 
               />
               <span className={cn(
-                "text-xs font-medium leading-none transition-colors duration-200",
+                "text-[10px] font-medium leading-tight truncate max-w-full transition-colors duration-200",
                 isActive && "text-primary"
               )}>
                 {t(item.labelKey)}

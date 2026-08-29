@@ -160,6 +160,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
   const [deliveryConfig, setDeliveryConfig] = useState<StorefrontDeliveryConfig>({
     custom_pricing_enabled: false,
     locker_enabled: true,
+    provider: null,
     coverage_mode: 'romania',
     covered_counties: [],
     covered_localities: [],
@@ -337,6 +338,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
         setDeliveryConfig({
           custom_pricing_enabled: !!data.delivery?.custom_pricing_enabled,
           locker_enabled: data.delivery?.locker_enabled !== false,
+          provider: data.delivery?.provider || null,
           coverage_mode: data.delivery?.coverage_mode || 'romania',
           covered_counties: data.delivery?.covered_counties || [],
           covered_localities: data.delivery?.covered_localities || [],
@@ -1689,6 +1691,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
                         apiKey={apiKey}
                         county={checkoutForm.county}
                         city={checkoutForm.city}
+                        manualEntry={deliveryConfig.provider === 'manual'}
                         allowedCounties={
                           deliveryConfig.custom_pricing_enabled &&
                           deliveryConfig.coverage_mode === 'counties'
@@ -1789,6 +1792,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
                     form={checkoutForm}
                     onChange={setCheckoutForm}
                     apiKey={apiKey}
+                    manualEntry={deliveryConfig.provider === 'manual'}
                     inputClassName={`mt-1 w-full p-3 ${colors.border_radius}`}
                   />
                 </div>

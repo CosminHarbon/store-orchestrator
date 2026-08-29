@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 
 interface MobileHeaderProps {
@@ -24,16 +24,17 @@ interface MobileHeaderProps {
 export function MobileHeader({ userEmail, storeName, onTabChange }: MobileHeaderProps) {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
+  const { signOut } = useAuth();
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await signOut();
     navigate('/auth');
   };
 
   const initials = userEmail ? userEmail.slice(0, 2).toUpperCase() : "?";
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-xl border-b border-border/50 safe-area-top">
+    <header className="sticky top-0 z-50 w-full shrink-0 bg-background/80 backdrop-blur-xl border-b border-border/50 safe-area-top">
       <div className="flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-3">
           <SidebarTrigger className="md:hidden p-2 hover:bg-muted/50 rounded-lg transition-colors" />

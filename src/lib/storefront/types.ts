@@ -92,6 +92,8 @@ export type DeliveryCoverageMode = 'romania' | 'counties' | 'localities';
 export interface StorefrontDeliveryConfig {
   custom_pricing_enabled: boolean;
   locker_enabled: boolean;
+  /** Merchant shipping mode: eawb | sameday | manual | … */
+  provider?: string | null;
   coverage_mode: DeliveryCoverageMode;
   covered_counties: string[];
   covered_localities: { county: string; locality: string }[];

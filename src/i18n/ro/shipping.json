@@ -122,6 +122,7 @@
     "locality": "Localitate / Oraș",
     "searchCounty": "Caută județ...",
     "searchLocality": "Caută localitate...",
+    "typeLocality": "Scrie orașul, comuna sau satul...",
     "noCounties": "Nu s-au găsit județe",
     "noLocalities": "Nu s-au găsit localități",
     "loading": "Se încarcă localitățile...",
