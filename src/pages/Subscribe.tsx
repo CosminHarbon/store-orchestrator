@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Capacitor } from '@capacitor/core';
 import { toast } from 'sonner';
 import { BrandLogo } from '@/components/brand/BrandLogo';
@@ -13,20 +14,22 @@ import {
   useEntitlementGate,
 } from '@/hooks/useEntitlementGate';
 import { payloadFromFunctionsInvoke } from '@/lib/edgeFunctionPayload';
-import { MARKETING_PRICING, hasPrice } from '@/lib/marketingPricing';
+import { advertisedMonthlyEquivalent, advertisedPrice } from '@/lib/marketingPricing';
+import { SPEEDVENDORS_PLANS, SPEEDVENDORS_TIERS, type BillingInterval, type SpeedVendorsTier } from '@/lib/plans/catalogue';
 import { supabase } from '@/integrations/supabase/client';
-
-type Plan = 'monthly' | 'yearly';
+import { cn } from '@/lib/utils';
 
 /**
  * Subscription gate page. Web: Stripe Checkout + access codes.
  * Native: entitlement-aware message only (no Checkout / codes in this phase).
  */
 const Subscribe = () => {
+  const { t } = useTranslation('common');
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const { gate, refresh } = useEntitlementGate();
-  const [busy, setBusy] = useState<Plan | 'code' | null>(null);
+  const [interval, setInterval] = useState<BillingInterval>('monthly');
+  const [busy, setBusy] = useState<SpeedVendorsTier | 'code' | null>(null);
   const [accessCode, setAccessCode] = useState('');
   const nativeBlocked = isNativeBillingPurchaseBlocked();
   const alreadyEntitled =
@@ -47,16 +50,16 @@ const Subscribe = () => {
     }
   }, [user, authLoading, gate, navigate]);
 
-  const startCheckout = async (plan: Plan) => {
+  const startCheckout = async (tier: SpeedVendorsTier) => {
     if (nativeBlocked) {
-      toast.message('Subscribe on the web', {
-        description: 'Open speedvendors.com in a browser to choose a plan.',
+      toast.message(t('subscribe.nativeCta'), {
+        description: t('subscribe.nativeCtaDesc'),
       });
       return;
     }
     if (alreadyEntitled) {
-      toast.message('You already have a SpeedVendors subscription', {
-        description: 'Manage your plan in Settings → Billing.',
+      toast.message(t('subscribe.alreadyTitle'), {
+        description: t('subscribe.alreadyDesc'),
       });
       try {
         localStorage.setItem('activeTab', 'settings');
@@ -66,10 +69,14 @@ const Subscribe = () => {
       navigate('/app', { replace: true });
       return;
     }
-    setBusy(plan);
+    setBusy(tier);
     try {
       const { data, error } = await supabase.functions.invoke('billing-create-checkout-session', {
-        body: { plan },
+        body: {
+          tier,
+          interval,
+          client_surface: Capacitor.isNativePlatform() ? 'native' : 'web',
+        },
       });
       const payload = await payloadFromFunctionsInvoke(data, error);
       const code = typeof payload.error === 'string' ? payload.error : '';
@@ -81,11 +88,11 @@ const Subscribe = () => {
       ) {
         const description =
           code === 'subscription_canceling'
-            ? 'Your current plan stays active until the period ends. Manage it in Settings → Billing.'
+            ? t('subscribe.cancelingDesc')
             : code === 'subscription_incomplete'
-              ? 'Finish or manage your existing subscription in Settings → Billing.'
-              : 'Manage your plan in Settings → Billing.';
-        toast.message('You already have a SpeedVendors subscription', { description });
+              ? t('subscribe.incompleteDesc')
+              : t('subscribe.alreadyDesc');
+        toast.message(t('subscribe.alreadyTitle'), { description });
         try {
           localStorage.setItem('activeTab', 'settings');
         } catch {
@@ -95,22 +102,22 @@ const Subscribe = () => {
         return;
       }
       if (code === 'billing_not_configured') {
-        toast.error('Billing is not configured yet. Please try again later.');
+        toast.error(t('subscribe.notConfigured'));
         return;
       }
       if (code === 'email_not_verified') {
-        toast.error('Please verify your email before subscribing.');
+        toast.error(t('subscribe.emailUnverified'));
         return;
       }
       if (error && !url) throw error;
       if (!url) {
-        toast.error('Could not start checkout.');
+        toast.error(t('subscribe.checkoutFailed'));
         return;
       }
       window.location.assign(url);
     } catch (e) {
       console.error(e);
-      toast.error('Could not start checkout.');
+      toast.error(t('subscribe.checkoutFailed'));
     } finally {
       setBusy(null);
     }
@@ -118,8 +125,8 @@ const Subscribe = () => {
 
   const redeemCode = async () => {
     if (nativeBlocked) {
-      toast.message('Use the website', {
-        description: 'Access codes can be redeemed on speedvendors.com.',
+      toast.message(t('subscribe.useWebsite'), {
+        description: t('subscribe.codeWebsiteDesc'),
       });
       return;
     }
@@ -133,36 +140,29 @@ const Subscribe = () => {
       const payload = await payloadFromFunctionsInvoke(data, error);
       const payloadError = typeof payload.error === 'string' ? payload.error : '';
       if (payloadError === 'already_redeemed') {
-        toast.error('This access code was already used on this account.');
+        toast.error(t('subscribe.codeUsed'));
         return;
       }
       if (payloadError === 'invalid_or_exhausted_code' || payloadError === 'invalid_code') {
-        toast.error('That access code is not valid.');
+        toast.error(t('subscribe.codeInvalid'));
         return;
       }
       if (payloadError) {
-        toast.error('Could not apply access code.');
+        toast.error(t('subscribe.codeFailed'));
         return;
       }
       if (error) throw error;
-      toast.success('Access granted');
+      toast.success(t('subscribe.codeSuccess'));
       await refresh();
       const path = await resolveEntitledPostLoginPath();
       navigate(path, { replace: true });
     } catch (e) {
       console.error(e);
-      toast.error('Could not apply access code.');
+      toast.error(t('subscribe.codeFailed'));
     } finally {
       setBusy(null);
     }
   };
-
-  const monthlyLabel = hasPrice(MARKETING_PRICING.monthly)
-    ? MARKETING_PRICING.monthly
-    : 'Price coming soon';
-  const yearlyLabel = hasPrice(MARKETING_PRICING.yearly)
-    ? MARKETING_PRICING.yearly
-    : 'Price coming soon';
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-b from-background via-background to-muted/40">
@@ -171,77 +171,108 @@ const Subscribe = () => {
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <Button variant="ghost" size="sm" onClick={() => void signOut()}>
-            Sign out
+            {t('subscribe.signOut')}
           </Button>
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-3xl flex-col gap-10 px-4 pb-16 pt-6 sm:px-8">
+      <main className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-4 pb-16 pt-6 sm:px-8">
         <div className="space-y-3 text-center">
-          <h1 className="font-display text-3xl tracking-tight sm:text-4xl">Choose your plan</h1>
-          <p className="mx-auto max-w-xl text-muted-foreground">
-            Subscribe to unlock SpeedVendors for your store. Cancel anytime from billing settings.
-          </p>
+          <h1 className="font-display text-3xl tracking-tight sm:text-4xl">{t('subscribe.title')}</h1>
+          <p className="mx-auto max-w-xl text-muted-foreground">{t('subscribe.subtitle')}</p>
         </div>
 
         {nativeBlocked ? (
           <div className="rounded-2xl border border-border/60 bg-card/60 p-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              Subscriptions are managed on the web. Sign in at{' '}
-              <a
-                className="underline underline-offset-2"
-                href="https://www.speedvendors.com/subscribe"
-                target="_blank"
-                rel="noreferrer"
-              >
-                speedvendors.com/subscribe
-              </a>
-              , then return to this app.
-            </p>
+            <p className="text-sm text-muted-foreground">{t('subscribe.nativeTitle')}</p>
+            <p className="mt-2 text-sm text-muted-foreground">{t('subscribe.nativeBody')}</p>
           </div>
         ) : (
           <>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="mx-auto inline-flex rounded-full border border-border p-1 text-sm font-semibold">
               <button
                 type="button"
-                disabled={checkoutLocked}
-                onClick={() => void startCheckout('monthly')}
-                className="rounded-2xl border border-border/70 bg-card p-6 text-left transition hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+                onClick={() => setInterval('monthly')}
+                className={cn(
+                  'rounded-full px-4 py-1.5 transition-colors',
+                  interval === 'monthly' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground',
+                )}
               >
-                <div className="text-sm font-medium text-muted-foreground">Monthly</div>
-                <div className="mt-2 text-2xl font-semibold tracking-tight">{monthlyLabel}</div>
-                <p className="mt-2 text-sm text-muted-foreground">Billed monthly.</p>
-                <div className="mt-6">
-                  <span className="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground">
-                    {busy === 'monthly' ? 'Redirecting…' : 'Continue'}
-                  </span>
-                </div>
+                {t('subscribe.monthly')}
               </button>
-
               <button
                 type="button"
-                disabled={checkoutLocked}
-                onClick={() => void startCheckout('yearly')}
-                className="rounded-2xl border border-border/70 bg-card p-6 text-left transition hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+                onClick={() => setInterval('yearly')}
+                className={cn(
+                  'rounded-full px-4 py-1.5 transition-colors',
+                  interval === 'yearly' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground',
+                )}
               >
-                <div className="text-sm font-medium text-muted-foreground">Yearly</div>
-                <div className="mt-2 text-2xl font-semibold tracking-tight">{yearlyLabel}</div>
-                <p className="mt-2 text-sm text-muted-foreground">Billed yearly.</p>
-                <div className="mt-6">
-                  <span className="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground">
-                    {busy === 'yearly' ? 'Redirecting…' : 'Continue'}
-                  </span>
-                </div>
+                {t('subscribe.yearly')}
               </button>
             </div>
 
+            <div className="grid gap-4 lg:grid-cols-3">
+              {SPEEDVENDORS_TIERS.map((tier) => {
+                const plan = SPEEDVENDORS_PLANS[tier];
+                const price = advertisedPrice(tier, interval);
+                return (
+                  <button
+                    key={tier}
+                    type="button"
+                    disabled={checkoutLocked}
+                    onClick={() => void startCheckout(tier)}
+                    className={cn(
+                      'rounded-2xl border bg-card p-6 text-left transition hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60',
+                      plan.popular ? 'border-primary shadow-sm ring-1 ring-primary/30' : 'border-border/70',
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-sm font-medium text-muted-foreground">{plan.name}</div>
+                      {plan.popular ? (
+                        <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">
+                          {t('subscribe.mostPopular')}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="mt-2 text-2xl font-semibold tracking-tight">{price}</div>
+                    {interval === 'yearly' ? (
+                      <>
+                        <p className="mt-1 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                          {t('subscribe.twoMonthsFree')}
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {t('subscribe.monthlyEquivalent', { price: advertisedMonthlyEquivalent(tier) })}
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {t('subscribe.billedYearly', { price })}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {t('subscribe.billedMonthly', { price })}
+                      </p>
+                    )}
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      {t('subscribe.storage', { size: plan.mediaQuotaGiB })}
+                    </p>
+                    <div className="mt-6">
+                      <span className="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground">
+                        {busy === tier ? t('subscribe.redirecting') : t('subscribe.continue')}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
             <div className="mx-auto w-full max-w-md space-y-3 border-t border-border/50 pt-8">
-              <p className="text-center text-sm text-muted-foreground">Have an access code?</p>
+              <p className="text-center text-sm text-muted-foreground">{t('subscribe.haveCode')}</p>
               <div className="flex gap-2">
                 <Input
                   value={accessCode}
                   onChange={(e) => setAccessCode(e.target.value)}
-                  placeholder="Enter access code"
+                  placeholder={t('subscribe.codePlaceholder')}
                   autoComplete="off"
                   className="font-mono"
                 />
@@ -250,7 +281,7 @@ const Subscribe = () => {
                   disabled={checkoutLocked || !accessCode.trim()}
                   onClick={() => void redeemCode()}
                 >
-                  {busy === 'code' ? 'Applying…' : 'Apply'}
+                  {busy === 'code' ? t('subscribe.applying') : t('subscribe.apply')}
                 </Button>
               </div>
             </div>
@@ -259,9 +290,8 @@ const Subscribe = () => {
 
         {!Capacitor.isNativePlatform() && (
           <p className="text-center text-xs text-muted-foreground">
-            Already subscribed?{' '}
             <Link to="/billing/success" className="underline underline-offset-2">
-              Check activation status
+              {t('subscribe.alreadySubscribedLink')}
             </Link>
           </p>
         )}

@@ -214,6 +214,68 @@ export type Database = {
         }
         Relationships: []
       }
+      media_assets: {
+        Row: {
+          bucket: string
+          created_at: string
+          height: number | null
+          id: string
+          media_type: string
+          mime_type: string
+          original_size_bytes: number | null
+          public_url: string | null
+          related_entity_id: string | null
+          related_entity_type: string | null
+          size_bytes: number
+          status: string
+          storage_path: string
+          updated_at: string
+          uploaded_by: string | null
+          user_id: string
+          width: number | null
+          delete_attempted_at: string | null
+        }
+        Insert: {
+          bucket: string
+          created_at?: string
+          height?: number | null
+          id?: string
+          media_type: string
+          mime_type: string
+          original_size_bytes?: number | null
+          public_url?: string | null
+          related_entity_id?: string | null
+          related_entity_type?: string | null
+          size_bytes: number
+          status?: string
+          storage_path: string
+          updated_at?: string
+          uploaded_by?: string | null
+          user_id: string
+          width?: number | null
+          delete_attempted_at?: string | null
+        }
+        Update: {
+          bucket?: string
+          created_at?: string
+          height?: number | null
+          id?: string
+          media_type?: string
+          mime_type?: string
+          original_size_bytes?: number | null
+          public_url?: string | null
+          related_entity_id?: string | null
+          related_entity_type?: string | null
+          size_bytes?: number
+          status?: string
+          storage_path?: string
+          updated_at?: string
+          uploaded_by?: string | null
+          user_id?: string
+          width?: number | null
+        }
+        Relationships: []
+      }
       collections: {
         Row: {
           created_at: string
@@ -1488,6 +1550,14 @@ export type Database = {
       }
     }
     Functions: {
+      get_media_usage: {
+        Args: { p_acting_as?: string | null }
+        Returns: Json
+      }
+      get_my_entitlement_status: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       admin_list_merchants: {
         Args: Record<PropertyKey, never>
         Returns: {

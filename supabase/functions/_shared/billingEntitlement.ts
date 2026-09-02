@@ -7,11 +7,23 @@ import {
   type NormalizedSubscription,
   type PlanInterval,
   getStripeBillingApiSecrets,
-  isBillingEnforcementEnvEnabled,
+  isBillingEnforcementEnvAllowed,
   isOpenBillingSubscriptionStatus,
   planFromPriceId,
+  retrievePendingScheduleChange,
+  retrieveSubscription,
   stripeBillingFormPost,
+  stripeBillingGet,
 } from './billingStripe.ts';
+import { identifyPrice } from './billingCatalog.ts';
+import {
+  entitlementMetadataFromPlan,
+  intervalFromStripe,
+  parseInterval,
+  parseTier,
+  type BillingInterval,
+  type SpeedVendorsTier,
+} from './speedvendorsPlans.ts';
 
 // deno-lint-ignore no-explicit-any
 type AdminClient = any;
@@ -38,13 +50,24 @@ export async function loadBillingSettings(admin: AdminClient): Promise<BillingSe
 }
 
 /**
- * Server enforcement requires BOTH the DB flag and the Edge env flag.
- * Both default false during development.
+ * Effective enforcement = canonical DB flag AND environment allows it.
+ * Env may only force OFF (emergency kill switch), never independently force ON.
  */
 export async function isBillingEnforcementActive(admin: AdminClient): Promise<boolean> {
-  if (!isBillingEnforcementEnvEnabled()) return false;
+  if (!isBillingEnforcementEnvAllowed()) return false;
   const settings = await loadBillingSettings(admin);
   return settings.enforcement_enabled;
+}
+
+export function entitlementRequiredResponse(cors: Record<string, string>): Response {
+  return new Response(JSON.stringify({ error: 'entitlement_required' }), {
+    status: 403,
+    headers: { ...cors, 'Content-Type': 'application/json' },
+  });
+}
+
+export function isEntitlementRequiredError(err: unknown): boolean {
+  return err instanceof Error && err.message === 'ENTITLEMENT_REQUIRED';
 }
 
 export async function userHasActiveEntitlement(
@@ -97,21 +120,35 @@ export async function ensureBillingCustomer(params: {
   email?: string | null;
 }): Promise<{ id: string; stripe_customer_id: string }> {
   const { admin, userId, email } = params;
+  const secrets = getStripeBillingApiSecrets();
 
   const { data: existing, error: selErr } = await admin
     .from('billing_customers')
-    .select('id, stripe_customer_id')
+    .select('id, stripe_customer_id, livemode')
     .eq('user_id', userId)
     .maybeSingle();
   if (selErr) {
     console.error('billing_customers select failed', { message: selErr.message });
     throw new Error('BILLING_CUSTOMER_FAILED');
   }
+
   if (existing?.stripe_customer_id) {
-    return existing;
+    const reusable = await stripeCustomerMatchesMode(
+      secrets.secretKey,
+      existing.stripe_customer_id,
+      secrets.livemode,
+    );
+    if (reusable) {
+      if (existing.livemode !== secrets.livemode) {
+        await admin
+          .from('billing_customers')
+          .update({ livemode: secrets.livemode, updated_at: new Date().toISOString() })
+          .eq('id', existing.id);
+      }
+      return { id: existing.id, stripe_customer_id: existing.stripe_customer_id };
+    }
   }
 
-  const secrets = getStripeBillingApiSecrets();
   const form = new URLSearchParams();
   form.set('metadata[speedvendors_user_id]', userId);
   if (email) form.set('email', email);
@@ -144,8 +181,21 @@ export async function ensureBillingCustomer(params: {
   return inserted;
 }
 
+async function stripeCustomerMatchesMode(
+  secretKey: string,
+  customerId: string,
+  livemode: boolean,
+): Promise<boolean> {
+  try {
+    const retrieved = await stripeBillingGet(secretKey, `/customers/${encodeURIComponent(customerId)}`);
+    return retrieved.livemode === livemode && String(retrieved.id || '') === customerId;
+  } catch {
+    return false;
+  }
+}
+
 function planFromNormalized(
-  secrets: { monthlyPriceId: string; yearlyPriceId: string },
+  secrets: { monthlyPriceId: string | null; yearlyPriceId: string | null },
   sub: NormalizedSubscription,
 ): PlanInterval | null {
   const fromPrice = planFromPriceId(secrets, sub.priceId);
@@ -155,11 +205,27 @@ function planFromNormalized(
   return null;
 }
 
+function identifyNormalizedPlan(sub: NormalizedSubscription): {
+  tier: SpeedVendorsTier;
+  interval: BillingInterval;
+} {
+  const identified = identifyPrice({
+    priceId: sub.priceId,
+    lookupKey: sub.lookupKey,
+    metadata: sub.priceMetadata,
+    billingInterval: sub.billingInterval,
+  });
+  if (identified) return identified;
+  const interval = intervalFromStripe(sub.billingInterval) || 'monthly';
+  return { tier: 'start', interval };
+}
+
 export type LocalOpenSubscription = {
   id: string;
   stripe_subscription_id: string;
   status: string;
   plan: string | null;
+  tier: string | null;
   current_period_end: string | null;
   cancel_at_period_end: boolean;
 };
@@ -168,12 +234,14 @@ export async function findLocalOpenSubscription(
   admin: AdminClient,
   userId: string,
 ): Promise<LocalOpenSubscription | null> {
+  const secrets = getStripeBillingApiSecrets();
   const { data, error } = await admin
     .from('billing_subscriptions')
     .select(
-      'id, stripe_subscription_id, status, plan, current_period_end, cancel_at_period_end',
+      'id, stripe_subscription_id, status, plan, tier, current_period_end, cancel_at_period_end',
     )
     .eq('user_id', userId)
+    .eq('livemode', secrets.livemode)
     .in('status', ['incomplete', 'trialing', 'active', 'past_due', 'unpaid', 'paused'])
     .order('updated_at', { ascending: false })
     .limit(1)
@@ -188,6 +256,11 @@ export async function findLocalOpenSubscription(
 function entitlementFieldsFromNormalized(
   sub: NormalizedSubscription,
   graceUntil: string | null,
+  pending?: {
+    tier: SpeedVendorsTier | null;
+    interval: BillingInterval | null;
+    effectiveAt: string | null;
+  },
 ): { status: 'active' | 'expired'; validUntil: string | null; metadata: Record<string, unknown> } {
   let status: 'active' | 'expired' = 'expired';
   let validUntil: string | null = null;
@@ -204,14 +277,24 @@ function entitlementFieldsFromNormalized(
     validUntil = graceUntil;
   }
 
+  const identified = identifyNormalizedPlan(sub);
+
   return {
     status,
     validUntil,
-    metadata: {
-      stripe_status: sub.status,
-      grace_until: graceUntil,
-      price_id: sub.priceId,
-    },
+    metadata: entitlementMetadataFromPlan({
+      tier: identified.tier,
+      interval: identified.interval,
+      priceId: sub.priceId,
+      productId: sub.productId,
+      subscriptionId: sub.id,
+      stripeStatus: sub.status,
+      graceUntil,
+      lookupKey: sub.lookupKey,
+      pendingTier: pending?.tier || null,
+      pendingInterval: pending?.interval || null,
+      pendingEffectiveAt: pending?.effectiveAt || null,
+    }),
   };
 }
 
@@ -235,6 +318,28 @@ export async function syncSubscriptionFromStripe(params: {
   const secrets = getStripeBillingApiSecrets();
   const settings = await loadBillingSettings(admin);
   const plan = planFromNormalized(secrets, sub);
+  const identified = identifyNormalizedPlan(sub);
+
+  let pendingTier: SpeedVendorsTier | null = null;
+  let pendingInterval: BillingInterval | null = null;
+  let pendingEffectiveAt: string | null = null;
+  try {
+    const pending = await retrievePendingScheduleChange(secrets.secretKey, sub.scheduleId);
+    if (pending) {
+      const pendingIdentified = identifyPrice({
+        priceId: pending.priceId,
+        lookupKey: pending.lookupKey,
+        metadata: pending.priceMetadata,
+        billingInterval: pending.billingInterval,
+      });
+      pendingTier = pendingIdentified?.tier || parseTier(pending.priceMetadata.tier);
+      pendingInterval = pendingIdentified?.interval || parseInterval(pending.priceMetadata.billing_interval);
+      pendingEffectiveAt = pending.effectiveAt;
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'unknown';
+    console.error('pending schedule lookup failed', { message });
+  }
 
   const { data: existing } = await admin
     .from('billing_subscriptions')
@@ -254,7 +359,18 @@ export async function syncSubscriptionFromStripe(params: {
     graceUntil = null;
   }
 
-  const ent = entitlementFieldsFromNormalized(sub, graceUntil);
+  const ent = entitlementFieldsFromNormalized(sub, graceUntil, {
+    tier: pendingTier,
+    interval: pendingInterval,
+    effectiveAt: pendingEffectiveAt,
+  });
+
+  const subscriptionMetadata: Record<string, unknown> = {};
+  if (pendingTier && pendingInterval) {
+    subscriptionMetadata.pending_tier = pendingTier;
+    subscriptionMetadata.pending_interval = pendingInterval;
+    subscriptionMetadata.pending_effective_at = pendingEffectiveAt;
+  }
 
   const { data: syncResult, error: syncErr } = await admin.rpc(
     'sync_billing_subscription_from_stripe',
@@ -277,6 +393,8 @@ export async function syncSubscriptionFromStripe(params: {
       p_entitlement_status: ent.status,
       p_entitlement_valid_until: ent.validUntil,
       p_entitlement_metadata: ent.metadata,
+      p_tier: identified.tier,
+      p_subscription_metadata: subscriptionMetadata,
     },
   );
 
@@ -310,6 +428,29 @@ export async function resolveUserIdForStripeCustomer(
     .maybeSingle();
   if (error || !data) return null;
   return { userId: data.user_id, billingCustomerId: data.id };
+}
+
+/**
+ * Retrieve the live Stripe subscription and persist via sync_billing_subscription_from_stripe.
+ * Does not mutate Stripe.
+ */
+export async function refreshSubscriptionFromStripe(
+  admin: AdminClient,
+  subscriptionId: string,
+): Promise<NormalizedSubscription> {
+  const secrets = getStripeBillingApiSecrets();
+  const normalized = await retrieveSubscription(secrets.secretKey, subscriptionId);
+  const mapping = await resolveUserIdForStripeCustomer(admin, normalized.customerId);
+  if (!mapping) {
+    throw new Error('UNKNOWN_CUSTOMER');
+  }
+  await syncSubscriptionFromStripe({
+    admin,
+    userId: mapping.userId,
+    billingCustomerId: mapping.billingCustomerId,
+    normalized,
+  });
+  return normalized;
 }
 
 export async function hashAccessCode(plaintext: string): Promise<string> {

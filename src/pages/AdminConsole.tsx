@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useImpersonation } from '@/hooks/useImpersonation';
+import { AdminAccessCodes } from '@/components/admin/AdminAccessCodes';
 
 type MerchantRow = {
   user_id: string;
@@ -99,6 +100,7 @@ export default function AdminConsole() {
   const [search, setSearch] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [tab, setTab] = useState('overview');
+  const [section, setSection] = useState<'merchants' | 'billing'>('merchants');
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [orderSearch, setOrderSearch] = useState('');
 
@@ -396,6 +398,12 @@ export default function AdminConsole() {
           <Badge variant="secondary">MFA</Badge>
         </div>
         <div className="flex items-center gap-2">
+          <Tabs value={section} onValueChange={(v) => setSection(v as 'merchants' | 'billing')}>
+            <TabsList>
+              <TabsTrigger value="merchants">Merchants</TabsTrigger>
+              <TabsTrigger value="billing">Billing</TabsTrigger>
+            </TabsList>
+          </Tabs>
           <ThemeToggle />
           <Button variant="outline" size="sm" onClick={() => void signOut()}>
             Sign out
@@ -403,6 +411,15 @@ export default function AdminConsole() {
         </div>
       </header>
 
+      {section === 'billing' ? (
+        <div className="max-w-[1100px] mx-auto p-4 space-y-4">
+          <div>
+            <h1 className="text-lg font-semibold">Billing</h1>
+            <p className="text-sm text-muted-foreground">Access codes for complimentary SpeedVendors access.</p>
+          </div>
+          <AdminAccessCodes />
+        </div>
+      ) : (
       <div className="max-w-[1400px] mx-auto p-4 grid gap-4 lg:grid-cols-[320px_1fr]">
         <Card className="h-fit lg:sticky lg:top-16">
           <CardHeader className="pb-3">
@@ -1105,6 +1122,7 @@ export default function AdminConsole() {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

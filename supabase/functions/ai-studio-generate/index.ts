@@ -24,6 +24,10 @@ import {
   verifySpec,
 } from '../_shared/aiStudio.ts'
 import { generateV2Storefront } from '../_shared/aiStudioV2.ts'
+import {
+  isEntitlementRequiredError,
+  requireSpeedVendorsEntitlement,
+} from '../_shared/billingEntitlement.ts'
 
 const GENERATE_SYSTEM = `You are a premium ecommerce storefront design director.
 Return JSON only with:
@@ -71,6 +75,7 @@ serve(async (req) => {
   const admin = createAdmin()
   try {
     const user = await requireUser(req, admin)
+    await requireSpeedVendorsEntitlement(admin, user.id)
     const body = await req.json()
     const prompt = String(body.prompt || '').trim()
     const quality = body.quality === 'fast' ? 'fast' : 'studio'
@@ -256,6 +261,7 @@ serve(async (req) => {
     })
   } catch (err) {
     if (err instanceof AuthError) return json({ error: err.message }, 401)
+    if (isEntitlementRequiredError(err)) return json({ error: 'entitlement_required' }, 403)
     return json({ error: err instanceof Error ? err.message : 'Unknown error' }, 500)
   }
 })

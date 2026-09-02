@@ -136,6 +136,21 @@ verify_jwt = true
 [functions.billing-redeem-access-code]
 verify_jwt = true
 
+[functions.billing-admin-access-codes]
+verify_jwt = true
+
+[functions.billing-admin-sync-subscription]
+verify_jwt = true
+
+[functions.billing-admin-catalog]
+verify_jwt = true
+
+[functions.billing-change-subscription]
+verify_jwt = true
+
 # Stripe Billing webhooks — signature verified in-function (no JWT).
 [functions.billing-stripe-webhook]
 verify_jwt = false
+
+[functions.media-authorize-upload]
+verify_jwt = true

@@ -24,6 +24,7 @@ import { DeliveryPricingSettings } from '@/components/settings/DeliveryPricingSe
 import { NetopiaPaymentPanel } from '@/components/payments/NetopiaPaymentPanel';
 import { StripeConnectPanel } from '@/components/payments/StripeConnectPanel';
 import { BillingSettingsCard } from '@/components/settings/BillingSettingsCard';
+import { MediaStorageCard } from '@/components/settings/MediaStorageCard';
 import { EawbShippingPanel } from '@/components/shipping/EawbShippingPanel';
 import { useTranslation } from 'react-i18next';
 import { goToPaymentsTab } from '@/lib/openExternalUrl';
@@ -897,6 +898,7 @@ class StoreAPI {
           </Card>
 
           <BillingSettingsCard />
+          <MediaStorageCard />
 
           <PushNotificationsCard />
 

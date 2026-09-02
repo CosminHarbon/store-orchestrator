@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { resolveActingOwnerId } from '../_shared/actingAs.ts';
+import {
+  isEntitlementRequiredError,
+  requireSpeedVendorsEntitlement,
+} from '../_shared/billingEntitlement.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -73,6 +77,18 @@ serve(async (req) => {
       authHeader,
       body.acting_as_user_id || null
     );
+
+    try {
+      await requireSpeedVendorsEntitlement(supabase, user.id);
+    } catch (e) {
+      if (isEntitlementRequiredError(e)) {
+        return new Response(JSON.stringify({ error: 'entitlement_required' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      throw e;
+    }
 
     // Fetch billing addresses from eAWB API
     if (action === 'fetch_billing_addresses') {

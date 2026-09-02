@@ -22,6 +22,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
+import { useImpersonation } from '@/hooks/useImpersonation';
+import { useMerchantAccessGate } from '@/hooks/useEntitlementGate';
 import { useStoreOnboarding } from '@/hooks/useStoreOnboarding';
 import { FirstProductStep } from '@/components/onboarding/FirstProductStep';
 import {
@@ -32,6 +34,9 @@ import { EawbSetupWizard } from '@/components/shipping/EawbSetupWizard';
 import { DeliveryPricingSettings } from '@/components/settings/DeliveryPricingSettings';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { uploadMedia } from '@/lib/media/uploadMedia';
+import { deletePreviousMedia } from '@/lib/media/deleteMedia';
+import { merchantMediaMessage } from '@/lib/media/errors';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
@@ -45,8 +50,11 @@ import '@/styles/store-setup.css';
 
 const SetupWizard = () => {
   const { t } = useTranslation('onboarding');
+  const { t: tCommon } = useTranslation('common');
   const { user, loading: authLoading } = useAuth();
+  const { effectiveUserId } = useImpersonation();
   const navigate = useNavigate();
+  const { ready: entitlementReady, blocked: entitlementBlocked } = useMerchantAccessGate();
   const onboarding = useStoreOnboarding();
   const queryClient = useQueryClient();
   const [step, setStep] = useState<OnboardingStepId>('welcome');
@@ -117,7 +125,14 @@ const SetupWizard = () => {
   const shippingConnected = onboarding.derived.shipping;
   const partialReady = !paymentsConnected || !shippingConnected;
 
-  if (authLoading || onboarding.isLoading || !hydrated) {
+  if (
+    authLoading ||
+    !user ||
+    !entitlementReady ||
+    entitlementBlocked ||
+    onboarding.isLoading ||
+    !hydrated
+  ) {
     return (
       <div className="sv-setup flex min-h-screen items-center justify-center bg-[#0D0717]">
         <Loader2 className="h-7 w-7 animate-spin text-white/70" />
@@ -561,36 +576,33 @@ const SetupWizard = () => {
                         <label className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-dashed px-4 py-3 text-sm font-medium">
                           <input
                             type="file"
-                            accept="image/*"
+                            accept="image/jpeg,image/png,image/webp,image/gif"
                             className="hidden"
                             onChange={async (e) => {
                               const file = e.target.files?.[0];
-                              if (!file || !user) return;
+                              e.target.value = '';
+                              if (!file || !effectiveUserId) return;
                               setUploadingLogo(true);
                               try {
-                                const ext = file.name.split('.').pop();
-                                const path = `${user.id}/logo-${Date.now()}.${ext}`;
-                                const { error } = await supabase.storage
-                                  .from('template-images')
-                                  .upload(path, file);
-                                if (error) throw error;
-                                const { data: pub } = supabase.storage
-                                  .from('template-images')
-                                  .getPublicUrl(path);
+                                const uploaded = await uploadMedia({ file, mediaType: 'logo' });
+                                const previous = onboarding.customization?.logo_url;
                                 await supabase.from('template_customization').upsert(
                                   {
-                                    user_id: user.id,
+                                    user_id: effectiveUserId,
                                     template_id: 'elementar',
-                                    logo_url: pub.publicUrl,
+                                    logo_url: uploaded.publicUrl,
                                     store_name:
                                       onboarding.profile?.store_name || storeName || 'My Store',
                                   } as never,
                                   { onConflict: 'user_id,template_id' }
                                 );
+                                if (previous && previous !== uploaded.publicUrl) {
+                                  await deletePreviousMedia(previous);
+                                }
                                 toast.success(t('settings.logoUploaded'));
                                 onboarding.refreshCustomization();
-                              } catch {
-                                toast.error(t('settings.uploadFailed'));
+                              } catch (error) {
+                                toast.error(merchantMediaMessage(error, tCommon));
                               } finally {
                                 setUploadingLogo(false);
                               }

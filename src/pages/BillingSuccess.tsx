@@ -45,13 +45,13 @@ const BillingSuccess = () => {
           if (rpc?.has_entitlement) {
             setPhase('ready');
             const path = await resolveEntitledPostLoginPath();
-            navigate(path === '/subscribe' ? '/app' : path, { replace: true });
+            navigate(path, { replace: true });
             return;
           }
         } else if (data?.has_entitlement || (data?.enforcement_active && data?.has_access)) {
           setPhase('ready');
           const path = await resolveEntitledPostLoginPath();
-          navigate(path === '/subscribe' ? '/app' : path, { replace: true });
+          navigate(path, { replace: true });
           return;
         }
 

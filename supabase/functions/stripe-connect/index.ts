@@ -9,6 +9,10 @@ import {
   integrationStatusFromAccount,
   retrieveConnectedAccount,
 } from '../_shared/stripe.ts';
+import {
+  isEntitlementRequiredError,
+  requireSpeedVendorsEntitlement,
+} from '../_shared/billingEntitlement.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -168,6 +172,12 @@ async function requireUser(req: Request) {
   return { user, jwt };
 }
 
+async function requireEntitledUser(req: Request) {
+  const { user, jwt } = await requireUser(req);
+  await requireSpeedVendorsEntitlement(admin, user.id);
+  return { user, jwt };
+}
+
 async function loadStripeIntegration(userId: string): Promise<PaymentIntegrationRow | null> {
   const { data, error } = await admin
     .from('payment_integrations')
@@ -185,7 +195,7 @@ async function loadStripeIntegration(userId: string): Promise<PaymentIntegration
 }
 
 async function handleStartOAuth(req: Request): Promise<Response> {
-  const { user, jwt } = await requireUser(req);
+  const { user, jwt } = await requireEntitledUser(req);
   const body = await req.json().catch(() => ({})) as {
     acting_as_user_id?: string;
     client_platform?: string;
@@ -324,7 +334,7 @@ async function handleOAuthCallback(req: Request): Promise<Response> {
 }
 
 async function handleStatus(req: Request): Promise<Response> {
-  const { user, jwt } = await requireUser(req);
+  const { user, jwt } = await requireEntitledUser(req);
   const body = await req.json().catch(() => ({})) as { acting_as_user_id?: string };
   const ownerId = await resolveActingOwnerId(admin, user, jwt, body.acting_as_user_id);
   const row = await loadStripeIntegration(ownerId);
@@ -332,7 +342,7 @@ async function handleStatus(req: Request): Promise<Response> {
 }
 
 async function handleSetEnabled(req: Request): Promise<Response> {
-  const { user, jwt } = await requireUser(req);
+  const { user, jwt } = await requireEntitledUser(req);
   const body = await req.json().catch(() => ({})) as {
     acting_as_user_id?: string;
     enabled?: boolean;
@@ -365,7 +375,7 @@ async function handleSetEnabled(req: Request): Promise<Response> {
 }
 
 async function handleDisconnect(req: Request): Promise<Response> {
-  const { user, jwt } = await requireUser(req);
+  const { user, jwt } = await requireEntitledUser(req);
   const body = await req.json().catch(() => ({})) as { acting_as_user_id?: string };
   const ownerId = await resolveActingOwnerId(admin, user, jwt, body.acting_as_user_id);
   const existing = await loadStripeIntegration(ownerId);
@@ -469,6 +479,9 @@ serve(async (req) => {
         return json({ error: 'UNKNOWN_ACTION' }, 400);
     }
   } catch (err) {
+    if (isEntitlementRequiredError(err)) {
+      return json({ error: 'entitlement_required' }, 403);
+    }
     const message = (err as Error).message || 'SERVER_ERROR';
     const status = (err as { status?: number }).status || (message === 'NOT_AUTHENTICATED' ? 401 : 500);
     if (message === 'not authorized to act as another user' || message === 'MFA required to act as another user') {

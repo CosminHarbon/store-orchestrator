@@ -22,7 +22,8 @@ import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { useLanguage } from '@/i18n/LanguageProvider';
 import type { AppLanguage } from '@/i18n/types';
-import { MARKETING_PRICING, hasPrice } from '@/lib/marketingPricing';
+import { advertisedMonthlyEquivalent, advertisedPrice, hasPrice, MARKETING_PRICING } from '@/lib/marketingPricing';
+import { SPEEDVENDORS_PLANS, SPEEDVENDORS_TIERS } from '@/lib/plans/catalogue';
 import { cn } from '@/lib/utils';
 import '@/styles/marketing.css';
 
@@ -159,10 +160,6 @@ export default function Landing() {
   const steps = howSteps as { title: string; desc: string }[];
   const faqs = faqItems as { q: string; a: string }[];
   const includedList = included as string[];
-
-  const priceValue =
-    billing === 'monthly' ? MARKETING_PRICING.monthly : MARKETING_PRICING.yearly;
-  const showPrice = hasPrice(priceValue);
 
   const fade = reduceMotion
     ? {}
@@ -444,93 +441,118 @@ export default function Landing() {
             {t('landing.pricing.title')}
           </h2>
           <p className="mt-3 text-[hsl(var(--sv-ink))]/60">{t('landing.pricing.subtitle')}</p>
+          <div className="mt-6 inline-flex rounded-full border border-[hsl(var(--sv-line))] p-1 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setBilling('monthly')}
+              className={cn(
+                'rounded-full px-3 py-1.5 transition-colors',
+                billing === 'monthly'
+                  ? 'bg-[hsl(var(--sv-accent))] text-[hsl(var(--sv-on-accent))]'
+                  : 'text-[hsl(var(--sv-ink))]/55'
+              )}
+            >
+              {t('landing.pricing.monthly')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setBilling('yearly')}
+              className={cn(
+                'rounded-full px-3 py-1.5 transition-colors',
+                billing === 'yearly'
+                  ? 'bg-[hsl(var(--sv-accent))] text-[hsl(var(--sv-on-accent))]'
+                  : 'text-[hsl(var(--sv-ink))]/55'
+              )}
+            >
+              {t('landing.pricing.yearly')}
+            </button>
+          </div>
+        </motion.div>
+
+        <motion.div {...fade} className="grid gap-4 lg:grid-cols-3">
+          {SPEEDVENDORS_TIERS.map((tier) => {
+            const plan = SPEEDVENDORS_PLANS[tier];
+            const price = advertisedPrice(tier, billing);
+            return (
+              <div
+                key={tier}
+                className={cn(
+                  'rounded-3xl border bg-[hsl(var(--sv-paper))] p-6 sm:p-7 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.35)]',
+                  plan.popular
+                    ? 'border-[hsl(var(--sv-accent))] ring-1 ring-[hsl(var(--sv-accent))]/30'
+                    : 'border-[hsl(var(--sv-line))]'
+                )}
+              >
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <h3 className="font-display text-xl font-bold">{plan.name}</h3>
+                  {plan.popular ? (
+                    <span className="rounded-full bg-[hsl(var(--sv-accent))] px-2 py-0.5 text-[11px] font-semibold text-[hsl(var(--sv-on-accent))]">
+                      {t('landing.pricing.mostPopular')}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="mb-2">
+                  <span className="font-display text-4xl font-extrabold tracking-tight">{price}</span>
+                  {billing === 'monthly' ? (
+                    <span className="ml-1 text-sm text-[hsl(var(--sv-ink))]/50">
+                      {t('landing.pricing.perMonth')}
+                    </span>
+                  ) : null}
+                </div>
+                {billing === 'yearly' ? (
+                  <div className="mb-4 space-y-1">
+                    <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                      {t('landing.pricing.twoMonthsFree')}
+                    </p>
+                    <p className="text-sm text-[hsl(var(--sv-ink))]/55">
+                      {t('landing.pricing.monthlyEquivalent', {
+                        price: advertisedMonthlyEquivalent(tier),
+                      })}
+                    </p>
+                    <p className="text-sm text-[hsl(var(--sv-ink))]/55">
+                      {price} {t('landing.pricing.perYear')}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="mb-4 text-sm text-[hsl(var(--sv-ink))]/55">&nbsp;</p>
+                )}
+                <p className="mb-4 text-sm font-medium">
+                  {t('landing.pricing.storage', { size: plan.mediaQuotaGiB })}
+                </p>
+                <ul className="space-y-2 mb-6">
+                  {includedList.map((item) => (
+                    <li key={`${tier}-${item}`} className="flex gap-2.5 text-sm text-[hsl(var(--sv-ink))]/70">
+                      <Check className="h-4 w-4 shrink-0 text-[hsl(var(--sv-accent))] mt-0.5" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  size="lg"
+                  className="w-full rounded-full h-11 bg-[hsl(var(--sv-accent))] text-[hsl(var(--sv-on-accent))] hover:bg-[hsl(var(--sv-accent-deep))]"
+                  onClick={() => navigate('/auth?tab=signup')}
+                >
+                  {t('landing.pricing.cta')}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            );
+          })}
         </motion.div>
 
         <motion.div
           {...fade}
-          className="mx-auto max-w-lg rounded-3xl border border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-paper))] p-7 sm:p-9 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.35)]"
+          className="mx-auto mt-8 max-w-3xl rounded-2xl border border-dashed border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-mist))]/60 p-4 space-y-1.5"
         >
-          <div className="flex items-center justify-between gap-3 mb-6">
-            <div>
-              <h3 className="font-display text-xl font-bold">{t('landing.pricing.planName')}</h3>
-              <p className="text-sm text-[hsl(var(--sv-ink))]/55">{t('landing.pricing.planTag')}</p>
-            </div>
-            <div className="inline-flex rounded-full border border-[hsl(var(--sv-line))] p-1 text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => setBilling('monthly')}
-                className={cn(
-                  'rounded-full px-3 py-1.5 transition-colors',
-                  billing === 'monthly'
-                    ? 'bg-[hsl(var(--sv-accent))] text-[hsl(var(--sv-on-accent))]'
-                    : 'text-[hsl(var(--sv-ink))]/55'
-                )}
-              >
-                {t('landing.pricing.monthly')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setBilling('yearly')}
-                className={cn(
-                  'rounded-full px-3 py-1.5 transition-colors',
-                  billing === 'yearly'
-                    ? 'bg-[hsl(var(--sv-accent))] text-[hsl(var(--sv-on-accent))]'
-                    : 'text-[hsl(var(--sv-ink))]/55'
-                )}
-              >
-                {t('landing.pricing.yearly')}
-              </button>
-            </div>
-          </div>
-
-          <div className="mb-6 min-h-[3.5rem] flex items-end gap-2">
-            {showPrice ? (
-              <>
-                <span className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight">
-                  {priceValue}
-                </span>
-                <span className="text-sm text-[hsl(var(--sv-ink))]/50 pb-1.5">
-                  {billing === 'monthly'
-                    ? t('landing.pricing.perMonth')
-                    : t('landing.pricing.perYear')}
-                </span>
-              </>
-            ) : (
-              <span className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-[hsl(var(--sv-ink))]/45">
-                {t('landing.pricing.comingSoon')}
-              </span>
-            )}
-          </div>
-
-          <ul className="space-y-2.5 mb-8">
-            {includedList.map((item) => (
-              <li key={item} className="flex gap-2.5 text-sm text-[hsl(var(--sv-ink))]/70">
-                <Check className="h-4 w-4 shrink-0 text-[hsl(var(--sv-accent))] mt-0.5" />
-                {item}
-              </li>
-            ))}
-          </ul>
-
-          <div className="rounded-2xl border border-dashed border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-mist))]/60 p-4 mb-6 space-y-1.5">
-            <p className="text-sm font-semibold">{t('landing.pricing.setupTitle')}</p>
-            <p className="text-sm text-[hsl(var(--sv-ink))]/60 leading-relaxed">
-              {t('landing.pricing.setupBody')}
-            </p>
-            {hasPrice(MARKETING_PRICING.setupFee) ? (
-              <p className="text-sm font-medium pt-1">{MARKETING_PRICING.setupFee}</p>
-            ) : (
-              <p className="text-xs text-[hsl(var(--sv-ink))]/45 pt-1">{t('landing.pricing.setupFeeTbd')}</p>
-            )}
-          </div>
-
-          <Button
-            size="lg"
-            className="w-full rounded-full h-12 bg-[hsl(var(--sv-accent))] text-[hsl(var(--sv-on-accent))] hover:bg-[hsl(var(--sv-accent-deep))]"
-            onClick={() => navigate('/auth?tab=signup')}
-          >
-            {t('landing.pricing.cta')}
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
+          <p className="text-sm font-semibold">{t('landing.pricing.setupTitle')}</p>
+          <p className="text-sm text-[hsl(var(--sv-ink))]/60 leading-relaxed">
+            {t('landing.pricing.setupBody')}
+          </p>
+          {hasPrice(MARKETING_PRICING.setupFee) ? (
+            <p className="text-sm font-medium pt-1">{MARKETING_PRICING.setupFee}</p>
+          ) : (
+            <p className="text-xs text-[hsl(var(--sv-ink))]/45 pt-1">{t('landing.pricing.setupFeeTbd')}</p>
+          )}
         </motion.div>
       </Section>
 

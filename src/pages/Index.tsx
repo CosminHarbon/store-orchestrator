@@ -7,6 +7,7 @@ import { AppSidebar } from '@/components/AppSidebar';
 import { MobileHeader } from '@/components/MobileHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { useImpersonation } from '@/hooks/useImpersonation';
+import { useMerchantAccessGate } from '@/hooks/useEntitlementGate';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -125,26 +126,13 @@ const Index = () => {
     }
   }, []);
 
+  const { ready: entitlementReady, blocked: entitlementBlocked } = useMerchantAccessGate();
+
   useEffect(() => {
     if (!loading && !user) {
       navigate('/');
     }
   }, [user, loading, navigate]);
-
-  // Subscription gate (no-op while enforcement_enabled is false)
-  useEffect(() => {
-    const checkEntitlement = async () => {
-      if (!user || loading) return;
-      if (isImpersonating) return;
-      const { data: isSuper } = await supabase.rpc('is_superadmin_user');
-      if (isSuper) return;
-      const { data } = await supabase.rpc('get_my_entitlement_status');
-      if (data?.enforcement_enabled && data?.has_access === false) {
-        navigate('/subscribe', { replace: true });
-      }
-    };
-    void checkEntitlement();
-  }, [user, loading, navigate, isImpersonating]);
 
   // Platform operators use /admin unless they are impersonating a merchant store
   useEffect(() => {
@@ -159,11 +147,12 @@ const Index = () => {
     void routeSuperadmin();
   }, [user, navigate, isImpersonating]);
 
-  // Auto-open store setup for first-time merchants only
+  // Auto-open store setup only AFTER entitlement is confirmed.
   useEffect(() => {
     const checkSetup = async () => {
       if (!user || !effectiveUserId) return;
       if (isImpersonating) return;
+      if (!entitlementReady || entitlementBlocked) return;
       const { data: isSuper } = await supabase.rpc('is_superadmin_user');
       if (isSuper) return;
       const { data: profile } = await supabase
@@ -181,8 +170,8 @@ const Index = () => {
       }
     };
 
-    checkSetup();
-  }, [user, navigate, effectiveUserId, isImpersonating]);
+    void checkSetup();
+  }, [user, navigate, effectiveUserId, isImpersonating, entitlementReady, entitlementBlocked]);
 
   const { data: profileData } = useQuery({
     queryKey: ['dashboard-profile', effectiveUserId],
@@ -197,7 +186,7 @@ const Index = () => {
     enabled: !!effectiveUserId,
   });
 
-  if (loading) {
+  if (loading || (user && !entitlementReady) || entitlementBlocked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-2">

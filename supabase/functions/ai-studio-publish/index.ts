@@ -12,6 +12,10 @@ import {
   specToBlocks,
   specToCustomization,
 } from '../_shared/aiStudio.ts'
+import {
+  isEntitlementRequiredError,
+  requireSpeedVendorsEntitlement,
+} from '../_shared/billingEntitlement.ts'
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
@@ -20,6 +24,7 @@ serve(async (req) => {
   const admin = createAdmin()
   try {
     const user = await requireUser(req, admin)
+    await requireSpeedVendorsEntitlement(admin, user.id)
     const storefront = await ensureStorefront(admin, user.id)
     if (!storefront.draft_spec) return json({ error: 'Nothing to publish yet' }, 400)
 
@@ -77,6 +82,7 @@ serve(async (req) => {
     return json({ ok: true, version, liveUrl })
   } catch (err) {
     if (err instanceof AuthError) return json({ error: err.message }, 401)
+    if (isEntitlementRequiredError(err)) return json({ error: 'entitlement_required' }, 403)
     return json({ error: err instanceof Error ? err.message : 'Unknown error' }, 500)
   }
 })

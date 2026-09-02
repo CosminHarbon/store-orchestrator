@@ -1,5 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import {
+  isEntitlementRequiredError,
+  requireSpeedVendorsEntitlement,
+} from '../_shared/billingEntitlement.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,6 +33,18 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader);
     if (authError || !user) {
       throw new Error('Authentication failed');
+    }
+
+    try {
+      await requireSpeedVendorsEntitlement(supabase, user.id);
+    } catch (e) {
+      if (isEntitlementRequiredError(e)) {
+        return new Response(JSON.stringify({ error: 'entitlement_required' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      throw e;
     }
 
     // Get profile

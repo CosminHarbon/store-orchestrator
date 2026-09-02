@@ -36,6 +36,10 @@ import {
 } from '@/components/ui/sheet';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
+import { mapPool, uploadMedia } from '@/lib/media/uploadMedia';
+import { deleteMediaAsset } from '@/lib/media/deleteMedia';
+import { merchantMediaMessage } from '@/lib/media/errors';
 import { formatRon, type ProductMetrics } from '@/lib/productAnalytics';
 import {
   normalizeReviewStatus,
@@ -45,7 +49,7 @@ import {
   type ReviewStatus,
 } from '@/lib/reviewAnalytics';
 import { cn } from '@/lib/utils';
-import { getStoredImpersonationUserId, resolveTenantUserId } from '@/hooks/useImpersonation';
+import { resolveTenantUserId } from '@/hooks/useImpersonation';
 
 export interface EditorProduct {
   id: string;
@@ -137,10 +141,14 @@ export function ProductEditorDrawer({
   discounts,
 }: ProductEditorDrawerProps) {
   const queryClient = useQueryClient();
+  const { t } = useTranslation('common');
   const [form, setForm] = useState<FormState | null>(null);
   const [baseline, setBaseline] = useState<FormState | null>(null);
   const [skuError, setSkuError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploadPhase, setUploadPhase] = useState<'optimizing' | 'uploading' | 'finalizing' | null>(
+    null,
+  );
   const [previewDescription, setPreviewDescription] = useState(false);
   const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>([]);
   const [baselineCollections, setBaselineCollections] = useState<string[]>([]);
@@ -545,48 +553,44 @@ export function ProductEditorDrawer({
 
   const uploadFiles = async (files: FileList | File[]) => {
     if (!product) return;
-    const list = Array.from(files).filter((f) => f.type.startsWith('image/'));
+    const list = Array.from(files).filter((f) => f.type.startsWith('image/') || !f.type);
     if (!list.length) {
       toast.error('Please drop image files');
       return;
     }
     try {
-      const user = await supabase.auth.getUser();
-      if (!user.data.user) throw new Error('Not authenticated');
-      const tenantUserId = getStoredImpersonationUserId() || user.data.user.id;
       let maxOrder = images.length ? Math.max(...images.map((i) => i.display_order)) : 0;
-      for (const file of list) {
-        if (file.size > 10 * 1024 * 1024) {
-          toast.error(`${file.name} is larger than 10MB`);
-          continue;
-        }
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${tenantUserId}/${product.id}/${Date.now()}-${Math.random()
-          .toString(36)
-          .slice(2)}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
-          .from('product-images')
-          .upload(fileName, file);
-        if (uploadError) throw uploadError;
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from('product-images').getPublicUrl(fileName);
+      const medias = await mapPool(list, 2, async (file) =>
+        uploadMedia({
+          file,
+          mediaType: 'product',
+          relatedEntityId: product.id,
+          onProgress: setUploadPhase,
+        }),
+      );
+      for (const media of medias) {
         maxOrder += 1;
         const { error } = await supabase.from('product_images').insert({
           product_id: product.id,
-          image_url: publicUrl,
+          image_url: media.publicUrl,
           is_primary: images.length === 0 && maxOrder === 1,
           display_order: maxOrder,
         });
-        if (error) throw error;
+        if (error) {
+          await deleteMediaAsset({ assetId: media.assetId });
+          throw error;
+        }
       }
       queryClient.invalidateQueries({ queryKey: ['product-images', product.id] });
       queryClient.invalidateQueries({ queryKey: ['all-product-images'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['media-usage'] });
       toast.success('Image(s) uploaded');
     } catch (e) {
       console.error(e);
-      toast.error('Failed to upload image');
+      toast.error(merchantMediaMessage(e, t));
+    } finally {
+      setUploadPhase(null);
     }
   };
 
@@ -614,12 +618,15 @@ export function ProductEditorDrawer({
   const deleteImage = async (image: ProductImage) => {
     if (!product) return;
     if (!confirm('Delete this image?')) return;
-    const urlParts = image.image_url.split('/');
-    const fileName = urlParts.slice(-3).join('/');
-    await supabase.storage.from('product-images').remove([fileName]);
-    const { error } = await supabase.from('product_images').delete().eq('id', image.id);
-    if (error) {
-      toast.error('Failed to delete image');
+    try {
+      const { error } = await supabase.from('product_images').delete().eq('id', image.id);
+      if (error) {
+        toast.error('Failed to delete image');
+        return;
+      }
+      await deleteMediaAsset({ publicUrl: image.image_url });
+    } catch (e) {
+      toast.error(merchantMediaMessage(e, t));
       return;
     }
     queryClient.invalidateQueries({ queryKey: ['product-images', product.id] });
@@ -821,12 +828,20 @@ export function ProductEditorDrawer({
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Upload className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm font-medium">Drop images here or click to upload</p>
-                <p className="text-xs text-muted-foreground mt-1">JPG, PNG, WebP · max 10MB</p>
+                <p className="text-sm font-medium">
+                  {uploadPhase === 'optimizing'
+                    ? t('media.optimizing')
+                    : uploadPhase === 'finalizing'
+                      ? t('media.finalizing')
+                      : uploadPhase === 'uploading'
+                        ? t('media.uploading')
+                        : 'Drop images here or click to upload'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">{t('media.photoHint')}</p>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
                   multiple
                   className="hidden"
                   onChange={(e) => {
@@ -1251,7 +1266,7 @@ export function ProductEditorDrawer({
                 <Button
                   type="button"
                   variant="destructive"
-                  onClick={() => {
+                  onClick={async () => {
                     if (!confirm('Delete this product?')) return;
                     onDeleted(product.id);
                   }}

@@ -16,6 +16,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { useImpersonation } from '@/hooks/useImpersonation';
+import { useTranslation } from 'react-i18next';
+import { uploadMedia } from '@/lib/media/uploadMedia';
+import { deletePreviousMedia } from '@/lib/media/deleteMedia';
+import { merchantMediaMessage } from '@/lib/media/errors';
 import BlockEditor, { TemplateBlock } from './BlockEditor';
 
 interface ExtendedCustomization {
@@ -123,6 +128,8 @@ export const LiveTemplateEditor = ({
   onBlocksChange
 }: LiveTemplateEditorProps) => {
   const { user } = useAuth();
+  const { effectiveUserId } = useImpersonation();
+  const { t } = useTranslation('common');
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState({ hero: false, logo: false });
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -150,7 +157,7 @@ export const LiveTemplateEditor = ({
         .from('template_customization')
         .upsert({
           ...data,
-          user_id: user?.id,
+          user_id: effectiveUserId || user?.id,
           template_id: 'elementar'
         } as any);
       
@@ -167,35 +174,40 @@ export const LiveTemplateEditor = ({
     }
   });
 
+  const persistImageField = async (
+    field: 'hero_image_url' | 'logo_url',
+    value: string | null,
+  ) => {
+    const ownerId = effectiveUserId || user?.id;
+    if (!ownerId) throw new Error('not authenticated');
+    const next = { ...customization, [field]: value };
+    onCustomizationChange(next);
+    const { error } = await supabase.from('template_customization').upsert({
+      ...next,
+      user_id: ownerId,
+      template_id: next.template_id || 'elementar',
+    } as never);
+    if (error) throw error;
+    setHasUnsavedChanges(true);
+  };
+
   const uploadImage = async (file: File, type: 'hero' | 'logo') => {
     if (!user) return;
-    
-    setUploading(prev => ({ ...prev, [type]: true }));
-    
+    setUploading((prev) => ({ ...prev, [type]: true }));
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${type}-${Date.now()}.${fileExt}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('template-images')
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('template-images')
-        .getPublicUrl(fileName);
-
-      updateCustomization({
-        [type === 'hero' ? 'hero_image_url' : 'logo_url']: publicUrl
-      });
-
+      const field = type === 'hero' ? 'hero_image_url' : 'logo_url';
+      const previous = customization[field];
+      const uploaded = await uploadMedia({ file, mediaType: type });
+      await persistImageField(field, uploaded.publicUrl);
+      if (previous && previous !== uploaded.publicUrl) {
+        await deletePreviousMedia(previous);
+      }
       toast.success(`${type === 'hero' ? 'Hero image' : 'Logo'} uploaded!`);
     } catch (error) {
-      toast.error(`Failed to upload ${type}`);
+      toast.error(merchantMediaMessage(error, t));
       console.error(error);
     } finally {
-      setUploading(prev => ({ ...prev, [type]: false }));
+      setUploading((prev) => ({ ...prev, [type]: false }));
     }
   };
 
@@ -543,7 +555,12 @@ export const LiveTemplateEditor = ({
                     className="w-full h-full object-cover"
                   />
                   <button
-                    onClick={() => updateCustomization({ hero_image_url: null })}
+                    onClick={() => {
+                      const previous = customization.hero_image_url;
+                      void persistImageField('hero_image_url', null)
+                        .then(() => deletePreviousMedia(previous))
+                        .catch((error) => toast.error(merchantMediaMessage(error, t)));
+                    }}
                     className="absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-md"
                   >
                     <X className="h-3 w-3" />
@@ -553,7 +570,7 @@ export const LiveTemplateEditor = ({
               <div className="relative">
                 <Input
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) uploadImage(file, 'hero');
@@ -577,7 +594,12 @@ export const LiveTemplateEditor = ({
                     className="max-w-full max-h-full object-contain"
                   />
                   <button
-                    onClick={() => updateCustomization({ logo_url: null })}
+                    onClick={() => {
+                      const previous = customization.logo_url;
+                      void persistImageField('logo_url', null)
+                        .then(() => deletePreviousMedia(previous))
+                        .catch((error) => toast.error(merchantMediaMessage(error, t)));
+                    }}
                     className="absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-md"
                   >
                     <X className="h-3 w-3" />
@@ -587,7 +609,7 @@ export const LiveTemplateEditor = ({
               <div className="relative">
                 <Input
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) uploadImage(file, 'logo');

@@ -40,6 +40,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
+import { deleteEntityMedia } from '@/lib/media/deleteMedia';
 import { toast } from 'sonner';
 import { ExportDialog } from '@/components/export/ExportDialog';
 import type { ExportRow } from '@/lib/export/types';
@@ -474,9 +475,11 @@ const ProductManagement = () => {
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('products').delete().eq('id', id);
       if (error) throw error;
+      await deleteEntityMedia('product', id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['media-usage'] });
       toast.success(tProducts('toast.deleted'));
     },
     onError: (error) => {

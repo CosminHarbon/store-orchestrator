@@ -3,8 +3,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.53.0';
 import { ensureBillingCustomer } from '../_shared/billingEntitlement.ts';
 import {
   billingCorsHeaders,
+  getBillingAppOrigin,
   getStripeBillingApiSecrets,
   stripeBillingFormPost,
+  stripeEnvironmentLabel,
 } from '../_shared/billingStripe.ts';
 
 const cors = billingCorsHeaders();
@@ -14,19 +16,6 @@ function json(body: unknown, status = 200): Response {
     status,
     headers: { ...cors, 'Content-Type': 'application/json' },
   });
-}
-
-function getAppOrigin(): string {
-  const raw = (Deno.env.get('APP_ORIGIN') || '').trim();
-  if (!raw) throw new Error('APP_ORIGIN_MISSING');
-  const url = new URL(raw);
-  const isLocalHttp =
-    url.protocol === 'http:' &&
-    (url.hostname === 'localhost' || url.hostname === '127.0.0.1');
-  if (url.protocol !== 'https:' && !isLocalHttp) {
-    throw new Error('APP_ORIGIN_INVALID');
-  }
-  return url.origin;
 }
 
 serve(async (req) => {
@@ -50,6 +39,11 @@ serve(async (req) => {
     } = await userClient.auth.getUser();
     if (authError || !user) return json({ error: 'unauthorized' }, 401);
 
+    const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+    if (body.client_surface === 'native') {
+      return json({ error: 'native_billing_blocked' }, 403);
+    }
+
     // Never accept stripe_customer_id from the client; never use impersonation.
     const secrets = getStripeBillingApiSecrets();
     const admin = createClient(supabaseUrl, service);
@@ -61,7 +55,11 @@ serve(async (req) => {
 
     const params = new URLSearchParams();
     params.set('customer', customer.stripe_customer_id);
-    params.set('return_url', `${getAppOrigin()}/app?tab=settings`);
+    params.set('return_url', `${getBillingAppOrigin()}/app?tab=settings`);
+    const configurationId = (Deno.env.get('STRIPE_PORTAL_CONFIGURATION_ID') || '').trim();
+    if (configurationId.startsWith('bpc_')) {
+      params.set('configuration', configurationId);
+    }
 
     const portal = await stripeBillingFormPost(
       secrets.secretKey,
@@ -71,7 +69,10 @@ serve(async (req) => {
     const url = typeof portal.url === 'string' ? portal.url : null;
     if (!url) return json({ error: 'portal_session_failed' }, 500);
 
-    console.log('billing portal created', { user_id: user.id });
+    console.log('billing portal created', {
+      user_id: user.id,
+      stripe_environment: stripeEnvironmentLabel(secrets.livemode),
+    });
     return json({ url });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'unknown';

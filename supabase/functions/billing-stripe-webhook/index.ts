@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.53.0';
 import {
+  refreshSubscriptionFromStripe,
   resolveUserIdForStripeCustomer,
   syncSubscriptionFromStripe,
 } from '../_shared/billingEntitlement.ts';
@@ -8,9 +9,9 @@ import {
   constructStripeBillingEvent,
   getStripeBillingSecrets,
   normalizeStripeSubscription,
-  retrieveSubscription,
   sanitizeBillingWebhookError,
   sha256Hex,
+  stripeEnvironmentLabel,
   subscriptionIdFromInvoice,
 } from '../_shared/billingStripe.ts';
 
@@ -30,22 +31,7 @@ type ClaimResult = {
 };
 
 async function syncBySubscriptionId(subscriptionId: string): Promise<void> {
-  const secrets = getStripeBillingSecrets();
-  const normalized = await retrieveSubscription(secrets.secretKey, subscriptionId);
-  const mapping = await resolveUserIdForStripeCustomer(admin, normalized.customerId);
-  if (!mapping) {
-    console.error('billing webhook: unknown customer for subscription', {
-      subscription_id: subscriptionId,
-      customer_prefix: normalized.customerId.slice(0, 8),
-    });
-    throw new Error('UNKNOWN_CUSTOMER');
-  }
-  await syncSubscriptionFromStripe({
-    admin,
-    userId: mapping.userId,
-    billingCustomerId: mapping.billingCustomerId,
-    normalized,
-  });
+  await refreshSubscriptionFromStripe(admin, subscriptionId);
 }
 
 async function handleEvent(type: string, obj: Record<string, unknown>): Promise<void> {
@@ -132,10 +118,27 @@ serve(async (req) => {
   const rawBody = await req.text();
   const signature = req.headers.get('stripe-signature');
 
-  let event: { id: string; type: string; data: { object: Record<string, unknown> } };
+  let event: {
+    id: string;
+    type: string;
+    livemode: boolean;
+    data: { object: Record<string, unknown> };
+  };
   try {
     const secrets = getStripeBillingSecrets();
     event = await constructStripeBillingEvent(rawBody, signature, secrets.webhookSecret);
+    if (event.livemode !== secrets.livemode) {
+      console.error('billing webhook livemode mismatch', {
+        event_id: event.id,
+        event_type: event.type,
+        event_livemode: event.livemode,
+        stripe_environment: stripeEnvironmentLabel(secrets.livemode),
+      });
+      return new Response(
+        JSON.stringify({ received: true, skipped: 'livemode_mismatch' }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'unknown';
     console.error('billing webhook signature failed', { message });
@@ -178,7 +181,11 @@ serve(async (req) => {
     await handleEvent(event.type, event.data.object);
     await admin.rpc('expire_lapsed_stripe_grace');
     ok = true;
-    console.log('billing webhook processed', { type: event.type, id: event.id });
+    console.log('billing webhook processed', {
+      type: event.type,
+      id: event.id,
+      stripe_environment: stripeEnvironmentLabel(event.livemode),
+    });
     return new Response(JSON.stringify({ received: true }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },

@@ -103,7 +103,8 @@ const AuthCallback = () => {
       setUpdatingPassword(false);
     } else {
       toast.success('Password updated successfully!');
-      navigate('/app');
+      const path = await resolvePostLoginPath();
+      navigate(path.startsWith('/auth') ? '/auth?verify=1' : path);
     }
   };
 

@@ -8,6 +8,10 @@ import {
   sseResponse,
 } from '../_shared/aiStudio.ts'
 import { runVisualCritiqueCycle } from '../_shared/aiStudioV2Critique.ts'
+import {
+  isEntitlementRequiredError,
+  requireSpeedVendorsEntitlement,
+} from '../_shared/billingEntitlement.ts'
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
@@ -16,6 +20,7 @@ serve(async (req) => {
   const admin = createAdmin()
   try {
     const user = await requireUser(req, admin)
+    await requireSpeedVendorsEntitlement(admin, user.id)
     const body = await req.json()
 
     const designSpec = body.designSpec
@@ -81,6 +86,7 @@ serve(async (req) => {
     })
   } catch (err) {
     if (err instanceof AuthError) return json({ error: err.message }, 401)
+    if (isEntitlementRequiredError(err)) return json({ error: 'entitlement_required' }, 403)
     return json({ error: err instanceof Error ? err.message : 'Unknown error' }, 500)
   }
 })

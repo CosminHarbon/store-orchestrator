@@ -32,6 +32,7 @@ const Auth = () => {
   const { signIn, signUp, resendSignupEmail, user } = useAuth();
   const navigate = useNavigate();
   const [canResend, setCanResend] = useState(false);
+  const needsEmailVerification = searchParams.get('verify') === '1';
 
   useEffect(() => {
     // On native platforms, redirect to welcome if user hasn't seen it
@@ -44,7 +45,10 @@ const Auth = () => {
     }
     
     if (user) {
-      void resolvePostLoginPath().then((path) => navigate(path, { replace: true }));
+      void resolvePostLoginPath().then((path) => {
+        if (path.startsWith('/auth')) return;
+        navigate(path, { replace: true });
+      });
     }
   }, [user, navigate]);
 
@@ -94,7 +98,9 @@ const Auth = () => {
     } else {
       toast.success(t('toast.signedIn'));
       const path = await resolvePostLoginPath();
-      navigate(path, { replace: true });
+      if (!path.startsWith('/auth')) {
+        navigate(path, { replace: true });
+      }
     }
     
     setLoading(false);
@@ -204,6 +210,11 @@ const Auth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {needsEmailVerification ? (
+            <Alert className="mb-4">
+              <AlertDescription>{t('verify.needed')}</AlertDescription>
+            </Alert>
+          ) : null}
           {showResetPassword ? (
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div className="space-y-2">

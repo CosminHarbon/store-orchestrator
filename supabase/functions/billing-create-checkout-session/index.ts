@@ -4,17 +4,25 @@ import {
   ensureBillingCustomer,
   findLocalOpenSubscription,
 } from '../_shared/billingEntitlement.ts';
+import { applySpeedVendorsCheckoutCustomerFields, resolveSpeedVendorsPrice } from '../_shared/billingCatalog.ts';
 import {
   billingCorsHeaders,
   expireCheckoutSession,
+  getBillingAppOrigin,
   getStripeBillingApiSecrets,
   isOpenBillingSubscriptionStatus,
   listOpenCheckoutSessionsForCustomer,
   listStripeSubscriptionsForCustomer,
-  priceIdForPlan,
   stripeBillingFormPost,
-  type PlanInterval,
+  stripeEnvironmentLabel,
 } from '../_shared/billingStripe.ts';
+import {
+  parseInterval,
+  parseTier,
+  SPEEDVENDORS_PLANS,
+  type BillingInterval,
+  type SpeedVendorsTier,
+} from '../_shared/speedvendorsPlans.ts';
 
 const cors = billingCorsHeaders();
 
@@ -25,31 +33,20 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-function getAppOrigin(): string {
-  const raw = (Deno.env.get('APP_ORIGIN') || '').trim();
-  if (!raw) throw new Error('APP_ORIGIN_MISSING');
-  const url = new URL(raw);
-  const isLocalHttp =
-    url.protocol === 'http:' &&
-    (url.hostname === 'localhost' || url.hostname === '127.0.0.1');
-  if (url.protocol !== 'https:' && !isLocalHttp) {
-    throw new Error('APP_ORIGIN_INVALID');
-  }
-  return url.origin;
-}
-
 function blockingSubscriptionResponse(params: {
   status: string;
   plan: string | null;
+  tier: string | null;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
 }): Response {
-  const { status, plan, currentPeriodEnd, cancelAtPeriodEnd } = params;
+  const { status, plan, tier, currentPeriodEnd, cancelAtPeriodEnd } = params;
   if (cancelAtPeriodEnd && (status === 'active' || status === 'trialing')) {
     return json(
       {
         error: 'subscription_canceling',
         plan,
+        tier,
         status,
         current_period_end: currentPeriodEnd,
       },
@@ -61,6 +58,7 @@ function blockingSubscriptionResponse(params: {
       {
         error: 'subscription_incomplete',
         plan,
+        tier,
         status,
         current_period_end: currentPeriodEnd,
       },
@@ -71,11 +69,29 @@ function blockingSubscriptionResponse(params: {
     {
       error: 'already_subscribed',
       plan,
+      tier,
       status,
       current_period_end: currentPeriodEnd,
     },
     409,
   );
+}
+
+function requestedPlan(body: Record<string, unknown>): {
+  tier: SpeedVendorsTier;
+  interval: BillingInterval;
+} | null {
+  if (typeof body.price_id === 'string' || typeof body.amount === 'number' || typeof body.amount === 'string') {
+    return null;
+  }
+  const tier = parseTier(typeof body.tier === 'string' ? body.tier : null);
+  const interval =
+    parseInterval(typeof body.interval === 'string' ? body.interval : null) ||
+    parseInterval(typeof body.plan === 'string' ? body.plan : null);
+  if (tier && interval) return { tier, interval };
+  // Legacy body `{ plan: 'monthly' | 'yearly' }` maps to START.
+  if (!tier && interval) return { tier: 'start', interval };
+  return null;
 }
 
 serve(async (req) => {
@@ -107,13 +123,15 @@ serve(async (req) => {
       return json({ error: 'email_not_verified' }, 403);
     }
 
-    const body = await req.json().catch(() => ({}));
-    const plan = (body.plan === 'yearly' ? 'yearly' : body.plan === 'monthly' ? 'monthly' : null) as
-      | PlanInterval
-      | null;
-    if (!plan) return json({ error: 'invalid_plan' }, 400);
+    const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+    if (body.client_surface === 'native') {
+      return json({ error: 'native_billing_blocked' }, 403);
+    }
+    const requested = requestedPlan(body);
+    if (!requested) return json({ error: 'invalid_plan' }, 400);
 
     const secrets = getStripeBillingApiSecrets();
+    const stripeEnv = stripeEnvironmentLabel(secrets.livemode);
     const admin = createClient(supabaseUrl, service);
     const customer = await ensureBillingCustomer({
       admin,
@@ -126,6 +144,7 @@ serve(async (req) => {
       return blockingSubscriptionResponse({
         status: localOpen.status,
         plan: localOpen.plan,
+        tier: localOpen.tier,
         currentPeriodEnd: localOpen.current_period_end,
         cancelAtPeriodEnd: localOpen.cancel_at_period_end,
       });
@@ -140,18 +159,24 @@ serve(async (req) => {
       return blockingSubscriptionResponse({
         status: stripeOpen.status,
         plan: stripeOpen.billingInterval === 'year' ? 'yearly' : stripeOpen.billingInterval === 'month' ? 'monthly' : null,
+        tier: null,
         currentPeriodEnd: stripeOpen.currentPeriodEnd,
         cancelAtPeriodEnd: stripeOpen.cancelAtPeriodEnd,
       });
     }
 
-    const priceId = priceIdForPlan(secrets, plan);
+    const resolved = await resolveSpeedVendorsPrice(
+      secrets.secretKey,
+      requested.tier,
+      requested.interval,
+      { allowCreate: !secrets.livemode },
+    );
     const openSessions = await listOpenCheckoutSessionsForCustomer(
       secrets.secretKey,
       customer.stripe_customer_id,
     );
     for (const session of openSessions) {
-      if (session.plan === plan && session.url) {
+      if (session.tier === requested.tier && session.interval === requested.interval && session.url) {
         return json({ url: session.url, session_id: session.id, resumed: true });
       }
       try {
@@ -162,7 +187,7 @@ serve(async (req) => {
       }
     }
 
-    const origin = getAppOrigin();
+    const origin = getBillingAppOrigin();
     const params = new URLSearchParams();
     params.set('mode', 'subscription');
     params.set('customer', customer.stripe_customer_id);
@@ -170,12 +195,23 @@ serve(async (req) => {
     params.set('success_url', `${origin}/billing/success?session_id={CHECKOUT_SESSION_ID}`);
     params.set('cancel_url', `${origin}/subscribe`);
     params.set('allow_promotion_codes', 'true');
-    params.set('line_items[0][price]', priceId);
+    applySpeedVendorsCheckoutCustomerFields(params);
+    params.set('line_items[0][price]', resolved.priceId);
     params.set('line_items[0][quantity]', '1');
     params.set('metadata[speedvendors_user_id]', user.id);
-    params.set('metadata[plan]', plan);
+    params.set('metadata[tier]', requested.tier);
+    params.set('metadata[billing_interval]', requested.interval);
+    params.set('metadata[plan]', requested.interval);
+    params.set('metadata[lookup_key]', resolved.lookupKey);
     params.set('subscription_data[metadata][speedvendors_user_id]', user.id);
-    params.set('subscription_data[metadata][plan]', plan);
+    params.set('subscription_data[metadata][tier]', requested.tier);
+    params.set('subscription_data[metadata][billing_interval]', requested.interval);
+    params.set('subscription_data[metadata][plan]', requested.interval);
+    params.set('subscription_data[metadata][lookup_key]', resolved.lookupKey);
+    params.set(
+      'subscription_data[metadata][media_quota_bytes]',
+      String(SPEEDVENDORS_PLANS[requested.tier].mediaQuotaBytes),
+    );
 
     const session = await stripeBillingFormPost(
       secrets.secretKey,
@@ -189,12 +225,19 @@ serve(async (req) => {
       return json({ error: 'checkout_session_failed' }, 500);
     }
 
-    console.log('billing checkout created', { user_id: user.id, plan, session_id: id });
+    console.log('billing checkout created', {
+      user_id: user.id,
+      tier: requested.tier,
+      interval: requested.interval,
+      lookup_key: resolved.lookupKey,
+      stripe_environment: stripeEnv,
+      session_id: id,
+    });
     return json({ url, session_id: id });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'unknown';
     console.error('billing-create-checkout-session failed', { message });
-    if (message.includes('NOT_CONFIGURED') || message === 'APP_ORIGIN_MISSING') {
+    if (message.includes('NOT_CONFIGURED') || message === 'APP_ORIGIN_MISSING' || message === 'STRIPE_PRICE_LOOKUP_FAILED') {
       return json({ error: 'billing_not_configured' }, 503);
     }
     return json({ error: 'server_error' }, 500);

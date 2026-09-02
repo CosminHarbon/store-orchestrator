@@ -5,7 +5,7 @@ import {
   isSuperadminUserId,
   userHasActiveEntitlement,
 } from '../_shared/billingEntitlement.ts';
-import { billingCorsHeaders } from '../_shared/billingStripe.ts';
+import { billingCorsHeaders, isBillingEnforcementEnvAllowed } from '../_shared/billingStripe.ts';
 
 const cors = billingCorsHeaders();
 
@@ -49,6 +49,7 @@ serve(async (req) => {
     }
 
     const admin = createClient(supabaseUrl, service);
+    const envAllows = isBillingEnforcementEnvAllowed();
     const enforcementActive = await isBillingEnforcementActive(admin);
     const superadmin = await isSuperadminUserId(admin, user.id);
     const hasEntitlement = await userHasActiveEntitlement(admin, user.id);
@@ -56,8 +57,10 @@ serve(async (req) => {
 
     return json({
       ...(typeof rpcStatus === 'object' && rpcStatus ? rpcStatus : {}),
-      // Edge env ∧ DB flag (stricter than DB-only RPC when env still false).
+      // Edge: effective = DB canonical ∧ env allows (kill switch can only force OFF).
       enforcement_active: enforcementActive,
+      enforcement_enabled: enforcementActive,
+      env_allows: envAllows,
       has_access: hasAccess,
       has_entitlement: hasEntitlement,
       is_superadmin: superadmin,

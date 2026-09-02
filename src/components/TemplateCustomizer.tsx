@@ -10,6 +10,11 @@ import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { useImpersonation } from '@/hooks/useImpersonation';
+import { useTranslation } from 'react-i18next';
+import { uploadMedia } from '@/lib/media/uploadMedia';
+import { deletePreviousMedia } from '@/lib/media/deleteMedia';
+import { merchantMediaMessage } from '@/lib/media/errors';
 
 interface TemplateCustomization {
   id?: string;
@@ -30,6 +35,9 @@ interface TemplateCustomization {
 
 export const TemplateCustomizer = () => {
   const { user } = useAuth();
+  const { effectiveUserId } = useImpersonation();
+  const ownerId = effectiveUserId || user?.id;
+  const { t } = useTranslation('common');
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState({ hero: false, logo: false });
   
@@ -50,19 +58,19 @@ export const TemplateCustomizer = () => {
   });
 
   const { data: existingCustomization, isLoading } = useQuery({
-    queryKey: ['template-customization', user?.id],
+    queryKey: ['template-customization', ownerId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('template_customization')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('user_id', ownerId)
         .eq('template_id', 'elementar')
         .single();
       
       if (error && error.code !== 'PGRST116') throw error;
       return data as TemplateCustomization | null;
     },
-    enabled: !!user
+    enabled: !!ownerId
   });
 
   useEffect(() => {
@@ -77,7 +85,7 @@ export const TemplateCustomizer = () => {
         .from('template_customization')
         .upsert({
           ...data,
-          user_id: user?.id,
+          user_id: ownerId,
           template_id: 'elementar'
         });
       
@@ -95,31 +103,20 @@ export const TemplateCustomizer = () => {
 
   const uploadImage = async (file: File, type: 'hero' | 'logo') => {
     if (!user) return;
-    
     setUploading({ ...uploading, [type]: true });
-    
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${type}-${Date.now()}.${fileExt}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('template-images')
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('template-images')
-        .getPublicUrl(fileName);
-
+      const previous = type === 'hero' ? customization.hero_image_url : customization.logo_url;
+      const uploaded = await uploadMedia({ file, mediaType: type });
       setCustomization({
         ...customization,
-        [type === 'hero' ? 'hero_image_url' : 'logo_url']: publicUrl
+        [type === 'hero' ? 'hero_image_url' : 'logo_url']: uploaded.publicUrl,
       });
-
+      if (previous && previous !== uploaded.publicUrl) {
+        await deletePreviousMedia(previous);
+      }
       toast.success(`${type === 'hero' ? 'Hero image' : 'Logo'} uploaded successfully`);
     } catch (error) {
-      toast.error(`Failed to upload ${type === 'hero' ? 'hero image' : 'logo'}`);
+      toast.error(merchantMediaMessage(error, t));
       console.error(error);
     } finally {
       setUploading({ ...uploading, [type]: false });

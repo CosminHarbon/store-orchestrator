@@ -43,6 +43,11 @@ import {
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useImpersonation } from '@/hooks/useImpersonation';
+import { uploadMedia } from '@/lib/media/uploadMedia';
+import { deletePreviousMedia } from '@/lib/media/deleteMedia';
+import { merchantMediaMessage } from '@/lib/media/errors';
+import type { MediaType } from '@/lib/media/constants';
 import { CanvasPreview } from './CanvasPreview';
 import { useWebsiteBuilderState } from './useWebsiteBuilderState';
 import type { AddableSectionType, BuilderPanel, DeviceMode } from './types';
@@ -354,6 +359,14 @@ export function VisualEditor({ onBack, apiKey, templateId = 'elementar' }: Visua
       <MediaPickerSheet
         open={!!mediaTarget}
         onOpenChange={(open) => !open && setMediaTarget(null)}
+        mediaKind={mediaTarget === 'logo' ? 'logo' : mediaTarget === 'hero' ? 'hero' : 'builder'}
+        currentUrl={
+          mediaTarget === 'logo'
+            ? builder.customization?.logo_url
+            : mediaTarget === 'hero'
+              ? builder.customization?.hero_image_url
+              : (builder.selectedBlock?.content?.imageUrl as string | undefined)
+        }
         onSelect={(url) => {
           if (mediaTarget === 'hero') builder.updateCustomization({ hero_image_url: url });
           if (mediaTarget === 'logo') builder.updateCustomization({ logo_url: url });
@@ -881,51 +894,57 @@ function MediaPickerSheet({
   open,
   onOpenChange,
   onSelect,
+  mediaKind,
+  currentUrl,
   t,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (url: string) => void;
+  mediaKind: MediaType;
+  currentUrl?: string | null;
   t: (key: string) => string;
 }) {
+  const { t: tCommon } = useTranslation('common');
+  const { effectiveUserId } = useImpersonation();
+  const [uploading, setUploading] = useState(false);
   const { data: files = [], isLoading, refetch } = useQuery({
-    queryKey: ['template-images-library'],
-    enabled: open,
+    queryKey: ['template-images-library', effectiveUserId],
+    enabled: open && !!effectiveUserId,
     queryFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return [];
-      const { data, error } = await supabase.storage.from('template-images').list(user.id, {
-        limit: 100,
-        sortBy: { column: 'created_at', order: 'desc' },
-      });
+      const { data, error } = await supabase
+        .from('media_assets')
+        .select('id, public_url, storage_path, media_type, created_at, status')
+        .eq('user_id', effectiveUserId!)
+        .eq('bucket', 'template-images')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(100);
       if (error) throw error;
       return (data || [])
-        .filter((f) => f.name && !f.name.endsWith('/'))
-        .map((file) => {
-          const path = `${user.id}/${file.name}`;
-          const { data: pub } = supabase.storage.from('template-images').getPublicUrl(path);
-          return { name: file.name, url: pub.publicUrl, path };
-        });
+        .filter((row) => row.public_url)
+        .map((row) => ({
+          name: row.storage_path,
+          url: row.public_url as string,
+          path: row.storage_path,
+        }));
     },
   });
 
   const upload = async (file: File) => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-    const ext = file.name.split('.').pop();
-    const path = `${user.id}/builder-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from('template-images').upload(path, file);
-    if (error) {
-      toast.error(t('builder.media.uploadFailed'));
-      return;
+    setUploading(true);
+    try {
+      const uploaded = await uploadMedia({ file, mediaType: mediaKind });
+      if (currentUrl && currentUrl !== uploaded.publicUrl) {
+        await deletePreviousMedia(currentUrl);
+      }
+      await refetch();
+      onSelect(uploaded.publicUrl);
+    } catch (error) {
+      toast.error(merchantMediaMessage(error, tCommon));
+    } finally {
+      setUploading(false);
     }
-    const { data: pub } = supabase.storage.from('template-images').getPublicUrl(path);
-    await refetch();
-    onSelect(pub.publicUrl);
   };
 
   return (
@@ -938,14 +957,16 @@ function MediaPickerSheet({
           <label className="flex cursor-pointer items-center justify-center rounded-2xl border border-dashed px-4 py-6 text-sm font-medium">
             <input
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp,image/gif"
               className="hidden"
+              disabled={uploading}
               onChange={(e) => {
                 const file = e.target.files?.[0];
+                e.target.value = '';
                 if (file) void upload(file);
               }}
             />
-            {t('builder.media.upload')}
+            {uploading ? tCommon('media.uploading') : t('builder.media.upload')}
           </label>
           {isLoading ? (
             <div className="flex justify-center py-10">

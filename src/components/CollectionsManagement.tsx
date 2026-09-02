@@ -33,6 +33,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { CollectionEditorDrawer, type CollectionRow } from './CollectionEditorDrawer';
 import { supabase } from '@/integrations/supabase/client';
+import { deleteEntityMedia } from '@/lib/media/deleteMedia';
 import { toast } from 'sonner';
 import { formatRon } from '@/lib/paymentAnalytics';
 import { cn } from '@/lib/utils';
@@ -349,12 +350,14 @@ const CollectionsManagement = () => {
       await supabase.from('product_collections').delete().eq('collection_id', id);
       const { error } = await supabase.from('collections').delete().eq('id', id);
       if (error) throw error;
+      await deleteEntityMedia('collection', id);
     },
     onSuccess: () => {
       toast.success(tCollections('toast.deleted'));
       setDrawerCollection(null);
       queryClient.invalidateQueries({ queryKey: ['collections'] });
       queryClient.invalidateQueries({ queryKey: ['product-collections-map'] });
+      queryClient.invalidateQueries({ queryKey: ['media-usage'] });
     },
     onError: (error: any) => {
       toast.error(tCollections('toast.deleteFailed', { message: error.message }));

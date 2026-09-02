@@ -27,6 +27,10 @@ import {
   variantSummary,
   verifySpec,
 } from '../_shared/aiStudio.ts'
+import {
+  isEntitlementRequiredError,
+  requireSpeedVendorsEntitlement,
+} from '../_shared/billingEntitlement.ts'
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
@@ -35,6 +39,7 @@ serve(async (req) => {
   const admin = createAdmin()
   try {
     const user = await requireUser(req, admin)
+    await requireSpeedVendorsEntitlement(admin, user.id)
     const body = await req.json()
     const prompt = String(body.prompt || '').trim()
     if (!prompt) return json({ error: 'Prompt required' }, 400)
@@ -235,6 +240,7 @@ Never invent HTML. Never set documentHtml. If nothing can change, return patches
     })
   } catch (err) {
     if (err instanceof AuthError) return json({ error: err.message }, 401)
+    if (isEntitlementRequiredError(err)) return json({ error: 'entitlement_required' }, 403)
     return json({ error: err instanceof Error ? err.message : 'Unknown error' }, 500)
   }
 })

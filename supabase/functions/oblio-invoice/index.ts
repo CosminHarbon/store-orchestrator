@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.53.0';
 import { resolveActingOwnerId } from '../_shared/actingAs.ts';
+import {
+  isEntitlementRequiredError,
+  requireSpeedVendorsEntitlement,
+} from '../_shared/billingEntitlement.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -232,6 +236,17 @@ const handler = async (req: Request): Promise<Response> => {
       if (authErr || !user) {
         return new Response('Unauthorized', { status: 401, headers: corsHeaders });
       }
+      try {
+        await requireSpeedVendorsEntitlement(supabase, user.id);
+      } catch (e) {
+        if (isEntitlementRequiredError(e)) {
+          return new Response(JSON.stringify({ error: 'entitlement_required' }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        throw e;
+      }
       const actingAs = url.searchParams.get('acting_as_user_id');
       let ownerId = user.id;
       try {
@@ -267,6 +282,18 @@ const handler = async (req: Request): Promise<Response> => {
     
     if (authError || !user) {
       throw new Error('Invalid authentication');
+    }
+
+    try {
+      await requireSpeedVendorsEntitlement(supabase, user.id);
+    } catch (e) {
+      if (isEntitlementRequiredError(e)) {
+        return new Response(JSON.stringify({ error: 'entitlement_required' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      throw e;
     }
 
     const { orderId, action, acting_as_user_id }: OblioInvoiceRequest = await req.json();

@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { Plus, Upload, Trash2, ImageIcon } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import { Plus, Upload, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { getStoredImpersonationUserId } from '@/hooks/useImpersonation';
+import { supabase } from '@/integrations/supabase/client';
+import { uploadMedia } from '@/lib/media/uploadMedia';
+import { deleteMediaAsset, deletePreviousMedia } from '@/lib/media/deleteMedia';
+import { merchantMediaMessage } from '@/lib/media/errors';
 
 interface CollectionImageUploadProps {
   collectionId?: string;
@@ -13,84 +16,94 @@ interface CollectionImageUploadProps {
   onImageRemove: () => void;
 }
 
-const CollectionImageUpload = ({ 
-  collectionId, 
-  currentImageUrl, 
-  onImageChange, 
-  onImageRemove 
+const CollectionImageUpload = ({
+  collectionId,
+  currentImageUrl,
+  onImageChange,
+  onImageRemove,
 }: CollectionImageUploadProps) => {
+  const { t } = useTranslation('common');
+  const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
+  const [phase, setPhase] = useState<'optimizing' | 'uploading' | 'finalizing' | null>(null);
 
   const uploadImageMutation = useMutation({
     mutationFn: async (file: File) => {
-      const user = await supabase.auth.getUser();
-      if (!user.data.user) throw new Error('Not authenticated');
-      const tenantUserId = getStoredImpersonationUserId() || user.data.user.id;
-      
-      const fileExt = file.name.split('.').pop();
-      const fileName = `collections/${tenantUserId}/${collectionId || 'temp'}/${Date.now()}.${fileExt}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(fileName, file);
-      
-      if (uploadError) throw uploadError;
-      
-      const { data: { publicUrl } } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(fileName);
-      
-      return publicUrl;
+      if (!collectionId) throw new Error('collection_required');
+      const previous = currentImageUrl;
+      const uploaded = await uploadMedia({
+        file,
+        mediaType: 'collection',
+        relatedEntityId: collectionId,
+        onProgress: setPhase,
+      });
+      const { error } = await supabase
+        .from('collections')
+        .update({ image_url: uploaded.publicUrl })
+        .eq('id', collectionId);
+      if (error) {
+        await deleteMediaAsset({ assetId: uploaded.assetId });
+        throw error;
+      }
+      onImageChange(uploaded.publicUrl);
+      if (previous && previous !== uploaded.publicUrl) {
+        await deletePreviousMedia(previous);
+      }
+      return uploaded;
     },
-    onSuccess: (publicUrl) => {
-      onImageChange(publicUrl);
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['media-usage'] });
       toast.success('Image uploaded successfully');
     },
     onError: (error) => {
-      toast.error('Failed to upload image');
+      toast.error(merchantMediaMessage(error, t));
       console.error(error);
-    }
+    },
   });
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+    event.target.value = '';
     if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
-      return;
-    }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size must be less than 5MB');
-      return;
-    }
-
     setUploading(true);
     try {
       await uploadImageMutation.mutateAsync(file);
     } finally {
       setUploading(false);
+      setPhase(null);
     }
   };
 
-  const handleRemoveImage = () => {
+  const handleRemoveImage = async () => {
+    if (!collectionId) return;
+    const previous = currentImageUrl;
+    const { error } = await supabase
+      .from('collections')
+      .update({ image_url: null })
+      .eq('id', collectionId);
+    if (error) {
+      toast.error(merchantMediaMessage(error, t));
+      return;
+    }
     onImageRemove();
+    await deletePreviousMedia(previous);
+    queryClient.invalidateQueries({ queryKey: ['media-usage'] });
     toast.success('Image removed');
   };
+
+  const phaseLabel =
+    phase === 'optimizing'
+      ? t('media.optimizing')
+      : phase === 'finalizing'
+        ? t('media.finalizing')
+        : t('media.uploading');
 
   if (currentImageUrl) {
     return (
       <div className="space-y-4">
         <div className="relative group">
           <div className="aspect-video w-full bg-muted rounded-lg overflow-hidden">
-            <img
-              src={currentImageUrl}
-              alt="Collection"
-              className="w-full h-full object-cover"
-            />
+            <img src={currentImageUrl} alt="Collection" className="w-full h-full object-cover" />
           </div>
           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
             <Button
@@ -100,13 +113,9 @@ const CollectionImageUpload = ({
               disabled={uploading}
             >
               <Upload className="h-4 w-4 mr-2" />
-              Change
+              {uploading ? phaseLabel : 'Change'}
             </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={handleRemoveImage}
-            >
+            <Button size="sm" variant="destructive" onClick={() => void handleRemoveImage()}>
               <Trash2 className="h-4 w-4 mr-2" />
               Remove
             </Button>
@@ -115,7 +124,7 @@ const CollectionImageUpload = ({
         <input
           id="collection-image-input"
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp,image/gif"
           onChange={handleFileSelect}
           className="hidden"
         />
@@ -125,7 +134,7 @@ const CollectionImageUpload = ({
 
   return (
     <div className="space-y-4">
-      <div 
+      <div
         className="aspect-video w-full border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer group"
         onClick={() => document.getElementById('collection-image-input')?.click()}
       >
@@ -134,26 +143,18 @@ const CollectionImageUpload = ({
             <Plus className="h-8 w-8 text-primary" />
           </div>
           <h3 className="text-sm font-medium mb-2">Add Collection Image</h3>
-          <p className="text-xs text-muted-foreground">
-            Click to upload an image for this collection
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            PNG, JPG, JPEG up to 5MB
-          </p>
+          <p className="text-xs text-muted-foreground">{t('media.photoHint')}</p>
         </div>
         {uploading && (
           <div className="absolute inset-0 bg-background/80 flex items-center justify-center rounded-lg">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-              <span className="text-sm">Uploading...</span>
-            </div>
+            <span className="text-sm">{phaseLabel}</span>
           </div>
         )}
       </div>
       <input
         id="collection-image-input"
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/gif"
         onChange={handleFileSelect}
         className="hidden"
         disabled={uploading}
