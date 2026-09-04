@@ -1090,13 +1090,21 @@ Deno.serve(async (req) => {
         })();
 
         let aiSpec = null;
+        let aiSchemaVersion = 1;
+        let aiPublishedDocument = null;
+        let aiBrandDesignSystem = null;
         if (templateId === 'ai') {
+          // Public config: published snapshot + brand tokens only.
+          // Never select draft_* or design_spec (internal generation metadata).
           const { data: storefront } = await supabase
             .from('ai_storefronts')
-            .select('published_spec')
+            .select('schema_version, published_spec, published_document, brand_design_system')
             .eq('user_id', userId)
             .maybeSingle();
+          aiSchemaVersion = Number(storefront?.schema_version ?? 1);
           aiSpec = storefront?.published_spec || null;
+          aiPublishedDocument = storefront?.published_document || null;
+          aiBrandDesignSystem = storefront?.brand_design_system || null;
         }
 
         // Fetch template blocks for the store
@@ -1169,6 +1177,9 @@ Deno.serve(async (req) => {
             },
             active_template: profile.active_template || 'elementar',
             ai_spec: aiSpec,
+            ai_schema_version: aiSchemaVersion,
+            ai_published_document: aiPublishedDocument,
+            ai_brand_design_system: aiBrandDesignSystem,
             // Template blocks for custom sections
             template_blocks: templateBlocks || [],
             // API capabilities

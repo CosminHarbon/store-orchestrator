@@ -43,6 +43,7 @@ import type { AssetPlan } from '@/lib/ai-studio/v2/assetResolver';
 import { auditCopyFallbacks } from '@/lib/ai-studio/v2/copyFallbackAudit';
 import type { SiteDocument } from '@/lib/ai-studio/v2/siteTree';
 import { validateSiteTree } from '@/lib/ai-studio/v2/validateSiteTree';
+import { publishAiStorefront } from '@/lib/ai-studio/client';
 import SiteTreeRenderer from '@/components/templates/ai/v2/SiteTreeRenderer';
 import { useShowcaseCommerce } from './useShowcaseCommerce';
 import '@/components/templates/premium/premium.css';
@@ -106,6 +107,8 @@ export default function AiStudioV2GenerateLab() {
   const [assetPlan, setAssetPlan] = useState<AssetPlan | null>(null);
   /** Which brief produced the generation currently on screen. */
   const [resultBriefId, setResultBriefId] = useState<Phase3BriefId | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [liveUrl, setLiveUrl] = useState<string | null>(null);
 
   const copyAudit = useMemo(
     () => (siteDocument ? auditCopyFallbacks(siteDocument) : null),
@@ -507,6 +510,28 @@ export default function AiStudioV2GenerateLab() {
     faultId,
   ]);
 
+  const runPublish = useCallback(async () => {
+    if (!siteDocument || publishing) return;
+    setPublishing(true);
+    setError(null);
+    setLiveUrl(null);
+    try {
+      const result = await publishAiStorefront();
+      const url = result.liveUrl || null;
+      setLiveUrl(url);
+      setStatus(
+        url
+          ? `Published V2 (v${result.version ?? '?'}) — open live URL below`
+          : `Published V2 (v${result.version ?? '?'})`,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setStatus('publish failed');
+    } finally {
+      setPublishing(false);
+    }
+  }, [siteDocument, publishing]);
+
   if (!import.meta.env.DEV) return <Navigate to="/" replace />;
 
   if (signedIn === null) {
@@ -529,8 +554,9 @@ export default function AiStudioV2GenerateLab() {
     );
   }
 
-  const busy = generating || refining;
+  const busy = generating || refining || publishing;
   const canRefine = Boolean(siteDocument && designSpec && resolvedBrand) && !busy;
+  const canPublish = Boolean(siteDocument && designSpec) && !busy;
 
   return (
     <div className="v2gen-page">
@@ -565,8 +591,26 @@ export default function AiStudioV2GenerateLab() {
           >
             {refining ? 'Critiquing…' : 'Refine visually'}
           </button>
+          <button
+            type="button"
+            className="v2gen-btn"
+            onClick={runPublish}
+            disabled={!canPublish}
+            title="Copies draft_document → published_document and sets active_template=ai"
+          >
+            {publishing ? 'Publishing…' : 'Publish live'}
+          </button>
         </div>
       </header>
+
+      {liveUrl ? (
+        <p className="v2gen-meta">
+          Live store:{' '}
+          <a className="v2gen-link" href={liveUrl} target="_blank" rel="noreferrer">
+            {liveUrl}
+          </a>
+        </p>
+      ) : null}
 
       <section className="v2gen-brief">
         <h2>Brief — {brief.label}</h2>

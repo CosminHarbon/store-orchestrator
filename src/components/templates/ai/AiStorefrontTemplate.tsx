@@ -15,11 +15,11 @@ import { fontHref, parseStorefrontSpec, type StorefrontSpec } from '@/lib/ai-stu
 import { specCssVariables } from '@/lib/ai-studio/mapToBuilder';
 import { FLORIST_FIXTURE } from '@/lib/ai-studio/fixtures';
 import { adaptV1SpecToSiteDocument } from '@/lib/ai-studio/v2/adaptV1';
-import type { BrandDesignSystem } from '@/lib/ai-studio/v2/designSpec';
-import { brandDesignSystemSchema, designSpecSchema } from '@/lib/ai-studio/v2/designSpec';
+import { brandDesignSystemSchema, designSpecSchema, type BrandDesignSystem } from '@/lib/ai-studio/v2/designSpec';
 import { isAiStudioV2Enabled } from '@/lib/ai-studio/v2/featureFlag';
 import { siteDocumentSchema, type SiteDocument } from '@/lib/ai-studio/v2/siteTree';
 import { brandTokensToCssVars } from '@/lib/ai-studio/v2/tokens';
+import { selectPublicAiContent } from '@shared/ai-studio-v2/publishPath';
 import { AiSection } from './AiSections';
 import SiteTreeRenderer from './v2/SiteTreeRenderer';
 import '@/components/templates/premium/premium.css';
@@ -89,11 +89,40 @@ export default function AiStorefrontTemplate({
           }
         }
         const cfg = await fetchStoreConfig(apiKey, { templateId: 'ai' });
-        if (!cancelled && cfg.aiSpec) {
+        if (cancelled) return;
+
+        // Public route: never load draft_*; only published content + brand tokens.
+        const publicContent = selectPublicAiContent({
+          schema_version: cfg.aiSchemaVersion,
+          published_spec: cfg.aiSpec,
+          published_document: cfg.aiPublishedDocument,
+          brand_design_system: cfg.aiBrandDesignSystem,
+        });
+
+        if (publicContent?.engine === 'v2') {
+          const docParsed = siteDocumentSchema.safeParse(publicContent.publishedDocument);
+          if (docParsed.success) {
+            let brand: BrandDesignSystem | null = null;
+            if (publicContent.brandDesignSystem) {
+              const brandParsed = brandDesignSystemSchema.safeParse(publicContent.brandDesignSystem);
+              if (brandParsed.success) brand = brandParsed.data;
+            }
+            if (brand) {
+              setLoadedV2Document(docParsed.data);
+              setLoadedV2Brand(brand);
+              setSchemaVersion(2);
+              return;
+            }
+          }
+          // Invalid / incomplete published V2 — try V1 published_spec next.
+        }
+
+        if (cfg.aiSpec) {
           setLoadedSpec(parseStorefrontSpec(cfg.aiSpec).spec);
+          setSchemaVersion(1);
           return;
         }
-        if (!cancelled) setLoadedSpec(FLORIST_FIXTURE);
+        setLoadedSpec(FLORIST_FIXTURE);
       } catch {
         if (!cancelled) setLoadedSpec(FLORIST_FIXTURE);
       }

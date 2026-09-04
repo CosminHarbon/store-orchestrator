@@ -11,6 +11,7 @@ Feature branch: `feature/ai-website-studio-v2`
 | 3 — AI pipeline (Brief → DesignSpec → SiteTree → render) | **Done** |
 | 4 — Visual critic + targeted SiteOps refinement | **Done** |
 | 5+ — Remix, version history, Studio UI | **Not started** |
+| Dual-path publish (V1 `published_spec` + V2 `published_document`) | **Hardened (code; deploy Edge Functions to activate)** |
 
 ## Phase 4 pipeline
 
@@ -126,7 +127,10 @@ V1 `draft_spec` is **not** overwritten. Generation metadata (models, latency, re
 
 ```bash
 npx --yes tsx scripts/ai-studio-v2-selftest.ts
+npx --yes tsx scripts/ai-studio-publish-dual-path-selftest.ts
 ```
+
+Public `store-api/config` exposes `ai_published_document` + `ai_brand_design_system` (never `draft_*` or `design_spec`). V2 publish merges brand tokens into existing `template_customization` without wiping logo/hero/builder fields.
 
 ## DB (additive)
 

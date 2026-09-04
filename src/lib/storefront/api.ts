@@ -107,6 +107,10 @@ export async function fetchStoreConfig(apiKey: string, opts?: { templateId?: str
   allowOrderNotes: boolean;
   deliveryConfig: StorefrontDeliveryConfig;
   aiSpec: unknown | null;
+  /** V2 published SiteDocument when schema_version=2 and published_document exists. */
+  aiPublishedDocument: unknown | null;
+  aiBrandDesignSystem: unknown | null;
+  aiSchemaVersion: number;
   activeTemplate: string | null;
 }> {
   const qs = opts?.templateId ? `?template_id=${encodeURIComponent(opts.templateId)}` : '';
@@ -152,6 +156,9 @@ export async function fetchStoreConfig(apiKey: string, opts?: { templateId?: str
       button_style: c.button_style,
     },
     aiSpec: data.ai_spec || null,
+    aiPublishedDocument: data.ai_published_document || null,
+    aiBrandDesignSystem: data.ai_brand_design_system || null,
+    aiSchemaVersion: Number(data.ai_schema_version ?? 1),
     activeTemplate: data.active_template || null,
     showStockToCustomers: data.show_stock_to_customers !== false,
     allowOrderNotes: data.allow_order_notes !== false,

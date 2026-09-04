@@ -40,7 +40,7 @@ const {
   withCreativeStrategy,
 } = buildDesignSpecSchemas(z)
 
-export { designSpecSchema }
+export { designSpecSchema, brandDesignSystemFromSpec }
 
 export type DesignSpec = z.infer<typeof designSpecSchema>
 export type BrandDesignSystem = ReturnType<typeof brandDesignSystemFromSpec>
@@ -156,6 +156,7 @@ const siteDocumentSchema = z.object({
 })
 
 export type SiteDocument = z.infer<typeof siteDocumentSchema>
+export { siteDocumentSchema }
 
 const ARCHITECTURE_NOTES_MAX = 1200
 const SILHOUETTE_LABEL_MAX = 40
