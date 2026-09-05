@@ -4,6 +4,7 @@ import type { BrandDesignSystem } from '@/lib/ai-studio/v2/designSpec';
 import type { SiteDocument } from '@/lib/ai-studio/v2/siteTree';
 import { brandTokensToCssVars } from '@/lib/ai-studio/v2/tokens';
 import {
+  GRAMMAR_STATUS,
   planForDocument,
   roleCssVars,
   type GrammarViewport,
@@ -19,6 +20,7 @@ import {
   WarmStorytellingPage,
 } from './Grammars';
 import './grammar.css';
+import './grammar-5b2.css';
 
 type Props = {
   document: SiteDocument;
@@ -88,6 +90,7 @@ export default function GrammarRenderer({
       className="lg-root"
       style={style}
       data-grammar={plan.grammarId}
+      data-status={GRAMMAR_STATUS[plan.grammarId]}
       data-viewport={viewport}
       data-hero={plan.heroGeometry}
       data-seed={plan.variation.seed}
@@ -98,6 +101,15 @@ export default function GrammarRenderer({
       data-motion={brand.tokens.motion || 'none'}
     >
       <Page plan={plan} page={page} commerce={commerce} />
+      {commerce.cartOpen ? (
+        <div className="lg-cart-sheet" role="dialog" aria-label="Cart">
+          <p className="lg-cart-sheet-title">Cart</p>
+          <p className="lg-cart-sheet-count">{commerce.cartCount} item{commerce.cartCount === 1 ? '' : 's'}</p>
+          <button type="button" className="lg-cta lg-cta-solid" onClick={() => commerce.setCartOpen(false)}>
+            Close
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

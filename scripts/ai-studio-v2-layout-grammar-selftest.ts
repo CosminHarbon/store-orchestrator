@@ -8,7 +8,10 @@ import { COMPOSITION_TYPES } from '../src/lib/ai-studio/v2/siteTree.ts';
 import { V2_VARIETY_FIXTURES } from '../src/lib/ai-studio/v2/fixtures.ts';
 import {
   ALL_TYPOGRAPHY_ROLE_IDS,
+  CANDIDATE_GRAMMARS,
   CANONICAL_STRATEGIES,
+  EXPERIMENTAL_GRAMMARS,
+  GRAMMAR_STATUS,
   LAYOUT_GRAMMAR_IDS,
   SHARED_CATALOG,
   SHARED_DOCUMENT,
@@ -18,6 +21,7 @@ import {
   resolveGrammarFromStrategy,
   resolveGrammarFromUnknownSpec,
   resolveVariation,
+  seedComparisonMatrix,
   typographyFor,
   variationIsStructurallyDifferent,
   type LayoutGrammarId,
@@ -69,7 +73,10 @@ function main() {
     const b = resolveVariation(id, 'seed-b');
     assert(JSON.stringify(a) === JSON.stringify(a2), `${id} seed-a is stable`);
     assert(variationIsStructurallyDifferent(a, b), `${id} seed-b is structurally different from seed-a`);
-    assert(a.heroGeometry !== b.heroGeometry || a.gridRatio !== b.gridRatio || a.mediaSide !== b.mediaSide, `${id} seed changes geometry axes`);
+    assert(a.heroGeometry !== b.heroGeometry, `${id} seed changes hero geometry`);
+    assert(a.mediaSide !== b.mediaSide, `${id} seed changes media side`);
+    const matrix = seedComparisonMatrix(id);
+    assert(matrix.length >= 5, `${id} seed matrix has ${matrix.length} structural axis diffs (need >= 5)`);
 
     const type = typographyFor(id);
     for (const role of ALL_TYPOGRAPHY_ROLE_IDS) {
@@ -78,8 +85,30 @@ function main() {
     }
   }
 
-  for (const vp of ['desktop', 'tablet', 'mobile'] as const) {
-    for (const id of LAYOUT_GRAMMAR_IDS) {
+  for (const id of CANDIDATE_GRAMMARS) {
+    assert(GRAMMAR_STATUS[id] === 'candidate', `${id} is a candidate`);
+    const nav = typographyFor(id).roles.navigation;
+    const price = typographyFor(id).roles.price;
+    const action = typographyFor(id).roles.action;
+    assert(nav.minPx >= 14, `${id} navigation minPx ${nav.minPx} >= 14`);
+    assert(price.minPx >= 16, `${id} price minPx ${price.minPx} >= 16`);
+    assert(action.minPx >= 13, `${id} action minPx ${action.minPx} >= 13`);
+  }
+  for (const id of EXPERIMENTAL_GRAMMARS) {
+    assert(GRAMMAR_STATUS[id] === 'experimental', `${id} marked experimental`);
+    const { plan } = planForDocument({
+      document: SHARED_DOCUMENT,
+      catalog: SHARED_CATALOG,
+      strategy: CANONICAL_STRATEGIES[id],
+      seed: 'seed-a',
+      grammarOverride: id,
+      viewport: 'desktop',
+    });
+    assert(plan.grammarId === id, `${id} still plans (kept for comparison)`);
+  }
+
+  for (const vp of ['desktop', 'tablet', 'compact', 'mobile', 'phone'] as const) {
+    for (const id of CANDIDATE_GRAMMARS) {
       const { plan, page } = planForDocument({
         document: SHARED_DOCUMENT,
         catalog: SHARED_CATALOG,
@@ -120,14 +149,21 @@ function main() {
   assert(bound.includes('commerce.addToCart'), 'add-to-cart handler remains connected');
   assert(bound.includes('commerce.openCatalog'), 'catalog handler remains connected');
   assert(bound.includes('commerce.setCartOpen'), 'cart handler remains connected');
+  assert(bound.includes('lg-nav-toggle'), 'mobile menu toggle present');
+  assert(bound.includes('lg-mon-identity'), 'monument identity block present');
+  assert(grammarsSrc.includes('Experimental / rejected'), 'experimental grammars are labeled');
   assert(!bound.includes('Math.random'), 'no Math.random in grammar pages');
 
-  const css = readFileSync(resolve(srcDir, 'grammar.css'), 'utf8');
+  const css = readFileSync(resolve(srcDir, 'grammar.css'), 'utf8') + readFileSync(resolve(srcDir, 'grammar-5b2.css'), 'utf8');
   assert(css.includes('overflow-x: clip'), 'root clips horizontal overflow');
   assert(css.includes('prefers-reduced-motion'), 'reduced-motion CSS present');
   assert(css.includes(':focus-visible'), 'keyboard focus styles present');
   assert(css.includes("data-viewport='mobile'"), 'mobile recomposition is explicit, not only 1fr');
-  assert(!css.includes('grid-template-columns: 1fr;') || css.includes("data-viewport='mobile'"), 'mobile not solely 1fr collapse');
+  assert(css.includes("data-viewport='phone'"), '360px phone viewport rules present');
+  assert(css.includes("data-viewport='compact'"), '768px compact viewport rules present');
+  assert(css.includes('.lg-mon-identity'), 'monument identity is styled in flow');
+  assert(css.includes('.lg-nav-toggle'), 'nav toggle styled');
+  assert(css.includes('.lg-cin-sequence'), 'cinematic sequence styled');
 
   const renderer = readFileSync(resolve(srcDir, 'GrammarRenderer.tsx'), 'utf8');
   assert(!renderer.includes('Math.random'), 'no Math.random in renderer');

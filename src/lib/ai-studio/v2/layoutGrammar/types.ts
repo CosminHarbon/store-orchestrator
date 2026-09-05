@@ -18,8 +18,16 @@ export const LAYOUT_GRAMMAR_IDS = [
 
 export type LayoutGrammarId = (typeof LAYOUT_GRAMMAR_IDS)[number];
 
-export const GRAMMAR_VIEWPORTS = ['desktop', 'tablet', 'mobile'] as const;
+export const GRAMMAR_VIEWPORTS = ['desktop', 'tablet', 'compact', 'mobile', 'phone'] as const;
 export type GrammarViewport = (typeof GRAMMAR_VIEWPORTS)[number];
+
+export const VIEWPORT_WIDTH_PX: Record<GrammarViewport, number> = {
+  desktop: 1440,
+  tablet: 1024,
+  compact: 768,
+  mobile: 390,
+  phone: 360,
+};
 
 export const TYPOGRAPHY_ROLE_IDS = [
   'display',

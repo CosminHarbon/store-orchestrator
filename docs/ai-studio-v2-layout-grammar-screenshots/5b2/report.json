@@ -1,0 +1,11 @@
+{
+  "shots": 37,
+  "failures": [],
+  "auditedViewports": [
+    "desktop",
+    "tablet",
+    "compact",
+    "mobile",
+    "phone"
+  ]
+}

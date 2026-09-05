@@ -6,3 +6,4 @@ export * from './variation';
 export * from './extractContent';
 export * from './orchestrate';
 export * from './fixtures';
+export * from './status';

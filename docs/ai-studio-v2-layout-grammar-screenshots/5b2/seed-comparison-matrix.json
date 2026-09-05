@@ -1,0 +1,283 @@
+[
+  {
+    "grammar": "cinematic_full_bleed",
+    "notes": {
+      "seedA": "Full-bleed overlay campaign, mixed product stack, overlay mobile hero.",
+      "seedB": "Letterbox crop, inverted media side, scene-rail sequence, stacked mobile."
+    },
+    "axes": [
+      {
+        "axis": "heroGeometry",
+        "seedA": "full_bleed_campaign",
+        "seedB": "cinematic_letterbox"
+      },
+      {
+        "axis": "mediaSide",
+        "seedA": "left",
+        "seedB": "right"
+      },
+      {
+        "axis": "gridRatio",
+        "seedA": "8-4",
+        "seedB": "7-5"
+      },
+      {
+        "axis": "overlap",
+        "seedA": "modest",
+        "seedB": "pronounced"
+      },
+      {
+        "axis": "contentWidth",
+        "seedA": "bleed",
+        "seedB": "wide"
+      },
+      {
+        "axis": "rhythm",
+        "seedA": "sparse",
+        "seedB": "medium"
+      },
+      {
+        "axis": "density",
+        "seedA": "low",
+        "seedB": "medium"
+      },
+      {
+        "axis": "productEmphasis",
+        "seedA": "single",
+        "seedB": "mixed"
+      },
+      {
+        "axis": "surfaceSequence",
+        "seedA": "ink_led",
+        "seedB": "alternating"
+      },
+      {
+        "axis": "typeScale",
+        "seedA": "standard",
+        "seedB": "loud"
+      },
+      {
+        "axis": "nav",
+        "seedA": "overlay",
+        "seedB": "minimal"
+      },
+      {
+        "axis": "mobileHero",
+        "seedA": "overlay",
+        "seedB": "stacked"
+      },
+      {
+        "axis": "grouping",
+        "seedA": "canvas",
+        "seedB": "isolated"
+      }
+    ]
+  },
+  {
+    "grammar": "editorial_asymmetric",
+    "notes": {
+      "seedA": "Offset split, media left, 5-7 grid, paired merch, crop-first mobile.",
+      "seedB": "Hanging media, media right, 4-8 grid, mixed merch, stacked mobile."
+    },
+    "axes": [
+      {
+        "axis": "heroGeometry",
+        "seedA": "offset_editorial_split",
+        "seedB": "hanging_media"
+      },
+      {
+        "axis": "mediaSide",
+        "seedA": "left",
+        "seedB": "right"
+      },
+      {
+        "axis": "gridRatio",
+        "seedA": "5-7",
+        "seedB": "4-8"
+      },
+      {
+        "axis": "overlap",
+        "seedA": "modest",
+        "seedB": "pronounced"
+      },
+      {
+        "axis": "contentWidth",
+        "seedA": "narrow",
+        "seedB": "standard"
+      },
+      {
+        "axis": "rhythm",
+        "seedA": "sparse",
+        "seedB": "medium"
+      },
+      {
+        "axis": "density",
+        "seedA": "low",
+        "seedB": "medium"
+      },
+      {
+        "axis": "productEmphasis",
+        "seedA": "single",
+        "seedB": "mixed"
+      },
+      {
+        "axis": "surfaceSequence",
+        "seedA": "paper",
+        "seedB": "alternating"
+      },
+      {
+        "axis": "typeScale",
+        "seedA": "quiet",
+        "seedB": "standard"
+      },
+      {
+        "axis": "nav",
+        "seedA": "minimal",
+        "seedB": "solid"
+      },
+      {
+        "axis": "mobileHero",
+        "seedA": "crop_first",
+        "seedB": "stacked"
+      },
+      {
+        "axis": "grouping",
+        "seedA": "paired",
+        "seedB": "canvas"
+      }
+    ]
+  },
+  {
+    "grammar": "product_monument",
+    "notes": {
+      "seedA": "Framed artifact stage, identity left of object, isolated supporting rail.",
+      "seedB": "Edge-to-edge object stage, identity opposite side, paired next-chapter merch."
+    },
+    "axes": [
+      {
+        "axis": "heroGeometry",
+        "seedA": "product_artifact_stage",
+        "seedB": "product_overlap_rail"
+      },
+      {
+        "axis": "mediaSide",
+        "seedA": "left",
+        "seedB": "right"
+      },
+      {
+        "axis": "gridRatio",
+        "seedA": "8-4",
+        "seedB": "7-5"
+      },
+      {
+        "axis": "overlap",
+        "seedA": "none",
+        "seedB": "modest"
+      },
+      {
+        "axis": "contentWidth",
+        "seedA": "standard",
+        "seedB": "wide"
+      },
+      {
+        "axis": "rhythm",
+        "seedA": "sparse",
+        "seedB": "medium"
+      },
+      {
+        "axis": "surfaceSequence",
+        "seedA": "paper",
+        "seedB": "alternating"
+      },
+      {
+        "axis": "typeScale",
+        "seedA": "quiet",
+        "seedB": "standard"
+      },
+      {
+        "axis": "nav",
+        "seedA": "minimal",
+        "seedB": "solid"
+      },
+      {
+        "axis": "mobileHero",
+        "seedA": "stacked",
+        "seedB": "crop_first"
+      },
+      {
+        "axis": "grouping",
+        "seedA": "isolated",
+        "seedB": "paired"
+      }
+    ]
+  },
+  {
+    "grammar": "typographic_campaign",
+    "notes": {
+      "seedA": "Display collision with overlapping media, campaign nav, type-first mobile.",
+      "seedB": "Corner-led media, inverted side, overlay nav, stacked campaign modules."
+    },
+    "axes": [
+      {
+        "axis": "heroGeometry",
+        "seedA": "display_collision",
+        "seedB": "type_led_corner_media"
+      },
+      {
+        "axis": "mediaSide",
+        "seedA": "left",
+        "seedB": "right"
+      },
+      {
+        "axis": "gridRatio",
+        "seedA": "7-5",
+        "seedB": "5-7"
+      },
+      {
+        "axis": "overlap",
+        "seedA": "pronounced",
+        "seedB": "modest"
+      },
+      {
+        "axis": "contentWidth",
+        "seedA": "wide",
+        "seedB": "bleed"
+      },
+      {
+        "axis": "rhythm",
+        "seedA": "dense",
+        "seedB": "medium"
+      },
+      {
+        "axis": "density",
+        "seedA": "medium",
+        "seedB": "high"
+      },
+      {
+        "axis": "productEmphasis",
+        "seedA": "mixed",
+        "seedB": "dense"
+      },
+      {
+        "axis": "surfaceSequence",
+        "seedA": "ink_led",
+        "seedB": "alternating"
+      },
+      {
+        "axis": "nav",
+        "seedA": "campaign",
+        "seedB": "overlay"
+      },
+      {
+        "axis": "mobileHero",
+        "seedA": "type_first",
+        "seedB": "stacked"
+      },
+      {
+        "axis": "grouping",
+        "seedA": "canvas",
+        "seedB": "isolated"
+      }
+    ]
+  }
+]

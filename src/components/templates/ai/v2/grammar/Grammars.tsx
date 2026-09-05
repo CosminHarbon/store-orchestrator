@@ -2,7 +2,7 @@ import type { StorefrontCommerce } from '@/hooks/useStorefrontCommerce';
 import type { LayoutPlan } from '@/lib/ai-studio/v2/layoutGrammar/types';
 import type { SemanticPage } from '@/lib/ai-studio/v2/layoutGrammar/extractContent';
 import { clampCopy, displayLines } from '@/lib/ai-studio/v2/layoutGrammar/extractContent';
-import { LgCta, LgFooter, LgMedia, LgNav, LgProduct, LgType, currencyOf } from './primitives';
+import { LgCta, LgFooter, LgMedia, LgNav, LgProduct, LgType, currencyOf, priceOf } from './primitives';
 
 type PageProps = {
   plan: LayoutPlan;
@@ -11,75 +11,87 @@ type PageProps = {
 };
 
 export function EditorialAsymmetricPage({ plan, page, commerce }: PageProps) {
-  const { copy, products, reviews, featured } = page;
+  const { copy, products, reviews } = page;
   const { currency, locale } = currencyOf(commerce);
   const v = plan.variation;
   const [lead, ...rest] = products;
-  const storyImg = copy.storyImage || products[1]?.image || copy.heroImage;
+  const storyImg = copy.storyImage;
+  const typeFirst = v.heroGeometry === 'type_first_crop';
+  const merch = v.productEmphasis === 'single' ? rest.slice(0, 3) : rest.slice(0, 5);
 
   return (
     <>
-      <LgNav name={copy.storeName} commerce={commerce} variant={v.nav} />
-      <section className="lg-ed-hero" data-hero={v.heroGeometry} data-side={v.mediaSide} data-ratio={v.gridRatio}>
+      <LgNav name={copy.storeName} commerce={commerce} variant={v.nav === 'overlay' ? 'solid' : v.nav} />
+      <section
+        className="lg-ed-hero"
+        data-hero={v.heroGeometry}
+        data-side={v.mediaSide}
+        data-ratio={v.gridRatio}
+      >
         <div className="lg-ed-hero-copy">
           <LgType role="kicker" as="p">
             {copy.kicker}
           </LgType>
           <LgType role="display" as="h1">
-            {clampCopy(copy.title, 72)}
+            {clampCopy(copy.title, 80)}
           </LgType>
           <LgType role="body" as="p">
-            {clampCopy(copy.subtitle, 180)}
+            {clampCopy(copy.subtitle, 200)}
           </LgType>
-          <LgCta onClick={() => commerce.openCatalog()}>{copy.cta}</LgCta>
+          <LgCta variant="solid" onClick={() => commerce.openCatalog()}>
+            {copy.cta}
+          </LgCta>
         </div>
         <div className="lg-ed-hero-media">
-          <LgMedia src={copy.heroImage} alt="" ratio={v.heroGeometry === 'type_first_crop' ? '5 / 6' : '4 / 5'} crop={v.crop} />
+          <LgMedia
+            src={copy.heroImage}
+            alt=""
+            ratio={typeFirst ? '5 / 6' : '4 / 5'}
+            crop={v.crop}
+          />
         </div>
       </section>
 
       {copy.statement ? (
         <section className="lg-ed-pause">
+          <p className="lg-ed-chapter">Chapter 01</p>
           <LgType role="editorialHeading" as="h2">
-            {clampCopy(copy.statement, 120)}
+            {clampCopy(copy.statement, 140)}
           </LgType>
         </section>
       ) : null}
 
       {lead ? (
-        <section className="lg-ed-feature" data-side={v.mediaSide}>
+        <section className="lg-ed-feature" data-side={v.mediaSide === 'left' ? 'right' : 'left'}>
           <div className="lg-ed-feature-media">
-            <LgProduct
-              product={lead}
-              treatment="featured_oversized"
-              commerce={commerce}
-              currency={currency}
-              locale={locale}
-              featured
-              ratio="3 / 4"
-            />
+            <LgMedia src={lead.image} alt={lead.title} ratio="3 / 4" crop="center" />
           </div>
           <div className="lg-ed-feature-copy">
             <LgType role="kicker" as="p">
-              Piece 01
+              Featured piece
             </LgType>
             <LgType role="sectionHeading" as="h2">
               {lead.title}
             </LgType>
+            <p className="lg-product-price">{priceOf(lead.price, currency, locale)}</p>
             <LgType role="body" as="p">
-              {clampCopy(lead.description || copy.storyBody, 200)}
+              {clampCopy(lead.description || copy.storyBody, 220)}
             </LgType>
-            <p className="lg-type lg-type-price">{new Intl.NumberFormat(locale, { style: 'currency', currency, maximumFractionDigits: 0 }).format(lead.price)}</p>
-            <LgCta onClick={() => commerce.openProduct(lead)}>View the piece</LgCta>
+            <div className="lg-product-actions">
+              <LgCta variant="solid" onClick={() => commerce.addToCart(lead)}>
+                Add to cart
+              </LgCta>
+              <LgCta variant="text" onClick={() => commerce.openProduct(lead)}>
+                View details
+              </LgCta>
+            </div>
           </div>
         </section>
       ) : null}
 
       <section className="lg-ed-story" data-group={v.grouping}>
         <div className="lg-ed-story-copy">
-          <LgType role="kicker" as="p">
-            Notes
-          </LgType>
+          <p className="lg-ed-chapter">Chapter 02</p>
           <LgType role="sectionHeading" as="h2">
             {copy.storyTitle}
           </LgType>
@@ -89,19 +101,26 @@ export function EditorialAsymmetricPage({ plan, page, commerce }: PageProps) {
         </div>
         <div className="lg-ed-cluster">
           <LgMedia src={storyImg} alt={copy.storyTitle} ratio="4 / 5" crop={v.crop} />
-          {products[2]?.image ? <LgMedia src={products[2].image} alt="" ratio="1 / 1" crop="left" /> : null}
+          {products[2]?.image && products[2].image !== storyImg ? (
+            <LgMedia src={products[2].image} alt="" ratio="1 / 1" crop="left" />
+          ) : null}
         </div>
       </section>
 
       <section className="lg-ed-merch">
         <div className="lg-ed-merch-head">
-          <LgType role="sectionHeading" as="h2">
-            {copy.merchTitle}
-          </LgType>
-          <LgCta onClick={() => commerce.openCatalog()}>View all</LgCta>
+          <div>
+            <p className="lg-ed-chapter">The shop</p>
+            <LgType role="sectionHeading" as="h2">
+              {copy.merchTitle}
+            </LgType>
+          </div>
+          <LgCta variant="text" onClick={() => commerce.openCatalog()}>
+            View all
+          </LgCta>
         </div>
-        <div className="lg-ed-stagger">
-          {(v.productEmphasis === 'single' ? rest.slice(0, 3) : rest.slice(0, 4)).map((p, i) => (
+        <div className="lg-ed-stagger" data-emphasis={v.productEmphasis}>
+          {merch.map((p, i) => (
             <div key={p.id} className="lg-ed-stagger-item" data-i={i}>
               <LgProduct
                 product={p}
@@ -118,7 +137,7 @@ export function EditorialAsymmetricPage({ plan, page, commerce }: PageProps) {
 
       {reviews[0] ? (
         <section className="lg-ed-note">
-          <LgType role="supporting" as="p">
+          <LgType role="editorialHeading" as="p">
             “{clampCopy(reviews[0].comment || '', 140)}”
           </LgType>
           <LgType role="kicker" as="p">
@@ -133,16 +152,20 @@ export function EditorialAsymmetricPage({ plan, page, commerce }: PageProps) {
 }
 
 export function CinematicFullBleedPage({ plan, page, commerce }: PageProps) {
-  const { copy, products, featured } = page;
+  const { copy, products } = page;
   const { currency, locale } = currencyOf(commerce);
   const v = plan.variation;
-  const overlay = v.mobileHero === 'overlay' || plan.viewport !== 'mobile';
+  const overlay = v.heroGeometry !== 'cinematic_letterbox' && (v.mobileHero === 'overlay' || plan.viewport === 'desktop' || plan.viewport === 'tablet');
+  const hero = products[0];
+  const detail = products[1];
+  const shop = products.filter((p) => p.id !== detail?.id).slice(0, 4);
+  const letterbox = v.heroGeometry === 'cinematic_letterbox';
 
   return (
     <>
       <LgNav name={copy.storeName} commerce={commerce} variant={v.nav} tone="light" />
       <section className="lg-cin-hero" data-hero={v.heroGeometry} data-overlay={overlay ? '1' : '0'}>
-        <LgMedia src={copy.heroImage} alt="" ratio={v.heroGeometry === 'cinematic_letterbox' ? '21 / 9' : '16 / 10'} crop={v.crop} />
+        <LgMedia src={copy.heroImage} alt="" ratio={letterbox ? '21 / 9' : '16 / 10'} crop={v.crop} />
         <div className="lg-cin-veil" />
         <div className="lg-cin-copy">
           <LgType role="kicker" as="p">
@@ -151,63 +174,78 @@ export function CinematicFullBleedPage({ plan, page, commerce }: PageProps) {
           <LgType role="display" as="h1">
             {clampCopy(copy.title, 64)}
           </LgType>
-          <LgType role="supporting" as="p">
-            {clampCopy(copy.subtitle, 140)}
+          <LgType role="body" as="p">
+            {clampCopy(copy.subtitle, 160)}
           </LgType>
-          <LgCta variant="ghost" onClick={() => commerce.openCatalog()}>
+          <LgCta variant="solid" onClick={() => commerce.openCatalog()}>
             {copy.cta}
           </LgCta>
         </div>
       </section>
 
-      {featured ? (
-        <section className="lg-cin-still">
-          <LgMedia src={featured.image} alt={featured.title} ratio="16 / 9" crop="center" />
-          <div className="lg-cin-still-cap">
+      {detail ? (
+        <section className="lg-cin-detail">
+          <div className="lg-cin-detail-media">
+            <LgMedia src={detail.image} alt={detail.title} ratio="4 / 5" crop="top" />
+          </div>
+          <div className="lg-cin-detail-copy">
             <LgType role="kicker" as="p">
-              Opening still
+              Close frame
             </LgType>
             <LgType role="editorialHeading" as="h2">
-              {featured.title}
+              {copy.storyTitle}
             </LgType>
-            <LgCta variant="ghost" onClick={() => commerce.openProduct(featured)}>
-              View
-            </LgCta>
+            <LgType role="body" as="p">
+              {clampCopy(copy.storyBody, 220)}
+            </LgType>
           </div>
         </section>
       ) : null}
 
-      <section className="lg-cin-story">
-        <LgMedia src={copy.storyImage || copy.heroImage} alt={copy.storyTitle} ratio="16 / 9" crop={v.crop} />
-        <div className="lg-cin-caption">
+      <section className="lg-cin-bridge">
+        <div>
+          <p className="lg-ed-chapter">Now showing</p>
           <LgType role="sectionHeading" as="h2">
-            {copy.storyTitle}
-          </LgType>
-          <LgType role="body" as="p">
-            {clampCopy(copy.storyBody, 220)}
+            Shop the sequence
           </LgType>
         </div>
+        <LgCta variant="solid" onClick={() => commerce.openCatalog()}>
+          View the collection
+        </LgCta>
       </section>
 
-      <section className="lg-cin-strip">
-        <LgType role="kicker" as="p">
-          Next frames
-        </LgType>
-        <div className="lg-cin-rail" role="list">
-          {products.slice(0, 6).map((p) => (
-            <div key={p.id} role="listitem">
-              <LgProduct
-                product={p}
-                treatment="film_still"
-                commerce={commerce}
-                currency={currency}
-                locale={locale}
-                ratio="16 / 10"
-              />
+      <section className="lg-cin-sequence" data-mode={letterbox ? 'scenes' : 'stack'}>
+        {shop.map((p, i) => (
+          <article key={p.id} className="lg-cin-scene" data-i={i}>
+            <button type="button" className="lg-cin-scene-media" onClick={() => commerce.openProduct(p)}>
+              <LgMedia src={p.image} alt={p.title} ratio={i % 2 === 0 ? '16 / 9' : '4 / 5'} crop="center" />
+            </button>
+            <div className="lg-cin-scene-meta">
+              <span className="lg-cin-num">0{i + 1}</span>
+              <div>
+                <button type="button" className="lg-product-name" onClick={() => commerce.openProduct(p)}>
+                  {p.title}
+                </button>
+                <p className="lg-product-price">{priceOf(p.price, currency, locale)}</p>
+              </div>
+              <div className="lg-product-actions">
+                <LgCta variant="solid" onClick={() => commerce.openProduct(p)}>
+                  View
+                </LgCta>
+                <LgCta variant="ghost" onClick={() => commerce.addToCart(p)}>
+                  Add to cart
+                </LgCta>
+              </div>
             </div>
-          ))}
-        </div>
+          </article>
+        ))}
       </section>
+
+      {hero ? (
+        <p className="lg-sr-only">
+          Opening product {hero.title}
+        </p>
+      ) : null}
 
       <LgFooter name={copy.storeName} blurb={copy.footerBlurb} commerce={commerce} />
     </>
@@ -215,64 +253,80 @@ export function CinematicFullBleedPage({ plan, page, commerce }: PageProps) {
 }
 
 export function ProductMonumentPage({ plan, page, commerce }: PageProps) {
-  const { copy, products, featured } = page;
+  const { copy, products } = page;
   const { currency, locale } = currencyOf(commerce);
   const v = plan.variation;
-  const hero = featured || products[0];
+  const hero = products[0];
   if (!hero) return <LgNav name={copy.storeName} commerce={commerce} variant={v.nav} />;
+  const framed = v.heroGeometry === 'product_artifact_stage' || v.heroGeometry === 'quiet_luxury_minimal';
   const specs = [
-    hero.description,
-    copy.storyBody,
-    copy.statement,
-  ].filter(Boolean) as string[];
+    { id: 'form', title: 'Form', body: hero.description || copy.subtitle },
+    { id: 'make', title: 'Make', body: copy.storyBody },
+    { id: 'use', title: 'Use', body: copy.statement || copy.subtitle },
+  ];
 
   return (
     <>
-      <LgNav name={copy.storeName} commerce={commerce} variant={v.nav} />
-      <section className="lg-mon-hero" data-hero={v.heroGeometry} data-side={v.mediaSide}>
+      <LgNav name={copy.storeName} commerce={commerce} variant={v.nav === 'overlay' ? 'solid' : v.nav} />
+      <section className="lg-mon-hero" data-hero={v.heroGeometry} data-side={v.mediaSide} data-framed={framed ? '1' : '0'}>
         <div className="lg-mon-figure">
           <LgMedia src={hero.image} alt={hero.title} ratio="4 / 5" crop={v.crop} />
         </div>
-        <div className="lg-mon-copy">
+        <div className="lg-mon-identity">
           <LgType role="kicker" as="p">
-            {copy.kicker}
+            {hero.category || copy.kicker}
           </LgType>
           <LgType role="display" as="h1">
             {hero.title}
           </LgType>
-          <p className="lg-type lg-type-price">{new Intl.NumberFormat(locale, { style: 'currency', currency, maximumFractionDigits: 0 }).format(hero.price)}</p>
+          <p className="lg-product-price lg-mon-price">{priceOf(hero.price, currency, locale)}</p>
           <LgType role="body" as="p">
-            {clampCopy(hero.description || copy.subtitle, 160)}
+            {clampCopy(hero.description || copy.subtitle, 180)}
           </LgType>
           <div className="lg-mon-actions">
-            <LgCta variant="solid" onClick={() => commerce.openProduct(hero)}>
+            <LgCta variant="solid" onClick={() => commerce.addToCart(hero)}>
+              Add to cart
+            </LgCta>
+            <LgCta variant="text" onClick={() => commerce.openProduct(hero)}>
               View details
             </LgCta>
-            <LgCta onClick={() => commerce.addToCart(hero)}>Add to cart</LgCta>
           </div>
         </div>
       </section>
 
-      <section className="lg-mon-specs">
-        {specs.slice(0, 3).map((s, i) => (
-          <article key={i} className="lg-mon-spec">
-            <LgType role="kicker" as="p">
-              0{i + 1}
-            </LgType>
-            <LgType role="sectionHeading" as="h2">
-              {i === 0 ? 'Form' : i === 1 ? 'Make' : 'Use'}
-            </LgType>
-            <LgType role="body" as="p">
-              {clampCopy(s, 180)}
-            </LgType>
+      <section className="lg-mon-narrative">
+        {specs.map((s, i) => (
+          <article key={s.id} className="lg-mon-spec">
+            <div className="lg-mon-spec-copy">
+              <LgType role="kicker" as="p">
+                0{i + 1} / {s.title}
+              </LgType>
+              <LgType role="sectionHeading" as="h2">
+                {s.title}
+              </LgType>
+              <LgType role="body" as="p">
+                {clampCopy(s.body, 200)}
+              </LgType>
+            </div>
+            {products[i + 1]?.image ? (
+              <LgMedia src={products[i + 1].image} alt="" ratio={i === 1 ? '1 / 1' : '4 / 5'} crop="center" />
+            ) : null}
           </article>
         ))}
       </section>
 
       <section className="lg-mon-support">
-        <LgType role="sectionHeading" as="h2">
-          After the piece
-        </LgType>
+        <div className="lg-ed-merch-head">
+          <div>
+            <p className="lg-ed-chapter">Next pieces</p>
+            <LgType role="sectionHeading" as="h2">
+              After the monument
+            </LgType>
+          </div>
+          <LgCta variant="text" onClick={() => commerce.openCatalog()}>
+            Shop all
+          </LgCta>
+        </div>
         <div className="lg-mon-rail">
           {products.slice(1, 5).map((p) => (
             <LgProduct
@@ -282,7 +336,7 @@ export function ProductMonumentPage({ plan, page, commerce }: PageProps) {
               commerce={commerce}
               currency={currency}
               locale={locale}
-              ratio="1 / 1"
+              ratio="4 / 5"
             />
           ))}
         </div>
@@ -297,54 +351,66 @@ export function TypographicCampaignPage({ plan, page, commerce }: PageProps) {
   const { copy, products } = page;
   const { currency, locale } = currencyOf(commerce);
   const v = plan.variation;
-  const lines = displayLines(copy.title, 3);
+  const lines = displayLines(copy.title, copy.title.length > 28 ? 3 : 2);
+  const stacked = v.heroGeometry === 'campaign_stack';
+  const modules = products.slice(0, 4);
 
   return (
     <>
       <LgNav name={copy.storeName} commerce={commerce} variant={v.nav} tone="light" />
-      <section className="lg-ty-hero" data-hero={v.heroGeometry} data-side={v.mediaSide}>
+      <section className="lg-ty-hero" data-hero={v.heroGeometry} data-side={v.mediaSide} data-lines={String(lines.length)}>
         <div className="lg-ty-display">
-          {lines.map((ln) => (
-            <LgType key={ln} role="display" as="h1">
-              {ln}
-            </LgType>
-          ))}
+          <h1 className="lg-ty-h1">
+            {lines.map((ln) => (
+              <span key={ln} className="lg-type lg-type-display">
+                {ln}
+              </span>
+            ))}
+          </h1>
         </div>
         <div className="lg-ty-media">
-          <LgMedia src={copy.heroImage} alt="" ratio="3 / 4" crop={v.crop} />
+          <LgMedia src={copy.heroImage} alt="" ratio={stacked ? '16 / 10' : '3 / 4'} crop={v.crop} />
         </div>
-        <LgType role="body" as="p" className="lg-ty-sub">
-          {clampCopy(copy.subtitle, 120)}
+        <div className="lg-ty-lead">
+          <LgType role="body" as="p">
+            {clampCopy(copy.subtitle, 140)}
+          </LgType>
+          <LgCta variant="solid" onClick={() => commerce.openCatalog()}>
+            {copy.cta}
+          </LgCta>
+        </div>
+      </section>
+
+      <div className="lg-ty-marquee" aria-hidden="true">
+        <p>{products.map((p) => p.title).join('  —  ')}</p>
+      </div>
+
+      <section className="lg-ty-bridge">
+        <LgType role="sectionHeading" as="h2">
+          Drop 01
         </LgType>
-        <LgCta variant="solid" onClick={() => commerce.openCatalog()}>
-          {copy.cta}
+        <LgCta variant="ghost" onClick={() => commerce.openCatalog()}>
+          Shop the campaign
         </LgCta>
       </section>
 
-      <div className="lg-ty-marquee" aria-hidden={false}>
-        <p>
-          {products
-            .map((p) => p.title)
-            .concat(products.map((p) => p.title))
-            .join('  —  ')}
-        </p>
-      </div>
-
       <section className="lg-ty-posters">
-        {products.slice(0, 3).map((p, i) => (
-          <article key={p.id} className="lg-ty-poster" data-i={i}>
-            <LgType role="editorialHeading" as="h2">
-              {p.title}
-            </LgType>
-            <LgMedia src={p.image} alt={p.title} ratio={i === 0 ? '4 / 5' : '1 / 1'} crop={v.crop} />
+        {modules.map((p, i) => (
+          <article key={p.id} className="lg-ty-poster" data-mod={i % 3 === 0 ? 'band' : i % 3 === 1 ? 'split' : 'stack'}>
+            <div className="lg-ty-poster-media">
+              <LgMedia src={p.image} alt={p.title} ratio={i === 0 ? '4 / 5' : i === 1 ? '1 / 1' : '16 / 10'} crop={v.crop} />
+              <div className="lg-ty-poster-band">
+                <h2 className="lg-product-name">{p.title}</h2>
+                <p className="lg-product-price">{priceOf(p.price, currency, locale)}</p>
+              </div>
+            </div>
             <div className="lg-ty-poster-meta">
-              <span className="lg-type lg-type-price">
-                {new Intl.NumberFormat(locale, { style: 'currency', currency, maximumFractionDigits: 0 }).format(p.price)}
-              </span>
               <LgCta variant="solid" onClick={() => commerce.openProduct(p)}>
                 Shop
               </LgCta>
-              <LgCta onClick={() => commerce.addToCart(p)}>Add</LgCta>
+              <LgCta variant="ghost" onClick={() => commerce.addToCart(p)}>
+                Add to cart
+              </LgCta>
             </div>
           </article>
         ))}
@@ -365,6 +431,7 @@ export function ImmersiveCatalogPage({ plan, page, commerce }: PageProps) {
   return (
     <>
       <LgNav name={copy.storeName} commerce={commerce} variant={v.nav} />
+      <p className="lg-experimental-flag">Experimental / rejected — not in the approved set</p>
       <section className="lg-cat-intro" data-hero={v.heroGeometry}>
         <LgType role="display" as="h1">
           {clampCopy(copy.title, 56)}
@@ -427,34 +494,6 @@ export function ImmersiveCatalogPage({ plan, page, commerce }: PageProps) {
         ))}
       </section>
 
-      {copy.storyTitle ? (
-        <section className="lg-cat-interrupt">
-          <LgType role="kicker" as="p">
-            {copy.kicker}
-          </LgType>
-          <LgType role="editorialHeading" as="h2">
-            {copy.storyTitle}
-          </LgType>
-          <LgType role="body" as="p">
-            {clampCopy(copy.storyBody, 180)}
-          </LgType>
-        </section>
-      ) : null}
-
-      <section className="lg-cat-dense">
-        {products.slice(0, 8).map((p) => (
-          <LgProduct
-            key={`dense-${p.id}`}
-            product={p}
-            treatment="dense_catalog"
-            commerce={commerce}
-            currency={currency}
-            locale={locale}
-            ratio="4 / 5"
-          />
-        ))}
-      </section>
-
       <LgFooter name={copy.storeName} blurb={copy.footerBlurb} commerce={commerce} />
     </>
   );
@@ -473,6 +512,7 @@ export function WarmStorytellingPage({ plan, page, commerce }: PageProps) {
   return (
     <>
       <LgNav name={copy.storeName} commerce={commerce} variant={v.nav} />
+      <p className="lg-experimental-flag">Experimental / rejected — not in the approved set</p>
       <section className="lg-wa-hero" data-hero={v.heroGeometry}>
         <div className="lg-wa-cluster">
           {cluster.map((src, i) => (

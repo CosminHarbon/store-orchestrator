@@ -1,0 +1,114 @@
+[
+  {
+    "shot": "cinematic_full_bleed neutral seed-a desktop",
+    "issues": []
+  },
+  {
+    "shot": "cinematic_full_bleed neutral seed-a tablet",
+    "issues": []
+  },
+  {
+    "shot": "cinematic_full_bleed neutral seed-a mobile",
+    "issues": []
+  },
+  {
+    "shot": "cinematic_full_bleed neutral seed-a phone",
+    "issues": []
+  },
+  {
+    "shot": "cinematic_full_bleed neutral seed-b desktop",
+    "issues": []
+  },
+  {
+    "shot": "cinematic_full_bleed neutral seed-b mobile",
+    "issues": []
+  },
+  {
+    "shot": "cinematic_full_bleed neutral seed-a compact",
+    "issues": []
+  },
+  {
+    "shot": "editorial_asymmetric neutral seed-a desktop",
+    "issues": []
+  },
+  {
+    "shot": "editorial_asymmetric neutral seed-a tablet",
+    "issues": []
+  },
+  {
+    "shot": "editorial_asymmetric neutral seed-a mobile",
+    "issues": []
+  },
+  {
+    "shot": "editorial_asymmetric neutral seed-a phone",
+    "issues": []
+  },
+  {
+    "shot": "editorial_asymmetric neutral seed-b desktop",
+    "issues": []
+  },
+  {
+    "shot": "editorial_asymmetric neutral seed-b mobile",
+    "issues": []
+  },
+  {
+    "shot": "editorial_asymmetric neutral seed-a compact",
+    "issues": []
+  },
+  {
+    "shot": "product_monument neutral seed-a desktop",
+    "issues": []
+  },
+  {
+    "shot": "product_monument neutral seed-a tablet",
+    "issues": []
+  },
+  {
+    "shot": "product_monument neutral seed-a mobile",
+    "issues": []
+  },
+  {
+    "shot": "product_monument neutral seed-a phone",
+    "issues": []
+  },
+  {
+    "shot": "product_monument neutral seed-b desktop",
+    "issues": []
+  },
+  {
+    "shot": "product_monument neutral seed-b mobile",
+    "issues": []
+  },
+  {
+    "shot": "product_monument neutral seed-a compact",
+    "issues": []
+  },
+  {
+    "shot": "typographic_campaign neutral seed-a desktop",
+    "issues": []
+  },
+  {
+    "shot": "typographic_campaign neutral seed-a tablet",
+    "issues": []
+  },
+  {
+    "shot": "typographic_campaign neutral seed-a mobile",
+    "issues": []
+  },
+  {
+    "shot": "typographic_campaign neutral seed-a phone",
+    "issues": []
+  },
+  {
+    "shot": "typographic_campaign neutral seed-b desktop",
+    "issues": []
+  },
+  {
+    "shot": "typographic_campaign neutral seed-b mobile",
+    "issues": []
+  },
+  {
+    "shot": "typographic_campaign neutral seed-a compact",
+    "issues": []
+  }
+]

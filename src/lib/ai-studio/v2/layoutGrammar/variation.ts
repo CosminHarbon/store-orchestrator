@@ -36,7 +36,7 @@ const POOLS: Record<LayoutGrammarId, AxisPool> = {
     grouping: ['paired', 'canvas'],
   },
   cinematic_full_bleed: {
-    heroGeometry: ['full_bleed_campaign', 'layered_scrim', 'cinematic_letterbox'],
+    heroGeometry: ['full_bleed_campaign', 'cinematic_letterbox', 'layered_scrim'],
     mediaSide: ['left', 'right'],
     gridRatio: ['8-4', '7-5'],
     overlap: ['modest', 'pronounced'],
@@ -169,6 +169,66 @@ export function resolveVariation(grammarId: LayoutGrammarId, seed?: string | num
     mobileHero: pick(rng, pool.mobileHero),
     grouping: pick(rng, pool.grouping),
   };
+}
+
+const STRUCTURAL_AXES = [
+  'heroGeometry',
+  'mediaSide',
+  'gridRatio',
+  'overlap',
+  'contentWidth',
+  'rhythm',
+  'density',
+  'productEmphasis',
+  'surfaceSequence',
+  'typeScale',
+  'nav',
+  'mobileHero',
+  'grouping',
+] as const;
+
+export type SeedAxisDiff = {
+  axis: (typeof STRUCTURAL_AXES)[number] | 'crop';
+  seedA: string;
+  seedB: string;
+};
+
+/** Documented structural intent for showcase seed-a vs seed-b. Crop-only changes are excluded. */
+export const SEED_STRUCTURE_NOTES: Record<LayoutGrammarId, { seedA: string; seedB: string }> = {
+  editorial_asymmetric: {
+    seedA: 'Offset split, media left, 5-7 grid, paired merch, crop-first mobile.',
+    seedB: 'Hanging media, media right, 4-8 grid, mixed merch, stacked mobile.',
+  },
+  cinematic_full_bleed: {
+    seedA: 'Full-bleed overlay campaign, mixed product stack, overlay mobile hero.',
+    seedB: 'Letterbox crop, inverted media side, scene-rail sequence, stacked mobile.',
+  },
+  product_monument: {
+    seedA: 'Framed artifact stage, identity left of object, isolated supporting rail.',
+    seedB: 'Edge-to-edge object stage, identity opposite side, paired next-chapter merch.',
+  },
+  typographic_campaign: {
+    seedA: 'Display collision with overlapping media, campaign nav, type-first mobile.',
+    seedB: 'Corner-led media, inverted side, overlay nav, stacked campaign modules.',
+  },
+  immersive_catalog: {
+    seedA: 'Compact catalog intro (experimental).',
+    seedB: 'Featured breakout hero (experimental).',
+  },
+  warm_storytelling: {
+    seedA: 'Cluster prologue (experimental).',
+    seedB: 'Chapter opener (experimental).',
+  },
+};
+
+export function seedComparisonMatrix(grammarId: LayoutGrammarId): SeedAxisDiff[] {
+  const a = resolveVariation(grammarId, 'seed-a');
+  const b = resolveVariation(grammarId, 'seed-b');
+  return STRUCTURAL_AXES.filter((axis) => a[axis] !== b[axis]).map((axis) => ({
+    axis,
+    seedA: String(a[axis]),
+    seedB: String(b[axis]),
+  }));
 }
 
 /** True when at least one structural axis differs (not merely crop). */
