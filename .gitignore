@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Generated AI Studio V2 screenshot binaries. HTML/JSON reports remain tracked.
+/docs/ai-studio-v2-layout-grammar-screenshots/**/*.png
+/docs/ai-studio-v2-layout-grammar-screenshots/**/*.jpg
+/docs/ai-studio-v2-layout-grammar-screenshots/**/*.jpeg
+/docs/ai-studio-v2-design-intelligence-screenshots/**/*.png
+/docs/ai-studio-v2-design-intelligence-screenshots/**/*.jpg
+/docs/ai-studio-v2-design-intelligence-screenshots/**/*.jpeg

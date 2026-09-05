@@ -1,0 +1,166 @@
+.lg-show {
+  min-height: 100vh;
+  background: #101114;
+  color: #eceae6;
+  font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+}
+
+.lg-show-chrome {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 1.1rem 1.4rem 1rem;
+  background: rgba(16, 17, 20, 0.94);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.lg-show-badge {
+  display: inline-block;
+  margin-bottom: 0.4rem;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #e2b657;
+  border: 1px solid #e2b657;
+  border-radius: 999px;
+}
+
+.lg-show-chrome h1 {
+  margin: 0;
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+}
+
+.lg-show-chrome p {
+  margin: 0.4rem 0 0;
+  max-width: 72ch;
+  opacity: 0.68;
+  font-size: 0.9rem;
+}
+
+.lg-show-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem 1.25rem;
+  margin-top: 0.9rem;
+}
+
+.lg-show-controls label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.lg-show-controls select {
+  min-height: 36px;
+  background: #1c1e24;
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 0.3rem 0.5rem;
+}
+
+.lg-show-stage,
+.lg-show-pair {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1rem;
+  padding: 1rem;
+  align-items: start;
+}
+
+.lg-show-pair {
+  grid-template-columns: minmax(0, 1.4fr) minmax(240px, 0.55fr) 320px;
+}
+
+.lg-show-pair h3,
+.lg-show-compare h2,
+.lg-show-sheet h2 {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.lg-show-shell {
+  overflow: auto;
+  background: #2a2d34;
+  padding: 0.75rem;
+  max-height: calc(100vh - 8rem);
+}
+
+.lg-show-frame {
+  background: #fff;
+  transform-origin: top left;
+}
+
+.lg-show-meta {
+  padding: 1rem;
+  background: #181a1f;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  max-height: calc(100vh - 8rem);
+  overflow: auto;
+}
+
+.lg-show-meta h2 {
+  margin: 0 0 0.75rem;
+  text-transform: capitalize;
+}
+
+.lg-show-meta dl {
+  margin: 0;
+}
+
+.lg-show-meta dt {
+  opacity: 0.45;
+  margin-top: 0.7rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lg-show-meta dd {
+  margin: 0.15rem 0 0;
+}
+
+.lg-show-compare,
+.lg-show-sheet {
+  padding: 1rem;
+  display: grid;
+  gap: 2.5rem;
+}
+
+.lg-show-sheet-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1.4fr 0.42fr;
+  gap: 0.75rem;
+}
+
+.lg-show.is-capture {
+  background: #fff;
+}
+
+.lg-show.is-capture .lg-show-stage,
+.lg-show.is-capture .lg-show-pair,
+.lg-show.is-capture .lg-show-compare,
+.lg-show.is-capture .lg-show-sheet {
+  display: block;
+  padding: 0;
+}
+
+.lg-show.is-capture .lg-show-shell {
+  max-height: none;
+  overflow: visible;
+  background: #fff;
+  padding: 0;
+}
+
+.lg-show.is-capture .lg-show-meta,
+.lg-show.is-capture h3 {
+  display: none;
+}
