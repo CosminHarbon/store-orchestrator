@@ -2,12 +2,15 @@ import type { StorefrontCommerce } from '@/hooks/useStorefrontCommerce';
 import type { LayoutPlan } from '@/lib/ai-studio/v2/layoutGrammar/types';
 import type { SemanticPage } from '@/lib/ai-studio/v2/layoutGrammar/extractContent';
 import { clampCopy, displayLines } from '@/lib/ai-studio/v2/layoutGrammar/extractContent';
+import type { DesignIntelligencePlan } from '@/lib/ai-studio/v2/designIntelligence';
+import { monumentSpecs, productById, supportingProducts } from '@/lib/ai-studio/v2/designIntelligence';
 import { LgCta, LgFooter, LgMedia, LgNav, LgProduct, LgType, currencyOf, priceOf } from './primitives';
 
 type PageProps = {
   plan: LayoutPlan;
   page: SemanticPage;
   commerce: StorefrontCommerce;
+  intelligence?: DesignIntelligencePlan | null;
 };
 
 export function EditorialAsymmetricPage({ plan, page, commerce }: PageProps) {
@@ -252,18 +255,23 @@ export function CinematicFullBleedPage({ plan, page, commerce }: PageProps) {
   );
 }
 
-export function ProductMonumentPage({ plan, page, commerce }: PageProps) {
+export function ProductMonumentPage({ plan, page, commerce, intelligence }: PageProps) {
   const { copy, products } = page;
   const { currency, locale } = currencyOf(commerce);
   const v = plan.variation;
-  const hero = products[0];
+  const hero = intelligence
+    ? productById(products, intelligence.catalog.primaryProductId) || products[0]
+    : products[0];
   if (!hero) return <LgNav name={copy.storeName} commerce={commerce} variant={v.nav} />;
   const framed = v.heroGeometry === 'product_artifact_stage' || v.heroGeometry === 'quiet_luxury_minimal';
-  const specs = [
-    { id: 'form', title: 'Form', body: hero.description || copy.subtitle },
-    { id: 'make', title: 'Make', body: copy.storyBody },
-    { id: 'use', title: 'Use', body: copy.statement || copy.subtitle },
-  ];
+  const specs = intelligence
+    ? monumentSpecs(intelligence, products, copy)
+    : [
+        { id: 'form', title: 'Form', body: hero.description || copy.subtitle, imageUrl: products[1]?.image || null, imageAlt: products[1]?.title || '', productId: products[1]?.id || '' },
+        { id: 'make', title: 'Make', body: copy.storyBody, imageUrl: products[2]?.image || null, imageAlt: products[2]?.title || '', productId: products[2]?.id || '' },
+        { id: 'use', title: 'Use', body: copy.statement || copy.subtitle, imageUrl: products[3]?.image || null, imageAlt: products[3]?.title || '', productId: products[3]?.id || '' },
+      ];
+  const rail = intelligence ? supportingProducts(intelligence, products) : products.slice(1, 5);
 
   return (
     <>
@@ -294,53 +302,57 @@ export function ProductMonumentPage({ plan, page, commerce }: PageProps) {
         </div>
       </section>
 
-      <section className="lg-mon-narrative">
-        {specs.map((s, i) => (
-          <article key={s.id} className="lg-mon-spec">
-            <div className="lg-mon-spec-copy">
-              <LgType role="kicker" as="p">
-                0{i + 1} / {s.title}
-              </LgType>
+      {specs.length ? (
+        <section className="lg-mon-narrative" data-intelligence={intelligence ? '1' : '0'}>
+          {specs.map((s, i) => (
+            <article key={s.id} className="lg-mon-spec" data-spec={s.id} data-spec-product={s.productId || ''}>
+              <div className="lg-mon-spec-copy">
+                <LgType role="kicker" as="p">
+                  0{i + 1} / {s.title}
+                </LgType>
+                <LgType role="sectionHeading" as="h2">
+                  {s.title}
+                </LgType>
+                <LgType role="body" as="p">
+                  {clampCopy(s.body, 200)}
+                </LgType>
+              </div>
+              {s.imageUrl ? (
+                <LgMedia src={s.imageUrl} alt={s.imageAlt} ratio={i === 1 ? '1 / 1' : '4 / 5'} crop="center" />
+              ) : null}
+            </article>
+          ))}
+        </section>
+      ) : null}
+
+      {rail.length ? (
+        <section className="lg-mon-support">
+          <div className="lg-ed-merch-head">
+            <div>
+              <p className="lg-ed-chapter">Next pieces</p>
               <LgType role="sectionHeading" as="h2">
-                {s.title}
-              </LgType>
-              <LgType role="body" as="p">
-                {clampCopy(s.body, 200)}
+                After the monument
               </LgType>
             </div>
-            {products[i + 1]?.image ? (
-              <LgMedia src={products[i + 1].image} alt="" ratio={i === 1 ? '1 / 1' : '4 / 5'} crop="center" />
-            ) : null}
-          </article>
-        ))}
-      </section>
-
-      <section className="lg-mon-support">
-        <div className="lg-ed-merch-head">
-          <div>
-            <p className="lg-ed-chapter">Next pieces</p>
-            <LgType role="sectionHeading" as="h2">
-              After the monument
-            </LgType>
+            <LgCta variant="text" onClick={() => commerce.openCatalog()}>
+              Shop all
+            </LgCta>
           </div>
-          <LgCta variant="text" onClick={() => commerce.openCatalog()}>
-            Shop all
-          </LgCta>
-        </div>
-        <div className="lg-mon-rail">
-          {products.slice(1, 5).map((p) => (
-            <LgProduct
-              key={p.id}
-              product={p}
-              treatment="horizontal_story"
-              commerce={commerce}
-              currency={currency}
-              locale={locale}
-              ratio="4 / 5"
-            />
-          ))}
-        </div>
-      </section>
+          <div className="lg-mon-rail">
+            {rail.slice(0, 4).map((p) => (
+              <LgProduct
+                key={p.id}
+                product={p}
+                treatment="horizontal_story"
+                commerce={commerce}
+                currency={currency}
+                locale={locale}
+                ratio="4 / 5"
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <LgFooter name={copy.storeName} blurb={copy.footerBlurb} commerce={commerce} />
     </>

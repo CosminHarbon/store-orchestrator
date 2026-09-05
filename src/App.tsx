@@ -40,6 +40,10 @@ const AiStudioV2LayoutGrammars = import.meta.env.DEV
   ? lazy(() => import('./pages/ai-studio-v2/AiStudioV2LayoutGrammars'))
   : null;
 
+const AiStudioV2DesignIntelligence = import.meta.env.DEV
+  ? lazy(() => import('./pages/ai-studio-v2/AiStudioV2DesignIntelligence'))
+  : null;
+
 const PushNotificationInitializer = () => {
   useFcmPushNotifications();
   return null;
@@ -198,6 +202,18 @@ const App = () => (
                     <StorefrontThemeProvider>
                       <Suspense fallback={<div style={{ padding: 24 }}>Loading layout grammars…</div>}>
                         <AiStudioV2LayoutGrammars />
+                      </Suspense>
+                    </StorefrontThemeProvider>
+                  }
+                />
+              ) : null}
+              {import.meta.env.DEV && AiStudioV2DesignIntelligence ? (
+                <Route
+                  path="/ai-studio-v2-design-intelligence"
+                  element={
+                    <StorefrontThemeProvider>
+                      <Suspense fallback={<div style={{ padding: 24 }}>Loading design intelligence…</div>}>
+                        <AiStudioV2DesignIntelligence />
                       </Suspense>
                     </StorefrontThemeProvider>
                   }

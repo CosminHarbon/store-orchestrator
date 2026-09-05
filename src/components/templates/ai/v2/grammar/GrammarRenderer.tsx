@@ -11,6 +11,8 @@ import {
   type LayoutGrammarId,
 } from '@/lib/ai-studio/v2/layoutGrammar';
 import type { CreativeStrategy } from '@shared/ai-studio-v2/creativeStrategy';
+import type { DesignIntelligencePlan } from '@/lib/ai-studio/v2/designIntelligence';
+import { reorderProductsForPlan } from '@/lib/ai-studio/v2/designIntelligence';
 import {
   CinematicFullBleedPage,
   EditorialAsymmetricPage,
@@ -32,6 +34,8 @@ type Props = {
   seed?: string | number;
   viewport?: GrammarViewport;
   onPlan?: (plan: ReturnType<typeof planForDocument>['plan']) => void;
+  /** DEV fixture inspector only. Layout-grammar showcase does not pass this. */
+  intelligence?: DesignIntelligencePlan | null;
 };
 
 const PAGES = {
@@ -53,13 +57,22 @@ export default function GrammarRenderer({
   seed = 'seed-a',
   viewport = 'desktop',
   onPlan,
+  intelligence = null,
 }: Props) {
+  const products = useMemo(
+    () => (intelligence ? reorderProductsForPlan(intelligence, commerce.products) : commerce.products),
+    [intelligence, commerce.products]
+  );
+  const catalogCommerce = useMemo(
+    () => ({ ...commerce, products }),
+    [commerce, products]
+  );
   const { plan, page } = useMemo(
     () =>
       planForDocument({
         document,
         catalog: {
-          products: commerce.products,
+          products,
           collections: commerce.collections,
           reviews: commerce.reviews,
         },
@@ -69,7 +82,7 @@ export default function GrammarRenderer({
         grammarOverride,
         viewport,
       }),
-    [document, commerce.products, commerce.collections, commerce.reviews, strategy, spec, seed, grammarOverride, viewport]
+    [document, products, commerce.collections, commerce.reviews, strategy, spec, seed, grammarOverride, viewport]
   );
 
   useEffect(() => {
@@ -99,8 +112,10 @@ export default function GrammarRenderer({
       data-width={plan.variation.contentWidth}
       data-nav={plan.variation.nav}
       data-motion={brand.tokens.motion || 'none'}
+      data-intelligence={intelligence ? '1' : '0'}
+      data-primary-product={intelligence?.catalog.primaryProductId || page.products[0]?.id || ''}
     >
-      <Page plan={plan} page={page} commerce={commerce} />
+      <Page plan={plan} page={page} commerce={catalogCommerce} intelligence={intelligence} />
       {commerce.cartOpen ? (
         <div className="lg-cart-sheet" role="dialog" aria-label="Cart">
           <p className="lg-cart-sheet-title">Cart</p>
