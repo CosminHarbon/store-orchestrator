@@ -4,6 +4,14 @@ import type { CompositionRenderProps } from './registry';
 import { resolveProducts } from './registry';
 import { ProductPresentation } from './ProductPresentation';
 import { formatStoreMoney, resolvePresentationMode } from './money';
+import { productReviewStats } from '@/lib/storefront/api';
+import type { StorefrontProduct } from '@/lib/storefront/types';
+
+/** Per-product rating from real, product-linked reviews only — never a store-wide average. */
+function ratingOf(commerce: CompositionRenderProps['commerce'], product: StorefrontProduct) {
+  const stats = productReviewStats(commerce.reviews || [], product.id);
+  return { ratingAvg: stats.avg, ratingCount: stats.count };
+}
 
 function str(v: unknown, fallback = '') {
   return typeof v === 'string' && v.trim() ? v.trim() : fallback;
@@ -237,7 +245,7 @@ export function HeroProductFocus({ node, commerce, brand, language, asset }: Com
 /* ─── Products ───────────────────────────────────────────────── */
 
 export function ProductGridEditorial(props: CompositionRenderProps) {
-  const { node, commerce, brand } = props;
+  const { node, commerce, brand, language } = props;
   const products = resolveProducts(commerce, node);
   const title = str(node.content.title);
   const layout = layoutOf(node, 'featureFirst');
@@ -265,11 +273,14 @@ export function ProductGridEditorial(props: CompositionRenderProps) {
               mode={mode}
               currency={currency}
               locale={locale}
+              language={language}
               featured
               onOpen={commerce.openProduct}
               onAdd={(p) => commerce.addToCart(p)}
               showQuickAdd={mode !== 'luxury' && node.dataBindings?.showQuickAdd !== false}
               showSpec={mode === 'tech'}
+              showRating={mode === 'tech'}
+              {...ratingOf(commerce, first)}
             />
           </div>
         ) : layout === 'asymmetricFeature' && first ? (
@@ -282,11 +293,14 @@ export function ProductGridEditorial(props: CompositionRenderProps) {
                 mode={mode}
                 currency={currency}
                 locale={locale}
+                language={language}
                 featured
                 onOpen={commerce.openProduct}
                 onAdd={(p) => commerce.addToCart(p)}
                 showQuickAdd={mode !== 'luxury' && node.dataBindings?.showQuickAdd !== false}
                 showSpec={mode === 'tech'}
+                showRating={mode === 'tech'}
+                {...ratingOf(commerce, first)}
               />
             </div>
             <div className="ai-v2-merch-asymmetric-fill">
@@ -297,10 +311,13 @@ export function ProductGridEditorial(props: CompositionRenderProps) {
                   mode={mode}
                   currency={currency}
                   locale={locale}
+                  language={language}
                   compact
                   onOpen={commerce.openProduct}
                   onAdd={(item) => commerce.addToCart(item)}
                   showQuickAdd={mode !== 'luxury' && node.dataBindings?.showQuickAdd !== false}
+                  showRating={mode === 'tech'}
+                  {...ratingOf(commerce, p)}
                 />
               ))}
             </div>
@@ -312,12 +329,14 @@ export function ProductGridEditorial(props: CompositionRenderProps) {
               mode={mode}
               currency={currency}
               locale={locale}
+              language={language}
               featured
               onOpen={commerce.openProduct}
               onAdd={(p) => commerce.addToCart(p)}
               showQuickAdd={mode !== 'luxury' && node.dataBindings?.showQuickAdd !== false}
               showSpec={mode === 'tech'}
               showRating={mode === 'tech'}
+              {...ratingOf(commerce, first)}
             />
             <div className="ai-v2-merch-side">
               {rest.slice(0, 4).map((p) => (
@@ -327,10 +346,13 @@ export function ProductGridEditorial(props: CompositionRenderProps) {
                   mode={mode}
                   currency={currency}
                   locale={locale}
+                  language={language}
                   onOpen={commerce.openProduct}
                   onAdd={(item) => commerce.addToCart(item)}
                   showQuickAdd={mode !== 'luxury' && node.dataBindings?.showQuickAdd !== false}
                   showSpec={mode === 'tech'}
+                  showRating={mode === 'tech'}
+                  {...ratingOf(commerce, p)}
                 />
               ))}
             </div>
@@ -344,11 +366,13 @@ export function ProductGridEditorial(props: CompositionRenderProps) {
                 mode={mode}
                 currency={currency}
                 locale={locale}
+                language={language}
                 onOpen={commerce.openProduct}
                 onAdd={(item) => commerce.addToCart(item)}
                 showQuickAdd={mode !== 'luxury' && node.dataBindings?.showQuickAdd !== false}
                 showSpec={mode === 'tech'}
                 showRating={mode === 'tech'}
+                {...ratingOf(commerce, p)}
               />
             ))}
           </div>
@@ -366,7 +390,7 @@ export function ProductGridEditorial(props: CompositionRenderProps) {
  * and design-knob plumbing as every other composition — no new business logic.
  */
 export function ProductGridLuxuryImageFirst(props: CompositionRenderProps) {
-  const { node, commerce } = props;
+  const { node, commerce, language } = props;
   const products = resolveProducts(commerce, { ...node, dataBindings: { ...node.dataBindings, limit: node.dataBindings?.limit || 4 } });
   const title = str(node.content.title);
   const { currency, locale } = currencyOf(commerce);
@@ -387,6 +411,7 @@ export function ProductGridLuxuryImageFirst(props: CompositionRenderProps) {
               mode="luxury"
               currency={currency}
               locale={locale}
+              language={language}
               featured
               onOpen={commerce.openProduct}
             />
@@ -398,7 +423,7 @@ export function ProductGridLuxuryImageFirst(props: CompositionRenderProps) {
 }
 
 export function ProductRailHorizontal(props: CompositionRenderProps) {
-  const { node, commerce } = props;
+  const { node, commerce, language } = props;
   const products = resolveProducts(commerce, {
     ...node,
     dataBindings: { ...node.dataBindings, limit: node.dataBindings?.limit || 10 },
@@ -429,10 +454,13 @@ export function ProductRailHorizontal(props: CompositionRenderProps) {
               mode={mode}
               currency={currency}
               locale={locale}
+              language={language}
               compact={!(alternating && idx % 3 === 0)}
               onOpen={commerce.openProduct}
               onAdd={(item) => commerce.addToCart(item)}
               showQuickAdd={mode === 'street' || mode === 'tech'}
+              showRating={mode === 'tech'}
+              {...ratingOf(commerce, p)}
             />
           </div>
         ))}

@@ -69,7 +69,8 @@ export const SHOWCASE_CATALOGS: Record<ShowcaseBrandId, ShowcaseCatalog> = {
       product({ id: 'a1', title: 'Milano Day Bag', description: 'Structured tote with a single interior compartment.', price: 890, image: u('photo-1624687943971-e86af76d57de'), stock: 12, sku: 'AN8-MIL', category: 'Day bags', collection_ids: ['col-day'] }),
       product({ id: 'a2', title: 'Verona Mini', description: 'Compact top-handle bag with a detachable strap.', price: 620, image: u('photo-1594223274512-ad4803739b7c'), stock: 8, sku: 'AN8-VER', category: 'Evening', collection_ids: ['col-evening'] }),
       product({ id: 'a3', title: 'Florence Tote', description: 'Woven panels with a slim chain handle.', price: 740, image: u('photo-1598532163257-ae3c6b2524b6'), stock: 10, sku: 'AN8-FLO', category: 'Travel', collection_ids: ['col-travel'] }),
-      product({ id: 'a4', title: 'Como Clutch', description: 'Evening silhouette with a chain shoulder strap.', price: 480, image: u('photo-1587538520952-fafa4eeee7be'), stock: 6, sku: 'AN8-COM', category: 'Evening', collection_ids: ['col-evening'] }),
+      // QA: restrained sale state for luxury presentation (Phase: Product Presentation Completeness).
+      product({ id: 'a4', title: 'Como Clutch', description: 'Evening silhouette with a chain shoulder strap.', price: 480, original_price: 620, image: u('photo-1587538520952-fafa4eeee7be'), stock: 6, sku: 'AN8-COM', category: 'Evening', collection_ids: ['col-evening'] }),
       product({ id: 'a5', title: 'Siena Shoulder', description: 'Flap satchel with a buckled front closure.', price: 710, image: u('photo-1603219527847-24c87f552a77'), stock: 9, sku: 'AN8-SIE', category: 'Day bags', collection_ids: ['col-day'] }),
       product({ id: 'a6', title: 'Roma Weekender', description: 'Roomy weekend duffel with rolled handles.', price: 980, image: u('photo-1525103504173-8dc1582c7430'), stock: 5, sku: 'AN8-ROM', category: 'Travel', collection_ids: ['col-travel'] }),
     ],
@@ -95,7 +96,9 @@ export const SHOWCASE_CATALOGS: Record<ShowcaseBrandId, ShowcaseCatalog> = {
     ],
     products: [
       product({ id: 's1', title: 'Clarity Serum 15%', description: 'Niacinamide concentrate for refined texture.', price: 68, image: u('photo-1512496015851-a90fb38ba796'), stock: 40, sku: 'AUR-CLR', category: 'Treat', collection_ids: ['col-treat'] }),
-      product({ id: 's2', title: 'Botanical Gel Cleanser', description: 'Fragrance-free gel for morning reset.', price: 34, image: u('photo-1556228720-195a672e8a03'), stock: 55, sku: 'AUR-CLN', category: 'Cleanse', collection_ids: ['col-cleanse'] }),
+      // QA: low-stock state — s2 is one of the first 4 catalog products, so it's actually
+      // within the luxury_image_first grid's dataBindings.limit:4 window and visible.
+      product({ id: 's2', title: 'Botanical Gel Cleanser', description: 'Fragrance-free gel for morning reset.', price: 34, image: u('photo-1556228720-195a672e8a03'), stock: 4, sku: 'AUR-CLN', category: 'Cleanse', collection_ids: ['col-cleanse'] }),
       product({ id: 's3', title: 'Barrier Cream', description: 'Ceramide-rich recovery moisturizer.', price: 52, image: u('photo-1611930022073-b7a4ba5fcccd'), stock: 32, sku: 'AUR-BAR', category: 'Barrier', collection_ids: ['col-barrier'] }),
       product({ id: 's4', title: 'Vitamin C Soft Mist', description: 'Daily antioxidant mist.', price: 42, image: u('photo-1570172619644-dfd03ed5d881'), stock: 28, sku: 'AUR-VIT', category: 'Treat', collection_ids: ['col-treat'] }),
       product({ id: 's5', title: 'Eye Recovery Gel', description: 'Cooling peptides for tired mornings.', price: 48, image: u('photo-1571781926291-c477ebfd024b'), stock: 22, sku: 'AUR-EYE', category: 'Treat', collection_ids: ['col-treat'] }),
@@ -122,11 +125,15 @@ export const SHOWCASE_CATALOGS: Record<ShowcaseBrandId, ShowcaseCatalog> = {
       { id: 'col-outer', name: 'Outerwear', description: 'City layers', image_url: u('photo-1551028719-00167b16eac5', 800) },
     ],
     products: [
-      product({ id: 'n1', title: 'Oversized Box Tee', description: 'Heavyweight cotton, dropped shoulder.', price: 68, image: u('photo-1521572163474-6864f9cf17ab'), stock: 40, sku: 'NL-TEE', category: 'Tops', collection_ids: ['col-tops'] }),
-      product({ id: 'n2', title: 'Cargo Wide Pant', description: 'Relaxed cargo with matte hardware.', price: 128, image: u('photo-1542272604-787c3835535d'), stock: 24, sku: 'NL-CRG', category: 'Bottoms', collection_ids: ['col-bottoms'] }),
+      // QA: sale state for street's stronger badge treatment.
+      product({ id: 'n1', title: 'Oversized Box Tee', description: 'Heavyweight cotton, dropped shoulder.', price: 68, original_price: 88, image: u('photo-1521572163474-6864f9cf17ab'), stock: 40, sku: 'NL-TEE', category: 'Tops', collection_ids: ['col-tops'] }),
+      // QA: low-stock state.
+      product({ id: 'n2', title: 'Cargo Wide Pant', description: 'Relaxed cargo with matte hardware.', price: 128, image: u('photo-1542272604-787c3835535d'), stock: 3, sku: 'NL-CRG', category: 'Bottoms', collection_ids: ['col-bottoms'] }),
       product({ id: 'n3', title: 'Night Shell Jacket', description: 'Water-resistant shell for city rain.', price: 198, image: u('photo-1551028719-00167b16eac5'), stock: 16, sku: 'NL-JKT', category: 'Outerwear', collection_ids: ['col-outer'] }),
-      product({ id: 'n4', title: 'Utility Cap', description: 'Structured cotton with tonal embroidery.', price: 42, image: u('photo-1529374255404-311a2a4f1fd9'), stock: 50, sku: 'NL-CAP', category: 'Accessories', collection_ids: ['col-tops'] }),
-      product({ id: 'n5', title: 'Layer Hoodie', description: 'Brushed fleece, oversized hood.', price: 118, image: u('photo-1556821840-3a63f95609a7'), stock: 30, sku: 'NL-HD', category: 'Tops', collection_ids: ['col-tops'] }),
+      // QA: sold-out state (highest badge precedence).
+      product({ id: 'n4', title: 'Utility Cap', description: 'Structured cotton with tonal embroidery.', price: 42, image: u('photo-1529374255404-311a2a4f1fd9'), stock: 0, sku: 'NL-CAP', category: 'Accessories', collection_ids: ['col-tops'] }),
+      // QA: deliberately long title for card-row/line-clamp robustness in the dense 4-col grid.
+      product({ id: 'n5', title: 'Layer Hoodie — Brushed Fleece Oversized Pullover with Adjustable Drawcord Hood', description: 'Brushed fleece, oversized hood.', price: 118, image: u('photo-1556821840-3a63f95609a7'), stock: 30, sku: 'NL-HD', category: 'Tops', collection_ids: ['col-tops'] }),
       product({ id: 'n6', title: 'City Runner', description: 'Chunky sole sneaker in matte black.', price: 168, image: u('photo-1542291026-7eec264c27ff'), stock: 20, sku: 'NL-RUN', category: 'Footwear', collection_ids: ['col-bottoms'] }),
     ],
     reviews: [
@@ -151,7 +158,8 @@ export const SHOWCASE_CATALOGS: Record<ShowcaseBrandId, ShowcaseCatalog> = {
     ],
     products: [
       product({ id: 'e1', title: 'Forma One Wireless', description: 'Adaptive ANC with 36-hour battery.', price: 349, image: u('photo-1505740420928-5e560c06d30e'), stock: 25, sku: 'FA-ONE', category: 'Headphones', collection_ids: ['col-headphones'] }),
-      product({ id: 'e2', title: 'Forma Buds Pro', description: 'Spatial audio earbuds with dual drivers.', price: 229, image: u('photo-1590658268037-6bf12165a8df'), stock: 40, sku: 'FA-BUD', category: 'Earbuds', collection_ids: ['col-earbuds'] }),
+      // QA: low-stock state alongside e5's pre-existing sale, for tech's stock+pricing hierarchy.
+      product({ id: 'e2', title: 'Forma Buds Pro', description: 'Spatial audio earbuds with dual drivers.', price: 229, image: u('photo-1590658268037-6bf12165a8df'), stock: 3, sku: 'FA-BUD', category: 'Earbuds', collection_ids: ['col-earbuds'] }),
       product({ id: 'e3', title: 'Studio Stand', description: 'Machined aluminum headphone stand.', price: 89, image: u('photo-1484704849700-f032a568e944'), stock: 35, sku: 'FA-STN', category: 'Accessories', collection_ids: ['col-accessories'] }),
       product({ id: 'e4', title: 'Travel Case Soft', description: 'Molded case for Forma One.', price: 49, image: u('photo-1572635196237-14b3f281503f'), stock: 60, sku: 'FA-CSE', category: 'Accessories', collection_ids: ['col-accessories'] }),
       product({ id: 'e5', title: 'Forma Lite', description: 'Lightweight open-back wireless.', price: 199, original_price: 249, image: u('photo-1487215078519-e21cc028cb29'), stock: 18, sku: 'FA-LTE', category: 'Headphones', collection_ids: ['col-headphones'] }),
