@@ -47,7 +47,7 @@
 
 .ai-v2-btn {
   appearance: none;
-  border: 0;
+  border: 1.5px solid transparent;
   cursor: pointer;
   margin-top: 1.75rem;
   padding: 0.95rem 1.5rem;
@@ -57,18 +57,46 @@
   font-weight: 600;
   background: var(--ai-primary);
   color: #fff;
-  border-radius: 0;
-  transition: opacity 0.2s ease;
+  border-radius: var(--ai-radius, 0px);
+  box-shadow: var(--ai-shadow, none);
+  transition: opacity 0.2s ease, background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .ai-v2-btn:hover {
   opacity: 0.88;
 }
 
+.ai-v2-btn:focus-visible,
+.ai-v2-btn-text:focus-visible,
+.ai-v2-text-link:focus-visible,
+.ai-v2-pp-add:focus-visible,
+.ai-v2-pp-cta:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* buttonStyle ('outline'|'ghost') reskins the PRIMARY commerce action (plain .ai-v2-btn,
+   never the already-ghost hero-on-image variant below, which keeps its own
+   contrast-safe white-on-veil treatment regardless of the brand's buttonStyle token —
+   see .ai-v2-btn-ghost). 'pill' is a shape statement layered on top of any fill and
+   applies further down so it also reaches the secondary/product CTAs. */
+.ai-v2-root[data-button-style='outline'] .ai-v2-btn:not(.ai-v2-btn-ghost):not(.ai-v2-btn-text) {
+  background: transparent;
+  color: var(--ai-primary);
+  border-color: var(--ai-primary);
+}
+
+.ai-v2-root[data-button-style='ghost'] .ai-v2-btn:not(.ai-v2-btn-ghost):not(.ai-v2-btn-text) {
+  background: transparent;
+  color: inherit;
+  border-color: color-mix(in srgb, currentColor 45%, transparent);
+}
+
 .ai-v2-btn-ghost {
   background: transparent;
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: var(--ai-radius, 0px);
 }
 
 .ai-v2-btn-text {
@@ -153,6 +181,11 @@
   top: 0;
   background: color-mix(in srgb, var(--ai-bg) 88%, transparent);
   backdrop-filter: blur(14px);
+  /* Floating chrome is the one nav treatment that can read as "elevated" — shadow:'none'
+     (common for flat/luxury brands) keeps it perfectly flat, matching the token. The
+     transparent/immersive nav below stays untouched — a shadow over hero imagery would
+     fight the art direction, not express it. */
+  box-shadow: var(--ai-shadow, none);
 }
 
 .ai-v2-nav-transparent {
@@ -505,6 +538,12 @@
 
 .ai-v2-pp-street .ai-v2-pp-media {
   aspect-ratio: 3 / 4;
+  /* street/tech render as discrete photo tiles (no border/background chrome otherwise),
+     so radius/shadow give them real "card" identity. Luxury/editorial media stays
+     unrounded and flat on purpose — that's full-bleed editorial imagery, not a card,
+     the same reasoning as never rounding a hero image. */
+  border-radius: var(--ai-radius, 0px);
+  box-shadow: var(--ai-shadow, none);
 }
 
 .ai-v2-pp-street .ai-v2-pp-media img {
@@ -547,7 +586,7 @@
 .ai-v2-pp-add,
 .ai-v2-pp-cta {
   appearance: none;
-  border: 0;
+  border: 1.5px solid transparent;
   cursor: pointer;
   font: inherit;
   font-size: 0.65rem;
@@ -556,18 +595,49 @@
   background: var(--ai-primary);
   color: #fff;
   padding: 0.45rem 0.7rem;
+  border-radius: var(--ai-radius, 0px);
+  box-shadow: var(--ai-shadow, none);
+  transition: opacity 0.2s ease, background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.ai-v2-root[data-button-style='outline'] .ai-v2-pp-add,
+.ai-v2-root[data-button-style='outline'] .ai-v2-pp-cta:not(.ghost) {
+  background: transparent;
+  color: var(--ai-primary);
+  border-color: var(--ai-primary);
+}
+
+.ai-v2-root[data-button-style='ghost'] .ai-v2-pp-add,
+.ai-v2-root[data-button-style='ghost'] .ai-v2-pp-cta:not(.ghost) {
+  background: transparent;
+  color: inherit;
+  border-color: color-mix(in srgb, currentColor 45%, transparent);
 }
 
 .ai-v2-pp-cta.ghost {
   background: transparent;
   color: inherit;
+  border: 0;
   border-bottom: 1px solid currentColor;
+  border-radius: 0;
   padding: 0.2rem 0;
+}
+
+/* buttonStyle 'pill' is a shape statement, not a fill — it forces every boxed CTA
+   (primary, ghost-hero, product add/cta) to a pill radius regardless of the brand's
+   general --ai-radius token, since "pill buttons" is a distinct, deliberate shape
+   choice a brand can make independent of its card/surface rounding. */
+.ai-v2-root[data-button-style='pill'] .ai-v2-btn:not(.ai-v2-btn-text),
+.ai-v2-root[data-button-style='pill'] .ai-v2-pp-add,
+.ai-v2-root[data-button-style='pill'] .ai-v2-pp-cta:not(.ghost) {
+  border-radius: 999px;
 }
 
 .ai-v2-pp-tech .ai-v2-pp-media {
   aspect-ratio: 1 / 1;
   background: color-mix(in srgb, var(--ai-secondary) 70%, #fff);
+  border-radius: var(--ai-radius, 0px);
+  box-shadow: var(--ai-shadow, none);
 }
 
 .ai-v2-pp-tech .ai-v2-pp-name {

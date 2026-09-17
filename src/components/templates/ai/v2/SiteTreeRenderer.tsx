@@ -64,7 +64,15 @@ export default function SiteTreeRenderer({ document, brand, commerce, onAssetPla
   }, [onAssetPlan, assetPlan]);
 
   return (
-    <div className="ai-v2-root" style={style} data-density={brand.tokens.density} data-motion={brand.tokens.motion}>
+    <div
+      className="ai-v2-root"
+      style={style}
+      data-density={brand.tokens.density}
+      data-motion={brand.tokens.motion}
+      data-radius={brand.tokens.radius}
+      data-shadow={brand.tokens.shadow}
+      data-button-style={brand.tokens.buttonStyle}
+    >
       {nodes.map((node) => {
         if (node.visible === false) return null;
         const entry = resolveComposition(node.type, node.variant);

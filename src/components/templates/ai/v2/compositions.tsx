@@ -759,7 +759,9 @@ export function NewsletterQuiet({ node, language }: CompositionRenderProps) {
             Email
           </label>
           <input id={`ai-v2-nl-${node.id}`} type="email" placeholder="you@email.com" autoComplete="email" />
-          <button type="submit">{language === 'ro' ? 'Trimite' : 'Subscribe'}</button>
+          <button type="submit" className="ai-v2-btn-text">
+            {language === 'ro' ? 'Trimite' : 'Subscribe'}
+          </button>
         </form>
       </div>
     </section>

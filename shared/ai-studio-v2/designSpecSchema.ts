@@ -152,7 +152,9 @@ export function buildDesignSpecSchemas(z: Zod) {
           ? 'pill'
           : /outline/i.test(spec.ux.ctaStyle)
             ? 'outline'
-            : 'solid',
+            : /ghost/i.test(spec.ux.ctaStyle)
+              ? 'ghost'
+              : 'solid',
         motion: spec.artDirection.motion,
       },
       intentSummary: spec.designIntent.coreConcept,
