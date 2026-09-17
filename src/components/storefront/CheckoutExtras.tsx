@@ -6,6 +6,37 @@ import { formatRon } from '@/lib/storefront/api';
 import { usesDeliveryAsBilling } from '@/lib/storefront/billing';
 import type { CheckoutFormState, DeliveryQuote } from '@/lib/storefront/types';
 
+export function DeliveryMessageNote({
+  message,
+  className,
+}: {
+  message?: string | null;
+  className?: string;
+}) {
+  const text = typeof message === 'string' ? message.trim() : '';
+  if (!text) return null;
+  return <p className={className || 'text-sm text-muted-foreground'}>{text}</p>;
+}
+
+/** Price line under a delivery option. When free delivery is on, returns null (no fee / no “Free” label). */
+export function deliveryOptionPriceLabel({
+  free,
+  customPricing,
+  fee,
+  formatFee,
+  calculatedLabel,
+}: {
+  free?: boolean;
+  customPricing?: boolean;
+  fee: number;
+  formatFee: (value: number) => string;
+  calculatedLabel: string;
+}): string | null {
+  if (free) return null;
+  if (customPricing) return calculatedLabel;
+  return formatFee(fee);
+}
+
 export function CheckoutNotesField({
   value,
   onChange,

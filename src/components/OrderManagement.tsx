@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Eye, Package, PackageX, Truck, X, Receipt, Send, ExternalLink, Edit, Search, CreditCard, RefreshCw, Download } from 'lucide-react';
+import { Eye, Package, PackageX, RotateCcw, Truck, X, Receipt, Send, ExternalLink, Edit, Search, CreditCard, RefreshCw, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
@@ -60,6 +62,7 @@ interface Order {
   order_status?: 'draft' | 'awaiting_payment' | 'paid' | 'cancelled' | null;
   stock_applied_at?: string | null;
   stock_restored_at?: string | null;
+  return_status?: 'none' | 'partial' | 'returned' | string | null;
   stock_shortfall?: unknown;
   created_at: string;
   invoice_link?: string;
@@ -97,6 +100,7 @@ interface OrderItem {
   product_title: string;
   product_price: number;
   quantity: number;
+  returned_quantity?: number;
   variant_id?: string | null;
   variant_title?: string | null;
   variant_sku?: string | null;
@@ -117,6 +121,7 @@ function orderItemVariantLabel(item: OrderItem): string {
 
 const OrderManagement = () => {
   const { t: tExport } = useTranslation('export');
+  const { t } = useTranslation('orders');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
@@ -135,6 +140,12 @@ const OrderManagement = () => {
   const [creatingAWB, setCreatingAWB] = useState<Set<string>>(new Set());
   const [isAWBModalOpen, setIsAWBModalOpen] = useState(false);
   const [dashboardRequestedOrderId, setDashboardRequestedOrderId] = useState<string | null>(null);
+  const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
+  const [returnQtyByItem, setReturnQtyByItem] = useState<Record<string, number>>({});
+  const [returnMarkRefunded, setReturnMarkRefunded] = useState(false);
+  const [returnCancelIfFull, setReturnCancelIfFull] = useState(true);
+  const [returnNotes, setReturnNotes] = useState('');
+  const [returningOrder, setReturningOrder] = useState(false);
   
   const queryClient = useQueryClient();
   const { effectiveUserId } = useImpersonation();
@@ -325,7 +336,7 @@ const OrderManagement = () => {
 
   const handleCancelAndRestock = async (orderId: string) => {
     const confirmed = window.confirm(
-      'Cancel this order and return its items to stock? Only do this if the goods are back in your inventory.'
+      t('return.confirmCancelRestock')
     );
     if (!confirmed) return;
 
@@ -338,6 +349,108 @@ const OrderManagement = () => {
         next.delete(orderId);
         return next;
       });
+    }
+  };
+
+  const openReturnDialog = () => {
+    const initial: Record<string, number> = {};
+    for (const item of orderItems) {
+      const remaining = Math.max(item.quantity - (item.returned_quantity || 0), 0);
+      initial[item.id] = remaining;
+    }
+    setReturnQtyByItem(initial);
+    setReturnMarkRefunded(false);
+    setReturnCancelIfFull(true);
+    setReturnNotes('');
+    setIsReturnDialogOpen(true);
+  };
+
+  const setReturnAllRemaining = () => {
+    const next: Record<string, number> = {};
+    for (const item of orderItems) {
+      next[item.id] = Math.max(item.quantity - (item.returned_quantity || 0), 0);
+    }
+    setReturnQtyByItem(next);
+  };
+
+  const clearReturnQtys = () => {
+    const next: Record<string, number> = {};
+    for (const item of orderItems) next[item.id] = 0;
+    setReturnQtyByItem(next);
+  };
+
+  const returnMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedOrder) throw new Error('NO_ORDER');
+      const items = Object.entries(returnQtyByItem)
+        .filter(([, qty]) => qty > 0)
+        .map(([order_item_id, quantity]) => ({ order_item_id, quantity }));
+      if (!items.length) throw new Error('NO_ITEMS');
+
+      const { data, error } = await supabase.rpc('return_order_items', {
+        p_order_id: selectedOrder.id,
+        p_items: items,
+        p_mark_refunded: returnMarkRefunded,
+        p_cancel_if_full: returnCancelIfFull,
+        p_notes: returnNotes.trim() || undefined,
+      });
+      if (error) throw error;
+      const result = data as {
+        success?: boolean;
+        error?: string;
+        return_status?: string;
+        is_full?: boolean;
+      } | null;
+      if (!result?.success) throw new Error(result?.error || 'RETURN_FAILED');
+      return result;
+    },
+    onSuccess: async (result) => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      toast.success(
+        result.is_full ? t('return.toastFull') : t('return.toastPartial')
+      );
+      setIsReturnDialogOpen(false);
+
+      if (selectedOrder) {
+        const { data: items } = await supabase
+          .from('order_items')
+          .select('*')
+          .eq('order_id', selectedOrder.id);
+        if (items) setOrderItems(items as OrderItem[]);
+
+        setSelectedOrder((prev) =>
+          prev
+            ? {
+                ...prev,
+                return_status: (result.return_status as Order['return_status']) || prev.return_status,
+                stock_restored_at: result.is_full
+                  ? prev.stock_restored_at || new Date().toISOString()
+                  : prev.stock_restored_at,
+                order_status: result.is_full && returnCancelIfFull ? 'cancelled' : prev.order_status,
+                payment_status: returnMarkRefunded ? 'refunded' : prev.payment_status,
+              }
+            : prev
+        );
+      }
+    },
+    onError: (error: Error) => {
+      console.error('Failed to return items:', error);
+      const msg =
+        error.message === 'NO_ITEMS'
+          ? t('return.toastNoItems')
+          : error.message === 'QTY_EXCEEDS_REMAINING'
+            ? t('return.toastQtyExceeds')
+            : error.message || t('return.toastFailed');
+      toast.error(msg);
+    },
+  });
+
+  const handleSubmitReturn = async () => {
+    setReturningOrder(true);
+    try {
+      await returnMutation.mutateAsync();
+    } finally {
+      setReturningOrder(false);
     }
   };
 
@@ -807,38 +920,59 @@ const OrderManagement = () => {
                   </div>
                 </div>
 
-                {/* Inventory */}
+                {/* Inventory / Returns */}
                 <div className="mt-4 rounded-md border p-3 space-y-2">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-0.5">
-                      <p className="text-sm font-medium">Inventory</p>
+                      <p className="text-sm font-medium">{t('return.inventoryTitle')}</p>
                       <p className="text-xs text-muted-foreground">
-                        {selectedOrder.stock_restored_at
-                          ? `Items returned to stock on ${new Date(selectedOrder.stock_restored_at).toLocaleString()}`
-                          : selectedOrder.stock_applied_at
-                            ? `Stock committed on ${new Date(selectedOrder.stock_applied_at).toLocaleString()}`
-                            : 'No stock has been committed for this order'}
+                        {selectedOrder.return_status === 'returned' || selectedOrder.stock_restored_at
+                          ? t('return.itemsReturnedOn', {
+                              date: new Date(
+                                selectedOrder.stock_restored_at || selectedOrder.created_at
+                              ).toLocaleString(),
+                            })
+                          : selectedOrder.return_status === 'partial'
+                            ? t('return.partialReturned')
+                            : selectedOrder.stock_applied_at
+                              ? t('return.stockCommittedOn', {
+                                  date: new Date(selectedOrder.stock_applied_at).toLocaleString(),
+                                })
+                              : t('return.noStockCommitted')}
                       </p>
                     </div>
-                    {selectedOrder.stock_applied_at && !selectedOrder.stock_restored_at && (
-                      <Button
-                        onClick={() => handleCancelAndRestock(selectedOrder.id)}
-                        variant="outline"
-                        size="sm"
-                        className="text-destructive hover:text-destructive-foreground"
-                        disabled={restockingOrders.has(selectedOrder.id)}
-                      >
-                        <PackageX className="h-4 w-4 mr-2" />
-                        {restockingOrders.has(selectedOrder.id)
-                          ? 'Restocking...'
-                          : 'Cancel order & restock'}
-                      </Button>
-                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {selectedOrder.stock_applied_at &&
+                        selectedOrder.return_status !== 'returned' &&
+                        !selectedOrder.stock_restored_at && (
+                          <Button
+                            onClick={openReturnDialog}
+                            variant="outline"
+                            size="sm"
+                            disabled={returningOrder}
+                          >
+                            <RotateCcw className="h-4 w-4 mr-2" />
+                            {t('return.button')}
+                          </Button>
+                        )}
+                      {selectedOrder.stock_applied_at && !selectedOrder.stock_restored_at && (
+                        <Button
+                          onClick={() => handleCancelAndRestock(selectedOrder.id)}
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive hover:text-destructive-foreground"
+                          disabled={restockingOrders.has(selectedOrder.id)}
+                        >
+                          <PackageX className="h-4 w-4 mr-2" />
+                          {restockingOrders.has(selectedOrder.id)
+                            ? t('return.restocking')
+                            : t('return.cancelAndRestock')}
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
-                  <p className="text-xs text-muted-foreground">
-                    Refunding a payment does not return items to stock.
-                  </p>
+                  <p className="text-xs text-muted-foreground">{t('return.refundDoesNotRestock')}</p>
 
                   {readStockShortfall(selectedOrder).length > 0 && (
                     <div className="rounded-md border-2 border-amber-600 bg-amber-500/20 p-3 text-sm">
@@ -1111,10 +1245,11 @@ const OrderManagement = () => {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Product</TableHead>
-                          <TableHead>Price</TableHead>
-                          <TableHead>Quantity</TableHead>
-                          <TableHead>Total</TableHead>
+                          <TableHead>{t('table.product')}</TableHead>
+                          <TableHead>{t('table.price')}</TableHead>
+                          <TableHead>{t('table.quantity')}</TableHead>
+                          <TableHead>{t('return.returnedCol')}</TableHead>
+                          <TableHead>{t('table.total')}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1141,6 +1276,15 @@ const OrderManagement = () => {
                             </TableCell>
                             <TableCell>{item.product_price.toFixed(2)} RON</TableCell>
                             <TableCell>{item.quantity}</TableCell>
+                            <TableCell>
+                              {(item.returned_quantity || 0) > 0 ? (
+                                <Badge variant="secondary">
+                                  {item.returned_quantity}/{item.quantity}
+                                </Badge>
+                              ) : (
+                                '—'
+                              )}
+                            </TableCell>
                             <TableCell>{(item.product_price * item.quantity).toFixed(2)} RON</TableCell>
                           </TableRow>
                         ))}
@@ -1168,7 +1312,12 @@ const OrderManagement = () => {
                           </div>
                         </div>
                         <div className="flex justify-between text-sm">
-                           <span>{item.product_price.toFixed(2)} RON × {item.quantity}</span>
+                           <span>
+                             {item.product_price.toFixed(2)} RON × {item.quantity}
+                             {(item.returned_quantity || 0) > 0
+                               ? ` · ${t('return.returnedShort', { count: item.returned_quantity })}`
+                               : ''}
+                           </span>
                            <span className="font-medium">{(item.product_price * item.quantity).toFixed(2)} RON</span>
                         </div>
                       </div>
@@ -1185,6 +1334,126 @@ const OrderManagement = () => {
               </Card>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Return items dialog (full or partial) */}
+      <Dialog open={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t('return.dialogTitle')}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">{t('return.dialogHelp')}</p>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={setReturnAllRemaining}>
+              {t('return.returnAll')}
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={clearReturnQtys}>
+              {t('return.clearQty')}
+            </Button>
+          </div>
+          <div className="space-y-3">
+            {orderItems.map((item) => {
+              const already = item.returned_quantity || 0;
+              const remaining = Math.max(item.quantity - already, 0);
+              const qty = returnQtyByItem[item.id] ?? 0;
+              return (
+                <div key={item.id} className="rounded-md border p-3 space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{item.product_title}</p>
+                      {orderItemVariantLabel(item) ? (
+                        <p className="text-xs text-muted-foreground">{orderItemVariantLabel(item)}</p>
+                      ) : null}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {t('return.lineMeta', {
+                          ordered: item.quantity,
+                          returned: already,
+                          remaining,
+                        })}
+                      </p>
+                    </div>
+                    <div className="w-24 shrink-0 space-y-1">
+                      <Label htmlFor={`return-qty-${item.id}`} className="text-xs">
+                        {t('return.qtyLabel')}
+                      </Label>
+                      <Input
+                        id={`return-qty-${item.id}`}
+                        type="number"
+                        min={0}
+                        max={remaining}
+                        value={qty}
+                        disabled={remaining === 0}
+                        onChange={(e) => {
+                          const raw = Number(e.target.value);
+                          const next = Number.isFinite(raw)
+                            ? Math.min(remaining, Math.max(0, Math.floor(raw)))
+                            : 0;
+                          setReturnQtyByItem((prev) => ({ ...prev, [item.id]: next }));
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="space-y-3 border-t pt-3">
+            <label className="flex items-start gap-2 text-sm">
+              <Checkbox
+                checked={returnMarkRefunded}
+                onCheckedChange={(checked) => setReturnMarkRefunded(checked === true)}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="font-medium">{t('return.markRefunded')}</span>
+                <span className="block text-xs text-muted-foreground">{t('return.markRefundedHelp')}</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2 text-sm">
+              <Checkbox
+                checked={returnCancelIfFull}
+                onCheckedChange={(checked) => setReturnCancelIfFull(checked === true)}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="font-medium">{t('return.cancelIfFull')}</span>
+                <span className="block text-xs text-muted-foreground">{t('return.cancelIfFullHelp')}</span>
+              </span>
+            </label>
+            <div className="space-y-1.5">
+              <Label htmlFor="return-notes">{t('return.notes')}</Label>
+              <Textarea
+                id="return-notes"
+                value={returnNotes}
+                onChange={(e) => setReturnNotes(e.target.value.slice(0, 500))}
+                rows={2}
+                maxLength={500}
+                placeholder={t('return.notesPlaceholder')}
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button
+              className="flex-1"
+              onClick={handleSubmitReturn}
+              disabled={
+                returningOrder ||
+                !Object.values(returnQtyByItem).some((q) => q > 0)
+              }
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              {returningOrder ? t('return.submitting') : t('return.submit')}
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setIsReturnDialogOpen(false)}
+              disabled={returningOrder}
+            >
+              {t('return.cancel')}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 

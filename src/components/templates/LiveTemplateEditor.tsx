@@ -197,11 +197,10 @@ export const LiveTemplateEditor = ({
     try {
       const field = type === 'hero' ? 'hero_image_url' : 'logo_url';
       const previous = customization[field];
-      const uploaded = await uploadMedia({ file, mediaType: type });
+      const uploaded = await uploadMedia({ file, mediaType: type, replacingPublicUrl: previous });
       await persistImageField(field, uploaded.publicUrl);
-      if (previous && previous !== uploaded.publicUrl) {
-        await deletePreviousMedia(previous);
-      }
+      // Old asset cleanup is now handled server-side via replacement accounting.
+      // deletePreviousMedia is no longer needed for replacements.
       toast.success(`${type === 'hero' ? 'Hero image' : 'Logo'} uploaded!`);
     } catch (error) {
       toast.error(merchantMediaMessage(error, t));

@@ -36,6 +36,7 @@ export function PremiumProduct({ commerce }: Props) {
     recentProducts,
     openProduct,
     fees,
+    deliveryConfig,
     customization,
   } = commerce;
 
@@ -228,8 +229,9 @@ export function PremiumProduct({ commerce }: Props) {
             <div>
               <p className="font-medium">Delivery estimate</p>
               <p className="text-[var(--prem-muted)] mt-0.5">
-                1–3 business days · Home from {formatRon(fees.home_delivery_fee)} · Locker from{' '}
-                {formatRon(fees.locker_delivery_fee)}
+                {deliveryConfig.free_delivery
+                  ? deliveryConfig.message?.trim() || '1–3 business days'
+                  : `1–3 business days · Home from ${formatRon(fees.home_delivery_fee)} · Locker from ${formatRon(fees.locker_delivery_fee)}`}
               </p>
             </div>
           </div>

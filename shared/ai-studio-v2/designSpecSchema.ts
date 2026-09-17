@@ -119,8 +119,8 @@ export function buildDesignSpecSchemas(z: Zod) {
     creativeStrategy: buildCreativeStrategySchema(z).optional(),
   });
 
-  type DesignSpec = z.infer<typeof designSpecSchema>;
-  type BrandDesignSystem = z.infer<typeof brandDesignSystemSchema>;
+  type DesignSpec = ReturnType<(typeof designSpecSchema)['parse']>;
+  type BrandDesignSystem = ReturnType<(typeof brandDesignSystemSchema)['parse']>;
 
   /** Fill creativeStrategy for older drafts; clamp experimentation to creativeMode. */
   function withCreativeStrategy(spec: DesignSpec): DesignSpec & { creativeStrategy: CreativeStrategy } {

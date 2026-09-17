@@ -1145,6 +1145,7 @@ export type Database = {
           product_price: number
           product_title: string
           quantity: number
+          returned_quantity: number
           variant_id: string | null
           variant_options: Json | null
           variant_sku: string | null
@@ -1159,6 +1160,7 @@ export type Database = {
           product_price: number
           product_title: string
           quantity: number
+          returned_quantity?: number
           variant_id?: string | null
           variant_options?: Json | null
           variant_sku?: string | null
@@ -1173,6 +1175,7 @@ export type Database = {
           product_price?: number
           product_title?: string
           quantity?: number
+          returned_quantity?: number
           variant_id?: string | null
           variant_options?: Json | null
           variant_sku?: string | null
@@ -1257,6 +1260,7 @@ export type Database = {
           locker_name: string | null
           order_status: Database["public"]["Enums"]["order_status_enum"] | null
           payment_status: string
+          return_status: string
           selected_carrier_code: string | null
           shipping_status: string
           stock_applied_at: string | null
@@ -1314,6 +1318,7 @@ export type Database = {
           locker_name?: string | null
           order_status?: Database["public"]["Enums"]["order_status_enum"] | null
           payment_status?: string
+          return_status?: string
           selected_carrier_code?: string | null
           shipping_status?: string
           stock_applied_at?: string | null
@@ -1371,6 +1376,7 @@ export type Database = {
           locker_name?: string | null
           order_status?: Database["public"]["Enums"]["order_status_enum"] | null
           payment_status?: string
+          return_status?: string
           selected_carrier_code?: string | null
           shipping_status?: string
           stock_applied_at?: string | null
@@ -1894,6 +1900,7 @@ export type Database = {
           cash_payment_enabled: boolean | null
           cash_payment_fee: number | null
           created_at: string
+          delivery_message: string | null
           eawb_address: string | null
           eawb_api_key: string | null
           eawb_billing_address_id: number | null
@@ -1915,6 +1922,7 @@ export type Database = {
           eawb_shipping_address_id: number | null
           eawb_street: string | null
           eawb_street_number: string | null
+          free_delivery: boolean
           home_delivery_fee: number | null
           id: string
           invoicing_provider: string | null
@@ -1955,6 +1963,7 @@ export type Database = {
           cash_payment_enabled?: boolean | null
           cash_payment_fee?: number | null
           created_at?: string
+          delivery_message?: string | null
           eawb_address?: string | null
           eawb_api_key?: string | null
           eawb_billing_address_id?: number | null
@@ -1976,6 +1985,7 @@ export type Database = {
           eawb_shipping_address_id?: number | null
           eawb_street?: string | null
           eawb_street_number?: string | null
+          free_delivery?: boolean
           home_delivery_fee?: number | null
           id?: string
           invoicing_provider?: string | null
@@ -2016,6 +2026,7 @@ export type Database = {
           cash_payment_enabled?: boolean | null
           cash_payment_fee?: number | null
           created_at?: string
+          delivery_message?: string | null
           eawb_address?: string | null
           eawb_api_key?: string | null
           eawb_billing_address_id?: number | null
@@ -2037,6 +2048,7 @@ export type Database = {
           eawb_shipping_address_id?: number | null
           eawb_street?: string | null
           eawb_street_number?: string | null
+          free_delivery?: boolean
           home_delivery_fee?: number | null
           id?: string
           invoicing_provider?: string | null
@@ -2616,6 +2628,16 @@ export type Database = {
       }
       restore_order_stock: {
         Args: { p_cancel_order?: boolean; p_order_id: string }
+        Returns: Json
+      }
+      return_order_items: {
+        Args: {
+          p_cancel_if_full?: boolean
+          p_items: Json
+          p_mark_refunded?: boolean
+          p_notes?: string
+          p_order_id: string
+        }
         Returns: Json
       }
       save_product_variants: {

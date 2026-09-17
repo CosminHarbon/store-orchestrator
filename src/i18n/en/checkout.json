@@ -45,6 +45,7 @@
     "locateMe": "Locate me",
     "chooseCarrier": "Choose a carrier...",
     "calculatedByDistance": "Calculated by distance",
+    "free": "Free",
     "calculating": "Calculating delivery price…",
     "enterAddress": "Enter a complete address to calculate delivery.",
     "unavailable": "Delivery is not available to this location.",

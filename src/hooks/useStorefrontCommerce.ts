@@ -68,6 +68,8 @@ export function useStorefrontCommerce(apiKey: string, options: StorefrontCommerc
     custom_pricing_enabled: false,
     locker_enabled: true,
     provider: null,
+    free_delivery: false,
+    message: null,
     coverage_mode: 'romania',
     covered_counties: [],
     covered_localities: [],
@@ -204,6 +206,8 @@ export function useStorefrontCommerce(apiKey: string, options: StorefrontCommerc
             custom_pricing_enabled: false,
             locker_enabled: true,
             provider: null,
+            free_delivery: false,
+            message: null,
             coverage_mode: 'romania',
             covered_counties: [],
             covered_localities: [],
@@ -376,14 +380,18 @@ export function useStorefrontCommerce(apiKey: string, options: StorefrontCommerc
     [cart]
   );
   const customHomePricing =
-    deliveryConfig.custom_pricing_enabled && checkoutForm.delivery_type === 'home';
-  const deliveryFee = customHomePricing
-    ? deliveryQuote?.available
-      ? Number(deliveryQuote.delivery_fee || 0)
-      : 0
-    : checkoutForm.delivery_type === 'home'
-      ? fees.home_delivery_fee
-      : fees.locker_delivery_fee;
+    deliveryConfig.custom_pricing_enabled &&
+    checkoutForm.delivery_type === 'home' &&
+    !deliveryConfig.free_delivery;
+  const deliveryFee = deliveryConfig.free_delivery
+    ? 0
+    : customHomePricing
+      ? deliveryQuote?.available
+        ? Number(deliveryQuote.delivery_fee || 0)
+        : 0
+      : checkoutForm.delivery_type === 'home'
+        ? fees.home_delivery_fee
+        : fees.locker_delivery_fee;
   const paymentFee =
     paymentMethod === 'cash' && fees.cash_payment_enabled ? fees.cash_payment_fee : 0;
   const orderTotal = cartSubtotal + deliveryFee + paymentFee;
@@ -402,7 +410,12 @@ export function useStorefrontCommerce(apiKey: string, options: StorefrontCommerc
   }, [fees.card_enabled, fees.cash_payment_enabled, paymentMethod]);
 
   useEffect(() => {
-    if (demo || !deliveryConfig.custom_pricing_enabled || checkoutForm.delivery_type !== 'home') {
+    if (
+      demo ||
+      deliveryConfig.free_delivery ||
+      !deliveryConfig.custom_pricing_enabled ||
+      checkoutForm.delivery_type !== 'home'
+    ) {
       setDeliveryQuote(null);
       setDeliveryQuoteLoading(false);
       return;
@@ -458,6 +471,7 @@ export function useStorefrontCommerce(apiKey: string, options: StorefrontCommerc
     checkoutForm.street_number,
     demo,
     deliveryConfig.custom_pricing_enabled,
+    deliveryConfig.free_delivery,
     cartSubtotal,
   ]);
 

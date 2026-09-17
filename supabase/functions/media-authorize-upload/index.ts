@@ -9,6 +9,14 @@ const cors = {
 
 const ALLOWED_MIME = new Set(['image/webp', 'image/jpeg', 'image/png']);
 const HARD_OBJECT_LIMIT = 2 * 1024 * 1024;
+/** Maximum original (pre-compression) file size accepted per media type. */
+const MAX_ORIGINAL_BYTES: Record<string, number> = {
+  product: 10 * 1024 * 1024,
+  collection: 10 * 1024 * 1024,
+  logo: 5 * 1024 * 1024,
+  hero: 10 * 1024 * 1024,
+  builder: 10 * 1024 * 1024,
+};
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -197,6 +205,25 @@ serve(async (req) => {
       if (!Number.isFinite(expected) || expected < 1 || expected > HARD_OBJECT_LIMIT) {
         return json({ error: 'invalid_size' }, 400);
       }
+
+      // --- original_size_bytes hardening ---
+      const rawOriginal = body.original_size_bytes;
+      if (rawOriginal == null || rawOriginal === '') {
+        return json({ error: 'original_size_required' }, 400);
+      }
+      const original = Number(rawOriginal);
+      if (!Number.isFinite(original) || original < 1 || original !== Math.floor(original)) {
+        return json({ error: 'invalid_original_size' }, 400);
+      }
+      // Original must be >= compressed (you can't compress into something larger)
+      if (original < expected) {
+        return json({ error: 'original_smaller_than_compressed' }, 400);
+      }
+      const maxOriginal = MAX_ORIGINAL_BYTES[mediaType] || 10 * 1024 * 1024;
+      if (original > maxOriginal) {
+        return json({ error: 'original_too_large', max_bytes: maxOriginal }, 400);
+      }
+
       const relatedId = await assertEntityOwnership(
         admin,
         merchantId,
@@ -206,6 +233,46 @@ serve(async (req) => {
       const bucket = bucketFor(mediaType);
       const storagePath = canonicalPath(merchantId, mediaType, mimeType, relatedId || undefined);
 
+      // --- Replacement resolution: public_url → media_assets.id ---
+      let replacingAssetId: string | null = null;
+      if (typeof body.replacing_public_url === 'string' && body.replacing_public_url) {
+        const { data: matches, error: lookupErr } = await admin
+          .from('media_assets')
+          .select('id, user_id, status, media_type, bucket, related_entity_type, related_entity_id')
+          .eq('user_id', merchantId)
+          .eq('public_url', body.replacing_public_url)
+          .eq('status', 'active');
+        if (lookupErr) {
+          console.error('replacing asset lookup', lookupErr.message);
+          return json({ error: 'replacement_lookup_failed' }, 500);
+        }
+        if (!matches || matches.length === 0) {
+          return json({ error: 'replacing_asset_not_found' }, 404);
+        }
+        if (matches.length > 1) {
+          console.error('ambiguous replacing_public_url', {
+            url: body.replacing_public_url,
+            merchant: merchantId,
+            count: matches.length,
+          });
+          return json({ error: 'replacing_asset_ambiguous' }, 409);
+        }
+        const oldAsset = matches[0];
+        const expectedBucket = bucketFor(mediaType);
+
+        if (oldAsset.media_type !== mediaType || oldAsset.bucket !== expectedBucket) {
+          return json({ error: 'replacing_asset_type_mismatch' }, 400);
+        }
+
+        if (mediaType === 'collection') {
+          if (!relatedId || !oldAsset.related_entity_id || oldAsset.related_entity_id !== relatedId) {
+            return json({ error: 'replacing_asset_entity_mismatch' }, 400);
+          }
+        }
+
+        replacingAssetId = oldAsset.id;
+      }
+
       const { data: reserved, error: reserveError } = await admin.rpc('reserve_media_upload', {
         p_user_id: merchantId,
         p_requested_bytes: expected,
@@ -213,12 +280,13 @@ serve(async (req) => {
         p_storage_path: storagePath,
         p_media_type: mediaType,
         p_mime_type: mimeType,
-        p_original_size_bytes: body.original_size_bytes ?? null,
+        p_original_size_bytes: original,
         p_width: body.width ?? null,
         p_height: body.height ?? null,
         p_related_entity_type: mediaType,
         p_related_entity_id: relatedId,
         p_uploaded_by: user.id,
+        p_replacing_asset_id: replacingAssetId,
       });
       if (reserveError) {
         console.error('reserve_media_upload', reserveError.message);
@@ -302,12 +370,68 @@ serve(async (req) => {
         await admin.rpc('release_media_reservation', { p_reservation_id: reservationId });
         return json({ error: 'finalize_failed' }, 500);
       }
-      const result = finalized as { ok?: boolean; error?: string; asset_id?: string };
+      const result = finalized as {
+        ok?: boolean;
+        error?: string;
+        asset_id?: string;
+        replaced_asset_id?: string;
+        replaced_bucket?: string;
+        replaced_storage_path?: string;
+      };
+
+      if (!result?.ok && result?.error === 'already_finalized') {
+        const { data: existing } = await admin
+          .from('media_assets')
+          .select('id, public_url, storage_path, bucket, mime_type, width, height, size_bytes, status')
+          .eq('user_id', merchantId)
+          .eq('bucket', reservation.bucket)
+          .eq('storage_path', reservation.storage_path)
+          .eq('status', 'active')
+          .maybeSingle();
+        if (existing?.id) {
+          return json({
+            ok: true,
+            already_finalized: true,
+            asset_id: existing.id,
+            public_url: existing.public_url || pub.publicUrl,
+            storage_path: existing.storage_path,
+            bucket: existing.bucket,
+            mime_type: existing.mime_type,
+            width: existing.width,
+            height: existing.height,
+            size_bytes: existing.size_bytes,
+          });
+        }
+        return json({ error: 'already_finalized' }, 409);
+      }
+
       if (!result?.ok) {
         await admin.storage.from(reservation.bucket).remove([reservation.storage_path]);
         await admin.rpc('release_media_reservation', { p_reservation_id: reservationId });
         return json({ error: result?.error || 'finalize_failed' }, 400);
       }
+
+      // Physical cleanup of the OLD object only. DB/quota transition already committed.
+      // Never derive this path from replacing_public_url.
+      if (result.replaced_asset_id && result.replaced_bucket && result.replaced_storage_path) {
+        try {
+          await purgeAsset(admin, {
+            id: result.replaced_asset_id,
+            user_id: merchantId,
+            bucket: result.replaced_bucket,
+            storage_path: result.replaced_storage_path,
+            status: 'pending_delete',
+          });
+        } catch (cleanupErr) {
+          console.error('replaced asset storage cleanup failed', {
+            replaced_asset_id: result.replaced_asset_id,
+            replaced_bucket: result.replaced_bucket,
+            replaced_storage_path: result.replaced_storage_path,
+            message: cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr),
+          });
+        }
+      }
+
       return json({
         ...result,
         public_url: pub.publicUrl,

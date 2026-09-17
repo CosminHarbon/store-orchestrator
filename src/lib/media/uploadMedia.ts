@@ -31,7 +31,7 @@ function throwFromPayload(payload: Record<string, unknown>): never {
   if (err === 'quota_exceeded') {
     throw new MediaError(
       'QUOTA',
-      `You've reached your ${formatBytes(Number(payload.quota_bytes) || 0)} media storage limit. Delete unused images or upgrade your plan.`,
+      `You've reached your ${formatBytes(Number(payload.quota_bytes) || 0)} media allowance. Delete unused images or upgrade your plan.`,
       Number(payload.quota_bytes) || undefined,
     );
   }
@@ -48,9 +48,11 @@ export async function uploadMedia(options: {
   file: File;
   mediaType: MediaType;
   relatedEntityId?: string | null;
+  /** Pass the public URL of the image being replaced for net-quota accounting. */
+  replacingPublicUrl?: string | null;
   onProgress?: (phase: UploadProgress) => void;
 }): Promise<UploadedMedia> {
-  const { file, mediaType, relatedEntityId, onProgress } = options;
+  const { file, mediaType, relatedEntityId, replacingPublicUrl, onProgress } = options;
   onProgress?.('optimizing');
   const compressed = await compressImage(file, mediaType);
 
@@ -64,6 +66,7 @@ export async function uploadMedia(options: {
     width: compressed.width,
     height: compressed.height,
     related_entity_id: relatedEntityId || null,
+    replacing_public_url: replacingPublicUrl || null,
   });
   if (authorized.error) throwFromPayload(authorized);
 

@@ -23,6 +23,8 @@ interface Database {
           store_api_key: string
           cash_payment_enabled: boolean | null
           cash_payment_fee: number | null
+          free_delivery: boolean | null
+          delivery_message: string | null
           home_delivery_fee: number | null
           locker_delivery_fee: number | null
           created_at: string
@@ -791,6 +793,24 @@ async function loadCustomDelivery(supabase: any, userId: string) {
   return { settings: settings || null, rules: rules || [], orderValueRules: orderValueRules || [] }
 }
 
+function isFreeDelivery(profile: { free_delivery?: boolean | null }) {
+  return !!profile.free_delivery
+}
+
+function applyFreeDeliveryQuote<T extends { available?: boolean; delivery_fee?: number; snapshot?: Record<string, unknown> | null }>(
+  profile: { free_delivery?: boolean | null },
+  quote: T | null
+): T | null {
+  if (!quote || !isFreeDelivery(profile)) return quote
+  return {
+    ...quote,
+    delivery_fee: 0,
+    snapshot: quote.snapshot
+      ? { ...quote.snapshot, delivery_fee: 0, free_delivery: true }
+      : quote.snapshot,
+  }
+}
+
 async function quoteCustomHomeDelivery(
   supabase: any,
   profile: any,
@@ -845,7 +865,7 @@ async function quoteCustomHomeDelivery(
     !quote.available &&
     (quote.error === 'NO_RULE' || quote.error === 'CUSTOM_PRICING_DISABLED')
   ) {
-    const fee = Number(profile.home_delivery_fee || 0)
+    const fee = isFreeDelivery(profile) ? 0 : Number(profile.home_delivery_fee || 0)
     return {
       enabled: true as const,
       quote: {
@@ -860,11 +880,12 @@ async function quoteCustomHomeDelivery(
           provider: 'manual',
           distance_charge: 'flat',
           delivery_fee: fee,
+          ...(isFreeDelivery(profile) ? { free_delivery: true } : {}),
         },
       },
     }
   }
-  return { enabled: true as const, quote }
+  return { enabled: true as const, quote: applyFreeDeliveryQuote(profile, quote) }
 }
 
 function composeStreetAddress(input: {
@@ -1027,6 +1048,8 @@ Deno.serve(async (req) => {
         cash_payment_fee,
         shipping_provider,
         payment_provider,
+        free_delivery,
+        delivery_message,
         home_delivery_fee,
         locker_delivery_fee,
         show_stock_to_customers,
@@ -1138,8 +1161,12 @@ Deno.serve(async (req) => {
             },
             // Delivery configuration
             delivery: {
-              home_fee: profile.home_delivery_fee || 0,
-              locker_fee: profile.locker_delivery_fee || 0,
+              home_fee: isFreeDelivery(profile) ? 0 : (profile.home_delivery_fee || 0),
+              locker_fee: isFreeDelivery(profile) ? 0 : (profile.locker_delivery_fee || 0),
+              free_delivery: isFreeDelivery(profile),
+              message: typeof profile.delivery_message === 'string'
+                ? profile.delivery_message.trim() || null
+                : null,
               home_enabled: true,
               locker_enabled: profile.shipping_provider !== 'manual',
               provider: profile.shipping_provider || 'eawb',
@@ -1639,8 +1666,9 @@ Deno.serve(async (req) => {
 
           // The merchant's configured flat fee, unless custom home-delivery
           // pricing is enabled and quotes the address below.
-          let deliveryFee =
-            effectiveDeliveryType === 'locker'
+          let deliveryFee = isFreeDelivery(profile)
+            ? 0
+            : effectiveDeliveryType === 'locker'
               ? Number(profile.locker_delivery_fee || 0)
               : Number(profile.home_delivery_fee || 0)
           let deliveryFeeToPersist: number | null = null
@@ -1669,11 +1697,22 @@ Deno.serve(async (req) => {
                   { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
                 )
               }
-              deliveryFee = Number(quoted.quote.delivery_fee || 0)
+              deliveryFee = isFreeDelivery(profile) ? 0 : Number(quoted.quote.delivery_fee || 0)
               deliveryFeeToPersist = deliveryFee
               deliveryDistanceKm = quoted.quote.distance_km ?? null
               deliverySnapshot = quoted.quote.snapshot || null
+              if (isFreeDelivery(profile) && deliverySnapshot) {
+                deliverySnapshot = { ...deliverySnapshot, delivery_fee: 0, free_delivery: true }
+              } else if (isFreeDelivery(profile)) {
+                deliverySnapshot = { method: 'free_delivery', delivery_fee: 0 }
+              }
+            } else if (isFreeDelivery(profile)) {
+              deliveryFeeToPersist = 0
+              deliverySnapshot = { method: 'free_delivery', delivery_fee: 0 }
             }
+          } else if (isFreeDelivery(profile)) {
+            deliveryFeeToPersist = 0
+            deliverySnapshot = { method: 'free_delivery', delivery_fee: 0 }
           }
 
           // Authoritative money: server-priced items + server-known fees. The

@@ -24,7 +24,7 @@ import { fetchStoreReviews, fetchStoreProducts, fetchStoreProduct } from "@/lib/
 import type { StorefrontProduct, StorefrontReview, StorefrontVariant } from "@/lib/storefront/types";
 import { LockerPicker } from "@/components/lockers/LockerPicker";
 import { AddressLocalityFields } from "@/components/address/AddressLocalityFields";
-import { CheckoutNotesField, CheckoutBillingFields, DeliveryQuoteDetails, deliveryQuoteSummary } from "@/components/storefront/CheckoutExtras";
+import { CheckoutNotesField, CheckoutBillingFields, DeliveryQuoteDetails, DeliveryMessageNote, deliveryQuoteSummary } from "@/components/storefront/CheckoutExtras";
 import { applyStorefrontLanguage } from "@/i18n/LanguageProvider";
 import { getDemoCatalog } from "@/lib/storefront/demoCatalog";
 import { fetchDeliveryQuote } from "@/lib/storefront/api";
@@ -161,6 +161,8 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
     custom_pricing_enabled: false,
     locker_enabled: true,
     provider: null,
+    free_delivery: false,
+    message: null,
     coverage_mode: 'romania',
     covered_counties: [],
     covered_localities: [],
@@ -339,6 +341,11 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
           custom_pricing_enabled: !!data.delivery?.custom_pricing_enabled,
           locker_enabled: data.delivery?.locker_enabled !== false,
           provider: data.delivery?.provider || null,
+          free_delivery: !!data.delivery?.free_delivery,
+          message:
+            typeof data.delivery?.message === 'string' && data.delivery.message.trim()
+              ? data.delivery.message.trim()
+              : null,
           coverage_mode: data.delivery?.coverage_mode || 'romania',
           covered_counties: data.delivery?.covered_counties || [],
           covered_localities: data.delivery?.covered_localities || [],
@@ -547,18 +554,27 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
 
   const cartTotal = cart.reduce((sum, item) => sum + cartUnitPrice(item.product, item.variant) * item.quantity, 0);
   const customHomePricing =
-    deliveryConfig.custom_pricing_enabled && checkoutForm.delivery_type === 'home';
-  const deliveryFee = customHomePricing
-    ? deliveryQuote?.available
-      ? Number(deliveryQuote.delivery_fee || 0)
-      : 0
-    : checkoutForm.delivery_type === 'home' ? feeSettings.home_delivery_fee : feeSettings.locker_delivery_fee;
+    deliveryConfig.custom_pricing_enabled &&
+    checkoutForm.delivery_type === 'home' &&
+    !deliveryConfig.free_delivery;
+  const deliveryFee = deliveryConfig.free_delivery
+    ? 0
+    : customHomePricing
+      ? deliveryQuote?.available
+        ? Number(deliveryQuote.delivery_fee || 0)
+        : 0
+      : checkoutForm.delivery_type === 'home' ? feeSettings.home_delivery_fee : feeSettings.locker_delivery_fee;
   const paymentFee = paymentMethod === 'cash' && feeSettings.cash_payment_enabled ? feeSettings.cash_payment_fee : 0;
   const orderTotal = cartTotal + deliveryFee + paymentFee;
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   useEffect(() => {
-    if (demo || !deliveryConfig.custom_pricing_enabled || checkoutForm.delivery_type !== 'home') {
+    if (
+      demo ||
+      deliveryConfig.free_delivery ||
+      !deliveryConfig.custom_pricing_enabled ||
+      checkoutForm.delivery_type !== 'home'
+    ) {
       setDeliveryQuote(null);
       setDeliveryQuoteLoading(false);
       return;
@@ -609,6 +625,7 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
     checkoutForm.street_number,
     demo,
     deliveryConfig.custom_pricing_enabled,
+    deliveryConfig.free_delivery,
   ]);
 
   const abandonedCartItems = useMemo(
@@ -1571,14 +1588,18 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
                       <span style={{ color: colors.accent_color }}>{t("summary.subtotal")}</span>
                       <span>{formatPrice(cartTotal)}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span style={{ color: colors.accent_color }}>{t("summary.delivery")}</span>
-                      <span>{formatPrice(deliveryFee)}</span>
-                    </div>
-                    {customHomePricing && deliveryQuote?.available && (
-                      <p className="text-xs" style={{ color: colors.accent_color }}>
-                        {deliveryQuoteSummary(deliveryQuote, t)}
-                      </p>
+                    {!deliveryConfig.free_delivery && (
+                      <>
+                        <div className="flex justify-between">
+                          <span style={{ color: colors.accent_color }}>{t("summary.delivery")}</span>
+                          <span>{formatPrice(deliveryFee)}</span>
+                        </div>
+                        {customHomePricing && deliveryQuote?.available && (
+                          <p className="text-xs" style={{ color: colors.accent_color }}>
+                            {deliveryQuoteSummary(deliveryQuote, t)}
+                          </p>
+                        )}
+                      </>
                     )}
                   </div>
                   <div className="border-t pt-4 mb-6" style={{ borderColor: `${colors.primary_color}20` }}>
@@ -1655,6 +1676,10 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
               {/* Delivery */}
               <div className={`p-6 ${colors.border_radius}`} style={{ backgroundColor: colors.secondary_color }}>
                 <h2 className="text-xl font-semibold mb-4">{t("steps.delivery")}</h2>
+                <DeliveryMessageNote
+                  message={deliveryConfig.message}
+                  className="text-sm mb-4 opacity-80"
+                />
                 <div className="space-y-4">
                   <div className="flex gap-4">
                     <button
@@ -1865,14 +1890,18 @@ const EnhancedElementarTemplate = ({ apiKey, editMode = false, demo = false }: E
                       <span style={{ color: colors.accent_color }}>{t("summary.subtotal")}</span>
                       <span>{formatPrice(cartTotal)}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span style={{ color: colors.accent_color }}>{t("summary.delivery")}</span>
-                      <span>{formatPrice(deliveryFee)}</span>
-                    </div>
-                    {customHomePricing && deliveryQuote?.available && (
-                      <p className="text-xs" style={{ color: colors.accent_color }}>
-                        {deliveryQuoteSummary(deliveryQuote, t)}
-                      </p>
+                    {!deliveryConfig.free_delivery && (
+                      <>
+                        <div className="flex justify-between">
+                          <span style={{ color: colors.accent_color }}>{t("summary.delivery")}</span>
+                          <span>{formatPrice(deliveryFee)}</span>
+                        </div>
+                        {customHomePricing && deliveryQuote?.available && (
+                          <p className="text-xs" style={{ color: colors.accent_color }}>
+                            {deliveryQuoteSummary(deliveryQuote, t)}
+                          </p>
+                        )}
+                      </>
                     )}
                     {paymentFee > 0 && (
                       <div className="flex justify-between">

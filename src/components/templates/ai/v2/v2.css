@@ -263,6 +263,31 @@
   align-items: end;
 }
 
+/* asymmetric: media takes the majority of the frame and is pulled off-center rather
+   than an even 50/50 split — a structurally different silhouette from the default. */
+.ai-v2-hero-split-asymmetric .ai-v2-hero-split-grid {
+  grid-template-columns: minmax(0, 0.62fr) minmax(0, 1.38fr);
+  align-items: stretch;
+}
+
+.ai-v2-hero-split-asymmetric .ai-v2-hero-copy {
+  align-self: end;
+  padding-bottom: clamp(1rem, 4vw, 3rem);
+}
+
+.ai-v2-hero-split-asymmetric .ai-v2-hero-media {
+  margin-top: clamp(-2rem, -6vw, -3.5rem);
+}
+
+@media (max-width: 720px) {
+  .ai-v2-hero-split-asymmetric .ai-v2-hero-split-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ai-v2-hero-split-asymmetric .ai-v2-hero-media {
+    margin-top: 0;
+  }
+}
+
 .ai-v2-hero-media {
   min-height: clamp(340px, 55vh, 620px);
   overflow: hidden;
@@ -315,6 +340,20 @@
   color: rgba(255, 255, 255, 0.82);
 }
 
+/* cinematic: deeper veil, slower/more atmospheric read, room for an eyebrow kicker. */
+.ai-v2-hero-luxury-cinematic .ai-v2-hero-luxury-veil {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.86), rgba(0, 0, 0, 0.32) 45%, rgba(0, 0, 0, 0.2));
+}
+
+.ai-v2-hero-luxury-cinematic .ai-v2-hero-luxury-copy {
+  padding-top: 7rem;
+  padding-bottom: 5.5rem;
+}
+
+.ai-v2-hero-luxury-cinematic .ai-v2-kicker {
+  color: rgba(255, 255, 255, 0.72);
+}
+
 /* Product hero — protagonist product, not a card */
 .ai-v2-hero-product {
   padding: clamp(3rem, 7vw, 5rem) 0 clamp(4rem, 8vw, 6rem);
@@ -325,6 +364,20 @@
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
   gap: clamp(1.5rem, 5vw, 4rem);
   align-items: center;
+}
+
+/* stacked: image above copy, centered — vertical, app-like rhythm. */
+.ai-v2-hero-product-stacked .ai-v2-hero-product-stage {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  text-align: center;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.ai-v2-hero-product-stacked .ai-v2-hero-product-figure {
+  width: 100%;
+  min-height: clamp(320px, 46vh, 480px);
 }
 
 .ai-v2-hero-product-figure {
@@ -545,6 +598,58 @@
   gap: clamp(1.5rem, 4vw, 2.75rem);
 }
 
+/* dense: more columns, tighter gap — a real structural density difference. */
+.ai-v2-merch[data-layout='dense'] .ai-v2-merch-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(0.6rem, 1.5vw, 1rem);
+}
+
+/* asymmetricFeature: one oversized anchor + a denser secondary fill grid. */
+.ai-v2-merch-asymmetric {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: clamp(1.25rem, 3vw, 2.5rem);
+  align-items: start;
+}
+
+.ai-v2-merch-asymmetric-fill {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(0.75rem, 2vw, 1.25rem);
+}
+
+/* asymmetricFeature with exactly one resolved product: a single, intentional feature
+   presentation instead of an anchor beside an empty fill column. */
+.ai-v2-merch-asymmetric-solo {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+@media (max-width: 860px) {
+  .ai-v2-merch-asymmetric {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Luxury image-first grid: one oversized column, generous vertical rhythm. */
+.ai-v2-luxury-grid-stack {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(3rem, 8vw, 6rem);
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* Qualified with .ai-v2-pp.is-featured (not just .ai-v2-pp-media) on purpose: every card
+   ProductGridLuxuryImageFirst renders is `featured`, so without this the generic
+   `.ai-v2-pp.is-featured .ai-v2-pp-media` rule above would win here regardless of source
+   order — four classes on this matched path beats its three, which is the actual fix;
+   this is the intended hierarchy expressed via specificity, not !important. */
+.ai-v2-luxury-grid-stack .ai-v2-pp.is-featured .ai-v2-pp-media {
+  aspect-ratio: 3 / 4;
+  min-height: 480px;
+}
+
 .ai-v2-rail {
   display: flex;
   gap: 1.15rem;
@@ -565,6 +670,19 @@
 
 .ai-v2-rail[data-mode='street'] .ai-v2-rail-item {
   flex-basis: 200px;
+}
+
+/* alternatingOversized: every third tile breaks scale for a syncopated rhythm. */
+.ai-v2-rail-alternating .ai-v2-rail-item {
+  transition: flex-basis 0.2s ease;
+}
+
+.ai-v2-rail-alternating .ai-v2-rail-item[data-oversized='1'] {
+  flex-basis: 380px;
+}
+
+.ai-v2-rail-alternating .ai-v2-rail-item[data-oversized='1'] .ai-v2-pp-media {
+  aspect-ratio: 4 / 5;
 }
 
 .ai-v2-rail-title {
@@ -894,6 +1012,43 @@
   opacity: 0.5;
 }
 
+/* grid: dense card presentation instead of an editorial vertical list. */
+.ai-v2-reviews-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(1rem, 2.5vw, 1.5rem);
+}
+
+.ai-v2-reviews-grid li {
+  padding: 1.25rem;
+  border: 1px solid color-mix(in srgb, var(--ai-text) 12%, transparent);
+}
+
+.ai-v2-reviews-grid p {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.ai-v2-reviews-grid footer {
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+@media (max-width: 720px) {
+  .ai-v2-reviews-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* Collections editorial */
 .ai-v2-collections-title {
   margin-bottom: clamp(1.75rem, 4vw, 2.75rem);
@@ -903,6 +1058,37 @@
   display: grid;
   grid-template-columns: 1.4fr 1fr;
   gap: clamp(1rem, 2.5vw, 1.75rem);
+}
+
+/* stacked: full-width alternating rows instead of a fixed tile grid. */
+.ai-v2-collections-stacked {
+  display: grid;
+  gap: clamp(1.5rem, 4vw, 3rem);
+}
+
+.ai-v2-collections-stacked .ai-v2-collections-block {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+}
+
+.ai-v2-collections-stacked .ai-v2-collections-block[data-reverse='1'] {
+  direction: rtl;
+}
+
+.ai-v2-collections-stacked .ai-v2-collections-block[data-reverse='1'] > * {
+  direction: ltr;
+}
+
+.ai-v2-collections-stacked .ai-v2-collections-media {
+  min-height: 320px;
+}
+
+@media (max-width: 720px) {
+  .ai-v2-collections-stacked .ai-v2-collections-block,
+  .ai-v2-collections-stacked .ai-v2-collections-block[data-reverse='1'] {
+    grid-template-columns: minmax(0, 1fr);
+    direction: ltr;
+  }
 }
 
 .ai-v2-collections-block {
@@ -1129,6 +1315,12 @@
     grid-template-columns: 1fr 1fr;
   }
 
+  /* Still premium (full-bleed, tall), but the 480px desktop min-height is excessive
+     once the column is this narrow — scale it down instead of inheriting it as-is. */
+  .ai-v2-luxury-grid-stack .ai-v2-pp.is-featured .ai-v2-pp-media {
+    min-height: 380px;
+  }
+
   .ai-v2-mosaic-mag {
     grid-template-columns: 1fr 1fr;
   }
@@ -1196,6 +1388,11 @@
 
   .ai-v2-pp.is-featured .ai-v2-pp-media {
     min-height: 300px;
+  }
+
+  .ai-v2-luxury-grid-stack .ai-v2-pp.is-featured .ai-v2-pp-media {
+    aspect-ratio: 4 / 5;
+    min-height: 320px;
   }
 }
 

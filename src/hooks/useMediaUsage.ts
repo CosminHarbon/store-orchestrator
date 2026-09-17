@@ -22,6 +22,7 @@ export function useMediaUsage() {
         quota_bytes: Number(row.quota_bytes) || 0,
         tier: String(row.tier || 'start'),
         percent: Number(row.percent) || 0,
+        bytes_stored: row.bytes_stored != null ? Number(row.bytes_stored) : null,
       };
     },
   });

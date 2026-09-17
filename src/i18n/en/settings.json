@@ -134,6 +134,11 @@
     "flatTitle": "Standard delivery fees",
     "flatDesc": "Used when custom geographic pricing is off, and for locker delivery.",
     "flatDescManual": "Fallback amounts if no distance or order-value rule matches.",
+    "freeDelivery": "Don't charge for delivery",
+    "freeDeliveryHelp": "Hides delivery fees on the storefront. Add a custom message below to explain shipping, or leave it empty to show no fee text at all.",
+    "deliveryMessage": "Custom delivery message",
+    "deliveryMessageHelp": "Shown instead of a delivery fee when free delivery is on. Leave empty to hide fee text completely.",
+    "deliveryMessagePlaceholder": "e.g. We deliver Mon–Sat, 9:00–18:00",
     "homeDelivery": "Home Delivery Fee (RON)",
     "homeDeliveryHelp": "Fee for home delivery",
     "homeDeliveryFallbackHelp": "Used only when no delivery rule matches this order.",
@@ -700,16 +705,18 @@
     "notConfigured": "Billing is not configured yet.",
     "portalFailed": "Could not open billing portal.",
     "storage": {
-      "title": "Media storage",
-      "description": "Compressed product, collection, logo, and website images for this store.",
+      "title": "Media allowance",
+      "description": "Images are automatically optimized by SpeedVendors for faster storefront loading.",
       "usedOf": "{{used}} of {{quota}} used",
-      "tier": "Plan storage",
+      "tier": "Plan allowance",
       "tierStart": "Start (2 GB)",
       "tierGrowth": "Growth (15 GB)",
       "tierScale": "Scale (50 GB)",
-      "low": "You're running low on media storage.",
-      "almostFull": "Your media storage is almost full.",
-      "full": "Storage limit reached. Delete unused media or upgrade your plan."
+      "low": "You're running low on media allowance.",
+      "almostFull": "Your media allowance is almost full.",
+      "full": "Media allowance reached. Delete unused media or upgrade your plan.",
+      "adminStored": "Actual stored: {{stored}}",
+      "adminSaving": "Optimization saving: ~{{percent}}%"
     }
   }
 }

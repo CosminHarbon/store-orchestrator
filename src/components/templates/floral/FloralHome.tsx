@@ -19,6 +19,7 @@ export function FloralHome({ commerce }: Props) {
     reviews,
     products,
     fees,
+    deliveryConfig,
     openCatalog,
     openProduct,
     addToCart,
@@ -29,6 +30,12 @@ export function FloralHome({ commerce }: Props) {
     bestSellers[0]?.image ||
     newestProducts[0]?.image ||
     '';
+
+  const deliveryPromiseBody = deliveryConfig.free_delivery
+    ? deliveryConfig.message?.trim() || null
+    : fees.home_delivery_fee <= 0
+      ? t('home.freeDelivery')
+      : t('home.deliveryFrom', { amount: formatRon(fees.home_delivery_fee) });
 
   const triptych = useMemo(() => {
     const covers = collections.slice(0, 3).map((c) => ({
@@ -125,10 +132,7 @@ export function FloralHome({ commerce }: Props) {
             {
               icon: Truck,
               title: t('home.promiseDelivery'),
-              body:
-                fees.home_delivery_fee <= 0
-                  ? t('home.freeDelivery')
-                  : t('home.deliveryFrom', { amount: formatRon(fees.home_delivery_fee) }),
+              body: deliveryPromiseBody,
             },
             { icon: Heart, title: t('home.promiseGift'), body: t('home.promiseGiftBody') },
             { icon: Sparkles, title: t('home.promiseQuality'), body: t('home.promiseQualityBody') },
@@ -136,7 +140,7 @@ export function FloralHome({ commerce }: Props) {
             <div key={title} className="text-center space-y-2">
               <Icon className="mx-auto h-5 w-5 text-[var(--floral-rose)]" strokeWidth={1.25} />
               <p className="text-xs tracking-[0.16em] uppercase font-semibold">{title}</p>
-              <p className="text-xs text-[var(--floral-muted)] leading-relaxed">{body}</p>
+              {body ? <p className="text-xs text-[var(--floral-muted)] leading-relaxed">{body}</p> : null}
             </div>
           ))}
         </div>

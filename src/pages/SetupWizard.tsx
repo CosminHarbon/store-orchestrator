@@ -35,7 +35,7 @@ import { DeliveryPricingSettings } from '@/components/settings/DeliveryPricingSe
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadMedia } from '@/lib/media/uploadMedia';
-import { deletePreviousMedia } from '@/lib/media/deleteMedia';
+
 import { merchantMediaMessage } from '@/lib/media/errors';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -584,8 +584,8 @@ const SetupWizard = () => {
                               if (!file || !effectiveUserId) return;
                               setUploadingLogo(true);
                               try {
-                                const uploaded = await uploadMedia({ file, mediaType: 'logo' });
                                 const previous = onboarding.customization?.logo_url;
+                                const uploaded = await uploadMedia({ file, mediaType: 'logo', replacingPublicUrl: previous });
                                 await supabase.from('template_customization').upsert(
                                   {
                                     user_id: effectiveUserId,
@@ -596,9 +596,6 @@ const SetupWizard = () => {
                                   } as never,
                                   { onConflict: 'user_id,template_id' }
                                 );
-                                if (previous && previous !== uploaded.publicUrl) {
-                                  await deletePreviousMedia(previous);
-                                }
                                 toast.success(t('settings.logoUploaded'));
                                 onboarding.refreshCustomization();
                               } catch (error) {

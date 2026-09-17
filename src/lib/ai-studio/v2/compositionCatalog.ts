@@ -33,7 +33,7 @@ export const COMPOSITION_CATALOG: CompositionCatalogEntry[] = [
     label: 'Luxury / minimal hero',
     whenToUse: 'Full-bleed atmospheric hero — image-led opening with restrained type.',
     contentFields: ['title', 'subtitle', 'cta'],
-    optionalFields: ['imageUrl'],
+    optionalFields: ['imageUrl', 'layout: quiet|cinematic'],
   },
   {
     type: 'hero',
@@ -41,7 +41,7 @@ export const COMPOSITION_CATALOG: CompositionCatalogEntry[] = [
     label: 'Editorial split hero',
     whenToUse: 'Measured split hero — copy and media share the first viewport.',
     contentFields: ['title', 'subtitle', 'cta'],
-    optionalFields: ['imageUrl', 'align: left|right'],
+    optionalFields: ['imageUrl', 'align: left|right', 'layout: split|asymmetric'],
   },
   {
     type: 'hero',
@@ -49,6 +49,7 @@ export const COMPOSITION_CATALOG: CompositionCatalogEntry[] = [
     label: 'Product-focused hero',
     whenToUse: 'Product-as-artifact hero — object-led opening for flagship merchandise.',
     contentFields: ['title', 'subtitle', 'cta', 'presentation: luxury|street|tech|editorial'],
+    optionalFields: ['layout: stage|stacked'],
   },
   {
     type: 'productGrid',
@@ -56,7 +57,16 @@ export const COMPOSITION_CATALOG: CompositionCatalogEntry[] = [
     label: 'Editorial product grid',
     whenToUse: 'Primary catalog moment — choose layout and presentation mode deliberately.',
     contentFields: ['title', 'presentation: luxury|street|tech|editorial'],
-    optionalFields: ['layout: featureFirst|standardEditorial'],
+    optionalFields: ['layout: standardEditorial|featureFirst|asymmetricFeature|dense'],
+  },
+  {
+    type: 'productGrid',
+    variant: 'luxury_image_first',
+    label: 'Luxury image-first grid',
+    whenToUse:
+      'Single oversized column of full-bleed product imagery, minimal metadata — a genuinely different silhouette from editorial, not a density variant of it. Use when the brand wants maximum imagery, minimum chrome.',
+    contentFields: [],
+    optionalFields: ['title'],
   },
   {
     type: 'productRail',
@@ -64,6 +74,7 @@ export const COMPOSITION_CATALOG: CompositionCatalogEntry[] = [
     label: 'Horizontal product rail',
     whenToUse: 'Secondary discovery, scrollable collection after story or spotlight.',
     contentFields: ['title', 'presentation: luxury|street|tech|editorial'],
+    optionalFields: ['layout: uniform|alternatingOversized'],
   },
   {
     type: 'productSpotlight',
@@ -110,7 +121,7 @@ export const COMPOSITION_CATALOG: CompositionCatalogEntry[] = [
     label: 'Review presentation',
     whenToUse: 'Aggregate ratings wall when trust/index presentation fits the strategy.',
     contentFields: [],
-    optionalFields: ['title'],
+    optionalFields: ['title', 'layout: index|grid'],
   },
   {
     type: 'collections',
@@ -118,7 +129,7 @@ export const COMPOSITION_CATALOG: CompositionCatalogEntry[] = [
     label: 'Collection tiles',
     whenToUse: 'Multi-collection discovery — fashion, food ranges, electronics families.',
     contentFields: [],
-    optionalFields: ['title'],
+    optionalFields: ['title', 'layout: editorial|stacked'],
   },
   {
     type: 'newsletter',

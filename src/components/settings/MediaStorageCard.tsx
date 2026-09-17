@@ -20,6 +20,8 @@ export function MediaStorageCard() {
   const used = data?.bytes_used || 0;
   const quota = data?.quota_bytes || 0;
   const percent = Math.min(100, data?.percent || 0);
+  const stored = data?.bytes_stored;
+  const showAdmin = stored != null && stored >= 0;
 
   return (
     <Card>
@@ -50,6 +52,18 @@ export function MediaStorageCard() {
             ) : percent >= 80 ? (
               <p className="text-sm text-amber-600 dark:text-amber-400">{t('saasBilling.storage.low')}</p>
             ) : null}
+            {showAdmin && (
+              <div className="mt-2 rounded-md bg-muted/50 p-2 text-xs text-muted-foreground space-y-0.5">
+                <p>{t('saasBilling.storage.adminStored', { stored: formatBytes(stored) })}</p>
+                {used > 0 && (
+                  <p>
+                    {t('saasBilling.storage.adminSaving', {
+                      percent: String(Math.round(Math.max(0, (1 - stored / used)) * 100)),
+                    })}
+                  </p>
+                )}
+              </div>
+            )}
           </>
         )}
       </CardContent>

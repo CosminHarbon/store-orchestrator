@@ -13,7 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { useTranslation } from 'react-i18next';
 import { uploadMedia } from '@/lib/media/uploadMedia';
-import { deletePreviousMedia } from '@/lib/media/deleteMedia';
+
 import { merchantMediaMessage } from '@/lib/media/errors';
 
 interface TemplateCustomization {
@@ -106,14 +106,11 @@ export const TemplateCustomizer = () => {
     setUploading({ ...uploading, [type]: true });
     try {
       const previous = type === 'hero' ? customization.hero_image_url : customization.logo_url;
-      const uploaded = await uploadMedia({ file, mediaType: type });
+      const uploaded = await uploadMedia({ file, mediaType: type, replacingPublicUrl: previous });
       setCustomization({
         ...customization,
         [type === 'hero' ? 'hero_image_url' : 'logo_url']: uploaded.publicUrl,
       });
-      if (previous && previous !== uploaded.publicUrl) {
-        await deletePreviousMedia(previous);
-      }
       toast.success(`${type === 'hero' ? 'Hero image' : 'Logo'} uploaded successfully`);
     } catch (error) {
       toast.error(merchantMediaMessage(error, t));

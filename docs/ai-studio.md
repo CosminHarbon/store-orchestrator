@@ -42,9 +42,18 @@ supabase functions deploy ai-studio-publish --project-ref <ref>
 
 ## Daily caps (per user)
 
-- Generate: 5
+- Generate: 100 (see note below — code marks this as a temporary elevation)
 - Design refine: 10
 - All refine: 30
+
+> **Known drift (found during the 2026-09 AI Studio architecture audit):** `GENERATE_LIMIT` in
+> `supabase/functions/_shared/aiStudio.ts` is currently `100`, with an inline comment reading
+> *"Temporary elevated limit for Phase 3–4 lab testing — restore to 5 before production hardening."*
+> This doc previously said `5`, which matched that comment's stated target but not the live code.
+> Runtime behavior was intentionally left unchanged as part of this pass — restoring a 20x-lower
+> merchant-facing quota is a product decision, not a docs fix. Whoever owns AI Studio should
+> explicitly decide whether `100` is now the real intended cap (and update the code comment) or
+> whether it should be restored to `5` (or some other value) before/at production hardening.
 
 ## Model routing
 

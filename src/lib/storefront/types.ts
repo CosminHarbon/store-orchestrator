@@ -94,6 +94,9 @@ export interface StorefrontDeliveryConfig {
   locker_enabled: boolean;
   /** Merchant shipping mode: eawb | sameday | manual | … */
   provider?: string | null;
+  free_delivery?: boolean;
+  /** Optional merchant note shown near delivery options */
+  message?: string | null;
   coverage_mode: DeliveryCoverageMode;
   covered_counties: string[];
   covered_localities: { county: string; locality: string }[];

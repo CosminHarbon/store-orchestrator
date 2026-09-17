@@ -26,7 +26,7 @@ export type CompositionType = (typeof COMPOSITION_TYPES)[number];
 export const COMPOSITION_VARIANTS = {
   nav: ['minimal', 'transparent'],
   hero: ['editorial_split', 'luxury_minimal', 'product_focus'],
-  productGrid: ['editorial'],
+  productGrid: ['editorial', 'luxury_image_first'],
   productRail: ['horizontal'],
   productSpotlight: ['feature'],
   editorialSplit: ['image_text'],
@@ -155,6 +155,29 @@ export const siteDocumentSchema = z
     }
   });
 export type SiteDocument = z.infer<typeof siteDocumentSchema>;
+
+/**
+ * A `responsive.mobile.variant` swap only makes sense within the same composition type -
+ * validate against the registered variant list instead of trusting the stored value, so a
+ * malformed/legacy document (or a cross-type value, e.g. a hero variant on a productGrid)
+ * can't silently "succeed" by resolving through the registry's own type-only fallback
+ * (see registry.ts resolveComposition). Invalid or unset -> keep the desktop variant; it's
+ * the only variant already known to be valid for this node's type.
+ *
+ * Pure/CSS-free on purpose (no React import) so it's usable from both the renderer and
+ * plain unit tests.
+ */
+export function resolveResponsiveVariant(
+  type: string,
+  desktopVariant: string,
+  requested: string | undefined
+): string {
+  if (!requested) return desktopVariant;
+  const allowed = COMPOSITION_VARIANTS[type as keyof typeof COMPOSITION_VARIANTS] as
+    | readonly string[]
+    | undefined;
+  return allowed && allowed.includes(requested) ? requested : desktopVariant;
+}
 
 export function parseSiteDocument(raw: unknown): { document: SiteDocument; warnings: string[] } {
   const parsed = siteDocumentSchema.safeParse(raw);

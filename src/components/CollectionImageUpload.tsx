@@ -35,6 +35,7 @@ const CollectionImageUpload = ({
         file,
         mediaType: 'collection',
         relatedEntityId: collectionId,
+        replacingPublicUrl: previous,
         onProgress: setPhase,
       });
       const { error } = await supabase
@@ -46,9 +47,7 @@ const CollectionImageUpload = ({
         throw error;
       }
       onImageChange(uploaded.publicUrl);
-      if (previous && previous !== uploaded.publicUrl) {
-        await deletePreviousMedia(previous);
-      }
+      // Old asset cleanup is handled server-side via replacement accounting
       return uploaded;
     },
     onSuccess: () => {

@@ -17,6 +17,7 @@ import {
   getSiteOpsFromCritiqueSystemPrompt,
 } from '../../../shared/ai-studio-v2/visualCriticPrompt.ts'
 import { buildExpectedRenderManifest } from '../../../shared/ai-studio-v2/expectedRenderManifest.ts'
+import { isValidLayout } from '../../../shared/ai-studio-v2/compositionLayouts.ts'
 import {
   chatJsonForTask,
   chatVisionJsonForTask,
@@ -29,7 +30,7 @@ import {
 const COMPOSITION_VARIANTS = {
   nav: ['minimal', 'transparent'],
   hero: ['editorial_split', 'luxury_minimal', 'product_focus'],
-  productGrid: ['editorial'],
+  productGrid: ['editorial', 'luxury_image_first'],
   productRail: ['horizontal'],
   productSpotlight: ['feature'],
   editorialSplit: ['image_text'],
@@ -122,6 +123,25 @@ function isValidComposition(type: string, variant: string): boolean {
   return (allowed as readonly string[]).includes(variant)
 }
 
+/** Same guard as siteOps.ts's applySiteOps, for the critique loop's independent SiteOps
+ *  application path — a hallucinated content.layout or a cross-type mobile variant must
+ *  not reach the live document from here either. */
+function checkLayoutAndMobileVariant(
+  type: string,
+  variant: string,
+  content?: Record<string, unknown>,
+  responsive?: Record<string, unknown>
+) {
+  const layout = content?.layout
+  if (!isValidLayout(type, variant, layout)) {
+    throw new Error(`invalid content.layout ${JSON.stringify(layout)} for ${type}/${variant}`)
+  }
+  const mobileVariant = (responsive as { mobile?: { variant?: unknown } } | undefined)?.mobile?.variant
+  if (mobileVariant !== undefined && !isValidComposition(type, mobileVariant as string)) {
+    throw new Error(`invalid responsive.mobile.variant ${JSON.stringify(mobileVariant)} for type ${type}`)
+  }
+}
+
 function validateOpsAgainstTree(
   document: { pages: { home: { nodes: Array<{ id: string; type: string; variant: string; content?: Record<string, unknown> }> } } },
   ops: z.infer<typeof siteOpSchema>[]
@@ -137,6 +157,7 @@ function validateOpsAgainstTree(
         if (!isValidComposition(op.node.type, op.node.variant)) {
           throw new Error(`invalid composition ${op.node.type}/${op.node.variant}`)
         }
+        checkLayoutAndMobileVariant(op.node.type, op.node.variant, op.node.content, op.node.responsive)
         if (op.afterId && !ids.has(op.afterId)) throw new Error(`afterId missing ${op.afterId}`)
         ids.add(op.node.id)
         valid.push(op)
@@ -156,6 +177,7 @@ function validateOpsAgainstTree(
         if (!isValidComposition(op.node.type, op.node.variant)) {
           throw new Error(`invalid composition ${op.node.type}/${op.node.variant}`)
         }
+        checkLayoutAndMobileVariant(op.node.type, op.node.variant, op.node.content, op.node.responsive)
       }
       if (op.op === 'update') {
         const n = document.pages.home.nodes.find((x) => x.id === op.id)
@@ -166,6 +188,24 @@ function validateOpsAgainstTree(
           const type = typeof op.patch.type === 'string' ? op.patch.type : n.type
           if (!isValidComposition(type, op.patch.variant)) {
             throw new Error(`invalid variant ${type}/${op.patch.variant}`)
+          }
+        }
+        if (n) {
+          const type = typeof op.patch.type === 'string' ? op.patch.type : n.type
+          const variant = typeof op.patch.variant === 'string' ? op.patch.variant : n.variant
+          const patchContent =
+            op.patch.content && typeof op.patch.content === 'object'
+              ? (op.patch.content as Record<string, unknown>)
+              : undefined
+          const patchResponsive =
+            op.patch.responsive && typeof op.patch.responsive === 'object'
+              ? (op.patch.responsive as Record<string, unknown>)
+              : undefined
+          if (patchContent && 'layout' in patchContent) {
+            checkLayoutAndMobileVariant(type, variant, patchContent, undefined)
+          }
+          if (patchResponsive) {
+            checkLayoutAndMobileVariant(type, variant, undefined, patchResponsive)
           }
         }
       }

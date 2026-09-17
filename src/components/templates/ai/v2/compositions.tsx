@@ -130,8 +130,15 @@ export function HeroEditorialSplit({ node, commerce, language, asset }: Composit
   const cta = str(node.content.cta, functionalCta(language));
   const kicker = str(node.content.kicker);
   const image = asset.imageUrl || '';
+  // asymmetric: media offset off-center instead of an even 50/50 split — same data, same
+  // primitives, a genuinely different silhouette (Part D: coherent hero family, not templates).
+  const asymmetric = layoutOf(node, 'split') === 'asymmetric';
   return (
-    <section className="ai-v2-hero ai-v2-hero-split" {...sectionDesignProps(node)} data-spacing={node.design?.spacing || 'airy'}>
+    <section
+      className={`ai-v2-hero ai-v2-hero-split ${asymmetric ? 'ai-v2-hero-split-asymmetric' : ''}`}
+      {...sectionDesignProps(node)}
+      data-spacing={node.design?.spacing || 'airy'}
+    >
       <div className="ai-v2-wrap ai-v2-hero-split-grid">
         <div className="ai-v2-hero-copy">
           {kicker ? <p className="ai-v2-kicker">{kicker}</p> : null}
@@ -152,11 +159,15 @@ export function HeroEditorialSplit({ node, commerce, language, asset }: Composit
 export function HeroLuxuryMinimal({ node, commerce, language, asset }: CompositionRenderProps) {
   const title = str(node.content.title);
   const subtitle = str(node.content.subtitle);
+  const kicker = str(node.content.kicker);
   const cta = str(node.content.cta, functionalCta(language));
   const image = asset.imageUrl || '';
+  // cinematic: deeper veil + eyebrow kicker + bottom-anchored copy for a more atmospheric,
+  // slower-feeling open than the default centered-quiet treatment.
+  const cinematic = layoutOf(node, 'quiet') === 'cinematic';
   return (
     <section
-      className="ai-v2-hero ai-v2-hero-luxury"
+      className={`ai-v2-hero ai-v2-hero-luxury ${cinematic ? 'ai-v2-hero-luxury-cinematic' : ''}`}
       {...sectionDesignProps(node)}
       style={{
         ...(image ? { backgroundImage: `url(${image})` } : {}),
@@ -167,6 +178,9 @@ export function HeroLuxuryMinimal({ node, commerce, language, asset }: Compositi
     >
       <div className="ai-v2-hero-luxury-veil" />
       <div className="ai-v2-wrap ai-v2-hero-luxury-copy">
+        {/* cinematic styles the kicker as an eyebrow above a deeper veil; it must not
+            gate whether authored kicker content renders at all. */}
+        {kicker ? <p className="ai-v2-kicker">{kicker}</p> : null}
         {title ? <h1>{title}</h1> : null}
         {subtitle ? <p className="ai-v2-lead">{subtitle}</p> : null}
         <button type="button" className="ai-v2-btn ai-v2-btn-ghost" onClick={() => commerce.openCatalog()}>
@@ -186,9 +200,16 @@ export function HeroProductFocus({ node, commerce, brand, language, asset }: Com
   const cta = str(node.content.cta, functionalCta(language));
   const { currency, locale } = currencyOf(commerce);
   const image = asset.imageUrl || '';
+  // stacked: image above copy, centered — an app-like vertical rhythm instead of the
+  // default side-by-side stage, useful when the architect wants a narrower/taller feel.
+  const stacked = layoutOf(node, 'stage') === 'stacked';
 
   return (
-    <section className="ai-v2-hero ai-v2-hero-product" {...sectionDesignProps(node)} data-density={brand.tokens.density}>
+    <section
+      className={`ai-v2-hero ai-v2-hero-product ${stacked ? 'ai-v2-hero-product-stacked' : ''}`}
+      {...sectionDesignProps(node)}
+      data-density={brand.tokens.density}
+    >
       <div className="ai-v2-wrap ai-v2-hero-product-stage">
         <div className="ai-v2-hero-product-figure">
           {image ? <img src={image} alt={title} /> : <div className="ai-v2-media-fallback tall" />}
@@ -234,7 +255,57 @@ export function ProductGridEditorial(props: CompositionRenderProps) {
           </button>
         </div>
 
-        {layout === 'featureFirst' && first ? (
+        {layout === 'asymmetricFeature' && first && rest.length === 0 ? (
+          // Only one product resolved: an anchor + empty fill column isn't a real
+          // asymmetry, it's a broken layout. Fall back to a single, intentional
+          // full-width feature presentation instead.
+          <div className="ai-v2-merch-asymmetric-solo">
+            <ProductPresentation
+              product={first}
+              mode={mode}
+              currency={currency}
+              locale={locale}
+              featured
+              onOpen={commerce.openProduct}
+              onAdd={(p) => commerce.addToCart(p)}
+              showQuickAdd={mode !== 'luxury' && node.dataBindings?.showQuickAdd !== false}
+              showSpec={mode === 'tech'}
+            />
+          </div>
+        ) : layout === 'asymmetricFeature' && first ? (
+          // Irregular grid: one oversized tile anchors the composition, the rest fill a
+          // denser secondary grid around it — a real structural asymmetry, not a palette swap.
+          <div className="ai-v2-merch-asymmetric" data-density={brand.tokens.density}>
+            <div className="ai-v2-merch-asymmetric-anchor">
+              <ProductPresentation
+                product={first}
+                mode={mode}
+                currency={currency}
+                locale={locale}
+                featured
+                onOpen={commerce.openProduct}
+                onAdd={(p) => commerce.addToCart(p)}
+                showQuickAdd={mode !== 'luxury' && node.dataBindings?.showQuickAdd !== false}
+                showSpec={mode === 'tech'}
+              />
+            </div>
+            <div className="ai-v2-merch-asymmetric-fill">
+              {rest.slice(0, 5).map((p) => (
+                <ProductPresentation
+                  key={p.id}
+                  product={p}
+                  mode={mode}
+                  currency={currency}
+                  locale={locale}
+                  compact
+                  onOpen={commerce.openProduct}
+                  onAdd={(item) => commerce.addToCart(item)}
+                  showQuickAdd={mode !== 'luxury' && node.dataBindings?.showQuickAdd !== false}
+                />
+              ))}
+            </div>
+          </div>
+        ) : layout === 'featureFirst' && first ? (
           <div className="ai-v2-merch-feature">
             <ProductPresentation
               product={first}
@@ -287,6 +358,45 @@ export function ProductGridEditorial(props: CompositionRenderProps) {
   );
 }
 
+/**
+ * Luxury image-first grid: a genuinely new registry entry (not a `content.layout` mode of
+ * ProductGridEditorial) because the silhouette is structurally different — one oversized
+ * column of full-bleed product imagery with minimal metadata, not a multi-column grid at any
+ * density. Reuses the same product data, ProductPresentation ('luxury' mode), price formatting
+ * and design-knob plumbing as every other composition — no new business logic.
+ */
+export function ProductGridLuxuryImageFirst(props: CompositionRenderProps) {
+  const { node, commerce } = props;
+  const products = resolveProducts(commerce, { ...node, dataBindings: { ...node.dataBindings, limit: node.dataBindings?.limit || 4 } });
+  const title = str(node.content.title);
+  const { currency, locale } = currencyOf(commerce);
+
+  return (
+    <section {...sectionDesignProps(node)} className="ai-v2-section ai-v2-luxury-grid" data-spacing={node.design.spacing || 'dramatic'}>
+      <div className="ai-v2-wrap">
+        {title ? (
+          <div className="ai-v2-section-head">
+            <h2>{title}</h2>
+          </div>
+        ) : null}
+        <div className="ai-v2-luxury-grid-stack">
+          {products.map((p) => (
+            <ProductPresentation
+              key={p.id}
+              product={p}
+              mode="luxury"
+              currency={currency}
+              locale={locale}
+              featured
+              onOpen={commerce.openProduct}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function ProductRailHorizontal(props: CompositionRenderProps) {
   const { node, commerce } = props;
   const products = resolveProducts(commerce, {
@@ -296,6 +406,9 @@ export function ProductRailHorizontal(props: CompositionRenderProps) {
   const title = str(node.content.title);
   const mode = modeOf(props);
   const { currency, locale } = currencyOf(commerce);
+  // alternatingOversized: every third item breaks scale, giving the rail a syncopated
+  // rhythm instead of a uniform filmstrip of identical tiles.
+  const alternating = layoutOf(node, 'uniform') === 'alternatingOversized';
 
   return (
     <section {...sectionDesignProps(node)} className="ai-v2-section ai-v2-rail-section">
@@ -304,15 +417,19 @@ export function ProductRailHorizontal(props: CompositionRenderProps) {
           <h2 className="ai-v2-rail-title">{title}</h2>
         </div>
       ) : null}
-      <div className="ai-v2-rail" data-mode={mode}>
-        {products.map((p) => (
-          <div key={p.id} className="ai-v2-rail-item">
+      <div className={`ai-v2-rail ${alternating ? 'ai-v2-rail-alternating' : ''}`} data-mode={mode}>
+        {products.map((p, idx) => (
+          <div
+            key={p.id}
+            className="ai-v2-rail-item"
+            data-oversized={alternating && idx % 3 === 0 ? '1' : undefined}
+          >
             <ProductPresentation
               product={p}
               mode={mode}
               currency={currency}
               locale={locale}
-              compact
+              compact={!(alternating && idx % 3 === 0)}
               onOpen={commerce.openProduct}
               onAdd={(item) => commerce.addToCart(item)}
               showQuickAdd={mode === 'street' || mode === 'tech'}
@@ -505,6 +622,9 @@ export function ReviewsWall({ node, commerce, language }: CompositionRenderProps
   const reviews = commerce.reviews?.slice(0, 6) || [];
   const avg =
     reviews.length > 0 ? reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviews.length : 0;
+  // grid: dense card grid instead of the editorial index list — reads better for a
+  // catalogue_first / dense_campaign page composition than a long vertical list.
+  const grid = layoutOf(node, 'index') === 'grid';
 
   if (!reviews.length) {
     return (
@@ -530,7 +650,7 @@ export function ReviewsWall({ node, commerce, language }: CompositionRenderProps
             <p className="ai-v2-reviews-count">{reviews.length} verified notes</p>
           </div>
         </div>
-        <ol className="ai-v2-reviews-index">
+        <ol className={grid ? 'ai-v2-reviews-grid' : 'ai-v2-reviews-index'}>
           {reviews.map((r) => (
             <li key={r.id}>
               <div className="ai-v2-reviews-stars" aria-label={`${r.rating} of 5`}>
@@ -562,12 +682,13 @@ export function CollectionsTiles({ node, commerce, language }: CompositionRender
     <section {...sectionDesignProps(node)} className="ai-v2-section ai-v2-collections" data-layout={layout}>
       <div className="ai-v2-wrap">
         <h2 className="ai-v2-collections-title">{title}</h2>
-        <div className="ai-v2-collections-editorial">
+        <div className={layout === 'stacked' ? 'ai-v2-collections-stacked' : 'ai-v2-collections-editorial'}>
           {collections.map((c, idx) => (
             <button
               key={c.id}
               type="button"
               className={`ai-v2-collections-block ai-v2-collections-block-${idx + 1}`}
+              data-reverse={layout === 'stacked' && idx % 2 === 1 ? '1' : undefined}
               onClick={() => commerce.openCatalog(c.id)}
             >
               <div className="ai-v2-collections-media">

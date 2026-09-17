@@ -27,6 +27,7 @@ export function PremiumHome({ commerce }: Props) {
     reviews,
     products,
     fees,
+    deliveryConfig,
     openCatalog,
     openProduct,
     addToCart,
@@ -39,12 +40,15 @@ export function PremiumHome({ commerce }: Props) {
     '';
 
   const promoText = useMemo(() => {
+    if (deliveryConfig.free_delivery) {
+      return deliveryConfig.message?.trim() || null;
+    }
     if (fees.home_delivery_fee <= 0) return t('premiumHome.freeDeliveryEvery');
     return t('premiumHome.deliveryLockers', {
       home: formatRon(fees.home_delivery_fee),
       locker: formatRon(fees.locker_delivery_fee),
     });
-  }, [fees, t]);
+  }, [deliveryConfig.free_delivery, deliveryConfig.message, fees, t]);
 
   const showReviews = customization.show_reviews !== false && reviews.length > 0;
 
@@ -171,18 +175,20 @@ export function PremiumHome({ commerce }: Props) {
         </div>
       </section>
 
-      <section className="prem-container py-12 md:py-16">
-        <div className="rounded-[var(--prem-radius)] bg-[var(--prem-accent)] text-white px-6 py-10 md:px-12 md:py-14 flex flex-col md:flex-row md:items-center md:justify-between gap-6 overflow-hidden relative">
-          <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_20%_20%,#ffffff33,transparent_45%)]" />
-          <div className="relative">
-            <p className="text-xs uppercase tracking-[0.22em] text-white/60 mb-2">{t('premiumHome.shipping')}</p>
-            <h2 className="text-3xl md:text-4xl prem-display max-w-xl">{promoText}</h2>
+      {promoText && (
+        <section className="prem-container py-12 md:py-16">
+          <div className="rounded-[var(--prem-radius)] bg-[var(--prem-accent)] text-white px-6 py-10 md:px-12 md:py-14 flex flex-col md:flex-row md:items-center md:justify-between gap-6 overflow-hidden relative">
+            <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_20%_20%,#ffffff33,transparent_45%)]" />
+            <div className="relative">
+              <p className="text-xs uppercase tracking-[0.22em] text-white/60 mb-2">{t('premiumHome.shipping')}</p>
+              <h2 className="text-3xl md:text-4xl prem-display max-w-xl">{promoText}</h2>
+            </div>
+            <button type="button" className="relative prem-btn bg-white text-[var(--prem-ink)]" onClick={() => openCatalog()}>
+              {t('premiumHome.shopCollection')}
+            </button>
           </div>
-          <button type="button" className="relative prem-btn bg-white text-[var(--prem-ink)]" onClick={() => openCatalog()}>
-            {t('premiumHome.shopCollection')}
-          </button>
-        </div>
-      </section>
+        </section>
+      )}
 
       <section className="prem-container pb-16 md:pb-24">
         <div className="flex items-end justify-between gap-4 mb-8">

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -42,6 +43,8 @@ function isValidFeeInput(raw: string): boolean {
 type FeeSettingsState = {
   cash_payment_enabled: boolean;
   cash_payment_fee: string;
+  free_delivery: boolean;
+  delivery_message: string;
   home_delivery_fee: string;
   locker_delivery_fee: string;
 };
@@ -117,40 +120,67 @@ function FlatDeliveryFees({
           {fallbackHome ? t('fees.flatDescManual') : t('fees.flatDesc')}
         </p>
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="home-delivery-fee">{t('fees.homeDelivery')}</Label>
-        <Input
-          id="home-delivery-fee"
-          type="text"
-          inputMode="decimal"
-          value={fees.home_delivery_fee}
-          onChange={(e) => {
-            const v = e.target.value;
-            if (isValidFeeInput(v)) onChange({ ...fees, home_delivery_fee: v });
-          }}
-          placeholder="0.00"
-        />
-        <p className="text-xs text-muted-foreground">
-          {fallbackHome ? t('fees.homeDeliveryFallbackHelp') : t('fees.homeDeliveryHelp')}
-        </p>
-      </div>
-      {showLocker && (
-        <div className="space-y-2">
-          <Label htmlFor="locker-delivery-fee">{t('fees.lockerDelivery')}</Label>
-          <Input
-            id="locker-delivery-fee"
-            type="text"
-            inputMode="decimal"
-            value={fees.locker_delivery_fee}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (isValidFeeInput(v)) onChange({ ...fees, locker_delivery_fee: v });
-            }}
-            placeholder="0.00"
-          />
-          <p className="text-xs text-muted-foreground">{t('fees.lockerDeliveryHelp')}</p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-0.5">
+          <Label htmlFor="free-delivery">{t('fees.freeDelivery')}</Label>
+          <p className="text-xs text-muted-foreground">{t('fees.freeDeliveryHelp')}</p>
         </div>
+        <Switch
+          id="free-delivery"
+          checked={fees.free_delivery}
+          onCheckedChange={(checked) => onChange({ ...fees, free_delivery: checked })}
+        />
+      </div>
+      {!fees.free_delivery && (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="home-delivery-fee">{t('fees.homeDelivery')}</Label>
+            <Input
+              id="home-delivery-fee"
+              type="text"
+              inputMode="decimal"
+              value={fees.home_delivery_fee}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (isValidFeeInput(v)) onChange({ ...fees, home_delivery_fee: v });
+              }}
+              placeholder="0.00"
+            />
+            <p className="text-xs text-muted-foreground">
+              {fallbackHome ? t('fees.homeDeliveryFallbackHelp') : t('fees.homeDeliveryHelp')}
+            </p>
+          </div>
+          {showLocker && (
+            <div className="space-y-2">
+              <Label htmlFor="locker-delivery-fee">{t('fees.lockerDelivery')}</Label>
+              <Input
+                id="locker-delivery-fee"
+                type="text"
+                inputMode="decimal"
+                value={fees.locker_delivery_fee}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (isValidFeeInput(v)) onChange({ ...fees, locker_delivery_fee: v });
+                }}
+                placeholder="0.00"
+              />
+              <p className="text-xs text-muted-foreground">{t('fees.lockerDeliveryHelp')}</p>
+            </div>
+          )}
+        </>
       )}
+      <div className="space-y-2">
+        <Label htmlFor="delivery-message">{t('fees.deliveryMessage')}</Label>
+        <Textarea
+          id="delivery-message"
+          value={fees.delivery_message}
+          onChange={(e) => onChange({ ...fees, delivery_message: e.target.value.slice(0, 500) })}
+          placeholder={t('fees.deliveryMessagePlaceholder')}
+          rows={3}
+          maxLength={500}
+        />
+        <p className="text-xs text-muted-foreground">{t('fees.deliveryMessageHelp')}</p>
+      </div>
     </div>
   );
 }
@@ -198,6 +228,8 @@ interface Profile {
   eawb_default_service_id?: number;
   cash_payment_enabled?: boolean;
   cash_payment_fee?: number;
+  free_delivery?: boolean;
+  delivery_message?: string | null;
   home_delivery_fee?: number;
   locker_delivery_fee?: number;
   show_stock_to_customers?: boolean;
@@ -234,6 +266,8 @@ const StoreSettings = () => {
   const [feeSettings, setFeeSettings] = useState({
     cash_payment_enabled: true,
     cash_payment_fee: '',
+    free_delivery: false,
+    delivery_message: '',
     home_delivery_fee: '',
     locker_delivery_fee: '',
   });
@@ -358,6 +392,8 @@ const StoreSettings = () => {
         cash_payment_enabled: profile.cash_payment_enabled ?? true,
         cash_payment_fee:
           profile.cash_payment_fee == null ? '' : String(profile.cash_payment_fee),
+        free_delivery: !!profile.free_delivery,
+        delivery_message: profile.delivery_message || '',
         home_delivery_fee:
           profile.home_delivery_fee == null ? '' : String(profile.home_delivery_fee),
         locker_delivery_fee:
@@ -429,6 +465,8 @@ const StoreSettings = () => {
       eawb_default_service_id: providerConfigs.eawb.default_service_id ? parseInt(providerConfigs.eawb.default_service_id) : null,
       cash_payment_enabled: feeSettings.cash_payment_enabled,
       cash_payment_fee: parseFeeValue(feeSettings.cash_payment_fee),
+      free_delivery: feeSettings.free_delivery,
+      delivery_message: feeSettings.delivery_message.trim() || null,
       home_delivery_fee: parseFeeValue(feeSettings.home_delivery_fee),
       locker_delivery_fee: parseFeeValue(feeSettings.locker_delivery_fee),
     });

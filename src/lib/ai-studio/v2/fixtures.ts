@@ -101,6 +101,8 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
           title: 'Leather, quietly made.',
           subtitle: 'Handbags for women who prefer presence without noise.',
           cta: 'Enter the atelier',
+          kicker: 'Villa Pelle — Est. Florence',
+          layout: 'cinematic',
         },
         design: { minHeight: '100vh', spacing: 'dramatic' },
         responsive: { mobile: { minHeight: '80vh' } },
@@ -141,7 +143,7 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
         type: 'productRail',
         variant: 'horizontal',
         visible: true,
-        content: { title: 'The collection' },
+        content: { title: 'The collection', layout: 'alternatingOversized' },
         design: {},
         responsive: {},
         dataBindings: { products: 'newest', limit: 8 },
@@ -264,19 +266,21 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
       {
         id: 'products_01',
         type: 'productGrid',
-        variant: 'editorial',
+        // New composition (Part D/E): oversized full-bleed imagery, minimal chrome — a
+        // structurally different silhouette from 'editorial', fitting for a minimalist brand.
+        variant: 'luxury_image_first',
         visible: true,
         content: { title: 'The line' },
         design: {},
         responsive: {},
-        dataBindings: { products: 'featured', limit: 8 },
+        dataBindings: { products: 'featured', limit: 4 },
       },
       {
         id: 'reviews_01',
         type: 'reviews',
         variant: 'wall',
         visible: true,
-        content: { title: 'What people notice' },
+        content: { title: 'What people notice', layout: 'grid' },
         design: {},
         responsive: {},
       },
@@ -360,6 +364,7 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
           title: 'Oversized. Loud. Yours.',
           subtitle: 'Premium streetwear cut for city nights.',
           cta: 'Shop the drop',
+          layout: 'asymmetric',
         },
         design: { spacing: 'compact' },
         responsive: {},
@@ -379,7 +384,8 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
         type: 'productGrid',
         variant: 'editorial',
         visible: true,
-        content: { title: 'Now live' },
+        // "dense product grid" is the design intent's own stated discovery pattern above.
+        content: { title: 'Now live', layout: 'dense' },
         design: { spacing: 'compact' },
         responsive: {},
         dataBindings: { products: 'bestsellers', limit: 12 },
@@ -488,6 +494,7 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
           title: 'Hear everything.',
           subtitle: 'Premium headphones and accessories engineered for focus and travel.',
           cta: 'Shop headphones',
+          layout: 'stacked',
         },
         design: {},
         responsive: {},
@@ -497,7 +504,7 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
         type: 'collections',
         variant: 'tiles',
         visible: true,
-        content: { title: 'Shop by category' },
+        content: { title: 'Shop by category', layout: 'stacked' },
         design: {},
         responsive: {},
       },
@@ -506,7 +513,7 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
         type: 'productGrid',
         variant: 'editorial',
         visible: true,
-        content: { title: 'Best sellers' },
+        content: { title: 'Best sellers', layout: 'asymmetricFeature' },
         design: {},
         responsive: {},
         dataBindings: { products: 'bestsellers', limit: 8, showQuickAdd: true },
@@ -695,4 +702,43 @@ export function varietyFingerprint(doc: SiteDocument) {
     nav: nodes.find((n) => n.type === 'nav')?.variant,
     product: nodes.find((n) => n.type.startsWith('product'))?.type + ':' + nodes.find((n) => n.type.startsWith('product'))?.variant,
   };
+}
+
+/**
+ * A second, deliberately more granular fingerprint for the expressiveness-foundation
+ * phase. `varietyFingerprint` predates content.layout/design knobs/responsive overrides
+ * entirely (hero/nav/product variant + section order only) and other code may already
+ * depend on that exact shape — this is additive, not a replacement.
+ *
+ * Captures every renderer-relevant structural instruction per visible node: type,
+ * variant, content.layout, the design knobs that actually change layout (not copy), and
+ * a mobile override summary. Two documents with the same fingerprint are guaranteed to
+ * hand the renderer identical structural instructions; this is a proxy for "the renderer
+ * was told to do something different," not a claim about pixels — it does not replace
+ * visual QA (no screenshots, no DOM, no layout math).
+ */
+export function expressivenessFingerprint(doc: SiteDocument) {
+  return doc.pages.home.nodes
+    .filter((n) => n.visible !== false)
+    .map((n) => ({
+      type: n.type,
+      variant: n.variant,
+      layout: typeof n.content?.layout === 'string' ? n.content.layout : null,
+      design: {
+        spacing: n.design?.spacing ?? null,
+        alignment: n.design?.alignment ?? null,
+        emphasis: n.design?.emphasis ?? null,
+        measure: n.design?.measure ?? null,
+        fullBleed: n.design?.fullBleed ?? null,
+        minHeight: n.design?.minHeight ?? null,
+      },
+      mobile: n.responsive?.mobile
+        ? {
+            variant: n.responsive.mobile.variant ?? null,
+            hide: n.responsive.mobile.hide ?? null,
+            spacing: n.responsive.mobile.spacing ?? null,
+            minHeight: n.responsive.mobile.minHeight ?? null,
+          }
+        : null,
+    }));
 }

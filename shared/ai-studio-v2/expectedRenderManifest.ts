@@ -21,9 +21,13 @@ export type ExpectedRenderManifest = {
   sectionOrder: string[];
 };
 
+/**
+ * Structural node shape for hashing / manifests.
+ * Fields are optional so SiteDocument (and Zod input-shaped trees) remain assignable.
+ */
 type LooseNode = {
-  id: string;
-  type: string;
+  id?: string;
+  type?: string;
   variant?: string;
   visible?: boolean;
   content?: Record<string, unknown>;
@@ -128,7 +132,14 @@ function defaultRole(type: string): string | undefined {
  * Build a compact expected-render manifest from a SiteDocument-like tree.
  */
 export function buildExpectedRenderManifest(document: LooseDocument): ExpectedRenderManifest {
-  const nodes = (document.pages?.home?.nodes || []).filter((n) => n.visible !== false);
+  const nodes = (document.pages?.home?.nodes || []).filter(
+    (n): n is LooseNode & { id: string; type: string } =>
+      n.visible !== false &&
+      typeof n.id === 'string' &&
+      n.id.length > 0 &&
+      typeof n.type === 'string' &&
+      n.type.length > 0,
+  );
   const sectionOrder = nodes.map((n) => n.id);
 
   const important = nodes.filter((n) => IMPORTANT_TYPES.has(n.type));
@@ -163,14 +174,18 @@ export function buildExpectedRenderManifest(document: LooseDocument): ExpectedRe
  * Used to detect no-op refinement cycles.
  */
 export function hashRenderRelevantSiteTree(document: LooseDocument): string {
-  const nodes = (document.pages?.home?.nodes || []).map((n) => ({
-    id: n.id,
-    type: n.type,
-    variant: n.variant,
-    visible: n.visible !== false,
-    content: n.content || {},
-    design: n.design || {},
-  }));
+  const nodes = (document.pages?.home?.nodes || [])
+    .filter((n): n is LooseNode & { id: string; type: string } =>
+      typeof n.id === 'string' && n.id.length > 0 && typeof n.type === 'string' && n.type.length > 0,
+    )
+    .map((n) => ({
+      id: n.id,
+      type: n.type,
+      variant: n.variant,
+      visible: n.visible !== false,
+      content: n.content || {},
+      design: n.design || {},
+    }));
   const payload = JSON.stringify(nodes);
   // FNV-1a 32-bit — deterministic, no crypto dependency (works in Deno + browser)
   let h = 0x811c9dc5;

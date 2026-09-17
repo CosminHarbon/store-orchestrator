@@ -1,5 +1,7 @@
 import { z } from 'zod';
-import { siteNodeSchema, type SiteDocument, type SiteNode } from './siteTree';
+import { siteNodeSchema, COMPOSITION_VARIANTS, type SiteDocument, type SiteNode } from './siteTree';
+import { normalizeDesignSemantics } from '@shared/ai-studio-v2/strategyDefaults';
+import { isValidLayout } from '@shared/ai-studio-v2/compositionLayouts';
 
 /**
  * Targeted mutations against SiteTree — never full-site regeneration.
@@ -118,9 +120,41 @@ export function applySiteOps(document: SiteDocument, ops: SiteOps): SiteDocument
     }
   }
 
+  // Guard against contradictory knob combinations a 'style'/'update' op could introduce
+  // (e.g. fullBleed + a narrow measure) — see strategyDefaults.ts.
+  const resolvedNodes: SiteNode[] = (nodes as SiteNode[]).map(
+    (n: SiteNode): SiteNode =>
+      n.design
+        ? {
+            ...n,
+            design: normalizeDesignSemantics(n.type, typeof n.content?.layout === 'string' ? n.content.layout : undefined, n.design),
+          }
+        : n
+  );
+
+  // Reject ops that would leave the document with a structurally invalid content.layout
+  // or an incompatible responsive.mobile.variant — both used to fail silently (a typo'd
+  // or hallucinated value just fell through to the renderer's own default). Checking the
+  // whole node array (not just touched nodes) is deliberate and still cheap: any node
+  // that was already valid stays valid and costs nothing here, so this only ever catches
+  // states this batch of ops actually introduced.
+  for (const n of resolvedNodes) {
+    const layout = (n.content as Record<string, unknown> | undefined)?.layout;
+    if (!isValidLayout(n.type, n.variant, layout)) {
+      throw new Error(`invalid content.layout ${JSON.stringify(layout)} for node ${n.id} (${n.type}/${n.variant})`);
+    }
+    const mobileVariant = n.responsive?.mobile?.variant;
+    if (mobileVariant !== undefined) {
+      const allowed = COMPOSITION_VARIANTS[n.type as keyof typeof COMPOSITION_VARIANTS] as readonly string[] | undefined;
+      if (!allowed || !allowed.includes(mobileVariant)) {
+        throw new Error(`invalid responsive.mobile.variant ${JSON.stringify(mobileVariant)} for node ${n.id} (type ${n.type})`);
+      }
+    }
+  }
+
   return {
     ...document,
-    pages: { ...document.pages, home: { ...document.pages.home, nodes } },
+    pages: { ...document.pages, home: { ...document.pages.home, nodes: resolvedNodes } },
     meta: { ...document.meta, updatedAt: new Date().toISOString() },
   };
 }

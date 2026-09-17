@@ -149,7 +149,7 @@
       "sourceTooLarge": "Images must be 10 MB or smaller.",
       "sourceTooLargeLogo": "Logos must be 5 MB or smaller.",
       "unsupported": "This image format isn't supported. Please use JPEG, PNG or WebP.",
-      "quota": "You've reached your {{quota}} media storage limit. Delete unused images or upgrade your plan.",
+      "quota": "You've reached your {{quota}} media allowance. Delete unused images or upgrade your plan.",
       "network": "Upload failed. Please try again.",
       "unauthorized": "You are not allowed to upload media for this store.",
       "generic": "Something went wrong. Please try again."
@@ -164,7 +164,7 @@
     "billedMonthly": "Billed {{price}} every month",
     "billedYearly": "Billed {{price}} once per year",
     "monthlyEquivalent": "{{price}} / month equivalent",
-    "storage": "{{size}} GiB media storage",
+    "storage": "{{size}} GiB media allowance",
     "mostPopular": "Most popular",
     "continue": "Continue",
     "redirecting": "Redirecting…",

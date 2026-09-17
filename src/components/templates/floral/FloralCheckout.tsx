@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Check, CreditCard, Home, MapPin, Truck } from 'lucide-react';
 import { LockerPicker } from '@/components/lockers/LockerPicker';
 import { AddressLocalityFields } from '@/components/address/AddressLocalityFields';
-import { CheckoutNotesField, CheckoutBillingFields, DeliveryQuoteDetails, deliveryQuoteSummary } from '@/components/storefront/CheckoutExtras';
+import { CheckoutNotesField, CheckoutBillingFields, DeliveryQuoteDetails, DeliveryMessageNote, deliveryOptionPriceLabel, deliveryQuoteSummary } from '@/components/storefront/CheckoutExtras';
 import { formatRon } from '@/lib/storefront/api';
 import { isBillingComplete, resolvedBilling } from '@/lib/storefront/billing';
 import type { StorefrontCommerce } from '@/hooks/useStorefrontCommerce';
@@ -150,6 +150,10 @@ export function FloralCheckout({ commerce }: Props) {
           {checkoutStep === 2 && (
             <section className="bg-[var(--floral-surface)] rounded-[var(--floral-radius)] border border-[var(--floral-line)] p-5 space-y-4 floral-fade-up">
               <h2 className="text-2xl floral-display">{t('steps.delivery')}</h2>
+              <DeliveryMessageNote
+                message={deliveryConfig.message}
+                className="text-sm text-[var(--floral-muted)]"
+              />
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
@@ -162,11 +166,17 @@ export function FloralCheckout({ commerce }: Props) {
                 >
                   <Home className="h-5 w-5 mb-2" />
                   <div className="font-medium text-sm">{t('delivery.home')}</div>
-                  <div className="text-xs text-[var(--floral-muted)] mt-1">
-                    {customHomePricing
-                      ? t('delivery.calculatedByDistance')
-                      : formatRon(fees.home_delivery_fee)}
-                  </div>
+                  {!deliveryConfig.free_delivery && (
+                    <div className="text-xs text-[var(--floral-muted)] mt-1">
+                      {deliveryOptionPriceLabel({
+                        free: false,
+                        customPricing: customHomePricing,
+                        fee: fees.home_delivery_fee,
+                        formatFee: formatRon,
+                        calculatedLabel: t('delivery.calculatedByDistance'),
+                      })}
+                    </div>
+                  )}
                 </button>
                 {deliveryConfig.locker_enabled !== false && (
                 <button
@@ -180,7 +190,16 @@ export function FloralCheckout({ commerce }: Props) {
                 >
                   <MapPin className="h-5 w-5 mb-2" />
                   <div className="font-medium text-sm">{t('delivery.locker')}</div>
-                  <div className="text-xs text-[var(--floral-muted)] mt-1">{formatRon(fees.locker_delivery_fee)}</div>
+                  {!deliveryConfig.free_delivery && (
+                    <div className="text-xs text-[var(--floral-muted)] mt-1">
+                      {deliveryOptionPriceLabel({
+                        free: false,
+                        fee: fees.locker_delivery_fee,
+                        formatFee: formatRon,
+                        calculatedLabel: t('delivery.calculatedByDistance'),
+                      })}
+                    </div>
+                  )}
                 </button>
                 )}
               </div>
@@ -451,11 +470,15 @@ export function FloralCheckout({ commerce }: Props) {
           </div>
           <div className="space-y-2 text-sm border-t border-[var(--floral-line)] pt-3">
             <Row label={t('summary.subtotal')} value={formatRon(cartSubtotal)} />
-            <Row label={t('summary.shipping')} value={formatRon(deliveryFee)} />
-            {customHomePricing && deliveryQuote?.available && (
-              <p className="text-xs text-[var(--floral-muted)]">
-                {deliveryQuoteSummary(deliveryQuote, t)}
-              </p>
+            {!deliveryConfig.free_delivery && (
+              <>
+                <Row label={t('summary.shipping')} value={formatRon(deliveryFee)} />
+                {customHomePricing && deliveryQuote?.available && (
+                  <p className="text-xs text-[var(--floral-muted)]">
+                    {deliveryQuoteSummary(deliveryQuote, t)}
+                  </p>
+                )}
+              </>
             )}
             {paymentFee > 0 && (
               <Row

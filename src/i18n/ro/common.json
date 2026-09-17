@@ -149,7 +149,7 @@
       "sourceTooLarge": "Imaginile trebuie să aibă cel mult 10 MB.",
       "sourceTooLargeLogo": "Logo-urile trebuie să aibă cel mult 5 MB.",
       "unsupported": "Acest format de imagine nu este suportat. Folosește JPEG, PNG sau WebP.",
-      "quota": "Ai atins limita de stocare media de {{quota}}. Șterge imagini nefolosite sau treci la un plan superior.",
+      "quota": "Ai atins limita de spațiu media de {{quota}}. Șterge imagini nefolosite sau treci la un plan superior.",
       "network": "Încărcarea a eșuat. Încearcă din nou.",
       "unauthorized": "Nu ai voie să încarci media pentru acest magazin.",
       "generic": "A apărut o eroare. Încearcă din nou."
@@ -164,7 +164,7 @@
     "billedMonthly": "Facturat {{price}} în fiecare lună",
     "billedYearly": "Facturat {{price}} o dată pe an",
     "monthlyEquivalent": "echivalent {{price}} / lună",
-    "storage": "{{size}} GiB stocare media",
+    "storage": "{{size}} GiB spațiu media",
     "mostPopular": "Cel mai popular",
     "continue": "Continuă",
     "redirecting": "Se redirecționează…",

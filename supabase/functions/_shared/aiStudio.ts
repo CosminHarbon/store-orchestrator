@@ -730,7 +730,11 @@ function sectionsForLayout(layoutId: LayoutId, copy: StorefrontSpec['copy'], lan
   return sections.slice(0, MAX_SECTIONS)
 }
 
-export function withLayout(spec: StorefrontSpec, layoutId: LayoutId): StorefrontSpec {
+export function withLayout(
+  spec: StorefrontSpec,
+  layoutId: LayoutId,
+  opts: { preserveTokens?: boolean } = {}
+): StorefrontSpec {
   const chrome = LAYOUT_CHROME[layoutId]
   const presets: Record<LayoutId, { density: string; nav: object; productCard: object; hero: object }> = {
     atelier: {
@@ -776,7 +780,13 @@ export function withLayout(spec: StorefrontSpec, layoutId: LayoutId): Storefront
     nav: sanitizeNavVariant({ ...preset.nav, ...((spec as any).nav || {}) }, preset.nav),
     productCard: sanitizeProductCardVariant({ ...preset.productCard, ...((spec as any).productCard || {}) }, preset.productCard),
     hero: sanitizeHeroVariant({ ...preset.hero, ...((spec as any).hero || {}) }, preset.hero),
-    tokens: { ...spec.tokens, ...chrome },
+    // preserveTokens: the generate path has already resolved each chrome-controlled
+    // token to either an explicit, validated AI choice or this same layoutId's own
+    // default (see mergeLlmStoreDesign) — so spec.tokens is authoritative there and
+    // should win. Everywhere else (fresh heuristic seed, or a refine that just
+    // switched layoutId and left stale tokens from the *previous* layout) chrome
+    // should fully apply, which is the default.
+    tokens: opts.preserveTokens ? { ...chrome, ...spec.tokens } : { ...spec.tokens, ...chrome },
     pages: {
       ...spec.pages,
       home: { sections: sectionsForLayout(layoutId, spec.copy, spec.language, orderHint) },
@@ -1095,7 +1105,7 @@ export function mergeLlmStoreDesign(base: StorefrontSpec, raw: unknown): {
   const order = Array.isArray(o.sectionOrder)
     ? (o.sectionOrder as string[]).filter((x): x is string => typeof x === 'string')
     : []
-  spec = withLayout(spec, layoutId)
+  spec = withLayout(spec, layoutId, { preserveTokens: true })
   if (order.length >= 4) {
     const catalogTypes = new Set(spec.pages.home.sections.map((s) => s.type))
     const byType = new Map(spec.pages.home.sections.map((s) => [s.type, s]))

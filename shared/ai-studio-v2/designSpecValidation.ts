@@ -17,7 +17,7 @@ function fieldLabel(path: (string | number)[]): string {
 
 export function summarizeDesignSpecValidation(issues: ZodIssue[]): DesignSpecValidationSummary {
   const lengthViolations = issues
-    .filter((i) => i.code === 'too_big' && i.type === 'string')
+    .filter((i): i is Extract<ZodIssue, { code: 'too_big' }> => i.code === 'too_big' && i.type === 'string')
     .map((i) => ({
       path: i.path.join('.'),
       label: fieldLabel(i.path),

@@ -8,6 +8,7 @@ import {
   getDesignSpecSystemPrompt,
   getDesignSpecRepairPrompt,
 } from '../../../shared/ai-studio-v2/designSpecSchema.ts'
+import type { Zod as SharedZod } from '../../../shared/ai-studio-v2/zodType.ts'
 import {
   buildArchitectureFingerprint,
   commerceEntryBandWarning,
@@ -16,6 +17,8 @@ import {
   type CreativeStrategy,
 } from '../../../shared/ai-studio-v2/creativeStrategy.ts'
 import { summarizeDesignSpecValidation } from '../../../shared/ai-studio-v2/designSpecValidation.ts'
+import { applyStrategyDefaults, normalizeDesignSemantics, type StrategyNode } from '../../../shared/ai-studio-v2/strategyDefaults.ts'
+import { isValidLayout } from '../../../shared/ai-studio-v2/compositionLayouts.ts'
 import {
   buildMerchantFacts,
   getSiteArchitectProvenanceRules,
@@ -38,17 +41,17 @@ const {
   designSpecSchema,
   brandDesignSystemFromSpec,
   withCreativeStrategy,
-} = buildDesignSpecSchemas(z)
+} = buildDesignSpecSchemas(z as unknown as SharedZod)
 
 export { designSpecSchema, brandDesignSystemFromSpec }
 
-export type DesignSpec = z.infer<typeof designSpecSchema>
+export type DesignSpec = ReturnType<(typeof designSpecSchema)['parse']>
 export type BrandDesignSystem = ReturnType<typeof brandDesignSystemFromSpec>
 
 export const COMPOSITION_VARIANTS = {
   nav: ['minimal', 'transparent'],
   hero: ['editorial_split', 'luxury_minimal', 'product_focus'],
-  productGrid: ['editorial'],
+  productGrid: ['editorial', 'luxury_image_first'],
   productRail: ['horizontal'],
   productSpotlight: ['feature'],
   editorialSplit: ['image_text'],
@@ -68,18 +71,19 @@ const COMPOSITION_CATALOG_PROMPT = `
 REGISTERED COMPOSITIONS (type/variant — execution vocabulary ONLY; never invent names):
 - nav/minimal: compact solid chrome. Content: { storeName, tone?: dark|light }
 - nav/transparent: overlay chrome over opening section. Content: { storeName, tone?: dark|light }
-- hero/luxury_minimal: full-bleed atmospheric open (image + restrained type). Content: { title, subtitle, cta, imageUrl? }
-- hero/editorial_split: measured split open (copy + media). Content: { title, subtitle, cta, imageUrl?, align? }
-- hero/product_focus: product-as-artifact open. Content: { title, subtitle, cta, presentation: luxury|street|tech|editorial }
-- productGrid/editorial: catalog grid (layout?: featureFirst|standardEditorial). Content: { title, presentation }
-- productRail/horizontal: horizontal product discovery. Content: { title, presentation }
+- hero/luxury_minimal: full-bleed atmospheric open (image + restrained type). Content: { title, subtitle, cta, imageUrl?, kicker?, layout?: quiet|cinematic }. cinematic = deeper veil + eyebrow kicker, slower/more atmospheric.
+- hero/editorial_split: measured split open (copy + media). Content: { title, subtitle, cta, imageUrl?, align?, layout?: split|asymmetric }. asymmetric = media offset off-center instead of an even 50/50 split.
+- hero/product_focus: product-as-artifact open. Content: { title, subtitle, cta, presentation: luxury|street|tech|editorial, layout?: stage|stacked }. stacked = image above copy, centered, app-like vertical rhythm.
+- productGrid/editorial: catalog grid (layout?: featureFirst|standardEditorial|asymmetricFeature|dense). asymmetricFeature = one oversized anchor tile + a denser fill grid around it. dense = tighter multi-column grid, more items visible, no feature tile. Content: { title, presentation }
+- productGrid/luxury_image_first: single oversized column of full-bleed product imagery, minimal metadata — a genuinely different silhouette from editorial, not a density variant of it. Use when the brand wants maximum imagery, minimum chrome. Content: { title? }
+- productRail/horizontal: horizontal product discovery (layout?: uniform|alternatingOversized). alternatingOversized = every third tile breaks scale for a syncopated rhythm. Content: { title, presentation }
 - productSpotlight/feature: single flagship product beat. Content: { title, body, cta, presentation }
 - editorialSplit/image_text: image/text narrative beat. Content: { title, body, imageUrl?, imagePosition? }
 - brandStatement/large_type: typography-led manifesto pause. Content: { statement, subtext? }
 - editorialMosaic/asymmetric: multi-image mosaic (layout?: magazine|immersive). Content: { title? }
 - testimonials/editorial: social proof (omit if wrong for brand). Content: { title?, layout?: quote|imageQuote }
-- reviews/wall: aggregate ratings/index. Content: { title? }
-- collections/tiles: collection discovery tiles. Content: { title? }
+- reviews/wall: aggregate ratings (layout?: index|grid). index = editorial vertical list (default). grid = dense card grid, better for catalogue_first/dense_campaign pages. Content: { title? }
+- collections/tiles: collection discovery (layout?: editorial|stacked). stacked = full-width alternating rows instead of a 4-tile grid. Content: { title? }
 - newsletter/quiet: list capture (omit if wrong for brand). Content: { title, subtitle?, cta? }
 - announcement/slim: slim promo/shipping strip. Content: { text }
 - footer/minimal_commerce: compact commerce close. Content: { storeName, text? }
@@ -98,6 +102,13 @@ design.fullBleed: boolean
 design.alignment: start|center|end|stretch
 design.emphasis: primary|secondary|quiet
 design.measure: narrow|standard|wide|bleed
+
+RESPONSIVE (optional per-node mobile override — omit unless mobile should genuinely differ):
+responsive.mobile.variant: swap to a different registered variant of the same type on mobile
+responsive.mobile.hide: drop this node entirely on mobile (e.g. a dense secondary rail)
+responsive.mobile.spacing / minHeight: as above, mobile-only
+Design knobs you leave unset are filled deterministically from creativeStrategy
+(density/asymmetry/rhythm/typographyRole/imageryRole) — you do not have to set every field.
 `.trim()
 
 const siteNodeSchema = z.object({
@@ -116,7 +127,14 @@ const siteNodeSchema = z.object({
     measure: z.enum(['narrow', 'standard', 'wide', 'bleed']).optional(),
   }).default({}),
   responsive: z.object({
-    mobile: z.object({ minHeight: z.enum(['auto', '60vh', '80vh', '100vh']).optional() }).optional(),
+    // Additive widening (safe under existing defaults): the client renderer now actually
+    // reads variant/hide/spacing, not just minHeight — see SiteTreeRenderer.tsx.
+    mobile: z.object({
+      variant: z.string().max(64).optional(),
+      hide: z.boolean().optional(),
+      spacing: z.enum(['compact', 'cozy', 'airy', 'dramatic']).optional(),
+      minHeight: z.enum(['auto', '60vh', '80vh', '100vh']).optional(),
+    }).optional(),
   }).default({}),
   dataBindings: z.object({
     products: z.enum(['featured', 'newest', 'bestsellers', 'collection']).optional(),
@@ -303,6 +321,14 @@ function validateRegistry(nodes: z.infer<typeof siteNodeSchema>[]): string[] {
     if (!isValidComposition(node.type, node.variant)) {
       errors.push(`Invalid composition ${node.type}/${node.variant} on node ${node.id}`)
     }
+    const layout = (node.content as Record<string, unknown> | undefined)?.layout
+    if (!isValidLayout(node.type, node.variant, layout)) {
+      errors.push(`Invalid content.layout ${JSON.stringify(layout)} for ${node.type}/${node.variant} on node ${node.id}`)
+    }
+    const mobileVariant = node.responsive?.mobile?.variant
+    if (mobileVariant !== undefined && !isValidComposition(node.type, mobileVariant)) {
+      errors.push(`Invalid responsive.mobile.variant ${JSON.stringify(mobileVariant)} for type ${node.type} on node ${node.id}`)
+    }
   }
   return errors
 }
@@ -311,7 +337,19 @@ function buildDocument(
   arch: z.infer<typeof siteArchitectureOutputSchema>,
   spec: DesignSpec
 ): SiteDocument {
-  const nodes = enrichNodes(arch.nodes, spec)
+  const enriched = enrichNodes(arch.nodes, spec)
+  // Fill design knobs the architect left unset from creativeStrategy, deterministically —
+  // see strategyDefaults.ts. Explicit architect choices are never touched.
+  const strategy = spec.creativeStrategy ?? ensureCreativeStrategy(spec)
+  const withDefaults = applyStrategyDefaults(enriched as unknown as StrategyNode[], strategy) as unknown as typeof enriched
+  const nodes = withDefaults.map((node) =>
+    node.design
+      ? {
+          ...node,
+          design: normalizeDesignSemantics(node.type, typeof node.content?.layout === 'string' ? node.content.layout as string : undefined, node.design),
+        }
+      : node
+  )
   const registryErrors = validateRegistry(nodes)
   if (registryErrors.length) throw new Error(registryErrors.join('; '))
   return siteDocumentSchema.parse({
@@ -421,7 +459,11 @@ function buildSiteArchitectSystem(facts: MerchantFacts): string {
 const REPAIR_SYSTEM = `Fix the SiteTree JSON to pass validation.
 Return JSON ONLY with the same shape: { siteId, designSystemId, architectureNotes?, silhouettePlan?, nodes: [...] }
 Use ONLY registered compositions. Fix invalid type/variant pairs, duplicate ids, missing required nodes.
-Preserve silhouettePlan when present. Do not change creative intent unnecessarily — repair structure only.`
+Fix invalid content.layout values by using only the layout options documented below for that node's
+exact (type, variant), or by omitting content.layout entirely — never invent a layout name.
+Preserve silhouettePlan when present. Do not change creative intent unnecessarily — repair structure only.
+
+${COMPOSITION_CATALOG_PROMPT}`
 
 async function runTask(
   task: 'design_spec' | 'site_architecture' | 'site_ops',
@@ -784,8 +826,9 @@ export async function generateV2Storefront(opts: {
       nodes: document.pages.home.nodes,
       silhouettePlan: silhouettePlan || null,
     })
+    const strategy = designSpec.creativeStrategy ?? ensureCreativeStrategy(designSpec)
     const bandWarn = commerceEntryBandWarning(
-      designSpec.creativeStrategy.commerceEntry,
+      strategy.commerceEntry,
       architectureFingerprint.commerceEntryIndex
     )
     if (bandWarn) validationWarnings.push(bandWarn)

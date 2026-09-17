@@ -45,7 +45,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { uploadMedia } from '@/lib/media/uploadMedia';
-import { deletePreviousMedia } from '@/lib/media/deleteMedia';
+
 import { merchantMediaMessage } from '@/lib/media/errors';
 import type { MediaType } from '@/lib/media/constants';
 import { CanvasPreview } from './CanvasPreview';
@@ -934,10 +934,7 @@ function MediaPickerSheet({
   const upload = async (file: File) => {
     setUploading(true);
     try {
-      const uploaded = await uploadMedia({ file, mediaType: mediaKind });
-      if (currentUrl && currentUrl !== uploaded.publicUrl) {
-        await deletePreviousMedia(currentUrl);
-      }
+      const uploaded = await uploadMedia({ file, mediaType: mediaKind, replacingPublicUrl: currentUrl });
       await refetch();
       onSelect(uploaded.publicUrl);
     } catch (error) {

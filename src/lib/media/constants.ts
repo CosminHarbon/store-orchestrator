@@ -123,4 +123,6 @@ export type MediaUsageSnapshot = {
   quota_bytes: number;
   tier: string;
   percent: number;
+  /** Actual compressed bytes on disk — only populated for superadmin / impersonation. */
+  bytes_stored: number | null;
 };

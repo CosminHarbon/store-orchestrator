@@ -134,6 +134,11 @@
     "flatTitle": "Taxe standard de livrare",
     "flatDesc": "Folosite când prețuirea geografică este oprită, și pentru locker.",
     "flatDescManual": "Sume de rezervă dacă nicio regulă de distanță sau valoare nu se potrivește.",
+    "freeDelivery": "Nu taxa livrarea",
+    "freeDeliveryHelp": "Ascunde taxele de livrare pe vitrină. Adaugă un mesaj personalizat mai jos pentru a explica livrarea, sau lasă gol ca să nu apară deloc text despre taxă.",
+    "deliveryMessage": "Mesaj personalizat pentru livrare",
+    "deliveryMessageHelp": "Afișat în locul taxei de livrare când livrarea e gratuită. Lasă gol ca să nu apară deloc text despre taxă.",
+    "deliveryMessagePlaceholder": "ex. Livrăm Luni–Sâmbătă, 9:00–18:00",
     "homeDelivery": "Taxă livrare la domiciliu (RON)",
     "homeDeliveryHelp": "Taxă pentru livrare la domiciliu",
     "homeDeliveryFallbackHelp": "Folosită doar dacă nicio regulă de livrare nu se potrivește comenzii.",
@@ -700,16 +705,18 @@
     "notConfigured": "Facturarea nu este configurată încă.",
     "portalFailed": "Nu s-a putut deschide portalul de facturare.",
     "storage": {
-      "title": "Stocare media",
-      "description": "Imagini comprimate de produse, colecții, logo și website pentru acest magazin.",
+      "title": "Spațiu media",
+      "description": "Imaginile sunt optimizate automat de SpeedVendors pentru încărcare rapidă.",
       "usedOf": "{{used}} din {{quota}} folosiți",
-      "tier": "Stocare plan",
+      "tier": "Spațiu plan",
       "tierStart": "Start (2 GB)",
       "tierGrowth": "Growth (15 GB)",
       "tierScale": "Scale (50 GB)",
-      "low": "Stocarea media este pe terminate.",
-      "almostFull": "Stocarea media este aproape plină.",
-      "full": "Limita de stocare a fost atinsă. Șterge media nefolosită sau treci la un plan superior."
+      "low": "Spațiul media este pe terminate.",
+      "almostFull": "Spațiul media este aproape plin.",
+      "full": "Limita de media a fost atinsă. Șterge media nefolosită sau treci la un plan superior.",
+      "adminStored": "Stocat efectiv: {{stored}}",
+      "adminSaving": "Economie optimizare: ~{{percent}}%"
     }
   }
 }
