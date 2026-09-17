@@ -72,6 +72,8 @@ export default function SiteTreeRenderer({ document, brand, commerce, onAssetPla
       data-radius={brand.tokens.radius}
       data-shadow={brand.tokens.shadow}
       data-button-style={brand.tokens.buttonStyle}
+      data-type-scale={brand.tokens.typographyScale}
+      data-type-role={brand.tokens.typographyRole}
     >
       {nodes.map((node) => {
         if (node.visible === false) return null;

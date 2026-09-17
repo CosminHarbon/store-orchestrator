@@ -59,6 +59,18 @@ const IMAGE_LED_TYPES = new Set(['hero', 'productSpotlight', 'editorialSplit', '
  *  design choice. */
 const RHYTHM_EXCLUDED_TYPES = new Set(['nav', 'footer', 'announcement']);
 
+/** Fixed 3-beat cycle with three DISTINCT tiers, so no two adjacent indices ever land on
+ *  the same beat (dramatic->compact->cozy->dramatic->... always differs from its neighbor
+ *  on both sides, including the wrap-around). Deliberately independent of the density
+ *  baseline (unlike the other rhythms) - using `base` here as the repeated "long" tier
+ *  is exactly what previously let two adjacent sections both resolve to 'dramatic' and
+ *  stack their vertical padding into an oversized, unintentional-looking gap. */
+const LONG_SHORT_LONG_CYCLE: ReadonlyArray<NonNullable<StrategyDesign['spacing']>> = [
+  'dramatic',
+  'compact',
+  'cozy',
+];
+
 function rhythmSpacing(
   rhythm: StrategyInput['rhythm'],
   index: number,
@@ -70,7 +82,7 @@ function rhythmSpacing(
     case 'rapid_contrast':
       return index % 2 === 0 ? 'compact' : 'dramatic';
     case 'long_short_long':
-      return index % 3 === 1 ? 'compact' : 'dramatic';
+      return LONG_SHORT_LONG_CYCLE[index % 3];
     case 'sparse_pause':
       // Mostly the base rhythm, with a deliberate "pause" (dramatic whitespace) every third beat.
       return index % 3 === 2 ? 'dramatic' : base;
@@ -99,13 +111,24 @@ function asymmetryAlignment(
  */
 export function applyStrategyDefaults(nodes: StrategyNode[], strategy: StrategyInput): StrategyNode[] {
   let rhythmIndex = 0;
+  // Tracks the previous rhythm-eligible node's RESOLVED spacing (defaulted or explicit)
+  // so two consecutive sections never both land on 'dramatic' - each section's own
+  // top+bottom padding stacks with its neighbor's, so back-to-back 'dramatic' beats
+  // silently produce the largest, most unintentional-looking whitespace gap on the page
+  // (the "excessive whitespace" case from the Phase 2 visual audit). This only ever
+  // softens a defaulted value, never an explicit architect choice.
+  let previousSpacing: NonNullable<StrategyDesign['spacing']> | undefined;
   return nodes.map((node) => {
     const design = { ...(node.design || {}) };
     const isRhythmEligible = !RHYTHM_EXCLUDED_TYPES.has(node.type);
     const base = DENSITY_SPACING[strategy.density];
 
     if (design.spacing === undefined) {
-      design.spacing = isRhythmEligible ? rhythmSpacing(strategy.rhythm, rhythmIndex, base) : base;
+      let next = isRhythmEligible ? rhythmSpacing(strategy.rhythm, rhythmIndex, base) : base;
+      if (isRhythmEligible && next === 'dramatic' && previousSpacing === 'dramatic') {
+        next = 'airy';
+      }
+      design.spacing = next;
     }
     if (design.alignment === undefined) {
       const align = asymmetryAlignment(strategy.asymmetry, rhythmIndex);
@@ -123,7 +146,10 @@ export function applyStrategyDefaults(nodes: StrategyNode[], strategy: StrategyI
       design.fullBleed = true;
     }
 
-    if (isRhythmEligible) rhythmIndex += 1;
+    if (isRhythmEligible) {
+      previousSpacing = design.spacing;
+      rhythmIndex += 1;
+    }
     return { ...node, design };
   });
 }

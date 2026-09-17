@@ -69,7 +69,13 @@ function GalleryItem({
   const Cmp = entry.Component;
 
   return (
-    <div className="sv2-gallery-frame ai-v2-root" style={brandTokensToCssVars(brand)} data-density={brand.tokens.density}>
+    <div
+      className="sv2-gallery-frame ai-v2-root"
+      style={brandTokensToCssVars(brand)}
+      data-density={brand.tokens.density}
+      data-type-scale={brand.tokens.typographyScale}
+      data-type-role={brand.tokens.typographyRole}
+    >
       <Cmp node={node} brand={brand} commerce={commerce} language="en" />
     </div>
   );

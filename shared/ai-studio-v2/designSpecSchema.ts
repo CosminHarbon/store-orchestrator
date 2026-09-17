@@ -6,6 +6,7 @@ import {
   buildCreativeStrategySchema,
   creativeStrategyPromptBlock,
   ensureCreativeStrategy,
+  TYPOGRAPHY_ROLES,
   type CreativeStrategy,
 } from './creativeStrategy.ts';
 
@@ -48,6 +49,15 @@ export function buildDesignSpecSchemas(z: Zod) {
     density: z.enum(['sparse', 'balanced', 'dense']).default('balanced'),
     buttonStyle: z.enum(['solid', 'outline', 'pill', 'ghost']).default('solid'),
     motion: z.enum(['none', 'subtle', 'cinematic']).default('subtle'),
+    /** Phase 3 — artDirection.typography.scale, carried through so the renderer can
+     *  actually express it (see v2.css --ai-v2-* type-scale vars). Defaults to
+     *  'expressive' to match artDirection.typography.scale's own schema default, so
+     *  every pre-Phase-3 DesignSpec renders pixel-identical to before this field existed. */
+    typographyScale: z.enum(['restrained', 'expressive']).default('expressive'),
+    /** Phase 3 — creativeStrategy.typographyRole, mirrored onto brand tokens so the
+     *  renderer root can express it globally (kicker/label + price grammar), not just
+     *  the narrow per-node hero/brandStatement emphasis strategyDefaults.ts already sets. */
+    typographyRole: z.enum(TYPOGRAPHY_ROLES).default('balanced'),
   });
 
   const brandDesignSystemSchema = z.object({
@@ -129,6 +139,9 @@ export function buildDesignSpecSchemas(z: Zod) {
   }
 
   function brandDesignSystemFromSpec(spec: DesignSpec): BrandDesignSystem {
+    // Resolved (never-missing) creativeStrategy, purely to read typographyRole here —
+    // same inference `withCreativeStrategy` already relies on for drafts predating the field.
+    const creativeStrategy = ensureCreativeStrategy(spec);
     return brandDesignSystemSchema.parse({
       version: BRAND_DESIGN_SYSTEM_VERSION,
       archetype: spec.artDirection.archetype,
@@ -156,6 +169,8 @@ export function buildDesignSpecSchemas(z: Zod) {
               ? 'ghost'
               : 'solid',
         motion: spec.artDirection.motion,
+        typographyScale: spec.artDirection.typography.scale,
+        typographyRole: creativeStrategy.typographyRole,
       },
       intentSummary: spec.designIntent.coreConcept,
       navStyle: /transparent|immersive/i.test(spec.ux.navStyle)

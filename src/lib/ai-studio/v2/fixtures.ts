@@ -1,6 +1,11 @@
 import type { DesignSpec } from '@/lib/ai-studio/v2/designSpec';
-import { brandDesignSystemFromSpec, designSpecSchema } from '@/lib/ai-studio/v2/designSpec';
+import { brandDesignSystemFromSpec, designSpecSchema, ensureCreativeStrategy } from '@/lib/ai-studio/v2/designSpec';
 import { siteDocumentSchema, type SiteDocument } from '@/lib/ai-studio/v2/siteTree';
+import {
+  applyStrategyDefaults,
+  normalizeDesignSemanticsForNodes,
+  type StrategyNode,
+} from '@shared/ai-studio-v2/strategyDefaults';
 
 type Fixture = {
   id: string;
@@ -17,11 +22,24 @@ function build(
 ): Fixture {
   const designSpec = designSpecSchema.parse(specInput);
   const brand = brandDesignSystemFromSpec(designSpec);
+  // These fixtures are hand-authored SiteNodes (the same shape the architect LLM would
+  // produce), so — exactly like the real generation pipeline (see aiStudioV2.ts) — they
+  // must go through applyStrategyDefaults/normalizeDesignSemantics too. Without this, only
+  // each node's own hand-set `design.spacing` ever reached the renderer; every OTHER
+  // strategy-driven knob (rhythm on unset spacing, emphasis from typographyRole, alignment
+  // from asymmetry, measure/fullBleed from imageryRole) stayed permanently unset on these
+  // static QA fixtures even though the exact same mechanism is fully wired and tested for
+  // real generation output — which is why Phase 3's typography/density grammar looked
+  // inert here. This only ever fills fields the fixture left unset; every hand-authored
+  // value above still wins.
+  const strategy = ensureCreativeStrategy(designSpec);
+  const defaulted = applyStrategyDefaults(nodes as unknown as StrategyNode[], strategy) as unknown as typeof nodes;
+  const normalizedNodes = normalizeDesignSemanticsForNodes(defaulted as unknown as Parameters<typeof normalizeDesignSemanticsForNodes>[0]) as unknown as typeof nodes;
   const document = siteDocumentSchema.parse({
     version: 2,
     siteId: id,
     designSystemId: brand.archetype.replace(/\W+/g, '_').toLowerCase(),
-    pages: { home: { id: 'home', type: 'home', nodes } },
+    pages: { home: { id: 'home', type: 'home', nodes: normalizedNodes } },
     meta: {
       language: designSpec.brand.language,
       niche: designSpec.brand.businessType,
@@ -62,7 +80,11 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
       },
       artDirection: {
         archetype: 'quiet_luxury_editorial',
-        typography: { display: 'Cormorant Garamond', body: 'Manrope', scale: 'expressive' },
+        // Phase 3 effectiveness fix: this fixture predates typographyScale entirely and
+        // was left at the schema default ('expressive') by accident — a "quiet luxury
+        // editorial" brand whose own designIntent above says "presence without noise" is
+        // the textbook 'restrained' case, not 'expressive'.
+        typography: { display: 'Cormorant Garamond', body: 'Manrope', scale: 'restrained' },
         colorStrategy: {
           primary: '#2C2420',
           background: '#F7F3EE',
@@ -88,6 +110,26 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
         homeNarrative: 'Enter a calm atelier; discover bags as crafted objects.',
         mustHave: ['immersive hero', 'statement', 'spotlight'],
         mustAvoid: ['dense product dump'],
+      },
+      // Explicit (was previously left to inferCreativeStrategy's archetype-regex fallback) so
+      // this static QA fixture actually exercises the same strategy-driven grammar (rhythm,
+      // emphasis, alignment, measure/fullBleed via applyStrategyDefaults in build() below)
+      // that production documents get, instead of only its own hand-set spacing values.
+      creativeStrategy: {
+        pageComposition: 'editorial_journey',
+        narrativeModel: 'editorial',
+        heroPhilosophy: 'atmosphere_first',
+        commerceEntry: 'delayed',
+        commerceModel: 'single_artifact',
+        rhythm: 'sparse_pause',
+        density: 'low',
+        asymmetry: 'medium',
+        typographyRole: 'quiet',
+        imageryRole: 'dominant',
+        navigationBehavior: 'quiet_overlay',
+        experimentationLevel: 'medium',
+        distinctivenessBrief:
+          'Avoid a generic hero-manifesto-grid spine; let one full-bleed image carry the opening beat and keep every label whisper-quiet.',
       },
     },
     [
@@ -224,6 +266,25 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
         mustHave: ['product hero', 'benefits', 'reviews'],
         mustAvoid: ['busy mosaic first'],
       },
+      // Explicit creativeStrategy (see Villa Pelle above for why) — rhythm is deliberately
+      // 'long_short_long' here (5 rhythm-eligible sections is enough beats to actually show
+      // the fixed 3-tier cycle) instead of matching what plain inference would give ('even').
+      creativeStrategy: {
+        pageComposition: 'editorial_journey',
+        narrativeModel: 'editorial',
+        heroPhilosophy: 'atmosphere_first',
+        commerceEntry: 'mid',
+        commerceModel: 'flagship_then_rail',
+        rhythm: 'long_short_long',
+        density: 'medium',
+        asymmetry: 'low',
+        typographyRole: 'balanced',
+        imageryRole: 'balanced',
+        navigationBehavior: 'solid_compact',
+        experimentationLevel: 'medium',
+        distinctivenessBrief:
+          'Avoid a flat, static clinical grid; let one deliberate pause interrupt an otherwise calm, controlled rhythm.',
+      },
     },
     [
       { id: 'nav_01', type: 'nav', variant: 'minimal', visible: true, content: { storeName: 'Lumen Lab' }, design: {}, responsive: {} },
@@ -351,6 +412,23 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
         mustHave: ['mosaic', 'dense products'],
         mustAvoid: ['luxury serif hero'],
       },
+      // Explicit creativeStrategy (see Villa Pelle above for why).
+      creativeStrategy: {
+        pageComposition: 'dense_campaign',
+        narrativeModel: 'campaign',
+        heroPhilosophy: 'typography_first',
+        commerceEntry: 'early',
+        commerceModel: 'dense_catalogue',
+        rhythm: 'rapid_contrast',
+        density: 'high',
+        asymmetry: 'high',
+        typographyRole: 'dominant_structural',
+        imageryRole: 'dominant',
+        navigationBehavior: 'bold_campaign',
+        experimentationLevel: 'medium',
+        distinctivenessBrief:
+          'Avoid a quiet editorial pace; alternate tight and dramatic beats and let type carry as much weight as the photography.',
+      },
     },
     [
       { id: 'nav_01', type: 'nav', variant: 'minimal', visible: true, content: { storeName: 'BLOCK FORM' }, design: {}, responsive: {} },
@@ -455,7 +533,12 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
       },
       artDirection: {
         archetype: 'precision_tech',
-        typography: { display: 'Manrope', body: 'Inter', scale: 'restrained' },
+        // Phase 3 effectiveness fix: was 'restrained', identical to Lumen Lab, leaving the
+        // 5-fixture QA set with only one scale value represented among these two "calm"
+        // categories. A confident, bold display headline ("sells confidence through
+        // clarity") is equally plausible for a tech brand — use it here so 'expressive' and
+        // 'restrained' are both represented among the four named QA fixtures.
+        typography: { display: 'Manrope', body: 'Inter', scale: 'expressive' },
         colorStrategy: {
           primary: '#2563EB',
           background: '#F8FAFC',
@@ -481,6 +564,23 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
         homeNarrative: 'Categories → products → reviews; maximize conversion clarity.',
         mustHave: ['collections', 'product grid', 'reviews'],
         mustAvoid: ['full-bleed fashion hero'],
+      },
+      // Explicit creativeStrategy (see Villa Pelle above for why).
+      creativeStrategy: {
+        pageComposition: 'technical_story',
+        narrativeModel: 'product_journey',
+        heroPhilosophy: 'product_as_artifact',
+        commerceEntry: 'immediate',
+        commerceModel: 'spec_story',
+        rhythm: 'even',
+        density: 'medium',
+        asymmetry: 'low',
+        typographyRole: 'balanced',
+        imageryRole: 'supporting',
+        navigationBehavior: 'solid_compact',
+        experimentationLevel: 'medium',
+        distinctivenessBrief:
+          'Avoid decorative type; keep a controlled, scannable rhythm so display headlines and spec/commerce type feel like one system.',
       },
     },
     [
@@ -604,6 +704,23 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
         mustHave: ['editorial split', 'mosaic', 'testimonials'],
         mustAvoid: ['electronics-style category tiles first'],
       },
+      // Explicit creativeStrategy (see Villa Pelle above for why).
+      creativeStrategy: {
+        pageComposition: 'editorial_journey',
+        narrativeModel: 'editorial',
+        heroPhilosophy: 'atmosphere_first',
+        commerceEntry: 'mid',
+        commerceModel: 'flagship_then_rail',
+        rhythm: 'even',
+        density: 'medium',
+        asymmetry: 'medium',
+        typographyRole: 'quiet',
+        imageryRole: 'balanced',
+        navigationBehavior: 'minimal_chrome',
+        experimentationLevel: 'medium',
+        distinctivenessBrief:
+          'Avoid a generic feature-trio story; keep an even, unhurried pace true to the provenance narrative.',
+      },
     },
     [
       { id: 'nav_01', type: 'nav', variant: 'minimal', visible: true, content: { storeName: 'Hearth & Grove' }, design: {}, responsive: {} },
@@ -648,7 +765,13 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
         type: 'productGrid',
         variant: 'editorial',
         visible: true,
-        content: { title: 'The pantry' },
+        // Explicit 'standardEditorial' (was unset, which silently defaults to
+        // 'featureFirst'): none of the 5 QA fixtures previously rendered the plain
+        // .ai-v2-merch-grid — every other fixture's productGrid either uses a different
+        // composition (luxury_image_first) or a layout branch (asymmetricFeature, dense)
+        // that renders a different container, so the density-driven --ai-v2-grid-gap
+        // token had zero fixture coverage. This exercises it at density='balanced'.
+        content: { title: 'The pantry', layout: 'standardEditorial' },
         design: {},
         responsive: {},
         dataBindings: { products: 'newest', limit: 8 },

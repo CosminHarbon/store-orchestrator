@@ -2,14 +2,104 @@
    Differentiation comes from composition + presentation modes, not shared card chrome. */
 
 .ai-v2-root {
-  --ai-v2-pad: clamp(1.25rem, 4vw, 2.5rem);
-  --ai-v2-measure: min(1180px, calc(100% - (var(--ai-v2-pad) * 2)));
+  /* Horizontal content-canvas grammar. --ai-v2-pad is the gutter: it used to cap out at
+     2.5rem/40px by viewport=1000px (4vw), while --ai-v2-measure's content cap only starts
+     binding once "100% minus 2x gutter" drops below the cap's own value (past roughly
+     viewport=1260px) - the ~1000-1260px band in between got a flat 40px gutter with the
+     content cap not yet engaged, i.e. content filling ~93% of the viewport (confirmed by
+     computed values at 1109px: 40px/1029px/40px). Raising the coefficient/ceiling closes
+     that dead zone with real editorial breathing room, while --ai-v2-content-max
+     (previously a magic number duplicated here AND in .ai-v2-rail's own edge-alignment
+     formula) keeps the canvas from growing indefinitely on large desktops - unchanged in
+     value, just named so both places can't drift apart. */
+  --ai-v2-pad: clamp(1.25rem, 6vw, 4.5rem);
+  --ai-v2-content-max: 1180px;
+  --ai-v2-measure: min(var(--ai-v2-content-max), calc(100% - (var(--ai-v2-pad) * 2)));
+  /* The resolved EDGE GUTTER as its own value (not just baked into --ai-v2-measure's width
+     formula) - mathematically the same max(pad, (viewport-content-max)/2) relationship
+     .ai-v2-wrap's centering already produces, just named so .ai-v2-rail (which needs the
+     gutter directly, not a width to subtract from) can reference one source of truth
+     instead of repeating the expression. Does not change --ai-v2-measure's own formula. */
+  --ai-v2-gutter: max(var(--ai-v2-pad), calc((100vw - var(--ai-v2-content-max)) / 2));
   min-height: 100vh;
   background: var(--ai-bg, #fff);
   color: var(--ai-text, #111);
   font-family: var(--ai-body), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   position: relative;
+
+  /* ─── Typography grammar (Phase 3) ───────────────────────────────────
+     Defaults below match 'expressive' — designTokens.typographyScale's own schema
+     default — so any DesignSpec that predates this field (or never opts into
+     'restrained') renders pixel-identical to before these variables existed. */
+  --ai-v2-hero-h1: clamp(2.6rem, 6.5vw, 5rem);
+  --ai-v2-h2: clamp(1.85rem, 3.4vw, 3rem);
+  --ai-v2-statement: clamp(2rem, 5.2vw, 3.85rem);
+  --ai-v2-heading-tracking: -0.03em;
+  --ai-v2-lead-lh: 1.65;
+  --ai-v2-emphasis-primary: clamp(2.6rem, 6vw, 5.5rem);
+  --ai-v2-emphasis-quiet: clamp(1.55rem, 2.6vw, 2.35rem);
+  --ai-v2-statement-emphasis-primary: clamp(2.8rem, 7vw, 6rem);
+
+  /* typographyRole grammar — kicker/label + a modest price-weight accent. Statement
+     h1/h2 sizing is deliberately NOT driven from here: that's the existing, narrower
+     applyStrategyDefaults -> data-emphasis mechanism (hero/brandStatement only). */
+  --ai-v2-kicker-size: 0.65rem;
+  --ai-v2-kicker-tracking: 0.28em;
+  --ai-v2-kicker-weight: 500;
+  --ai-v2-kicker-opacity: 0.5;
+  --ai-v2-price-weight: 400;
+  --ai-v2-price-tracking: normal;
+
+  /* density grammar (Phase 3) — internal component spacing, deliberately separate from
+     data-spacing (outer section inset, driven by creativeStrategy.density+rhythm via
+     strategyDefaults.ts). Defaults match 'balanced' — designTokens.density's own schema
+     default — and are the exact values every gap below already hardcoded. */
+  --ai-v2-grid-gap: clamp(1rem, 2.5vw, 1.75rem);
+  --ai-v2-rail-gap: 1.15rem;
+  --ai-v2-card-gap: 0.85rem;
+  --ai-v2-title-gap: clamp(1.75rem, 4vw, 2.75rem);
+}
+
+.ai-v2-root[data-type-scale='restrained'] {
+  --ai-v2-hero-h1: clamp(2.15rem, 4.4vw, 3.5rem);
+  --ai-v2-h2: clamp(1.55rem, 2.3vw, 2.1rem);
+  --ai-v2-statement: clamp(1.7rem, 3.4vw, 2.6rem);
+  --ai-v2-heading-tracking: -0.015em;
+  --ai-v2-lead-lh: 1.85;
+  --ai-v2-emphasis-primary: clamp(2.2rem, 4.6vw, 3.9rem);
+  --ai-v2-emphasis-quiet: clamp(1.4rem, 2vw, 1.9rem);
+  --ai-v2-statement-emphasis-primary: clamp(2.1rem, 4.4vw, 3.4rem);
+}
+
+.ai-v2-root[data-type-role='dominant_structural'] {
+  --ai-v2-kicker-size: 0.72rem;
+  --ai-v2-kicker-tracking: 0.16em;
+  --ai-v2-kicker-weight: 700;
+  --ai-v2-kicker-opacity: 0.62;
+  --ai-v2-price-weight: 600;
+  --ai-v2-price-tracking: -0.01em;
+}
+
+.ai-v2-root[data-type-role='quiet'] {
+  --ai-v2-kicker-size: 0.62rem;
+  --ai-v2-kicker-tracking: 0.32em;
+  --ai-v2-kicker-weight: 400;
+  --ai-v2-kicker-opacity: 0.42;
+}
+
+.ai-v2-root[data-density='sparse'] {
+  --ai-v2-grid-gap: clamp(1.5rem, 3.5vw, 2.5rem);
+  --ai-v2-rail-gap: 1.5rem;
+  --ai-v2-card-gap: 1.1rem;
+  --ai-v2-title-gap: clamp(2.25rem, 5vw, 3.5rem);
+}
+
+.ai-v2-root[data-density='dense'] {
+  --ai-v2-grid-gap: clamp(0.65rem, 1.6vw, 1.1rem);
+  --ai-v2-rail-gap: 0.75rem;
+  --ai-v2-card-gap: 0.55rem;
+  --ai-v2-title-gap: clamp(1.1rem, 2.5vw, 1.75rem);
 }
 
 .ai-v2-root h1,
@@ -21,7 +111,7 @@
 .ai-v2-pp-luxury .ai-v2-pp-name {
   font-family: var(--ai-heading), Georgia, serif;
   font-weight: 500;
-  letter-spacing: -0.03em;
+  letter-spacing: var(--ai-v2-heading-tracking);
 }
 
 .ai-v2-wrap {
@@ -30,16 +120,17 @@
 }
 
 .ai-v2-kicker {
-  font-size: 0.65rem;
-  letter-spacing: 0.28em;
+  font-size: var(--ai-v2-kicker-size);
+  letter-spacing: var(--ai-v2-kicker-tracking);
   text-transform: uppercase;
-  opacity: 0.5;
+  font-weight: var(--ai-v2-kicker-weight);
+  opacity: var(--ai-v2-kicker-opacity);
   margin: 0 0 1rem;
 }
 
 .ai-v2-lead {
   max-width: 36ch;
-  line-height: 1.65;
+  line-height: var(--ai-v2-lead-lh);
   opacity: 0.72;
   margin: 1rem 0 0;
   font-size: 1.02rem;
@@ -137,14 +228,14 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: clamp(1.75rem, 4vw, 2.75rem);
+  margin-bottom: var(--ai-v2-title-gap);
 }
 
 .ai-v2-section-head h2,
 .ai-v2-rail-title,
 .ai-v2-collections-title,
 .ai-v2-section h2 {
-  font-size: clamp(1.85rem, 3.4vw, 3rem);
+  font-size: var(--ai-v2-h2);
   line-height: 0.95;
   margin: 0;
 }
@@ -279,7 +370,7 @@
 
 /* ── Heroes ── */
 .ai-v2-hero h1 {
-  font-size: clamp(2.6rem, 6.5vw, 5rem);
+  font-size: var(--ai-v2-hero-h1);
   line-height: 0.92;
   margin: 0;
   max-width: 11ch;
@@ -434,7 +525,7 @@
 .ai-v2-pp {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: var(--ai-v2-card-gap);
   min-width: 0;
 }
 
@@ -487,6 +578,11 @@
   gap: 0.45rem;
   font-size: 0.88rem;
   font-variant-numeric: tabular-nums;
+  /* Modest, brand-aware price-hierarchy accent (Phase 3) — typographyRole only ever
+     nudges weight/tracking here, never size, so it can't overwhelm the product
+     title/image (see the audit note on ai-studio-v2-typography-rhythm-selftest.ts). */
+  font-weight: var(--ai-v2-price-weight);
+  letter-spacing: var(--ai-v2-price-tracking);
 }
 
 .ai-v2-pp-price-original {
@@ -689,7 +785,7 @@
 .ai-v2-merch-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(1rem, 2.5vw, 1.75rem);
+  gap: var(--ai-v2-grid-gap);
 }
 
 .ai-v2-merch-grid.ai-v2-merch-street {
@@ -760,11 +856,38 @@
 
 .ai-v2-rail {
   display: flex;
-  gap: 1.15rem;
+  gap: var(--ai-v2-rail-gap);
   overflow-x: auto;
-  padding: 0 max(var(--ai-v2-pad), calc((100vw - 1180px) / 2)) 0.5rem;
+  /* Real START padding, not a content spacer (round 6 tried a spacer and introduced a
+     WORSE bug: scroll-snap-type:mandatory forced scrollLeft to jump on initial load to
+     satisfy Card 1's scroll-snap-align:start, since a spacer is extra scrollable CONTENT
+     that shifts Card 1's position away from 0 - the browser "corrected" scrollLeft from 0
+     to spacer+gap on load, visually undoing the spacer entirely. Padding does not have
+     this problem: it is part of the scroll container's snapport by spec, so Card 1 at
+     content-position 0 already sits at the padded/visible start edge - scrollLeft=0 (the
+     natural initial position) already satisfies the snap constraint, no forced jump.
+     scroll-padding-inline-start below reinforces the same inset explicitly for the snap
+     computation itself (belt-and-suspenders, not a second competing mechanism). */
+  padding-inline-start: var(--ai-v2-gutter);
+  padding-block-end: 0.5rem;
+  scroll-padding-inline-start: var(--ai-v2-gutter);
   scroll-snap-type: x mandatory;
   scrollbar-width: thin;
+}
+
+/* END gutter only (no ::before - see .ai-v2-rail's own comment for why padding covers the
+   start). Real scrollable CONTENT rather than padding-inline-end here specifically:
+   trailing/end padding on scrollable flex containers has a documented history of being
+   excluded from the scrollable region in some browsers, while content is unambiguously
+   always scrollable - and since no card here snaps via its END edge, there is no
+   forced-jump risk on this side to begin with (that risk was specific to Card 1's start
+   edge above). Sized as gutter-minus-gap: .ai-v2-rail's own `gap` already inserts
+   --ai-v2-rail-gap between the last real card and this pseudo-element, so using the full
+   gutter here would silently double it (gutter+gap) on the end side only. */
+.ai-v2-rail::after {
+  content: '';
+  flex: 0 0 max(0px, calc(var(--ai-v2-gutter) - var(--ai-v2-rail-gap)));
+  scroll-snap-align: none;
 }
 
 .ai-v2-rail-item {
@@ -851,7 +974,7 @@
 }
 
 .ai-v2-statement-text {
-  font-size: clamp(2rem, 5.2vw, 3.85rem);
+  font-size: var(--ai-v2-statement);
   line-height: 1.05;
   letter-spacing: -0.04em;
   max-width: 16ch;
@@ -864,7 +987,7 @@
   grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
   align-items: end;
-  margin-bottom: clamp(1.75rem, 4vw, 2.75rem);
+  margin-bottom: var(--ai-v2-title-gap);
 }
 
 .ai-v2-mosaic-mag {
@@ -1159,7 +1282,7 @@
 
 /* Collections editorial */
 .ai-v2-collections-title {
-  margin-bottom: clamp(1.75rem, 4vw, 2.75rem);
+  margin-bottom: var(--ai-v2-title-gap);
 }
 
 .ai-v2-collections-editorial {
@@ -1592,37 +1715,82 @@
   width: 100%;
 }
 
+/* ── PAGE CONTENT CANVAS vs. ART-DIRECTION ALIGNMENT ──────────────────────────────
+   .ai-v2-wrap IS the page content canvas (width: var(--ai-v2-measure); margin-inline:
+   auto — set once, unconditionally, in its base rule above). That canvas must stay
+   physically centered in the page at all times, regardless of a section's start/center/end
+   art direction — a real browser measurement at viewport=1109px proved the previous rules
+   broke this: [data-align='start'] set margin-inline:0 auto on .ai-v2-wrap ITSELF, which
+   doesn't shift content *within* a centered canvas, it drags the whole 976px canvas to
+   x=0, opening a 133px gap on the other side only (confirmed: center sections measured
+   67/976/67, start sections measured 0/976/133 — the exact same canvas, physically
+   relocated). A section can be creatively asymmetric while still living inside a properly
+   constrained, centered canvas — so start/end/center below ONLY ever set text-align on
+   the canvas (a real but modest signal: it does nothing for grid/flex-item layouts, which
+   is why the old merch/collections/reviews centering override further down is gone - once
+   .ai-v2-wrap itself is never displaced, that override has nothing left to correct). Real,
+   visible single-moment asymmetry (hero, brandStatement) is expressed on the INNER text
+   elements instead - see the h1/.ai-v2-lead/.ai-v2-statement-text rules below, which shift
+   THEIR OWN (already narrower than the canvas) box within the still-centered canvas.
+   editorialSplit/editorialMosaic/productSpotlight's asymmetry was never actually driven by
+   data-align to begin with - it's their own grid-template-columns proportions, the
+   data-reverse flag, and (mosaic) per-figure grid-row/column spans, all independent of
+   this mechanism and untouched by this change. */
 [data-align='start'] .ai-v2-wrap,
 [data-align='start'].ai-v2-section .ai-v2-wrap {
-  margin-inline: 0 auto;
   text-align: start;
 }
 [data-align='end'] .ai-v2-wrap,
 [data-align='end'].ai-v2-section .ai-v2-wrap {
-  margin-inline: auto 0;
   text-align: end;
 }
 [data-align='center'] .ai-v2-wrap {
   text-align: center;
 }
-[data-align='center'] .ai-v2-lead {
+
+/* .ai-v2-hero h1, .ai-v2-lead and .ai-v2-statement-text all carry their own max-width
+   (11ch / 36ch / 16ch) narrower than the canvas, with base margins that default them to
+   the canvas's start edge (h1/.ai-v2-lead: margin 0) or center (.ai-v2-statement-text:
+   margin 0 auto) — text-align above only centers/aligns each one's TEXT within its own
+   box, not the box itself. These rules shift the BOX within the still-centered canvas,
+   giving real start/center/end art direction without ever moving the canvas.
+   NOTE: data-align lives on the hero/statement <section> itself (sectionDesignProps
+   spreads it onto the same element as the ai-v2-hero/ai-v2-statement class - see
+   compositions.tsx), not a wrapping ancestor, so the hero-h1 selectors below must be
+   COMPOUND (no space before .ai-v2-hero) — a plain descendant combinator would require a
+   *separate* ancestor carrying data-align, which doesn't exist (this exact mistake broke
+   the center case in an earlier pass). .ai-v2-lead and .ai-v2-statement-text have no such
+   issue: both are genuine descendants of the section, several levels down. */
+[data-align='start'] .ai-v2-lead,
+[data-align='start'] .ai-v2-statement-text,
+[data-align='start'].ai-v2-hero h1 {
+  margin-inline: 0 auto;
+}
+[data-align='end'] .ai-v2-lead,
+[data-align='end'] .ai-v2-statement-text,
+[data-align='end'].ai-v2-hero h1 {
+  margin-inline: auto 0;
+}
+[data-align='center'] .ai-v2-lead,
+[data-align='center'] .ai-v2-statement-text,
+[data-align='center'].ai-v2-hero h1 {
   margin-inline: auto;
 }
 
 [data-emphasis='primary'] h1,
 [data-emphasis='primary'] h2,
 [data-emphasis='primary'] .ai-v2-statement-text {
-  font-size: clamp(2.6rem, 6vw, 5.5rem);
+  font-size: var(--ai-v2-emphasis-primary);
   letter-spacing: -0.04em;
 }
 [data-emphasis='quiet'] h1,
 [data-emphasis='quiet'] h2 {
-  font-size: clamp(1.55rem, 2.6vw, 2.35rem);
+  font-size: var(--ai-v2-emphasis-quiet);
   opacity: 0.92;
 }
 
 .ai-v2-statement[data-emphasis='primary'] .ai-v2-statement-text,
 .ai-v2-section.ai-v2-statement[data-emphasis='primary'] h2 {
   max-width: 18ch;
-  font-size: clamp(2.8rem, 7vw, 6rem);
+  font-size: var(--ai-v2-statement-emphasis-primary);
 }
