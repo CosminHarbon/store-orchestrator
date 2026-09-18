@@ -6,6 +6,7 @@ import {
   buildCreativeStrategySchema,
   creativeStrategyPromptBlock,
   ensureCreativeStrategy,
+  reconcileArtDirectionDensity,
   TYPOGRAPHY_ROLES,
   type CreativeStrategy,
 } from './creativeStrategy.ts';
@@ -139,8 +140,10 @@ export function buildDesignSpecSchemas(z: Zod) {
   }
 
   function brandDesignSystemFromSpec(spec: DesignSpec): BrandDesignSystem {
-    // Resolved (never-missing) creativeStrategy, purely to read typographyRole here —
-    // same inference `withCreativeStrategy` already relies on for drafts predating the field.
+    // Resolved (never-missing) creativeStrategy — same inference `withCreativeStrategy`
+    // already relies on for drafts predating the field. Read here for typographyRole and
+    // (Phase 5C.2) as the macro signal reconcileArtDirectionDensity checks artDirection's
+    // micro density against.
     const creativeStrategy = ensureCreativeStrategy(spec);
     return brandDesignSystemSchema.parse({
       version: BRAND_DESIGN_SYSTEM_VERSION,
@@ -160,7 +163,11 @@ export function buildDesignSpecSchemas(z: Zod) {
               ? 'rounded'
               : 'soft',
         shadow: spec.artDirection.shadow,
-        density: spec.artDirection.density,
+        // Phase 5C.2 — reconcile only the two opposite-extreme contradictions
+        // (creativeStrategy.density='low'+'dense' or 'high'+'sparse'); every other
+        // pairing, including deliberate adjacent macro/micro contrast, passes through
+        // unchanged. See reconcileArtDirectionDensity's own doc comment.
+        density: reconcileArtDirectionDensity(creativeStrategy.density, spec.artDirection.density),
         buttonStyle: /pill/i.test(spec.ux.ctaStyle)
           ? 'pill'
           : /outline/i.test(spec.ux.ctaStyle)
@@ -259,7 +266,7 @@ Architecture reasoning (do this while filling creativeStrategy — not after):
 1. What should dominate the first viewport (atmosphere / type / product / split / offer)?
 2. How quickly should commerce appear (immediate|early|mid|delayed)?
 3. What pageComposition fits brandFit + intentionalDistinctiveness?
-4. What rhythm and density should the scroll have?
+4. What rhythm and composition density (creativeStrategy.density) should the scroll have — how compressed does the page FEEL section to section, independent of any component's internal spacing?
 5. Does typography or imagery carry structural weight?
 6. How asymmetric should composition feel?
 7. What product discovery model fits (not the same rail-by-default)?
@@ -276,6 +283,7 @@ Semantic guidance:
 - ux.discovery: MUST follow creativeStrategy.commerceEntry + commerceModel. Do NOT default to "spotlight then horizontal rail" unless that strategy is intentional.
 - designIntent.coreConcept: richer creative reasoning (2–3 sentences).
 - productPresentation: presentation mode for product chrome (luxury|street|tech|editorial) — NOT a page template selector and NOT a substitute for creativeStrategy.
+- artDirection.density: COMPONENT-internal spacing only (product-card gaps, grid/rail gaps) — NOT overall scroll/page rhythm. Page-level rhythm and section pacing is creativeStrategy.density + creativeStrategy.rhythm; keep the two independent, but avoid picking opposite extremes (e.g. creativeStrategy.density=low with artDirection.density=dense) for the same brand.
 
 Rules:
 - designIntent.coreConcept must explain WHY — bad: "Modern premium design."

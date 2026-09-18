@@ -149,6 +149,34 @@ export function buildCreativeStrategySchema(z: Zod) {
   });
 }
 
+/** artDirection.density's own enum (designSpecSchema.ts's designTokensSchema/artDirection
+ *  density fields) — kept as a local literal union rather than importing zod, since this
+ *  file only needs the three string values, not the schema. */
+export type ComponentDensity = 'sparse' | 'balanced' | 'dense';
+
+/**
+ * Phase 5C.2 — creativeStrategy.density (macro: composition/page density) and
+ * artDirection.density (micro: component-internal density, see designSpecSchema.ts) are
+ * independently generated and deliberately allowed to diverge (e.g. low+balanced or
+ * high+balanced are legitimate macro/micro contrast — a sparse-rhythm page can still want
+ * a balanced-density product grid). The Phase 5A/5C.1 audits found exactly one
+ * pathological case: the two OPPOSITE extremes (low+dense, high+sparse), where the page's
+ * macro composition and a component's internal spacing actively contradict each other
+ * with no design intent signal distinguishing that from two independent LLM guesses.
+ * This reconciles ONLY those two cases, snapping artDirection.density to the tier that
+ * agrees with creativeStrategy.density; every other pairing (including the other two
+ * "medium" pairings and all "balanced" pairings) passes through unchanged. Pure — does
+ * not mutate either input.
+ */
+export function reconcileArtDirectionDensity(
+  compositionDensity: Density,
+  componentDensity: ComponentDensity
+): ComponentDensity {
+  if (compositionDensity === 'low' && componentDensity === 'dense') return 'sparse';
+  if (compositionDensity === 'high' && componentDensity === 'sparse') return 'dense';
+  return componentDensity;
+}
+
 /** Align experimentationLevel with creativeMode when the model drifts. */
 export function clampExperimentationToCreativeMode(
   mode: string | undefined,
@@ -472,6 +500,7 @@ export function creativeStrategyPromptBlock(): string {
 
 creativeStrategy rules:
 - Decide architecture intentionally: first-viewport dominance, commerce timing, rhythm, typography vs imagery weight, asymmetry, discovery model.
+- density here is MACRO composition density — how compressed the page feels section to section (drives section spacing and layout choices like a denser product grid or reviews wall). It is independent of artDirection.density (component-internal spacing, e.g. card/grid/rail gaps) — the two may differ, but avoid setting them to opposite extremes (low here with artDirection.density=dense, or high here with artDirection.density=sparse) for the same brand.
 - distinctivenessBrief must be SPECIFIC. Bad: "Make it distinctive." Good: "Avoid full-bleed hero → centered manifesto → product rail. Delay commerce; let material photography interrupt the narrative."
 - Do NOT emit hero-less philosophies — a classic hero is still required by the SiteTree schema.
 - creativeMode MUST steer experimentationLevel and willingness to pick uncommon pageComposition:
