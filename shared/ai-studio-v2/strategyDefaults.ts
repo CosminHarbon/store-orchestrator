@@ -49,6 +49,13 @@ export type StrategyInput = {
   rhythm: 'sparse_pause' | 'even' | 'rapid_contrast' | 'long_short_long';
   typographyRole: 'quiet' | 'balanced' | 'dominant_structural';
   imageryRole: 'dominant' | 'balanced' | 'supporting';
+  commerceModel:
+    | 'flagship_then_rail'
+    | 'dense_catalogue'
+    | 'shoppable_editorial'
+    | 'collection_first'
+    | 'single_artifact'
+    | 'spec_story';
 };
 
 const DENSITY_SPACING: Record<StrategyInput['density'], NonNullable<StrategyDesign['spacing']>> = {
@@ -209,12 +216,32 @@ export type ProductSpotlightLayout = 'feature' | 'imageDominant' | 'structuredFe
  * architectural finding (designSpecSchema.ts's productPresentation description): that
  * field is scoped to per-card chrome (ProductPresentation.tsx), a different, narrower
  * concern from this section's own composition geometry.
+ *
+ * Phase 5D.3 — commerceModel is added as a THIRD, strictly lowest-priority signal, never
+ * reordering the two checks above. commerceModel's primary intended semantic (per the
+ * site-architect prompt) is choosing the commerce SECTION FAMILY — spotlight vs grid vs
+ * rail vs collections — which remains entirely architect-owned; nothing here selects
+ * whether a productSpotlight node exists. This only tie-breaks the LAYOUT of a
+ * productSpotlight node that already exists, and only once typographyRole/imageryRole are
+ * both neutral — a mapped commerceModel value CAN co-occur with a stronger signal (Villa
+ * Pelle is the concrete case: imageryRole='dominant' + commerceModel='single_artifact'),
+ * but the two checks above are evaluated first and win outright in that case, so
+ * commerceModel only ever gets to act once they've both fallen through. That is why this
+ * branch changes none of the 5 canonical fixtures today (Villa Pelle still resolves
+ * 'imageDominant', not 'structuredFeature') — it is a latent fallback for future
+ * generations whose typographyRole/imageryRole are neutral, not an observed behavior
+ * change. single_artifact and spec_story both read as copy/story-led single-product
+ * presentations, the same output typographyRole='dominant_structural' already produces,
+ * so they share its value rather than inventing a fourth layout.
  */
 export function productSpotlightLayoutDefault(
-  strategy: Pick<StrategyInput, 'typographyRole' | 'imageryRole'>
+  strategy: Pick<StrategyInput, 'typographyRole' | 'imageryRole' | 'commerceModel'>
 ): ProductSpotlightLayout {
   if (strategy.typographyRole === 'dominant_structural') return 'structuredFeature';
   if (strategy.imageryRole === 'dominant') return 'imageDominant';
+  if (strategy.commerceModel === 'single_artifact' || strategy.commerceModel === 'spec_story') {
+    return 'structuredFeature';
+  }
   return 'feature';
 }
 
@@ -413,12 +440,26 @@ export type ProductGridEditorialLayout =
  * 'featureFirst' is the pre-existing renderer fallback (compositions.tsx:
  * `layoutOf(node, 'featureFirst')`), so low/medium creativeStrategy.density+asymmetry
  * resolves unchanged.
+ *
+ * Phase 5D.3 — commerceModel is added as a THIRD, strictly lowest-priority signal, checked
+ * only after both asymmetry and density have failed to match. commerceModel's primary
+ * intended semantic (per the site-architect prompt) is choosing the commerce SECTION
+ * FAMILY — spotlight vs grid vs rail vs collections — which remains entirely
+ * architect-owned; nothing here decides whether a productGrid node exists. This only
+ * tie-breaks the LAYOUT of a productGrid/editorial node that already exists. Only
+ * dense_catalogue is mapped, to the one output ('dense') whose name it already shares
+ * literally — collection_first is deliberately left out: it describes a section-family
+ * preference ("lead with collections"), not a productGrid layout, and forcing it onto
+ * 'dense' would be a fabricated fit, not a genuine consequence (see Phase 5D.2 audit).
+ * No canonical fixture has an unset productGrid/editorial node today, so this branch has
+ * no observed effect on the 5 fixtures — it is a latent fallback for future generations.
  */
 export function productGridEditorialLayoutDefault(
-  strategy: Pick<StrategyInput, 'density' | 'asymmetry'>
+  strategy: Pick<StrategyInput, 'density' | 'asymmetry' | 'commerceModel'>
 ): ProductGridEditorialLayout {
   if (strategy.asymmetry === 'high') return 'asymmetricFeature';
   if (strategy.density === 'high') return 'dense';
+  if (strategy.commerceModel === 'dense_catalogue') return 'dense';
   return 'featureFirst';
 }
 
