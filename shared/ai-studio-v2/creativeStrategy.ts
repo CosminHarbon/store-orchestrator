@@ -84,6 +84,29 @@ export type ImageryRole = (typeof IMAGERY_ROLES)[number];
 export type NavigationBehavior = (typeof NAVIGATION_BEHAVIORS)[number];
 export type ExperimentationLevel = (typeof EXPERIMENTATION_LEVELS)[number];
 
+/**
+ * Phase 5D.5 — final field contract (audited; see Phase 5D.1-5D.5 history).
+ * Each field has exactly one PRIMARY role:
+ *   RUNTIME_CONTROL   — density, asymmetry, rhythm, typographyRole, imageryRole,
+ *                        navigationBehavior, commerceModel: deterministic code
+ *                        consequence after generation (strategyDefaults.ts).
+ *                        commerceModel is the narrow case: it only wins a
+ *                        low-priority within-family layout tiebreaker; choosing
+ *                        the commerce FAMILY (spotlight/grid/rail/collections)
+ *                        remains architect-owned, not deterministic.
+ *   ARCHITECT_SIGNAL  — heroPhilosophy, commerceEntry: guides the SiteTree
+ *                        architect prompt (+ a soft commerceEntry warning); no
+ *                        renderer consequence.
+ *   PLANNING_SIGNAL   — pageComposition, experimentationLevel: upstream design
+ *                        reasoning only, deliberately with no deterministic rule
+ *                        (wiring either would risk a hidden-template mapping).
+ *   FREEFORM_STEERING — distinctivenessBrief: natural-language architect
+ *                        instruction, never string-matched into templates.
+ * Invariants: explicit authored values always beat generation defaults; the
+ * generation-time defaulting (strategyDefaults.ts) never runs outside initial
+ * generation; planning/freeform fields must not silently become renderer
+ * controls; the renderer and SiteOps never parse CreativeStrategy directly.
+ */
 export type CreativeStrategy = {
   pageComposition: PageComposition;
   heroPhilosophy: HeroPhilosophy;
