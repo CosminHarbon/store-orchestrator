@@ -17,6 +17,12 @@
  * that the renderer (and SiteOps, and the critique loop) already reads.
  */
 
+// Phase 5B — the same authoritative (type, variant) -> allowed-layout-values catalog
+// validateRegistry uses downstream, reused here as a defensive guard so applyLayoutDefaults
+// can never write a content.layout value that is invalid for a node's exact variant (see
+// applyLayoutDefaults' own comment below).
+import { isValidLayout } from './compositionLayouts.ts';
+
 // Mirrors nodeDesignSchema's enums exactly (siteTree.ts / aiStudioV2.ts) so a resolved
 // StrategyDesign can be assigned straight back into a SiteNode['design'] without a cast.
 export type StrategyDesign = {
@@ -308,27 +314,185 @@ export function reviewsLayoutDefault(strategy: Pick<StrategyInput, 'density'>): 
   return strategy.density === 'high' ? 'grid' : 'index';
 }
 
-/** Node types with a registered content.layout default rule. Phase 4A/4B/4C/4D wire
- *  editorialSplit, productSpotlight, brandStatement, newsletter, collections,
- *  testimonials, and reviews — deliberately not a broad "every supporting section" pass
- *  in one shot (see Phase 4 audit); each was added only once its own audit pass justified it. */
-const LAYOUT_DEFAULT_RESOLVERS: Record<string, (strategy: StrategyInput) => string> = {
-  editorialSplit: editorialSplitLayoutDefault,
-  productSpotlight: productSpotlightLayoutDefault,
-  brandStatement: brandStatementLayoutDefault,
-  newsletter: newsletterLayoutDefault,
-  collections: collectionsLayoutDefault,
-  testimonials: testimonialsLayoutDefault,
-  reviews: reviewsLayoutDefault,
-};
-
-export type LayoutDefaultNode = { type: string; content?: Record<string, unknown> };
+export type HeroEditorialSplitLayout = 'split' | 'asymmetric';
 
 /**
- * Fills `content.layout` ONLY for nodes whose type has a registered resolver above AND
- * whose content.layout is still unset — an explicit architect-authored layout always wins,
- * exactly like applyStrategyDefaults never overwrites an explicit design field. Returns a
- * NEW array; does not mutate input nodes.
+ * Phase 5B — hero/editorial_split's two layouts (see compositions.tsx HeroEditorialSplit)
+ * differ in exactly one structural way: an even 50/50 copy/media split vs. media offset
+ * off-center. That IS asymmetry's own definition, so it is the only signal consulted here
+ * — not heroPhilosophy (which already fully spends its signal on CHOOSING editorial_split
+ * as the hero variant in the first place, via the site-architect prompt's heroPhilosophy →
+ * hero-variant rule; it has no further value left to discriminate a layout choice inside
+ * the variant it already picked) and not typographyRole/imageryRole (neither has any
+ * bearing on a copy/media ratio split). 'split' is the pre-existing renderer fallback
+ * (compositions.tsx: `layoutOf(node, 'split')`), so low/medium asymmetry — the "nothing
+ * unusual to express" case — resolves identically to pre-Phase-5B behavior.
+ */
+export function heroEditorialSplitLayoutDefault(
+  strategy: Pick<StrategyInput, 'asymmetry'>
+): HeroEditorialSplitLayout {
+  return strategy.asymmetry === 'high' ? 'asymmetric' : 'split';
+}
+
+export type HeroLuxuryMinimalLayout = 'quiet' | 'cinematic';
+
+/**
+ * Phase 5B — 'cinematic' (deeper veil, eyebrow kicker, bottom-anchored copy — see
+ * compositions.tsx HeroLuxuryMinimal) is a more immersive, image-carries-the-moment
+ * treatment than the default centered-quiet open. That is exactly what imageryRole:
+ * 'dominant' already means elsewhere in this file (fullBleed/measure=bleed for
+ * IMAGE_LED_TYPES) — reusing it here is the same signal doing the same conceptual job
+ * (how much should imagery carry), not a new coupling. heroPhilosophy is deliberately not
+ * consulted: every heroPhilosophy value that prefers luxury_minimal (atmosphere_first,
+ * sometimes typography_first) has already spent its signal selecting the VARIANT; none of
+ * them further distinguishes a quiet vs. cinematic mood within it. 'quiet' is the
+ * pre-existing renderer fallback, so balanced/supporting imagery resolves unchanged.
+ */
+export function heroLuxuryMinimalLayoutDefault(
+  strategy: Pick<StrategyInput, 'imageryRole'>
+): HeroLuxuryMinimalLayout {
+  return strategy.imageryRole === 'dominant' ? 'cinematic' : 'quiet';
+}
+
+export type HeroProductFocusLayout = 'stage' | 'stacked';
+
+/**
+ * Phase 5B — 'stacked' (image above copy, centered, taller/narrower — see compositions.tsx
+ * HeroProductFocus) is the image-leads treatment; 'stage' (the default, side-by-side) gives
+ * copy and product equal weight. Same imageryRole semantics as
+ * heroLuxuryMinimalLayoutDefault above, applied to a different hero variant — imagery
+ * carrying more of the composition vs. sharing it evenly. heroPhilosophy is again
+ * deliberately not consulted: product_as_artifact/immediate_offer already chose
+ * product_focus as the variant; neither value describes a stage/stacked geometry
+ * preference. 'stage' is the pre-existing renderer fallback, so balanced/supporting
+ * imagery resolves unchanged.
+ */
+export function heroProductFocusLayoutDefault(
+  strategy: Pick<StrategyInput, 'imageryRole'>
+): HeroProductFocusLayout {
+  return strategy.imageryRole === 'dominant' ? 'stacked' : 'stage';
+}
+
+export type ProductGridEditorialLayout =
+  | 'featureFirst'
+  | 'asymmetricFeature'
+  | 'dense';
+
+/**
+ * Phase 5B — productGrid/editorial registers FOUR content.layout values
+ * (compositionLayouts.ts), but only two have a clean, single-signal semantic match:
+ * 'dense' IS density's own definition (renderer comment: "more columns, tighter gap — a
+ * real structural density difference"), and 'asymmetricFeature' IS asymmetry's own
+ * definition (one oversized anchor tile + an irregular fill grid, vs. an even grid).
+ * imageryRole is deliberately NOT consulted: the genuinely correct imagery-dominant
+ * response already exists one level up, as the separate productGrid/luxury_image_first
+ * REGISTRY VARIANT (full-bleed single-column imagery — see its own doc comment in
+ * compositions.tsx) — that is variant selection, owned by the site-architect prompt, not
+ * a content.layout default this function is chartered to duplicate or shadow.
+ * 'standardEditorial' is deliberately never resolved here either: it is the plain grid
+ * with no anchor tile and no dense-CSS override, structurally identical to what "unset"
+ * already rendered as before compositionLayouts.ts existed to name it — Hearth & Grove's
+ * fixture already authors it explicitly for exactly that reason (see fixtures.ts). Picking
+ * it here would not be an "easy to explain" mapping — no strategy signal means "the plain
+ * grid," it is only ever a deliberate architect choice.
+ * PRECEDENCE: asymmetry is checked first when both creativeStrategy.density='high' and
+ * asymmetry='high' are true. asymmetricFeature is the more structurally decisive
+ * composition (a different DOM shape, not just tighter columns) — the same "check the
+ * stronger structural signal first" precedent already set by
+ * editorialSplitLayoutDefault/productSpotlightLayoutDefault above (typographyRole before
+ * imageryRole there). Losing the LAYOUT-CHOICE precedence does not mean density stops
+ * mattering to this section's rendered output: `.ai-v2-merch-asymmetric` also carries
+ * `data-density={brand.tokens.density}` (compositions.tsx) for its internal anchor+fill
+ * gap sizing — but per the Phase 5A audit, brand.tokens.density comes from
+ * artDirection.density ('sparse'|'balanced'|'dense'), a SEPARATE, independently-generated
+ * signal from this function's own `creativeStrategy.density` ('low'|'medium'|'high')
+ * parameter, not the same one "still reaching" the grid under another name. The two can
+ * disagree (e.g. creativeStrategy.density='high' picking a layout, while
+ * artDirection.density='sparse' sizes that layout's internal gaps loosely) — reconciling
+ * the two density concepts is out of scope here and deferred to Phase 5C.
+ * 'featureFirst' is the pre-existing renderer fallback (compositions.tsx:
+ * `layoutOf(node, 'featureFirst')`), so low/medium creativeStrategy.density+asymmetry
+ * resolves unchanged.
+ */
+export function productGridEditorialLayoutDefault(
+  strategy: Pick<StrategyInput, 'density' | 'asymmetry'>
+): ProductGridEditorialLayout {
+  if (strategy.asymmetry === 'high') return 'asymmetricFeature';
+  if (strategy.density === 'high') return 'dense';
+  return 'featureFirst';
+}
+
+export type ProductRailHorizontalLayout = 'uniform' | 'alternatingOversized';
+
+/**
+ * Phase 5B — the renderer's OWN pre-existing comment already names the signal:
+ * "alternatingOversized: every third item breaks scale, giving the rail a syncopated
+ * RHYTHM instead of a uniform filmstrip" (compositions.tsx ProductRailHorizontal). rhythm
+ * is therefore the one clean discriminator, not asymmetry or density — a rail's
+ * scale-breaking cadence is a pacing property, the same thing rhythm already governs via
+ * rhythmSpacing() above, just expressed on a single section instead of across the page.
+ * The two "irregular/contrast" rhythm values (rapid_contrast, long_short_long) resolve to
+ * alternatingOversized; the two "regular/calm" values (sparse_pause, even) resolve to
+ * 'uniform', the pre-existing renderer fallback (`layoutOf(node, 'uniform')`) — so a
+ * sparse_pause or even brand's rail renders unchanged.
+ */
+export function productRailHorizontalLayoutDefault(
+  strategy: Pick<StrategyInput, 'rhythm'>
+): ProductRailHorizontalLayout {
+  return strategy.rhythm === 'rapid_contrast' || strategy.rhythm === 'long_short_long'
+    ? 'alternatingOversized'
+    : 'uniform';
+}
+
+/** Composition (type/variant) keys with a registered content.layout default rule.
+ *  Phase 4A/4B/4C/4D wired editorialSplit/image_text, productSpotlight/feature,
+ *  brandStatement/large_type, newsletter/quiet, collections/tiles, testimonials/editorial,
+ *  and reviews/wall. Phase 5B adds the three highest-frequency compositions: all three hero
+ *  variants and productGrid/editorial and productRail/horizontal. Keyed by `${type}/${variant}`
+ *  (matching compositionLayouts.ts's own key convention) rather than by type alone —
+ *  hero and productGrid each register MULTIPLE variants with different (sometimes entirely
+ *  absent, e.g. productGrid/luxury_image_first) layout vocabularies, so a type-only key
+ *  could resolve a default that is invalid for the node's actual variant. Every one of the
+ *  seven Phase-4 types still has exactly one registered variant today, so converting their
+ *  keys to `${type}/${variant}` form is lossless — same coverage, just precise addressing.
+ *  Deliberately not a broad "every registered composition" pass — each entry here was added
+ *  only once its own audit/semantic-match pass justified it (see Phase 5A/5B audits);
+ *  productGrid/luxury_image_first, footer/*, nav/*, announcement/slim intentionally have no
+ *  entry, either because they have no documented content.layout vocabulary at all
+ *  (compositionLayouts.ts) or because no Phase 5A/5B signal cleanly justified one yet. */
+const LAYOUT_DEFAULT_RESOLVERS: Record<string, (strategy: StrategyInput) => string> = {
+  'hero/editorial_split': heroEditorialSplitLayoutDefault,
+  'hero/luxury_minimal': heroLuxuryMinimalLayoutDefault,
+  'hero/product_focus': heroProductFocusLayoutDefault,
+  'productGrid/editorial': productGridEditorialLayoutDefault,
+  'productRail/horizontal': productRailHorizontalLayoutDefault,
+  'editorialSplit/image_text': editorialSplitLayoutDefault,
+  'productSpotlight/feature': productSpotlightLayoutDefault,
+  'brandStatement/large_type': brandStatementLayoutDefault,
+  'newsletter/quiet': newsletterLayoutDefault,
+  'collections/tiles': collectionsLayoutDefault,
+  'testimonials/editorial': testimonialsLayoutDefault,
+  'reviews/wall': reviewsLayoutDefault,
+};
+
+export type LayoutDefaultNode = { type: string; variant?: string; content?: Record<string, unknown> };
+
+/**
+ * Fills `content.layout` ONLY for nodes whose `${type}/${variant}` has a registered
+ * resolver above AND whose content.layout is still unset — an explicit architect-authored
+ * layout always wins, exactly like applyStrategyDefaults never overwrites an explicit
+ * design field. Returns a NEW array; does not mutate input nodes.
+ *
+ * Keyed by `${type}/${variant}`, not `type` alone (Phase 5B) — see LAYOUT_DEFAULT_RESOLVERS'
+ * own comment for why type-only keying is unsafe once a type has multiple variants with
+ * different layout vocabularies.
+ *
+ * Variant-safety guard: the resolved value is only written if `isValidLayout` (the same
+ * authoritative check `validateRegistry` uses downstream) confirms it as valid for this
+ * EXACT (type, variant) — e.g. a resolver bug or a future variant with no documented
+ * layout vocabulary (like productGrid/luxury_image_first) can never leak an invalid
+ * content.layout onto a node; it just leaves content.layout unset instead, same as if no
+ * resolver were registered at all.
  *
  * Deliberately non-generic (plain LayoutDefaultNode[] in/out, mirroring
  * applyStrategyDefaults above) — callers on the Deno edge function and the client each have
@@ -342,11 +506,13 @@ export function applyLayoutDefaults(
   strategy: StrategyInput
 ): LayoutDefaultNode[] {
   return nodes.map((node) => {
-    const resolver = LAYOUT_DEFAULT_RESOLVERS[node.type];
+    const resolver = LAYOUT_DEFAULT_RESOLVERS[`${node.type}/${node.variant || ''}`];
     if (!resolver) return node;
     const content = node.content ?? {};
     if (content.layout !== undefined) return node;
-    return { ...node, content: { ...content, layout: resolver(strategy) } };
+    const resolved = resolver(strategy);
+    if (!isValidLayout(node.type, node.variant || '', resolved)) return node;
+    return { ...node, content: { ...content, layout: resolved } };
   });
 }
 

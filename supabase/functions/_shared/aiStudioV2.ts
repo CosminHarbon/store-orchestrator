@@ -111,8 +111,11 @@ Design knobs you leave unset are filled deterministically from creativeStrategy
 (density/asymmetry/rhythm/typographyRole/imageryRole) — you do not have to set every field.
 The same applies to content.layout on editorialSplit/image_text, productSpotlight/feature,
 brandStatement/large_type, newsletter/quiet, collections/tiles (asymmetry), testimonials/
-editorial (imageryRole), and reviews/wall (density): leave it unset to get a
-strategy-driven default, or set it explicitly to override.
+editorial (imageryRole), reviews/wall (density), hero/editorial_split (asymmetry),
+hero/luxury_minimal (imageryRole), hero/product_focus (imageryRole), productGrid/editorial
+(asymmetry, then density), and productRail/horizontal (rhythm): leave it unset to get a
+strategy-driven default, or set it explicitly to override. productGrid/luxury_image_first
+has no content.layout — never set one on it.
 `.trim()
 
 const siteNodeSchema = z.object({
@@ -346,9 +349,11 @@ function buildDocument(
   // see strategyDefaults.ts. Explicit architect choices are never touched.
   const strategy = spec.creativeStrategy ?? ensureCreativeStrategy(spec)
   const withDefaults = applyStrategyDefaults(enriched as unknown as StrategyNode[], strategy) as unknown as typeof enriched
-  // Phase 4A/4B/4C/4D — same fill-only-if-unset contract, for content.layout on
-  // registered types (editorialSplit, productSpotlight, brandStatement, newsletter,
-  // collections, testimonials, reviews — see strategyDefaults.ts's LAYOUT_DEFAULT_RESOLVERS).
+  // Phase 4A/4B/4C/4D + Phase 5B — same fill-only-if-unset contract, for content.layout on
+  // registered (type, variant) compositions (editorialSplit/image_text, productSpotlight/
+  // feature, brandStatement/large_type, newsletter/quiet, collections/tiles, testimonials/
+  // editorial, reviews/wall, and — Phase 5B — all three hero variants + productGrid/editorial
+  // + productRail/horizontal — see strategyDefaults.ts's LAYOUT_DEFAULT_RESOLVERS).
   // Must run before validateRegistry below so a resolved default is checked exactly like
   // an architect-authored one.
   const withLayoutDefaults = applyLayoutDefaults(withDefaults, strategy) as unknown as typeof withDefaults

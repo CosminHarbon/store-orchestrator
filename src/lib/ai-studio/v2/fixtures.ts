@@ -147,12 +147,15 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
         type: 'hero',
         variant: 'luxury_minimal',
         visible: true,
+        // No content.layout set — exercises Phase 5B's strategy-driven default. This
+        // brand's imageryRole is 'dominant' (see creativeStrategy above), so
+        // applyLayoutDefaults should resolve 'cinematic' (deeper veil, eyebrow kicker,
+        // bottom-anchored copy), the same value this node used to hand-author explicitly.
         content: {
           title: 'Leather, quietly made.',
           subtitle: 'Handbags for women who prefer presence without noise.',
           cta: 'Enter the atelier',
           kicker: 'Villa Pelle — Est. Florence',
-          layout: 'cinematic',
         },
         design: { minHeight: '100vh', spacing: 'dramatic' },
         responsive: { mobile: { minHeight: '80vh' } },
@@ -457,12 +460,15 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
         type: 'hero',
         variant: 'editorial_split',
         visible: true,
+        // No content.layout set — exercises Phase 5B's strategy-driven default. This
+        // brand's asymmetry is 'high' (see creativeStrategy above), so applyLayoutDefaults
+        // should resolve 'asymmetric' (media offset off-center), the same value this node
+        // used to hand-author explicitly.
         content: {
           kicker: 'Drop 09',
           title: 'Oversized. Loud. Yours.',
           subtitle: 'Premium streetwear cut for city nights.',
           cta: 'Shop the drop',
-          layout: 'asymmetric',
         },
         design: { spacing: 'compact' },
         responsive: {},

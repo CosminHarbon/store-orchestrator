@@ -443,23 +443,33 @@ assert(
 );
 
 // applyLayoutDefaults: fill-only-if-unset, explicit authoring always wins.
-const storyNodeUnset: LayoutDefaultNode[] = [{ type: 'editorialSplit', content: {} }];
+// Phase 5B: resolvers are keyed by ${type}/${variant} now, so a real (architect-shaped)
+// node always carries its variant — every SiteNode does, per siteNodeSchema.
+const storyNodeUnset: LayoutDefaultNode[] = [{ type: 'editorialSplit', variant: 'image_text', content: {} }];
 const defaultedStory = applyLayoutDefaults(storyNodeUnset, dominantTypography);
 assert(defaultedStory[0].content?.layout === 'overlayStatement', 'applyLayoutDefaults fills content.layout from creativeStrategy when the architect left it unset');
 
-const storyNodeExplicit: LayoutDefaultNode[] = [{ type: 'editorialSplit', content: { layout: 'classicSplit' } }];
+const storyNodeExplicit: LayoutDefaultNode[] = [{ type: 'editorialSplit', variant: 'image_text', content: { layout: 'classicSplit' } }];
 const explicitStory = applyLayoutDefaults(storyNodeExplicit, dominantTypography);
 assert(
   explicitStory[0].content?.layout === 'classicSplit',
   'an explicit architect-authored content.layout always wins over the strategy default, even one that would otherwise resolve differently'
 );
 
-// A type with no registered layout-default rule (Phase 4A wires editorialSplit only) is untouched.
-const heroNodeUnset: LayoutDefaultNode[] = [{ type: 'hero', content: {} }];
-assert(applyLayoutDefaults(heroNodeUnset, dominantTypography)[0].content?.layout === undefined, 'a type with no registered layout-default rule (e.g. hero) is not touched by applyLayoutDefaults');
+// A (type, variant) with no registered layout-default rule is untouched. hero itself DOES
+// have registered rules now (Phase 5B: hero/editorial_split, hero/luxury_minimal,
+// hero/product_focus) — announcement/slim is used here instead as a type that genuinely
+// has none, so this test's premise stays true.
+const announcementNodeUnset: LayoutDefaultNode[] = [{ type: 'announcement', variant: 'slim', content: {} }];
+assert(applyLayoutDefaults(announcementNodeUnset, dominantTypography)[0].content?.layout === undefined, 'a (type, variant) with no registered layout-default rule (e.g. announcement/slim) is not touched by applyLayoutDefaults');
+
+// A node missing `variant` entirely (malformed/legacy-malformed input, not a real
+// architect-shaped node) is safely left untouched rather than matching the wrong resolver.
+const noVariantNode: LayoutDefaultNode[] = [{ type: 'editorialSplit', content: {} }];
+assert(applyLayoutDefaults(noVariantNode, dominantTypography)[0].content?.layout === undefined, 'a node with no variant at all is safely skipped (never matches a type-only resolver by accident)');
 
 // A legacy node with no `content` object at all still resolves a default safely.
-const legacyBareNode: LayoutDefaultNode[] = [{ type: 'editorialSplit' }];
+const legacyBareNode: LayoutDefaultNode[] = [{ type: 'editorialSplit', variant: 'image_text' }];
 assert(
   applyLayoutDefaults(legacyBareNode, dominantTypography)[0].content?.layout === 'overlayStatement',
   'a legacy node with no content object at all still resolves a default safely (no crash on missing content)'
@@ -516,12 +526,12 @@ assert(
   'three materially different creativeStrategy profiles produce three different productSpotlight layout defaults'
 );
 
-const spotlightNodeUnset: LayoutDefaultNode[] = [{ type: 'productSpotlight', content: {} }];
+const spotlightNodeUnset: LayoutDefaultNode[] = [{ type: 'productSpotlight', variant: 'feature', content: {} }];
 assert(
   applyLayoutDefaults(spotlightNodeUnset, boldSpotlight)[0].content?.layout === 'structuredFeature',
   'applyLayoutDefaults fills productSpotlight content.layout from creativeStrategy when the architect left it unset'
 );
-const spotlightNodeExplicit: LayoutDefaultNode[] = [{ type: 'productSpotlight', content: { layout: 'feature' } }];
+const spotlightNodeExplicit: LayoutDefaultNode[] = [{ type: 'productSpotlight', variant: 'feature', content: { layout: 'feature' } }];
 assert(
   applyLayoutDefaults(spotlightNodeExplicit, boldSpotlight)[0].content?.layout === 'feature',
   'an explicit architect-authored productSpotlight content.layout always wins over the strategy default'
@@ -572,12 +582,12 @@ assert(
   'three materially different typographyRole inputs produce three different brandStatement layout defaults'
 );
 
-const statementNodeUnset: LayoutDefaultNode[] = [{ type: 'brandStatement', content: {} }];
+const statementNodeUnset: LayoutDefaultNode[] = [{ type: 'brandStatement', variant: 'large_type', content: {} }];
 assert(
   applyLayoutDefaults(statementNodeUnset, dominantStatement)[0].content?.layout === 'anchoredLarge',
   'applyLayoutDefaults fills brandStatement content.layout from creativeStrategy when the architect left it unset'
 );
-const statementNodeExplicit: LayoutDefaultNode[] = [{ type: 'brandStatement', content: { layout: 'centered' } }];
+const statementNodeExplicit: LayoutDefaultNode[] = [{ type: 'brandStatement', variant: 'large_type', content: { layout: 'centered' } }];
 assert(
   applyLayoutDefaults(statementNodeExplicit, dominantStatement)[0].content?.layout === 'centered',
   'an explicit architect-authored brandStatement content.layout always wins over the strategy default'
@@ -632,12 +642,12 @@ assert(
   'three materially different typographyRole inputs produce three different newsletter layout defaults'
 );
 
-const newsletterNodeUnset: LayoutDefaultNode[] = [{ type: 'newsletter', content: {} }];
+const newsletterNodeUnset: LayoutDefaultNode[] = [{ type: 'newsletter', variant: 'quiet', content: {} }];
 assert(
   applyLayoutDefaults(newsletterNodeUnset, dominantNewsletter)[0].content?.layout === 'campaign',
   'applyLayoutDefaults fills newsletter content.layout from creativeStrategy when the architect left it unset'
 );
-const newsletterNodeExplicit: LayoutDefaultNode[] = [{ type: 'newsletter', content: { layout: 'statement' } }];
+const newsletterNodeExplicit: LayoutDefaultNode[] = [{ type: 'newsletter', variant: 'quiet', content: { layout: 'statement' } }];
 assert(
   applyLayoutDefaults(newsletterNodeExplicit, dominantNewsletter)[0].content?.layout === 'statement',
   'an explicit architect-authored newsletter content.layout always wins over the strategy default'
@@ -689,12 +699,12 @@ assert(
 assert(collectionsLayoutDefault({ asymmetry: 'high' }) === 'stacked', 'high asymmetry resolves to stacked (an alternating-reversal layout, a genuine asymmetric device)');
 assert(collectionsLayoutDefault({ asymmetry: 'medium' }) === 'editorial', 'medium asymmetry resolves to editorial (the safe default)');
 assert(collectionsLayoutDefault({ asymmetry: 'low' }) === 'editorial', 'low asymmetry resolves to editorial');
-const collectionsNodeExplicit: LayoutDefaultNode[] = [{ type: 'collections', content: { layout: 'editorial' } }];
+const collectionsNodeExplicit: LayoutDefaultNode[] = [{ type: 'collections', variant: 'tiles', content: { layout: 'editorial' } }];
 assert(
   applyLayoutDefaults(collectionsNodeExplicit, { density: 'high', asymmetry: 'high', rhythm: 'even', typographyRole: 'balanced', imageryRole: 'dominant' })[0].content?.layout === 'editorial',
   'an explicit architect-authored collections content.layout always wins over the strategy default, even one that would otherwise resolve to stacked'
 );
-const collectionsNodeUnset: LayoutDefaultNode[] = [{ type: 'collections', content: {} }];
+const collectionsNodeUnset: LayoutDefaultNode[] = [{ type: 'collections', variant: 'tiles', content: {} }];
 assert(
   applyLayoutDefaults(collectionsNodeUnset, { density: 'medium', asymmetry: 'high', rhythm: 'even', typographyRole: 'balanced', imageryRole: 'balanced' })[0].content?.layout === 'stacked',
   'applyLayoutDefaults fills collections content.layout from creativeStrategy when the architect left it unset'
@@ -709,7 +719,7 @@ assert(!isValidLayout('testimonials', 'editorial', 'video'), 'testimonials/edito
 assert(testimonialsLayoutDefault({ imageryRole: 'dominant' }) === 'imageQuote', 'dominant imagery resolves to imageQuote - previously opt-in only, see strategyDefaults.ts');
 assert(testimonialsLayoutDefault({ imageryRole: 'balanced' }) === 'quote', 'balanced imagery resolves to quote (the safe default)');
 assert(testimonialsLayoutDefault({ imageryRole: 'supporting' }) === 'quote', 'supporting imagery resolves to quote');
-const testimonialsNodeExplicit: LayoutDefaultNode[] = [{ type: 'testimonials', content: { layout: 'quote' } }];
+const testimonialsNodeExplicit: LayoutDefaultNode[] = [{ type: 'testimonials', variant: 'editorial', content: { layout: 'quote' } }];
 assert(
   applyLayoutDefaults(testimonialsNodeExplicit, { density: 'medium', asymmetry: 'medium', rhythm: 'even', typographyRole: 'balanced', imageryRole: 'dominant' })[0].content?.layout === 'quote',
   'an explicit architect-authored testimonials content.layout always wins over the strategy default, even one that would otherwise resolve to imageQuote'
@@ -737,7 +747,7 @@ assert(!isValidLayout('reviews', 'wall', 'summary'), 'reviews/wall still rejects
 assert(reviewsLayoutDefault({ density: 'high' }) === 'grid', 'high density resolves to grid (a dense proof grid), matching the renderer\'s own pre-existing comment intent');
 assert(reviewsLayoutDefault({ density: 'medium' }) === 'index', 'medium density resolves to index (the safe, pre-existing default)');
 assert(reviewsLayoutDefault({ density: 'low' }) === 'index', 'low density resolves to index');
-const reviewsNodeExplicit: LayoutDefaultNode[] = [{ type: 'reviews', content: { layout: 'index' } }];
+const reviewsNodeExplicit: LayoutDefaultNode[] = [{ type: 'reviews', variant: 'wall', content: { layout: 'index' } }];
 assert(
   applyLayoutDefaults(reviewsNodeExplicit, { density: 'high', asymmetry: 'medium', rhythm: 'even', typographyRole: 'balanced', imageryRole: 'balanced' })[0].content?.layout === 'index',
   'an explicit architect-authored reviews content.layout always wins over the strategy default, even one that would otherwise resolve to grid'
