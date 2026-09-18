@@ -572,3 +572,66 @@ export function normalizeDesignSemanticsForNodes(nodes: ConstraintNode[]): Const
     return { ...node, design: normalizeDesignSemantics(node.type, layout, node.design) };
   });
 }
+
+/** Mirrors NavigationBehavior's own union (creativeStrategy.ts) as a plain literal type rather
+ *  than importing it — same reason StrategyInput above hand-mirrors its fields: this module
+ *  stays import-free of the zod-schema half of creativeStrategy.ts, which differs between the
+ *  Deno and npm zod runtimes. */
+export type NavigationBehaviorInput = 'quiet_overlay' | 'solid_compact' | 'bold_campaign' | 'minimal_chrome';
+
+export type ChromeVariants = {
+  navVariant: 'transparent' | 'minimal';
+  footerVariant: 'editorial_luxury' | 'minimal_commerce';
+};
+
+/**
+ * Phase 5C.3 — deterministic nav/footer variant pair for a given navigationBehavior.
+ *
+ * GENERATION-TIME ONLY. Call this exactly once, inside the initial architect-generation
+ * pipeline (aiStudioV2.ts's buildDocument), before a SiteDocument is first persisted — see
+ * the Phase 5C.3A audit. Do NOT call this from SiteTree load/parse, SiteOps apply, critique
+ * application, or the renderer: once a SiteDocument exists, node.variant is ordinary editable
+ * document state, and there is no field-level provenance to distinguish an LLM-authored
+ * variant from a later user edit (e.g. a future "make the navigation solid" conversational
+ * edit via SiteOps). Repairing on every load/edit would silently revert that kind of edit.
+ */
+export function resolveChromeVariants(navigationBehavior: NavigationBehaviorInput): ChromeVariants {
+  switch (navigationBehavior) {
+    case 'quiet_overlay':
+    case 'minimal_chrome':
+      return { navVariant: 'transparent', footerVariant: 'editorial_luxury' };
+    case 'solid_compact':
+    case 'bold_campaign':
+      return { navVariant: 'minimal', footerVariant: 'minimal_commerce' };
+  }
+}
+
+/** Minimal shape applyChromeVariants needs — mirrors LayoutDefaultNode's own convention
+ *  (plain, non-generic in/out; see applyLayoutDefaults' comment for why a generic here
+ *  would fight TypeScript for no real benefit). */
+export type ChromeVariantNode = { type: string; variant?: string };
+
+/**
+ * Repairs `variant` on nav/footer nodes to match navigationBehavior deterministically.
+ * GENERATION-TIME ONLY — see resolveChromeVariants' doc comment above; this function has
+ * the exact same call-site restriction. Only nav/footer nodes are ever touched, and only
+ * when their variant differs from the resolved value — an already-coherent node (or any
+ * other node type) is returned by reference, unchanged. All other fields (id, content,
+ * design, responsive, dataBindings, meta) are preserved exactly. Returns a NEW array;
+ * does not mutate input nodes.
+ */
+export function applyChromeVariants(
+  nodes: ChromeVariantNode[],
+  navigationBehavior: NavigationBehaviorInput
+): ChromeVariantNode[] {
+  const { navVariant, footerVariant } = resolveChromeVariants(navigationBehavior);
+  return nodes.map((node) => {
+    if (node.type === 'nav' && node.variant !== navVariant) {
+      return { ...node, variant: navVariant };
+    }
+    if (node.type === 'footer' && node.variant !== footerVariant) {
+      return { ...node, variant: footerVariant };
+    }
+    return node;
+  });
+}

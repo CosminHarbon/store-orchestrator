@@ -17,7 +17,7 @@ import {
   type CreativeStrategy,
 } from '../../../shared/ai-studio-v2/creativeStrategy.ts'
 import { summarizeDesignSpecValidation } from '../../../shared/ai-studio-v2/designSpecValidation.ts'
-import { applyStrategyDefaults, applyLayoutDefaults, normalizeDesignSemantics, type StrategyNode } from '../../../shared/ai-studio-v2/strategyDefaults.ts'
+import { applyStrategyDefaults, applyLayoutDefaults, normalizeDesignSemantics, applyChromeVariants, type StrategyNode } from '../../../shared/ai-studio-v2/strategyDefaults.ts'
 import { isValidLayout } from '../../../shared/ai-studio-v2/compositionLayouts.ts'
 import {
   buildMerchantFacts,
@@ -357,7 +357,13 @@ function buildDocument(
   // Must run before validateRegistry below so a resolved default is checked exactly like
   // an architect-authored one.
   const withLayoutDefaults = applyLayoutDefaults(withDefaults, strategy) as unknown as typeof withDefaults
-  const nodes = withLayoutDefaults.map((node) =>
+  // Phase 5C.3 — deterministic nav/footer variant repair from navigationBehavior. Generation-
+  // time-only: this call site (buildDocument) runs exclusively inside the initial architect-
+  // generation pipeline, before the SiteDocument is ever persisted — see applyChromeVariants'
+  // own doc comment (strategyDefaults.ts) and the Phase 5C.3A audit. Never call this from
+  // SiteTree load, SiteOps apply, critique application, or the renderer.
+  const withChromeVariants = applyChromeVariants(withLayoutDefaults, strategy.navigationBehavior) as unknown as typeof withLayoutDefaults
+  const nodes = withChromeVariants.map((node) =>
     node.design
       ? {
           ...node,
@@ -454,7 +460,7 @@ STRATEGY EXPRESSION (required):
   even → controlled regular pacing
 - typographyRole=dominant_structural → include brandStatement/large_type and let type lead; do not ship a photo-only site with merely larger headings
 - imageryRole=dominant → favor fullBleed/bleed heroes, mosaics, editorial imagery; supporting → let type/product info structure more
-- navigationBehavior → nav variant (quiet_overlay/minimal_chrome → transparent; solid_compact/bold_campaign → minimal)
+- navigationBehavior → nav variant AND footer variant, same chrome strategy (quiet_overlay/minimal_chrome → nav transparent + footer editorial_luxury; solid_compact/bold_campaign → nav minimal + footer minimal_commerce). This pairing is enforced after generation — get it right the first time rather than relying on the repair.
 - Apply design.measure / fullBleed / spacing / alignment / emphasis so strategy is visible in layout — not only in copy
 - OMIT sections that fight the strategy (e.g. skip testimonials/newsletter when distinctivenessBrief or mustAvoid says so)
 - Do NOT default to Hero→Products→Features→Testimonials→FAQ→Footer
