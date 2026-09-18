@@ -45,7 +45,6 @@ const surprise = withCreativeStrategy({
   creativeMode: 'surprise',
   creativeStrategy: {
     pageComposition: 'playful_blocks',
-    narrativeModel: 'campaign',
     heroPhilosophy: 'typography_first',
     commerceEntry: 'immediate',
     commerceModel: 'dense_catalogue',

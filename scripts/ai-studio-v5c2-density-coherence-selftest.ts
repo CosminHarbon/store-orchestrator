@@ -124,7 +124,6 @@ function minimalSpec(overrides: {
 function strategyWithDensity(density: Density) {
   return {
     pageComposition: 'editorial_journey',
-    narrativeModel: 'editorial',
     heroPhilosophy: 'atmosphere_first',
     commerceEntry: 'mid',
     commerceModel: 'flagship_then_rail',

@@ -231,7 +231,6 @@ const dominantBrand = brandDesignSystemFromSpec(
   minimalSpec({
     creativeStrategy: {
       pageComposition: 'dense_campaign',
-      narrativeModel: 'campaign',
       heroPhilosophy: 'typography_first',
       commerceEntry: 'early',
       commerceModel: 'dense_catalogue',

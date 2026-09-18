@@ -309,5 +309,5 @@ ${validationErrors}
 
 Keep colors, fonts, archetype, and designIntent meaning intact unless an error requires changing them.
 
-Preserve the draft's creativeStrategy object verbatim (all 13 fields) unless a validation error names a creativeStrategy path. It carries the page architecture decision and must not be dropped or re-invented during repair.`;
+Preserve the draft's creativeStrategy object verbatim (all 12 fields) unless a validation error names a creativeStrategy path. It carries the page architecture decision and must not be dropped or re-invented during repair.`;
 }

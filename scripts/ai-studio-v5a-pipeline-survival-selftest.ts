@@ -31,7 +31,6 @@ const parseDesignSpecPayload = (json: unknown) =>
 
 const AUTHORED_STRATEGY = {
   pageComposition: 'typography_led',
-  narrativeModel: 'chaptered',
   heroPhilosophy: 'typography_first',
   commerceEntry: 'delayed',
   commerceModel: 'collection_first',

@@ -125,7 +125,6 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
       // that production documents get, instead of only its own hand-set spacing values.
       creativeStrategy: {
         pageComposition: 'editorial_journey',
-        narrativeModel: 'editorial',
         heroPhilosophy: 'atmosphere_first',
         commerceEntry: 'delayed',
         commerceModel: 'single_artifact',
@@ -282,7 +281,6 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
       // the fixed 3-tier cycle) instead of matching what plain inference would give ('even').
       creativeStrategy: {
         pageComposition: 'editorial_journey',
-        narrativeModel: 'editorial',
         heroPhilosophy: 'atmosphere_first',
         commerceEntry: 'mid',
         commerceModel: 'flagship_then_rail',
@@ -438,7 +436,6 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
       // Explicit creativeStrategy (see Villa Pelle above for why).
       creativeStrategy: {
         pageComposition: 'dense_campaign',
-        narrativeModel: 'campaign',
         heroPhilosophy: 'typography_first',
         commerceEntry: 'early',
         commerceModel: 'dense_catalogue',
@@ -660,7 +657,6 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
       // Explicit creativeStrategy (see Villa Pelle above for why).
       creativeStrategy: {
         pageComposition: 'technical_story',
-        narrativeModel: 'product_journey',
         heroPhilosophy: 'product_as_artifact',
         commerceEntry: 'immediate',
         commerceModel: 'spec_story',
@@ -809,7 +805,6 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
       // Explicit creativeStrategy (see Villa Pelle above for why).
       creativeStrategy: {
         pageComposition: 'editorial_journey',
-        narrativeModel: 'editorial',
         heroPhilosophy: 'atmosphere_first',
         commerceEntry: 'mid',
         commerceModel: 'flagship_then_rail',

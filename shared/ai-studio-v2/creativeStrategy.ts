@@ -17,14 +17,6 @@ export const PAGE_COMPOSITIONS = [
   'asymmetric_magazine',
 ] as const;
 
-export const NARRATIVE_MODELS = [
-  'editorial',
-  'campaign',
-  'catalogue',
-  'chaptered',
-  'product_journey',
-] as const;
-
 export const HERO_PHILOSOPHIES = [
   'atmosphere_first',
   'typography_first',
@@ -81,7 +73,6 @@ export const SILHOUETTE_TOKENS = [
 ] as const;
 
 export type PageComposition = (typeof PAGE_COMPOSITIONS)[number];
-export type NarrativeModel = (typeof NARRATIVE_MODELS)[number];
 export type HeroPhilosophy = (typeof HERO_PHILOSOPHIES)[number];
 export type CommerceEntry = (typeof COMMERCE_ENTRIES)[number];
 export type CommerceModel = (typeof COMMERCE_MODELS)[number];
@@ -95,7 +86,6 @@ export type ExperimentationLevel = (typeof EXPERIMENTATION_LEVELS)[number];
 
 export type CreativeStrategy = {
   pageComposition: PageComposition;
-  narrativeModel: NarrativeModel;
   heroPhilosophy: HeroPhilosophy;
   commerceEntry: CommerceEntry;
   commerceModel: CommerceModel;
@@ -108,19 +98,6 @@ export type CreativeStrategy = {
   experimentationLevel: ExperimentationLevel;
   /** Specific architectural anti-pattern to avoid — not vague "be distinctive" */
   distinctivenessBrief: string;
-};
-
-/**
- * Phase 5D.4A — shape actually produced by buildCreativeStrategySchema's parser:
- * identical to CreativeStrategy except narrativeModel is optional, so a NEW reader
- * can safely parse a legacy row/draft that still has it, or a future row/draft
- * that has stopped emitting it. This is raw/pre-normalization input only — every
- * consumer that needs a guaranteed narrativeModel must go through
- * ensureCreativeStrategy (or withCreativeStrategy), which always returns a full
- * CreativeStrategy. Do not widen CreativeStrategy itself for this.
- */
-export type CreativeStrategyInput = Omit<CreativeStrategy, 'narrativeModel'> & {
-  narrativeModel?: NarrativeModel;
 };
 
 export type ArchitectureFingerprint = {
@@ -147,13 +124,6 @@ export const DISTINCTIVENESS_BRIEF_MAX = 280;
 export function buildCreativeStrategySchema(z: Zod) {
   return z.object({
     pageComposition: z.enum(PAGE_COMPOSITIONS),
-    /** Phase 5D.4A — read-compatibility only: accept rows/drafts written before or
-     *  after this field is emitted. ensureCreativeStrategy still normalizes every
-     *  CreativeStrategy to always carry a valid narrativeModel (inferred if absent
-     *  or invalid) — this optional() only widens what buildCreativeStrategySchema
-     *  itself will accept as input. Generation still emits it (Phase 5D.4A does not
-     *  change inference or the prompt). */
-    narrativeModel: z.enum(NARRATIVE_MODELS).optional(),
     heroPhilosophy: z.enum(HERO_PHILOSOPHIES),
     commerceEntry: z.enum(COMMERCE_ENTRIES),
     commerceModel: z.enum(COMMERCE_MODELS),
@@ -243,7 +213,6 @@ export function inferCreativeStrategy(spec: LooseSpec): CreativeStrategy {
         : 'medium';
 
   let pageComposition: PageComposition = 'editorial_journey';
-  let narrativeModel: NarrativeModel = 'editorial';
   let heroPhilosophy: HeroPhilosophy = 'atmosphere_first';
   let commerceEntry: CommerceEntry = 'mid';
   let commerceModel: CommerceModel = 'flagship_then_rail';
@@ -267,7 +236,6 @@ export function inferCreativeStrategy(spec: LooseSpec): CreativeStrategy {
     asymmetry = 'medium';
   } else if (presentation === 'street' || /street|urban|drop|campaign/.test(archetype)) {
     pageComposition = 'dense_campaign';
-    narrativeModel = 'campaign';
     heroPhilosophy = 'typography_first';
     commerceEntry = 'early';
     commerceModel = 'dense_catalogue';
@@ -279,7 +247,6 @@ export function inferCreativeStrategy(spec: LooseSpec): CreativeStrategy {
     navigationBehavior = 'bold_campaign';
   } else if (presentation === 'tech' || /tech|audio|precision|spec/.test(archetype)) {
     pageComposition = 'technical_story';
-    narrativeModel = 'product_journey';
     heroPhilosophy = 'product_as_artifact';
     commerceEntry = 'immediate';
     commerceModel = 'spec_story';
@@ -289,7 +256,6 @@ export function inferCreativeStrategy(spec: LooseSpec): CreativeStrategy {
     asymmetry = 'low';
   } else if (/catalogue|catalog|collection/.test(discovery)) {
     pageComposition = 'catalogue_first';
-    narrativeModel = 'catalogue';
     heroPhilosophy = 'immediate_offer';
     commerceEntry = 'immediate';
     commerceModel = 'dense_catalogue';
@@ -321,7 +287,6 @@ export function inferCreativeStrategy(spec: LooseSpec): CreativeStrategy {
 
   return {
     pageComposition,
-    narrativeModel,
     heroPhilosophy,
     commerceEntry,
     commerceModel,
@@ -345,9 +310,6 @@ export function ensureCreativeStrategy(spec: LooseSpec): CreativeStrategy {
     pageComposition: (PAGE_COMPOSITIONS as readonly string[]).includes(raw.pageComposition as string)
       ? (raw.pageComposition as PageComposition)
       : inferred.pageComposition,
-    narrativeModel: (NARRATIVE_MODELS as readonly string[]).includes(raw.narrativeModel as string)
-      ? (raw.narrativeModel as NarrativeModel)
-      : inferred.narrativeModel,
     heroPhilosophy: (HERO_PHILOSOPHIES as readonly string[]).includes(raw.heroPhilosophy as string)
       ? (raw.heroPhilosophy as HeroPhilosophy)
       : inferred.heroPhilosophy,
@@ -503,7 +465,6 @@ export function creativeStrategyPromptBlock(): string {
   return `creativeStrategy (REQUIRED — page architecture intent, decided BEFORE polishing colors/fonts):
 {
   "pageComposition": "cinematic_scroll|editorial_journey|dense_campaign|catalogue_first|typography_led|product_artifact|modular_grid|technical_story|playful_blocks|asymmetric_magazine",
-  "narrativeModel": "editorial|campaign|catalogue|chaptered|product_journey",
   "heroPhilosophy": "atmosphere_first|typography_first|product_as_artifact|split_editorial|immediate_offer",
   "commerceEntry": "immediate|early|mid|delayed",
   "commerceModel": "flagship_then_rail|dense_catalogue|shoppable_editorial|collection_first|single_artifact|spec_story",
