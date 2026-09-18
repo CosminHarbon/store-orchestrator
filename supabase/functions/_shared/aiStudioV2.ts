@@ -14,7 +14,7 @@ import {
   commerceEntryBandWarning,
   ensureCreativeStrategy,
   type ArchitectureFingerprint,
-  type CreativeStrategy,
+  type CreativeStrategyInput,
 } from '../../../shared/ai-studio-v2/creativeStrategy.ts'
 import { summarizeDesignSpecValidation } from '../../../shared/ai-studio-v2/designSpecValidation.ts'
 import { applyStrategyDefaults, applyLayoutDefaults, normalizeDesignSemantics, applyChromeVariants, type StrategyNode } from '../../../shared/ai-studio-v2/strategyDefaults.ts'
@@ -502,8 +502,11 @@ function parseDesignSpecPayload(json: unknown) {
   return designSpecSchema.safeParse({ version: 1, ...(json as object) })
 }
 
-/** Compact trace of the authored strategy — no prompts, no merchant data. */
-function phase5aStrategyTrace(spec: { creativeStrategy?: CreativeStrategy | undefined }) {
+/** Compact trace of the authored strategy — no prompts, no merchant data.
+ *  Reads directly-parsed (pre-ensureCreativeStrategy) DesignSpec data, so the
+ *  input type is CreativeStrategyInput (narrativeModel optional), not the
+ *  normalized CreativeStrategy. None of the fields read here are narrativeModel. */
+function phase5aStrategyTrace(spec: { creativeStrategy?: CreativeStrategyInput | undefined }) {
   const cs = spec.creativeStrategy
   if (!cs) return 'absent (will be inferred by ensureCreativeStrategy)'
   return `${cs.pageComposition}/${cs.heroPhilosophy}/${cs.commerceEntry}/${cs.rhythm}/exp=${cs.experimentationLevel}`

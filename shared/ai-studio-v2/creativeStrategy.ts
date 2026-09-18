@@ -110,6 +110,19 @@ export type CreativeStrategy = {
   distinctivenessBrief: string;
 };
 
+/**
+ * Phase 5D.4A — shape actually produced by buildCreativeStrategySchema's parser:
+ * identical to CreativeStrategy except narrativeModel is optional, so a NEW reader
+ * can safely parse a legacy row/draft that still has it, or a future row/draft
+ * that has stopped emitting it. This is raw/pre-normalization input only — every
+ * consumer that needs a guaranteed narrativeModel must go through
+ * ensureCreativeStrategy (or withCreativeStrategy), which always returns a full
+ * CreativeStrategy. Do not widen CreativeStrategy itself for this.
+ */
+export type CreativeStrategyInput = Omit<CreativeStrategy, 'narrativeModel'> & {
+  narrativeModel?: NarrativeModel;
+};
+
 export type ArchitectureFingerprint = {
   pageComposition: PageComposition | 'unknown';
   heroFamily: 'full_bleed' | 'split' | 'product' | 'unknown';
@@ -134,7 +147,13 @@ export const DISTINCTIVENESS_BRIEF_MAX = 280;
 export function buildCreativeStrategySchema(z: Zod) {
   return z.object({
     pageComposition: z.enum(PAGE_COMPOSITIONS),
-    narrativeModel: z.enum(NARRATIVE_MODELS),
+    /** Phase 5D.4A — read-compatibility only: accept rows/drafts written before or
+     *  after this field is emitted. ensureCreativeStrategy still normalizes every
+     *  CreativeStrategy to always carry a valid narrativeModel (inferred if absent
+     *  or invalid) — this optional() only widens what buildCreativeStrategySchema
+     *  itself will accept as input. Generation still emits it (Phase 5D.4A does not
+     *  change inference or the prompt). */
+    narrativeModel: z.enum(NARRATIVE_MODELS).optional(),
     heroPhilosophy: z.enum(HERO_PHILOSOPHIES),
     commerceEntry: z.enum(COMMERCE_ENTRIES),
     commerceModel: z.enum(COMMERCE_MODELS),
