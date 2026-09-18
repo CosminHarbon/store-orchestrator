@@ -28,6 +28,28 @@ export const COMPOSITION_LAYOUTS = {
   'testimonials/editorial': ['quote', 'imageQuote'],
   'reviews/wall': ['index', 'grid'],
   'collections/tiles': ['editorial', 'stacked'],
+  /** Phase 4A — 'classicSplit' is the pre-existing (and default/fallback) shape: a plain
+   *  2-col media/copy grid. 'offsetNarrow' and 'overlayStatement' are new, structurally
+   *  distinct compositions (see compositions.tsx EditorialSplitImageText) — not cosmetic
+   *  variants of the same grid. */
+  'editorialSplit/image_text': ['classicSplit', 'offsetNarrow', 'overlayStatement'],
+  /** Phase 4B — 'feature' is the pre-existing (and default/fallback) shape. 'imageDominant'
+   *  and 'structuredFeature' are structurally distinct (ratio, ordering, and placement all
+   *  change — see compositions.tsx ProductSpotlightFeature), not cosmetic variants. */
+  'productSpotlight/feature': ['feature', 'imageDominant', 'structuredFeature'],
+  /** Phase 4B — 'centered' is the pre-existing (and default/fallback) shape: one centered
+   *  paragraph. 'splitStatement' and 'anchoredLarge' are structurally distinct (grid
+   *  placement / breaking out of the content canvas — see compositions.tsx
+   *  BrandStatementLarge), not a font-size or color variant of the same block. */
+  'brandStatement/large_type': ['centered', 'splitStatement', 'anchoredLarge'],
+  /** Phase 4C — 'statement' is the pre-existing (and default/fallback) shape: a centered
+   *  headline + form stack. It was already the `layoutOf()` fallback in compositions.tsx
+   *  before this phase, but had no entry here — meaning any architect-authored
+   *  content.layout on newsletter/quiet, including this exact default string, was
+   *  REJECTED by isValidLayout (see aiStudioV2.ts's validateRegistry), not just inert.
+   *  'split' and 'campaign' are new, structurally distinct compositions (see
+   *  compositions.tsx NewsletterQuiet) — not cosmetic variants of the same stack. */
+  'newsletter/quiet': ['statement', 'split', 'campaign'],
 } as const;
 
 export type CompositionLayoutKey = keyof typeof COMPOSITION_LAYOUTS;

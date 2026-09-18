@@ -17,7 +17,7 @@ import {
   type CreativeStrategy,
 } from '../../../shared/ai-studio-v2/creativeStrategy.ts'
 import { summarizeDesignSpecValidation } from '../../../shared/ai-studio-v2/designSpecValidation.ts'
-import { applyStrategyDefaults, normalizeDesignSemantics, type StrategyNode } from '../../../shared/ai-studio-v2/strategyDefaults.ts'
+import { applyStrategyDefaults, applyLayoutDefaults, normalizeDesignSemantics, type StrategyNode } from '../../../shared/ai-studio-v2/strategyDefaults.ts'
 import { isValidLayout } from '../../../shared/ai-studio-v2/compositionLayouts.ts'
 import {
   buildMerchantFacts,
@@ -77,14 +77,14 @@ REGISTERED COMPOSITIONS (type/variant — execution vocabulary ONLY; never inven
 - productGrid/editorial: catalog grid (layout?: featureFirst|standardEditorial|asymmetricFeature|dense). asymmetricFeature = one oversized anchor tile + a denser fill grid around it. dense = tighter multi-column grid, more items visible, no feature tile. Content: { title, presentation }
 - productGrid/luxury_image_first: single oversized column of full-bleed product imagery, minimal metadata — a genuinely different silhouette from editorial, not a density variant of it. Use when the brand wants maximum imagery, minimum chrome. Content: { title? }
 - productRail/horizontal: horizontal product discovery (layout?: uniform|alternatingOversized). alternatingOversized = every third tile breaks scale for a syncopated rhythm. Content: { title, presentation }
-- productSpotlight/feature: single flagship product beat. Content: { title, body, cta, presentation }
-- editorialSplit/image_text: image/text narrative beat. Content: { title, body, imageUrl?, imagePosition? }
-- brandStatement/large_type: typography-led manifesto pause. Content: { statement, subtext? }
+- productSpotlight/feature: single flagship product beat (layout?: feature|imageDominant|structuredFeature). feature = plain 2-col split (default). imageDominant = image widens, copy narrows and bottom-anchors — image-led. structuredFeature = copy leads in ratio AND ordering, image becomes the secondary block — assertive, information-forward. Content: { title, body, cta, presentation }
+- editorialSplit/image_text: image/text narrative beat (layout?: classicSplit|offsetNarrow|overlayStatement). classicSplit = plain even split (default). offsetNarrow = asymmetric ratio + a narrower, offset copy block — image-led, restrained copy. overlayStatement = full-width image with an oversized statement-scale copy panel overlapping it — typography-led, graphic placement. Content: { title, body, imageUrl?, reverse?: boolean }
+- brandStatement/large_type: typography-led manifesto pause (layout?: centered|splitStatement|anchoredLarge). centered = single centered statement (default). splitStatement = narrow statement + a subtext line in a second column — restrained, editorial. anchoredLarge = statement breaks outside the content canvas edge-to-edge — assertive, typography-led. Content: { statement, subtext? }
 - editorialMosaic/asymmetric: multi-image mosaic (layout?: magazine|immersive). Content: { title? }
 - testimonials/editorial: social proof (omit if wrong for brand). Content: { title?, layout?: quote|imageQuote }
 - reviews/wall: aggregate ratings (layout?: index|grid). index = editorial vertical list (default). grid = dense card grid, better for catalogue_first/dense_campaign pages. Content: { title? }
 - collections/tiles: collection discovery (layout?: editorial|stacked). stacked = full-width alternating rows instead of a 4-tile grid. Content: { title? }
-- newsletter/quiet: list capture (omit if wrong for brand). Content: { title, subtitle?, cta? }
+- newsletter/quiet: list capture (omit if wrong for brand; layout?: statement|split|campaign). statement = centered headline + form (default). split = copy and form in distinct side-by-side regions. campaign = full-width bordered band, oversized heading, message and form inline — denser, more assertive. Content: { title, text?, kicker? }
 - announcement/slim: slim promo/shipping strip. Content: { text }
 - footer/minimal_commerce: compact commerce close. Content: { storeName, text? }
 - footer/editorial_luxury: editorial closing note. Content: { storeName, blurb?, text? }
@@ -109,6 +109,10 @@ responsive.mobile.hide: drop this node entirely on mobile (e.g. a dense secondar
 responsive.mobile.spacing / minHeight: as above, mobile-only
 Design knobs you leave unset are filled deterministically from creativeStrategy
 (density/asymmetry/rhythm/typographyRole/imageryRole) — you do not have to set every field.
+The same applies to content.layout on editorialSplit/image_text, productSpotlight/feature,
+brandStatement/large_type, newsletter/quiet, collections/tiles (asymmetry), testimonials/
+editorial (imageryRole), and reviews/wall (density): leave it unset to get a
+strategy-driven default, or set it explicitly to override.
 `.trim()
 
 const siteNodeSchema = z.object({
@@ -342,7 +346,13 @@ function buildDocument(
   // see strategyDefaults.ts. Explicit architect choices are never touched.
   const strategy = spec.creativeStrategy ?? ensureCreativeStrategy(spec)
   const withDefaults = applyStrategyDefaults(enriched as unknown as StrategyNode[], strategy) as unknown as typeof enriched
-  const nodes = withDefaults.map((node) =>
+  // Phase 4A/4B/4C/4D — same fill-only-if-unset contract, for content.layout on
+  // registered types (editorialSplit, productSpotlight, brandStatement, newsletter,
+  // collections, testimonials, reviews — see strategyDefaults.ts's LAYOUT_DEFAULT_RESOLVERS).
+  // Must run before validateRegistry below so a resolved default is checked exactly like
+  // an architect-authored one.
+  const withLayoutDefaults = applyLayoutDefaults(withDefaults, strategy) as unknown as typeof withDefaults
+  const nodes = withLayoutDefaults.map((node) =>
     node.design
       ? {
           ...node,

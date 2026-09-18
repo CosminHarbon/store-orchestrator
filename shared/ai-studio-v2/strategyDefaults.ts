@@ -51,9 +51,14 @@ const DENSITY_SPACING: Record<StrategyInput['density'], NonNullable<StrategyDesi
   high: 'compact',
 };
 
-/** Node types where "emphasis" and full-bleed imagery meaningfully register visually. */
-const STATEMENT_TYPES = new Set(['hero', 'brandStatement']);
-const IMAGE_LED_TYPES = new Set(['hero', 'productSpotlight', 'editorialSplit', 'editorialMosaic']);
+/** Node types where "emphasis" and full-bleed imagery meaningfully register visually.
+ *  Phase 4D adds `testimonials` (a real photo exists in the imageQuote layout — see
+ *  assetResolver.ts's SINGLE_SLOTS, and its quote text is a genuine emphasis moment like
+ *  brandStatement's) and `collections` (image-heavy by nature; fullBleed here means the
+ *  whole tiles block spans edge-to-edge via the existing [data-bleed='1'] > .ai-v2-wrap
+ *  rule, not a new CSS mechanism). */
+const STATEMENT_TYPES = new Set(['hero', 'brandStatement', 'testimonials']);
+const IMAGE_LED_TYPES = new Set(['hero', 'productSpotlight', 'editorialSplit', 'editorialMosaic', 'testimonials', 'collections']);
 /** Chrome/utility nodes are deliberately excluded from rhythm/asymmetry pacing — a nav or
  *  footer swinging between "compact" and "dramatic" spacing per rhythm reads as a bug, not a
  *  design choice. */
@@ -151,6 +156,197 @@ export function applyStrategyDefaults(nodes: StrategyNode[], strategy: StrategyI
       rhythmIndex += 1;
     }
     return { ...node, design };
+  });
+}
+
+/**
+ * Phase 4A — content.layout defaults for supporting sections, sibling to
+ * applyStrategyDefaults but for the STRUCTURAL (content.layout) axis instead of the
+ * cosmetic (design) one. Deliberately reuses the same two creativeStrategy signals that
+ * already govern editorialSplit's imagery weight (imageryRole, via IMAGE_LED_TYPES above)
+ * and hero/brandStatement emphasis (typographyRole, via STATEMENT_TYPES) — no new signal,
+ * no archetype-string matching, no productPresentation (that field is scoped to product
+ * chrome only — see designSpecSchema.ts's productPresentation description).
+ */
+export type EditorialSplitLayout = 'classicSplit' | 'offsetNarrow' | 'overlayStatement';
+
+/**
+ * typographyRole is checked first because it is the stronger structural signal for this
+ * section: 'dominant_structural' means the brand wants typography to carry weight, which
+ * 'overlayStatement' expresses directly (oversized statement-scale heading overlapping the
+ * image). Otherwise, imageryRole decides between an image-led asymmetric composition
+ * ('offsetNarrow', for imageryRole:'dominant' brands that still want quiet/balanced type)
+ * and the plain structured split ('classicSplit', the safe default for balanced/supporting
+ * imagery). This never reads density/asymmetry/rhythm — those already reach editorialSplit
+ * through applyStrategyDefaults' design knobs (spacing/alignment/measure/fullBleed) and
+ * would be redundant here.
+ */
+export function editorialSplitLayoutDefault(
+  strategy: Pick<StrategyInput, 'typographyRole' | 'imageryRole'>
+): EditorialSplitLayout {
+  if (strategy.typographyRole === 'dominant_structural') return 'overlayStatement';
+  if (strategy.imageryRole === 'dominant') return 'offsetNarrow';
+  return 'classicSplit';
+}
+
+export type ProductSpotlightLayout = 'feature' | 'imageDominant' | 'structuredFeature';
+
+/**
+ * Phase 4B — same two-signal precedence as editorialSplitLayoutDefault, and deliberately
+ * so: typographyRole checked first because a brand that wants typography to carry
+ * structural weight also wants its single flagship-product beat to read as copy-led and
+ * assertive ('structuredFeature': copy leads in both ratio AND document order, image
+ * becomes the secondary block) rather than a quiet image showcase. Otherwise, imageryRole
+ * decides between an image-led asymmetric composition ('imageDominant', for imageryRole:
+ * 'dominant' brands with quiet/balanced typography) and the plain feature split
+ * ('feature', the safe default). Never reads productPresentation — see Phase 4A's
+ * architectural finding (designSpecSchema.ts's productPresentation description): that
+ * field is scoped to per-card chrome (ProductPresentation.tsx), a different, narrower
+ * concern from this section's own composition geometry.
+ */
+export function productSpotlightLayoutDefault(
+  strategy: Pick<StrategyInput, 'typographyRole' | 'imageryRole'>
+): ProductSpotlightLayout {
+  if (strategy.typographyRole === 'dominant_structural') return 'structuredFeature';
+  if (strategy.imageryRole === 'dominant') return 'imageDominant';
+  return 'feature';
+}
+
+export type BrandStatementLayout = 'centered' | 'splitStatement' | 'anchoredLarge';
+
+/**
+ * Phase 4B — brandStatement has no imagery of its own, so typographyRole alone is the
+ * correct discriminator for its STRUCTURAL axis (asymmetry already reaches it through the
+ * existing, unrelated data-align mechanism — see applyStrategyDefaults' asymmetryAlignment
+ * above — and doesn't need a second, redundant layout-level knob): 'dominant_structural'
+ * gets 'anchoredLarge' (breaks out of the content canvas — the same "let typography own
+ * the composition" idea as editorialSplit's overlayStatement); 'quiet' gets
+ * 'splitStatement' (a narrow statement + generous whitespace + an editorial secondary
+ * line, i.e. restrained composition, not just a smaller font size); 'balanced' keeps
+ * 'centered', the safe, already-controlled default.
+ */
+export function brandStatementLayoutDefault(
+  strategy: Pick<StrategyInput, 'typographyRole'>
+): BrandStatementLayout {
+  if (strategy.typographyRole === 'dominant_structural') return 'anchoredLarge';
+  if (strategy.typographyRole === 'quiet') return 'splitStatement';
+  return 'centered';
+}
+
+export type NewsletterLayout = 'statement' | 'split' | 'campaign';
+
+/**
+ * Phase 4C — newsletter has no imagery slot at all (not in IMAGE_LED_TYPES, not in
+ * assetResolver.ts's SINGLE_SLOTS), so imageryRole is deliberately never consulted here —
+ * consuming it would mean fabricating an image relationship the section doesn't have.
+ * typographyRole alone already discriminates all three fixtures this phase's QA relies on
+ * (quiet/balanced/dominant_structural -> three different layouts), so density/asymmetry/
+ * rhythm are left alone rather than stacking a second redundant axis onto a section this
+ * narrow — same reasoning as brandStatementLayoutDefault above. 'dominant_structural' gets
+ * 'campaign' (an assertive, bordered band — message and CTA sit close together, echoing
+ * "denser relationship between message and input"); 'quiet' gets 'statement' (the
+ * pre-existing centered, generous-whitespace shape — already the right fit, not a
+ * regression to fix); 'balanced' gets 'split' (copy and form in distinct regions, a more
+ * organized/structured read).
+ */
+export function newsletterLayoutDefault(
+  strategy: Pick<StrategyInput, 'typographyRole'>
+): NewsletterLayout {
+  if (strategy.typographyRole === 'dominant_structural') return 'campaign';
+  if (strategy.typographyRole === 'balanced') return 'split';
+  return 'statement';
+}
+
+export type CollectionsLayout = 'editorial' | 'stacked';
+
+/**
+ * Phase 4D — collections was already adequate (editorial/stacked are genuinely different
+ * DOM shapes; see the Phase 4 audit), so this only connects the CHOICE between them to an
+ * existing signal rather than inventing a third shape. asymmetry is the cleanest fit:
+ * 'stacked' IS an asymmetric device (alternating reversed rows via data-reverse), so a
+ * high-asymmetry brand choosing it is a semantic match, not an arbitrary pairing.
+ * imageryRole/density are deliberately NOT layout-choice signals here (one clean
+ * discriminator, per the Phase 4D brief) — they instead drive internal presentation
+ * (fullBleed via IMAGE_LED_TYPES above, and a density-scoped tile gap in v2.css) on
+ * WHICHEVER layout gets chosen, so they apply uniformly instead of duplicating asymmetry's job.
+ */
+export function collectionsLayoutDefault(
+  strategy: Pick<StrategyInput, 'asymmetry'>
+): CollectionsLayout {
+  return strategy.asymmetry === 'high' ? 'stacked' : 'editorial';
+}
+
+export type TestimonialsLayout = 'quote' | 'imageQuote';
+
+/**
+ * Phase 4D — imageryRole is the correct (and only) signal for this choice: imageQuote
+ * needs a real photo to be worth choosing, and imageryRole is literally "how much should
+ * imagery carry" for this brand. Before this phase, imageQuote was effectively opt-in
+ * only (the architect had to author it explicitly) — assetResolver.ts's slotForNode()
+ * only ever attempts to resolve a photo when content.layout is ALREADY 'imageQuote', so an
+ * image-led brand that left this unset never got a photo, regardless of imageryRole.
+ */
+export function testimonialsLayoutDefault(
+  strategy: Pick<StrategyInput, 'imageryRole'>
+): TestimonialsLayout {
+  return strategy.imageryRole === 'dominant' ? 'imageQuote' : 'quote';
+}
+
+export type ReviewsLayout = 'index' | 'grid';
+
+/**
+ * Phase 4D — density is the signal the renderer's OWN pre-existing comment already named
+ * ("grid: dense card grid... reads better for a catalogue_first / dense_campaign page
+ * composition" — see compositions.tsx ReviewsWall) but never actually wired to
+ * creativeStrategy. typographyRole/rhythm are left alone: density alone already cleanly
+ * separates "quiet editorial list" from "dense catalogue proof," and this is the same
+ * signal that additionally drives the grid's own column count at render time (see
+ * ReviewsWall's data-density + v2.css) — one signal, expressed consistently, not two
+ * redundant axes.
+ */
+export function reviewsLayoutDefault(strategy: Pick<StrategyInput, 'density'>): ReviewsLayout {
+  return strategy.density === 'high' ? 'grid' : 'index';
+}
+
+/** Node types with a registered content.layout default rule. Phase 4A/4B/4C/4D wire
+ *  editorialSplit, productSpotlight, brandStatement, newsletter, collections,
+ *  testimonials, and reviews — deliberately not a broad "every supporting section" pass
+ *  in one shot (see Phase 4 audit); each was added only once its own audit pass justified it. */
+const LAYOUT_DEFAULT_RESOLVERS: Record<string, (strategy: StrategyInput) => string> = {
+  editorialSplit: editorialSplitLayoutDefault,
+  productSpotlight: productSpotlightLayoutDefault,
+  brandStatement: brandStatementLayoutDefault,
+  newsletter: newsletterLayoutDefault,
+  collections: collectionsLayoutDefault,
+  testimonials: testimonialsLayoutDefault,
+  reviews: reviewsLayoutDefault,
+};
+
+export type LayoutDefaultNode = { type: string; content?: Record<string, unknown> };
+
+/**
+ * Fills `content.layout` ONLY for nodes whose type has a registered resolver above AND
+ * whose content.layout is still unset — an explicit architect-authored layout always wins,
+ * exactly like applyStrategyDefaults never overwrites an explicit design field. Returns a
+ * NEW array; does not mutate input nodes.
+ *
+ * Deliberately non-generic (plain LayoutDefaultNode[] in/out, mirroring
+ * applyStrategyDefaults above) — callers on the Deno edge function and the client each have
+ * their own structurally-similar-but-not-identical SiteNode type and cast at the call site,
+ * same as applyStrategyDefaults. A generic here would fight TypeScript: returning a spread
+ * of a generic type param as that same type param does not type-check, for no real benefit
+ * since this function only ever reads/writes `content.layout`.
+ */
+export function applyLayoutDefaults(
+  nodes: LayoutDefaultNode[],
+  strategy: StrategyInput
+): LayoutDefaultNode[] {
+  return nodes.map((node) => {
+    const resolver = LAYOUT_DEFAULT_RESOLVERS[node.type];
+    if (!resolver) return node;
+    const content = node.content ?? {};
+    if (content.layout !== undefined) return node;
+    return { ...node, content: { ...content, layout: resolver(strategy) } };
   });
 }
 

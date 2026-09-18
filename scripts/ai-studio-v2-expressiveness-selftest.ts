@@ -33,6 +33,38 @@
  *     in a `https://esm.sh/zod` remote specifier Node can't resolve - and centralizing
  *     them into one importable module is out of scope for this patch, so those two get a
  *     narrow text-presence guard instead (token presence only, not source parsing).
+ * 11. Phase 4A — editorialSplit content.layout defaults: applyLayoutDefaults' 3 new layout
+ *     values are valid/reachable and reject typos exactly like existing layouts; explicit
+ *     content.layout always wins over the strategy-derived default; two materially
+ *     different creativeStrategy inputs (typographyRole/imageryRole) resolve to two
+ *     different defaults; the renderer source actually branches per layout with distinct
+ *     structural class names, not just a `data-layout` attribute nothing reads (the
+ *     newsletter/quiet bug class the Phase 4 audit found); legacy nodes with no
+ *     content.layout at all are untouched by applyLayoutDefaults.
+ * 12. Phase 4B — productSpotlight and brandStatement content.layout defaults: the same
+ *     five checks as #11, applied to both sections' new layout grammars
+ *     (feature|imageDominant|structuredFeature and centered|splitStatement|anchoredLarge).
+ * 13. Phase 4C — newsletter content.layout defaults: the same checks as #11/#12, applied
+ *     to statement|split|campaign, plus a check that the submit form (email input, label,
+ *     autoComplete, submit button, preventDefault handler) is the SAME shared JSX reused
+ *     across every layout, not reimplemented per branch.
+ * 14. Phase 4D — collections/testimonials/reviews REFINEMENT (not new layout values):
+ *     - collections/testimonials keep their pre-existing editorial|stacked and
+ *       quote|imageQuote catalog entries unchanged; only the CHOICE between them (via
+ *       asymmetry / imageryRole) and internal presentation (fullBleed, density gap, emphasis)
+ *       are newly connected to creativeStrategy.
+ *     - reviews/wall also keeps index|grid unchanged, gains a density-driven default, a
+ *       density-driven grid column count, and a structurally distinct lead-review
+ *       treatment in 'index'.
+ *     - two real provenance bugs are fixed and guarded: a hardcoded "Verified customer"
+ *       label with no backing data field, and an average/count computed from the 6-review
+ *       DISPLAY slice instead of the full dataset.
+ * 15. QA-fixture coverage guard: a production defaults/rendering function can be correct
+ *     while its own QA fixture still fails to demonstrate it (found in manual QA after
+ *     Phase 4D — BLOCK FORM's testimonials looked "invisible" purely because the page had
+ *     grown very long, and Auric's reviews_01 had a redundant explicit 'grid' that
+ *     duplicated Lumen Lab's own pre-existing 'grid', leaving 'index' with zero live
+ *     coverage). Asserts the fixture DATA's shape and resolved layout directly.
  */
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -46,8 +78,17 @@ import {
 import { listCompositions, resolveComposition } from '../src/components/templates/ai/v2/registry';
 import {
   applyStrategyDefaults,
+  applyLayoutDefaults,
+  editorialSplitLayoutDefault,
+  productSpotlightLayoutDefault,
+  brandStatementLayoutDefault,
+  newsletterLayoutDefault,
+  collectionsLayoutDefault,
+  testimonialsLayoutDefault,
+  reviewsLayoutDefault,
   normalizeDesignSemantics,
   type StrategyInput,
+  type LayoutDefaultNode,
 } from '../shared/ai-studio-v2/strategyDefaults';
 import { isValidLayout, allowedLayouts, COMPOSITION_LAYOUTS } from '../shared/ai-studio-v2/compositionLayouts';
 import { siteOpsSchema, applySiteOps } from '../src/lib/ai-studio/v2/siteOps';
@@ -371,6 +412,404 @@ for (const rel of DENO_VOCAB_FILES) {
   assert(text.includes('luxury_image_first'), `${rel} recognizes the productGrid/luxury_image_first variant`);
   assert(!text.includes('luxuryImageFirst'), `${rel} has no leftover pre-rename "luxuryImageFirst" spelling`);
 }
+
+/* 11. Phase 4A — editorialSplit content.layout defaults ---------------- */
+
+assert(isValidLayout('editorialSplit', 'image_text', undefined), 'absent content.layout is valid for editorialSplit/image_text');
+assert(isValidLayout('editorialSplit', 'image_text', 'classicSplit'), 'classicSplit (the default) is a valid editorialSplit/image_text layout');
+assert(isValidLayout('editorialSplit', 'image_text', 'offsetNarrow'), 'offsetNarrow is a valid editorialSplit/image_text layout');
+assert(isValidLayout('editorialSplit', 'image_text', 'overlayStatement'), 'overlayStatement is a valid editorialSplit/image_text layout');
+assert(!isValidLayout('editorialSplit', 'image_text', 'overlayStatment'), "a typo'd editorialSplit layout value is rejected, not silently treated as a default");
+assert(!isValidLayout('editorialSplit', 'image_text', 'magazine'), 'a layout value valid on a DIFFERENT composition (editorialMosaic) is rejected on editorialSplit/image_text');
+assert(
+  JSON.stringify(allowedLayouts('editorialSplit', 'image_text')) === JSON.stringify(['classicSplit', 'offsetNarrow', 'overlayStatement']),
+  'editorialSplit/image_text allows exactly classicSplit|offsetNarrow|overlayStatement'
+);
+
+// Design-DNA mapping: typographyRole is checked first, then imageryRole - never
+// productPresentation or an archetype string (see strategyDefaults.ts editorialSplitLayoutDefault
+// and the Phase 4A architectural decision: productPresentation is scoped to product chrome only).
+const quietImageLed: StrategyInput = { density: 'medium', asymmetry: 'medium', rhythm: 'even', typographyRole: 'quiet', imageryRole: 'dominant' };
+const balancedSupportingImagery: StrategyInput = { density: 'medium', asymmetry: 'low', rhythm: 'even', typographyRole: 'balanced', imageryRole: 'supporting' };
+const dominantTypography: StrategyInput = { density: 'high', asymmetry: 'high', rhythm: 'rapid_contrast', typographyRole: 'dominant_structural', imageryRole: 'balanced' };
+
+assert(editorialSplitLayoutDefault(quietImageLed) === 'offsetNarrow', 'quiet typography + dominant imagery resolves to offsetNarrow (image-led, restrained copy)');
+assert(editorialSplitLayoutDefault(balancedSupportingImagery) === 'classicSplit', 'balanced typography + supporting imagery resolves to classicSplit (the safe structured default)');
+assert(editorialSplitLayoutDefault(dominantTypography) === 'overlayStatement', 'dominant_structural typography resolves to overlayStatement regardless of imageryRole (typography checked first)');
+assert(
+  editorialSplitLayoutDefault(quietImageLed) !== editorialSplitLayoutDefault(balancedSupportingImagery) &&
+    editorialSplitLayoutDefault(balancedSupportingImagery) !== editorialSplitLayoutDefault(dominantTypography),
+  'three materially different creativeStrategy profiles produce three different editorialSplit layout defaults, not a collapsed fingerprint'
+);
+
+// applyLayoutDefaults: fill-only-if-unset, explicit authoring always wins.
+const storyNodeUnset: LayoutDefaultNode[] = [{ type: 'editorialSplit', content: {} }];
+const defaultedStory = applyLayoutDefaults(storyNodeUnset, dominantTypography);
+assert(defaultedStory[0].content?.layout === 'overlayStatement', 'applyLayoutDefaults fills content.layout from creativeStrategy when the architect left it unset');
+
+const storyNodeExplicit: LayoutDefaultNode[] = [{ type: 'editorialSplit', content: { layout: 'classicSplit' } }];
+const explicitStory = applyLayoutDefaults(storyNodeExplicit, dominantTypography);
+assert(
+  explicitStory[0].content?.layout === 'classicSplit',
+  'an explicit architect-authored content.layout always wins over the strategy default, even one that would otherwise resolve differently'
+);
+
+// A type with no registered layout-default rule (Phase 4A wires editorialSplit only) is untouched.
+const heroNodeUnset: LayoutDefaultNode[] = [{ type: 'hero', content: {} }];
+assert(applyLayoutDefaults(heroNodeUnset, dominantTypography)[0].content?.layout === undefined, 'a type with no registered layout-default rule (e.g. hero) is not touched by applyLayoutDefaults');
+
+// A legacy node with no `content` object at all still resolves a default safely.
+const legacyBareNode: LayoutDefaultNode[] = [{ type: 'editorialSplit' }];
+assert(
+  applyLayoutDefaults(legacyBareNode, dominantTypography)[0].content?.layout === 'overlayStatement',
+  'a legacy node with no content object at all still resolves a default safely (no crash on missing content)'
+);
+
+// Renderer actually branches structurally per layout - not just a `data-layout` attribute
+// nobody reads (the newsletter/quiet dead-code gap the Phase 4 audit found).
+const compositionsSource = fs.readFileSync(path.join(here, '../src/components/templates/ai/v2/compositions.tsx'), 'utf8');
+const editorialFnStart = compositionsSource.indexOf('export function EditorialSplitImageText');
+const editorialFnEnd = compositionsSource.indexOf('export function BrandStatementLarge');
+assert(editorialFnStart > -1 && editorialFnEnd > editorialFnStart, 'EditorialSplitImageText is found in compositions.tsx for structural inspection');
+const editorialFnSource = compositionsSource.slice(editorialFnStart, editorialFnEnd);
+assert(editorialFnSource.includes("layoutOf(node, 'classicSplit')"), "EditorialSplitImageText defaults to 'classicSplit', preserving legacy/no-layout rendering");
+for (const layout of ['classicSplit', 'offsetNarrow', 'overlayStatement']) {
+  assert(editorialFnSource.includes(`'${layout}'`), `EditorialSplitImageText source actually references the '${layout}' layout value`);
+}
+assert(editorialFnSource.includes('ai-v2-editorial-grid-offset'), "offsetNarrow renders a structurally distinct class ('ai-v2-editorial-grid-offset'), not just a data attribute");
+assert(editorialFnSource.includes('ai-v2-editorial-overlay-media') && editorialFnSource.includes('ai-v2-editorial-overlay-panel'), "overlayStatement renders a structurally distinct DOM shape ('ai-v2-editorial-overlay-*'), not just a data attribute");
+const editorialReturnCount = (editorialFnSource.match(/return \(/g) || []).length;
+assert(editorialReturnCount >= 2, 'EditorialSplitImageText has multiple structural return branches (not one shared JSX tree keyed only by a data attribute)');
+
+// Deno-only architect prompt copy recognizes the new grammar by name, and the dead
+// imagePosition field (never read by the renderer - it reads content.reverse) is gone.
+const aiStudioV2Text = fs.readFileSync(path.join(here, '../supabase/functions/_shared/aiStudioV2.ts'), 'utf8');
+for (const layout of ['classicSplit', 'offsetNarrow', 'overlayStatement']) {
+  assert(aiStudioV2Text.includes(layout), `aiStudioV2.ts (Deno architect prompt) recognizes the editorialSplit layout '${layout}'`);
+}
+assert(!aiStudioV2Text.includes('imagePosition'), 'aiStudioV2.ts no longer documents the dead imagePosition field the renderer never read');
+
+/* 12. Phase 4B — productSpotlight + brandStatement content.layout defaults ---------- */
+
+// productSpotlight/feature -----------------------------------------------------------
+assert(isValidLayout('productSpotlight', 'feature', undefined), 'absent content.layout is valid for productSpotlight/feature');
+assert(isValidLayout('productSpotlight', 'feature', 'feature'), 'feature (the default) is a valid productSpotlight/feature layout');
+assert(isValidLayout('productSpotlight', 'feature', 'imageDominant'), 'imageDominant is a valid productSpotlight/feature layout');
+assert(isValidLayout('productSpotlight', 'feature', 'structuredFeature'), 'structuredFeature is a valid productSpotlight/feature layout');
+assert(!isValidLayout('productSpotlight', 'feature', 'imageDominent'), "a typo'd productSpotlight layout value is rejected");
+assert(!isValidLayout('productSpotlight', 'feature', 'overlayStatement'), 'a layout value valid on a DIFFERENT composition (editorialSplit) is rejected on productSpotlight/feature');
+assert(
+  JSON.stringify(allowedLayouts('productSpotlight', 'feature')) === JSON.stringify(['feature', 'imageDominant', 'structuredFeature']),
+  'productSpotlight/feature allows exactly feature|imageDominant|structuredFeature'
+);
+
+const quietSpotlight: StrategyInput = { density: 'low', asymmetry: 'medium', rhythm: 'sparse_pause', typographyRole: 'quiet', imageryRole: 'dominant' };
+const balancedSpotlight: StrategyInput = { density: 'medium', asymmetry: 'low', rhythm: 'even', typographyRole: 'balanced', imageryRole: 'balanced' };
+const boldSpotlight: StrategyInput = { density: 'high', asymmetry: 'high', rhythm: 'rapid_contrast', typographyRole: 'dominant_structural', imageryRole: 'dominant' };
+
+assert(productSpotlightLayoutDefault(quietSpotlight) === 'imageDominant', 'quiet typography + dominant imagery resolves to imageDominant (image-led)');
+assert(productSpotlightLayoutDefault(balancedSpotlight) === 'feature', 'balanced typography + balanced imagery resolves to feature (the safe default)');
+assert(productSpotlightLayoutDefault(boldSpotlight) === 'structuredFeature', 'dominant_structural typography resolves to structuredFeature regardless of imageryRole (typography checked first)');
+assert(
+  productSpotlightLayoutDefault(quietSpotlight) !== productSpotlightLayoutDefault(balancedSpotlight) &&
+    productSpotlightLayoutDefault(balancedSpotlight) !== productSpotlightLayoutDefault(boldSpotlight),
+  'three materially different creativeStrategy profiles produce three different productSpotlight layout defaults'
+);
+
+const spotlightNodeUnset: LayoutDefaultNode[] = [{ type: 'productSpotlight', content: {} }];
+assert(
+  applyLayoutDefaults(spotlightNodeUnset, boldSpotlight)[0].content?.layout === 'structuredFeature',
+  'applyLayoutDefaults fills productSpotlight content.layout from creativeStrategy when the architect left it unset'
+);
+const spotlightNodeExplicit: LayoutDefaultNode[] = [{ type: 'productSpotlight', content: { layout: 'feature' } }];
+assert(
+  applyLayoutDefaults(spotlightNodeExplicit, boldSpotlight)[0].content?.layout === 'feature',
+  'an explicit architect-authored productSpotlight content.layout always wins over the strategy default'
+);
+
+const spotlightSource = fs.readFileSync(path.join(here, '../src/components/templates/ai/v2/compositions.tsx'), 'utf8');
+const spotlightFnStart = spotlightSource.indexOf('export function ProductSpotlightFeature');
+const spotlightFnEnd = spotlightSource.indexOf('/* ─── Story');
+assert(spotlightFnStart > -1 && spotlightFnEnd > spotlightFnStart, 'ProductSpotlightFeature is found in compositions.tsx for structural inspection');
+const spotlightFnSource = spotlightSource.slice(spotlightFnStart, spotlightFnEnd);
+assert(spotlightFnSource.includes("layoutOf(node, 'feature')"), "ProductSpotlightFeature defaults to 'feature', preserving legacy/no-layout rendering");
+for (const layout of ['feature', 'imageDominant', 'structuredFeature']) {
+  assert(spotlightFnSource.includes(`'${layout}'`), `ProductSpotlightFeature source actually references the '${layout}' layout value`);
+}
+assert(spotlightFnSource.includes('ai-v2-spotlight-grid-dominant'), "imageDominant renders a structurally distinct class ('ai-v2-spotlight-grid-dominant'), not just a data attribute");
+assert(spotlightFnSource.includes('ai-v2-spotlight-grid-structured'), "structuredFeature renders a structurally distinct class ('ai-v2-spotlight-grid-structured'), not just a data attribute");
+assert(
+  /layout === 'structuredFeature'[\s\S]*?\{copy\}\s*\{media\}/.test(spotlightFnSource),
+  'structuredFeature actually reorders copy before media in real DOM order, not just via CSS (checked for keyboard/AT users, not only sighted layout)'
+);
+assert(
+  !spotlightFnSource.includes('product.price *') && !spotlightFnSource.includes('discount'),
+  'ProductSpotlightFeature does not fabricate price/discount adjustments for any layout - formatStoreMoney(product.price, ...) is the only price path'
+);
+
+// brandStatement/large_type ------------------------------------------------------------
+assert(isValidLayout('brandStatement', 'large_type', undefined), 'absent content.layout is valid for brandStatement/large_type');
+assert(isValidLayout('brandStatement', 'large_type', 'centered'), 'centered (the default) is a valid brandStatement/large_type layout');
+assert(isValidLayout('brandStatement', 'large_type', 'splitStatement'), 'splitStatement is a valid brandStatement/large_type layout');
+assert(isValidLayout('brandStatement', 'large_type', 'anchoredLarge'), 'anchoredLarge is a valid brandStatement/large_type layout');
+assert(!isValidLayout('brandStatement', 'large_type', 'anchoredLarg'), "a typo'd brandStatement layout value is rejected");
+assert(!isValidLayout('brandStatement', 'large_type', 'magazine'), 'a layout value valid on a DIFFERENT composition (editorialMosaic) is rejected on brandStatement/large_type');
+assert(
+  JSON.stringify(allowedLayouts('brandStatement', 'large_type')) === JSON.stringify(['centered', 'splitStatement', 'anchoredLarge']),
+  'brandStatement/large_type allows exactly centered|splitStatement|anchoredLarge'
+);
+
+const quietStatement: StrategyInput = { density: 'low', asymmetry: 'medium', rhythm: 'sparse_pause', typographyRole: 'quiet', imageryRole: 'balanced' };
+const balancedStatement: StrategyInput = { density: 'medium', asymmetry: 'low', rhythm: 'even', typographyRole: 'balanced', imageryRole: 'balanced' };
+const dominantStatement: StrategyInput = { density: 'high', asymmetry: 'high', rhythm: 'rapid_contrast', typographyRole: 'dominant_structural', imageryRole: 'dominant' };
+
+assert(brandStatementLayoutDefault(quietStatement) === 'splitStatement', 'quiet typography resolves to splitStatement (restrained, editorial placement)');
+assert(brandStatementLayoutDefault(balancedStatement) === 'centered', 'balanced typography resolves to centered (the safe, already-controlled default)');
+assert(brandStatementLayoutDefault(dominantStatement) === 'anchoredLarge', 'dominant_structural typography resolves to anchoredLarge (breaks outside the content canvas)');
+assert(
+  brandStatementLayoutDefault(quietStatement) !== brandStatementLayoutDefault(balancedStatement) &&
+    brandStatementLayoutDefault(balancedStatement) !== brandStatementLayoutDefault(dominantStatement),
+  'three materially different typographyRole inputs produce three different brandStatement layout defaults'
+);
+
+const statementNodeUnset: LayoutDefaultNode[] = [{ type: 'brandStatement', content: {} }];
+assert(
+  applyLayoutDefaults(statementNodeUnset, dominantStatement)[0].content?.layout === 'anchoredLarge',
+  'applyLayoutDefaults fills brandStatement content.layout from creativeStrategy when the architect left it unset'
+);
+const statementNodeExplicit: LayoutDefaultNode[] = [{ type: 'brandStatement', content: { layout: 'centered' } }];
+assert(
+  applyLayoutDefaults(statementNodeExplicit, dominantStatement)[0].content?.layout === 'centered',
+  'an explicit architect-authored brandStatement content.layout always wins over the strategy default'
+);
+
+const statementFnStart = spotlightSource.indexOf('export function BrandStatementLarge');
+const statementFnEnd = spotlightSource.indexOf('/** Magazine mosaic');
+assert(statementFnStart > -1 && statementFnEnd > statementFnStart, 'BrandStatementLarge is found in compositions.tsx for structural inspection');
+const statementFnSource = spotlightSource.slice(statementFnStart, statementFnEnd);
+assert(statementFnSource.includes("layoutOf(node, 'centered')"), "BrandStatementLarge defaults to 'centered', preserving legacy/no-layout rendering");
+for (const layout of ['centered', 'splitStatement', 'anchoredLarge']) {
+  assert(statementFnSource.includes(`'${layout}'`), `BrandStatementLarge source actually references the '${layout}' layout value`);
+}
+assert(statementFnSource.includes('ai-v2-statement-split'), "splitStatement renders a structurally distinct class ('ai-v2-statement-split'), not just a data attribute");
+assert(statementFnSource.includes('ai-v2-statement-anchored'), "anchoredLarge renders a structurally distinct class ('ai-v2-statement-anchored'), not just a data attribute");
+const statementReturnCount = (statementFnSource.match(/return \(/g) || []).length;
+assert(statementReturnCount >= 2, 'BrandStatementLarge has multiple structural return branches (not one shared JSX tree keyed only by a data attribute)');
+
+// Deno-only architect prompt copy recognizes the new grammar for both sections.
+for (const layout of ['imageDominant', 'structuredFeature', 'splitStatement', 'anchoredLarge']) {
+  assert(aiStudioV2Text.includes(layout), `aiStudioV2.ts (Deno architect prompt) recognizes the layout '${layout}'`);
+}
+
+/* 13. Phase 4C — newsletter content.layout defaults ------------------------------------ */
+
+assert(isValidLayout('newsletter', 'quiet', undefined), 'absent content.layout is valid for newsletter/quiet');
+assert(isValidLayout('newsletter', 'quiet', 'statement'), 'statement (the default) is a valid newsletter/quiet layout');
+assert(isValidLayout('newsletter', 'quiet', 'split'), 'split is a valid newsletter/quiet layout');
+assert(isValidLayout('newsletter', 'quiet', 'campaign'), 'campaign is a valid newsletter/quiet layout');
+assert(!isValidLayout('newsletter', 'quiet', 'campain'), "a typo'd newsletter layout value is rejected");
+assert(!isValidLayout('newsletter', 'quiet', 'overlayStatement'), 'a layout value valid on a DIFFERENT composition (editorialSplit) is rejected on newsletter/quiet');
+assert(
+  JSON.stringify(allowedLayouts('newsletter', 'quiet')) === JSON.stringify(['statement', 'split', 'campaign']),
+  'newsletter/quiet allows exactly statement|split|campaign'
+);
+// This is exactly the bug the Phase 4 audit found: before this phase, 'statement' (the
+// renderer's OWN existing fallback value) had no COMPOSITION_LAYOUTS entry at all, so an
+// architect who explicitly authored the default value would have been REJECTED, not just
+// ignored - not dead in the sense of "does nothing", dead in the sense of "throws".
+assert(isValidLayout('newsletter', 'quiet', 'statement'), "newsletter/quiet's own existing default value is now actually authorable, not just renderable");
+
+const quietNewsletter: StrategyInput = { density: 'low', asymmetry: 'medium', rhythm: 'sparse_pause', typographyRole: 'quiet', imageryRole: 'balanced' };
+const balancedNewsletter: StrategyInput = { density: 'medium', asymmetry: 'low', rhythm: 'even', typographyRole: 'balanced', imageryRole: 'balanced' };
+const dominantNewsletter: StrategyInput = { density: 'high', asymmetry: 'high', rhythm: 'rapid_contrast', typographyRole: 'dominant_structural', imageryRole: 'dominant' };
+
+assert(newsletterLayoutDefault(quietNewsletter) === 'statement', 'quiet typography resolves to statement (the pre-existing centered, generous-whitespace shape)');
+assert(newsletterLayoutDefault(balancedNewsletter) === 'split', 'balanced typography resolves to split (copy and form in distinct regions)');
+assert(newsletterLayoutDefault(dominantNewsletter) === 'campaign', 'dominant_structural typography resolves to campaign (assertive, bordered band)');
+assert(
+  newsletterLayoutDefault(quietNewsletter) !== newsletterLayoutDefault(balancedNewsletter) &&
+    newsletterLayoutDefault(balancedNewsletter) !== newsletterLayoutDefault(dominantNewsletter),
+  'three materially different typographyRole inputs produce three different newsletter layout defaults'
+);
+
+const newsletterNodeUnset: LayoutDefaultNode[] = [{ type: 'newsletter', content: {} }];
+assert(
+  applyLayoutDefaults(newsletterNodeUnset, dominantNewsletter)[0].content?.layout === 'campaign',
+  'applyLayoutDefaults fills newsletter content.layout from creativeStrategy when the architect left it unset'
+);
+const newsletterNodeExplicit: LayoutDefaultNode[] = [{ type: 'newsletter', content: { layout: 'statement' } }];
+assert(
+  applyLayoutDefaults(newsletterNodeExplicit, dominantNewsletter)[0].content?.layout === 'statement',
+  'an explicit architect-authored newsletter content.layout always wins over the strategy default'
+);
+
+const newsletterFnStart2 = spotlightSource.indexOf('export function NewsletterQuiet');
+const newsletterFnEnd2 = spotlightSource.indexOf('/* ─── Footers');
+assert(newsletterFnStart2 > -1 && newsletterFnEnd2 > newsletterFnStart2, 'NewsletterQuiet is found in compositions.tsx for structural inspection');
+const newsletterFnSource2 = spotlightSource.slice(newsletterFnStart2, newsletterFnEnd2);
+assert(newsletterFnSource2.includes("layoutOf(node, 'statement')"), "NewsletterQuiet defaults to 'statement', preserving legacy/no-layout rendering");
+for (const layout of ['statement', 'split', 'campaign']) {
+  assert(newsletterFnSource2.includes(`'${layout}'`), `NewsletterQuiet source actually references the '${layout}' layout value`);
+}
+assert(newsletterFnSource2.includes('ai-v2-newsletter-split-grid'), "split renders a structurally distinct class ('ai-v2-newsletter-split-grid'), not just a data attribute");
+assert(newsletterFnSource2.includes('ai-v2-newsletter-campaign-band'), "campaign renders a structurally distinct class ('ai-v2-newsletter-campaign-band'), not just a data attribute");
+const newsletterReturnCount = (newsletterFnSource2.match(/return \(/g) || []).length;
+assert(newsletterReturnCount >= 3, 'NewsletterQuiet has 3 structural return branches (not one shared JSX tree keyed only by a data attribute)');
+// The form (email input, label, autoComplete, submit button, preventDefault handler) must
+// be defined exactly ONCE and reused - not reimplemented per layout, which would risk the
+// three layouts silently drifting apart in accessibility/event behavior over time.
+const formDefinitionCount = (newsletterFnSource2.match(/<form/g) || []).length;
+assert(formDefinitionCount === 1, `NewsletterQuiet defines the <form> exactly once and reuses it across all 3 layouts (found ${formDefinitionCount})`);
+assert(newsletterFnSource2.includes('type="email"'), 'the shared form still declares a real email input');
+assert(newsletterFnSource2.includes('autoComplete="email"'), 'the shared form still declares autoComplete="email"');
+assert(newsletterFnSource2.includes('e.preventDefault()'), 'the shared form still prevents default submit navigation (no backend behavior invented)');
+assert(newsletterFnSource2.includes('className="sr-only"'), 'the shared form keeps its accessible (visually-hidden but present) email label');
+assert(newsletterFnSource2.includes('className="ai-v2-btn-text"'), 'the shared form still uses the Phase 2 shared CTA class, not a bespoke button');
+assert(
+  !newsletterFnSource2.includes('subscribers') && !newsletterFnSource2.includes('% off') && !newsletterFnSource2.includes('discount'),
+  'NewsletterQuiet does not fabricate subscriber counts or discount promises in any layout - only node.content.title/text/kicker are ever rendered'
+);
+
+// Deno-only architect prompt copy recognizes the new grammar.
+for (const layout of ['split', 'campaign']) {
+  assert(aiStudioV2Text.includes(layout), `aiStudioV2.ts (Deno architect prompt) recognizes the newsletter layout '${layout}'`);
+}
+assert(!aiStudioV2Text.includes('subtitle?, cta? }'), 'aiStudioV2.ts no longer documents the dead subtitle/cta newsletter fields the renderer never read');
+
+/* 14. Phase 4D — collections/testimonials/reviews refinement ---------------------------- */
+
+// Collections: pre-existing values remain valid; explicit wins; new default is deterministic.
+assert(isValidLayout('collections', 'tiles', 'editorial'), 'collections/tiles editorial remains a valid layout (Phase 4D does not add a third)');
+assert(isValidLayout('collections', 'tiles', 'stacked'), 'collections/tiles stacked remains a valid layout');
+assert(!isValidLayout('collections', 'tiles', 'grid'), 'collections/tiles still rejects a value that was never registered (no new value added)');
+assert(
+  JSON.stringify(allowedLayouts('collections', 'tiles')) === JSON.stringify(['editorial', 'stacked']),
+  'collections/tiles still allows exactly editorial|stacked - Phase 4D refined the CHOICE, not the catalog'
+);
+assert(collectionsLayoutDefault({ asymmetry: 'high' }) === 'stacked', 'high asymmetry resolves to stacked (an alternating-reversal layout, a genuine asymmetric device)');
+assert(collectionsLayoutDefault({ asymmetry: 'medium' }) === 'editorial', 'medium asymmetry resolves to editorial (the safe default)');
+assert(collectionsLayoutDefault({ asymmetry: 'low' }) === 'editorial', 'low asymmetry resolves to editorial');
+const collectionsNodeExplicit: LayoutDefaultNode[] = [{ type: 'collections', content: { layout: 'editorial' } }];
+assert(
+  applyLayoutDefaults(collectionsNodeExplicit, { density: 'high', asymmetry: 'high', rhythm: 'even', typographyRole: 'balanced', imageryRole: 'dominant' })[0].content?.layout === 'editorial',
+  'an explicit architect-authored collections content.layout always wins over the strategy default, even one that would otherwise resolve to stacked'
+);
+const collectionsNodeUnset: LayoutDefaultNode[] = [{ type: 'collections', content: {} }];
+assert(
+  applyLayoutDefaults(collectionsNodeUnset, { density: 'medium', asymmetry: 'high', rhythm: 'even', typographyRole: 'balanced', imageryRole: 'balanced' })[0].content?.layout === 'stacked',
+  'applyLayoutDefaults fills collections content.layout from creativeStrategy when the architect left it unset'
+);
+
+// Testimonials: pre-existing values remain valid; no-fabrication and no-data behavior
+// preserved (proven by source inspection, since this component's early-return-on-no-data
+// logic is unchanged); new default is deterministic.
+assert(isValidLayout('testimonials', 'editorial', 'quote'), 'testimonials/editorial quote remains a valid layout (Phase 4D does not add a third)');
+assert(isValidLayout('testimonials', 'editorial', 'imageQuote'), 'testimonials/editorial imageQuote remains a valid layout');
+assert(!isValidLayout('testimonials', 'editorial', 'video'), 'testimonials/editorial still rejects a value that was never registered');
+assert(testimonialsLayoutDefault({ imageryRole: 'dominant' }) === 'imageQuote', 'dominant imagery resolves to imageQuote - previously opt-in only, see strategyDefaults.ts');
+assert(testimonialsLayoutDefault({ imageryRole: 'balanced' }) === 'quote', 'balanced imagery resolves to quote (the safe default)');
+assert(testimonialsLayoutDefault({ imageryRole: 'supporting' }) === 'quote', 'supporting imagery resolves to quote');
+const testimonialsNodeExplicit: LayoutDefaultNode[] = [{ type: 'testimonials', content: { layout: 'quote' } }];
+assert(
+  applyLayoutDefaults(testimonialsNodeExplicit, { density: 'medium', asymmetry: 'medium', rhythm: 'even', typographyRole: 'balanced', imageryRole: 'dominant' })[0].content?.layout === 'quote',
+  'an explicit architect-authored testimonials content.layout always wins over the strategy default, even one that would otherwise resolve to imageQuote'
+);
+
+const testimonialsFnStart = spotlightSource.indexOf('export function TestimonialsEditorial');
+const testimonialsFnEnd = spotlightSource.indexOf('export function ReviewsWall');
+assert(testimonialsFnStart > -1 && testimonialsFnEnd > testimonialsFnStart, 'TestimonialsEditorial is found in compositions.tsx for structural inspection');
+const testimonialsFnSource = spotlightSource.slice(testimonialsFnStart, testimonialsFnEnd);
+assert(
+  testimonialsFnSource.includes('if (!primary || !str(primary.quote)) return null;'),
+  'TestimonialsEditorial still renders nothing when there is no real testimonial data - Phase 4D did not touch this guard'
+);
+assert(
+  !/author:\s*['"]/.test(testimonialsFnSource) && !/quote:\s*['"]/.test(testimonialsFnSource),
+  'TestimonialsEditorial never hardcodes a fabricated author/quote string - only node content is ever rendered'
+);
+assert(testimonialsFnSource.includes('quote') && testimonialsFnSource.includes('imageQuote'), 'TestimonialsEditorial source still branches on quote/imageQuote (unchanged renderer logic)');
+
+// Reviews: pre-existing values remain valid; explicit wins; renderer branches materially;
+// no fabrication; aggregates are derived from the full, real dataset.
+assert(isValidLayout('reviews', 'wall', 'index'), 'reviews/wall index remains a valid layout (Phase 4D does not add a third)');
+assert(isValidLayout('reviews', 'wall', 'grid'), 'reviews/wall grid remains a valid layout');
+assert(!isValidLayout('reviews', 'wall', 'summary'), 'reviews/wall still rejects a value that was never registered');
+assert(reviewsLayoutDefault({ density: 'high' }) === 'grid', 'high density resolves to grid (a dense proof grid), matching the renderer\'s own pre-existing comment intent');
+assert(reviewsLayoutDefault({ density: 'medium' }) === 'index', 'medium density resolves to index (the safe, pre-existing default)');
+assert(reviewsLayoutDefault({ density: 'low' }) === 'index', 'low density resolves to index');
+const reviewsNodeExplicit: LayoutDefaultNode[] = [{ type: 'reviews', content: { layout: 'index' } }];
+assert(
+  applyLayoutDefaults(reviewsNodeExplicit, { density: 'high', asymmetry: 'medium', rhythm: 'even', typographyRole: 'balanced', imageryRole: 'balanced' })[0].content?.layout === 'index',
+  'an explicit architect-authored reviews content.layout always wins over the strategy default, even one that would otherwise resolve to grid'
+);
+
+const reviewsFnStart = spotlightSource.indexOf('export function ReviewsWall');
+const reviewsFnEnd = spotlightSource.indexOf('/* ─── Collections');
+assert(reviewsFnStart > -1 && reviewsFnEnd > reviewsFnStart, 'ReviewsWall is found in compositions.tsx for structural inspection');
+const reviewsFnSource = spotlightSource.slice(reviewsFnStart, reviewsFnEnd);
+assert(!reviewsFnSource.includes('Verified customer'), 'ReviewsWall no longer prints a hardcoded "Verified customer" label - StorefrontReview has no verified field to back that claim');
+assert(!reviewsFnSource.includes('verified notes'), 'ReviewsWall no longer labels the review count as "verified"');
+assert(reviewsFnSource.includes('allReviews.length > 0 ? allReviews.reduce'), 'the average rating is computed from the FULL review dataset, not the 6-review display slice');
+assert(reviewsFnSource.includes('{allReviews.length}'), 'the displayed review count is the real total count, not the truncated display-slice length');
+assert(reviewsFnSource.includes('ai-v2-reviews-lead'), "'index' gives its lead review a structurally distinct class, not a uniform list item");
+assert(reviewsFnSource.includes('data-density={brand.tokens.density}'), "'grid' column count is wired to the density design token, not a fixed 3 columns for every brand");
+const reviewsReturnCount = (reviewsFnSource.match(/return \(/g) || []).length;
+assert(reviewsReturnCount >= 2, 'ReviewsWall still has separate empty-state and populated-state return branches');
+
+// Deno-only architect prompt copy accuracy check (no new layout NAMES to add here, since
+// collections/testimonials/reviews keep their existing catalog values - just confirm the
+// generic "unset layout gets a strategy default" note was extended to mention them).
+assert(aiStudioV2Text.includes('collections/tiles (asymmetry)'), 'aiStudioV2.ts documents that collections/tiles content.layout is now strategy-defaulted');
+assert(aiStudioV2Text.includes('testimonials/\neditorial (imageryRole)') || aiStudioV2Text.includes('testimonials/editorial (imageryRole)'), 'aiStudioV2.ts documents that testimonials/editorial content.layout is now strategy-defaulted');
+assert(aiStudioV2Text.includes('reviews/wall (density)'), 'aiStudioV2.ts documents that reviews/wall content.layout is now strategy-defaulted');
+
+/* 15. QA-fixture coverage guard --------------------------------------------------------
+ * A production defaults/rendering function can be provably correct while its QA fixture
+ * still fails to demonstrate it, two different ways found in manual QA after Phase 4D:
+ *  - BLOCK FORM's testimonials_01 needs a REAL quote/author for imageQuote to actually
+ *    render anything (TestimonialsEditorial's no-fabrication guard returns null otherwise)
+ *    - the content was already sufficient, but nothing asserted that fact, so a future
+ *      edit could silently strip it back to empty and no test would catch it.
+ *  - Auric's reviews_01 previously had an explicit `layout: 'grid'` that duplicated
+ *    Lumen Lab's own PRE-EXISTING explicit 'grid', leaving 'index' - the layout with the
+ *    new lead-review hierarchy work - with zero live fixture coverage. Fixed by removing
+ *    the redundant explicit value so Auric's density:'medium' resolves 'index' naturally.
+ * These assert the FIXTURE DATA'S shape and resolved layout, not the renderer (already
+ * covered above) - this is coverage insurance, not a second copy of the production guard. */
+
+const streetwearFixture = V2_VARIETY_FIXTURES.find((f) => f.id === 'streetwear');
+assert(!!streetwearFixture, 'the streetwear (BLOCK FORM) fixture exists');
+const streetwearTestimonials = streetwearFixture?.document.pages.home.nodes.find((n) => n.id === 'testimonials_01');
+assert(!!streetwearTestimonials, 'BLOCK FORM has a testimonials_01 node');
+const streetwearTestimonialItems = Array.isArray(streetwearTestimonials?.content?.items)
+  ? (streetwearTestimonials!.content!.items as Array<{ quote?: string; author?: string }>)
+  : [];
+assert(
+  streetwearTestimonialItems.length > 0 && !!streetwearTestimonialItems[0]?.quote?.trim(),
+  'BLOCK FORM testimonials_01 has a real, non-empty primary quote — sufficient for TestimonialsEditorial to render (its no-fabrication guard would otherwise return null and the section would be invisible, exactly the bug manual QA found)'
+);
+assert(
+  !!streetwearTestimonialItems[0]?.author?.trim(),
+  'BLOCK FORM testimonials_01 has a real author/name for its primary quote'
+);
+assert(
+  streetwearTestimonials?.content?.layout === 'imageQuote',
+  "BLOCK FORM testimonials_01 resolves to 'imageQuote' (typographyRole:'dominant_structural' -> imageryRole:'dominant' default), actually exercising the photo-led layout this fixture was added for"
+);
+const streetwearCollections = streetwearFixture?.document.pages.home.nodes.find((n) => n.id === 'collections_01');
+assert(!!streetwearCollections, 'BLOCK FORM has a collections_01 node');
+assert(streetwearCollections?.content?.layout === 'stacked', "BLOCK FORM collections_01 resolves to 'stacked' (asymmetry:'high')");
+
+const modernSkincareFixture = V2_VARIETY_FIXTURES.find((f) => f.id === 'modern_skincare');
+const skincareReviews = modernSkincareFixture?.document.pages.home.nodes.find((n) => n.id === 'reviews_01');
+assert(skincareReviews?.content?.layout === 'grid', "Lumen Lab reviews_01 is 'grid' (its own pre-existing, explicit authoring) - unchanged by Phase 4D");
+
+const electronicsFixture = V2_VARIETY_FIXTURES.find((f) => f.id === 'electronics');
+const auricReviews = electronicsFixture?.document.pages.home.nodes.find((n) => n.id === 'reviews_01');
+assert(
+  auricReviews?.content?.layout === 'index',
+  "Auric reviews_01 has no explicit layout and resolves to 'index' (density:'medium') - together with Lumen Lab's 'grid', both reviews layouts now have live fixture coverage, not both 'grid'"
+);
 
 console.log(failed === 0 ? '\nAll AI Studio V2 expressiveness-foundation self-tests passed.' : `\n${failed} self-test(s) FAILED.`);
 process.exit(failed === 0 ? 0 : 1);

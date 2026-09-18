@@ -82,6 +82,7 @@ export const COMPOSITION_CATALOG: CompositionCatalogEntry[] = [
     label: 'Product spotlight',
     whenToUse: 'Single hero product — luxury pieces, flagship SKU, launch item.',
     contentFields: ['title', 'body', 'cta', 'presentation: luxury|street|tech|editorial'],
+    optionalFields: ['layout: feature|imageDominant|structuredFeature'],
   },
   {
     type: 'editorialSplit',
@@ -89,7 +90,7 @@ export const COMPOSITION_CATALOG: CompositionCatalogEntry[] = [
     label: 'Editorial image/text',
     whenToUse: 'Craft story, provenance, science, brand narrative between commerce beats.',
     contentFields: ['title', 'body'],
-    optionalFields: ['imageUrl', 'imagePosition: left|right'],
+    optionalFields: ['imageUrl', 'reverse: true|false', 'layout: classicSplit|offsetNarrow|overlayStatement'],
   },
   {
     type: 'brandStatement',
@@ -97,7 +98,7 @@ export const COMPOSITION_CATALOG: CompositionCatalogEntry[] = [
     label: 'Large brand statement',
     whenToUse: 'Manifesto beat — luxury positioning, bold streetwear voice, editorial pause.',
     contentFields: ['statement'],
-    optionalFields: ['subtext'],
+    optionalFields: ['subtext', 'layout: centered|splitStatement|anchoredLarge'],
   },
   {
     type: 'editorialMosaic',
@@ -137,7 +138,7 @@ export const COMPOSITION_CATALOG: CompositionCatalogEntry[] = [
     label: 'Quiet newsletter',
     whenToUse: 'Only when list-building suits the brand — omit if it breaks luxury/editorial tone.',
     contentFields: ['title'],
-    optionalFields: ['subtitle', 'cta'],
+    optionalFields: ['text', 'kicker', 'layout: statement|split|campaign'],
   },
   {
     type: 'announcement',

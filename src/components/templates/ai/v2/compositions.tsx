@@ -469,34 +469,72 @@ export function ProductRailHorizontal(props: CompositionRenderProps) {
   );
 }
 
+/**
+ * Phase 4B — three structurally distinct compositions, same real product data throughout
+ * (no fabricated price/spec/inventory — only formatStoreMoney on the real StorefrontProduct
+ * already resolved by the asset plan):
+ *  - feature (default/legacy): the pre-existing 2-col media/copy grid, unchanged.
+ *  - imageDominant: image widens to the majority of the ratio, copy narrows and
+ *    bottom-anchors — the same "let imagery lead" idiom as editorialSplit's offsetNarrow,
+ *    for imageryRole:'dominant' brands.
+ *  - structuredFeature: copy leads in BOTH ratio and real DOM order (not just a CSS
+ *    `order:` flip — copy genuinely comes first for keyboard/AT users too), image becomes
+ *    the smaller, secondary block, copy rhythm tightens — for typographyRole:
+ *    'dominant_structural' brands that want an assertive, information-forward beat.
+ */
 export function ProductSpotlightFeature({ node, commerce, asset }: CompositionRenderProps) {
   const product = asset.product;
   const title = str(node.content.title, product?.title || '');
   const body = str(node.content.body);
   const kicker = str(node.content.kicker);
   const { currency, locale } = currencyOf(commerce);
+  const layout = layoutOf(node, 'feature');
+
+  const media = (
+    <div className="ai-v2-spotlight-media">
+      {asset.imageUrl ? (
+        <img src={asset.imageUrl} alt={product?.title || ''} />
+      ) : (
+        <div className="ai-v2-media-fallback tall" />
+      )}
+    </div>
+  );
+
+  const copy = (
+    <div className="ai-v2-spotlight-copy">
+      {kicker ? <p className="ai-v2-kicker">{kicker}</p> : null}
+      {title ? <h2>{title}</h2> : null}
+      {body ? <p className="ai-v2-lead">{body}</p> : null}
+      {product ? <p className="ai-v2-spotlight-price">{formatStoreMoney(product.price, currency, locale)}</p> : null}
+      {product ? (
+        <button type="button" className="ai-v2-btn ai-v2-btn-text" onClick={() => commerce.openProduct(product)}>
+          {str(node.content.cta, 'View details')}
+        </button>
+      ) : null}
+    </div>
+  );
+
+  const gridClass =
+    layout === 'imageDominant'
+      ? 'ai-v2-spotlight-grid ai-v2-spotlight-grid-dominant'
+      : layout === 'structuredFeature'
+        ? 'ai-v2-spotlight-grid ai-v2-spotlight-grid-structured'
+        : 'ai-v2-spotlight-grid';
 
   return (
-    <section {...sectionDesignProps(node)} className="ai-v2-section ai-v2-spotlight">
-      <div className="ai-v2-wrap ai-v2-spotlight-grid">
-        <div className="ai-v2-spotlight-media">
-          {asset.imageUrl ? (
-            <img src={asset.imageUrl} alt={product?.title || ''} />
-          ) : (
-            <div className="ai-v2-media-fallback tall" />
-          )}
-        </div>
-        <div className="ai-v2-spotlight-copy">
-          {kicker ? <p className="ai-v2-kicker">{kicker}</p> : null}
-          {title ? <h2>{title}</h2> : null}
-          {body ? <p className="ai-v2-lead">{body}</p> : null}
-          {product ? <p className="ai-v2-spotlight-price">{formatStoreMoney(product.price, currency, locale)}</p> : null}
-          {product ? (
-            <button type="button" className="ai-v2-btn ai-v2-btn-text" onClick={() => commerce.openProduct(product)}>
-              {str(node.content.cta, 'View details')}
-            </button>
-          ) : null}
-        </div>
+    <section {...sectionDesignProps(node)} className="ai-v2-section ai-v2-spotlight" data-layout={layout}>
+      <div className={`ai-v2-wrap ${gridClass}`}>
+        {layout === 'structuredFeature' ? (
+          <>
+            {copy}
+            {media}
+          </>
+        ) : (
+          <>
+            {media}
+            {copy}
+          </>
+        )}
       </div>
     </section>
   );
@@ -504,17 +542,56 @@ export function ProductSpotlightFeature({ node, commerce, asset }: CompositionRe
 
 /* ─── Story ──────────────────────────────────────────────────── */
 
+/**
+ * Phase 4A — three structurally distinct compositions, not one shape with a data attribute:
+ *  - classicSplit (default/legacy): plain 2-col media/copy grid, unchanged from before this
+ *    phase — any document with no content.layout renders pixel-identical to before.
+ *  - offsetNarrow: asymmetric column ratio + a narrower, vertically-offset copy block —
+ *    image-led, restrained-copy composition (quiet typography + dominant imagery brands).
+ *  - overlayStatement: no grid at all — a full-width image with an oversized statement-
+ *    scale copy panel overlapping it, for brands where typography carries structural weight.
+ * `reverse` stays meaningful in every mode (which side the copy/panel sits on).
+ */
 export function EditorialSplitImageText({ node, asset }: CompositionRenderProps) {
   const title = str(node.content.title);
   const body = str(node.content.body);
   const image = asset.imageUrl || '';
   const reverse = Boolean(node.content.reverse);
+  const layout = layoutOf(node, 'classicSplit');
+  const media = image ? <img src={image} alt="" /> : <div className="ai-v2-media-fallback tall" />;
+
+  if (layout === 'overlayStatement') {
+    return (
+      <section
+        {...sectionDesignProps(node)}
+        className="ai-v2-section ai-v2-editorial-split ai-v2-editorial-overlay"
+        data-spacing={node.design.spacing || 'dramatic'}
+        data-layout={layout}
+        data-reverse={reverse ? '1' : '0'}
+      >
+        <div className="ai-v2-editorial-overlay-media">{media}</div>
+        <div className="ai-v2-wrap">
+          <div className="ai-v2-editorial-overlay-panel">
+            {title ? <h2>{title}</h2> : null}
+            {body ? <p className="ai-v2-lead">{body}</p> : null}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
-    <section {...sectionDesignProps(node)} className="ai-v2-section ai-v2-editorial-split" data-spacing={node.design.spacing || 'dramatic'} data-reverse={reverse ? '1' : '0'}>
-      <div className="ai-v2-wrap ai-v2-editorial-grid">
-        <div className="ai-v2-editorial-media">{image ? <img src={image} alt="" /> : <div className="ai-v2-media-fallback tall" />}</div>
+    <section
+      {...sectionDesignProps(node)}
+      className="ai-v2-section ai-v2-editorial-split"
+      data-spacing={node.design.spacing || 'dramatic'}
+      data-layout={layout}
+      data-reverse={reverse ? '1' : '0'}
+    >
+      <div className={`ai-v2-wrap ai-v2-editorial-grid${layout === 'offsetNarrow' ? ' ai-v2-editorial-grid-offset' : ''}`}>
+        <div className="ai-v2-editorial-media">{media}</div>
         <div className="ai-v2-editorial-copy">
+          {layout === 'offsetNarrow' ? <span className="ai-v2-kicker">Story</span> : null}
           {title ? <h2>{title}</h2> : null}
           {body ? <p className="ai-v2-lead">{body}</p> : null}
         </div>
@@ -523,13 +600,44 @@ export function EditorialSplitImageText({ node, asset }: CompositionRenderProps)
   );
 }
 
+/**
+ * Phase 4B — three structurally distinct compositions, not one centered sentence scaled
+ * up/down (typography-role-driven emphasis/scale already did that before this phase, and
+ * still applies on top of every layout below — see v2.css's [data-emphasis] rules):
+ *  - centered (default/legacy): the pre-existing single centered paragraph, unchanged.
+ *  - splitStatement: a real 2-col placement — the statement in a narrower left column,
+ *    an (until now dead — see contentProvenance.ts/aiStudioV2.ts) `subtext` field
+ *    rendered as a bottom-anchored secondary line in the right column. Restrained,
+ *    editorial placement for typographyRole:'quiet' brands.
+ *  - anchoredLarge: the statement breaks OUTSIDE the content canvas entirely (edge-to-edge,
+ *    left/right/center anchored via the existing data-align knob) — the same "let
+ *    typography own the composition" idiom as editorialSplit's overlayStatement, for
+ *    typographyRole:'dominant_structural' brands.
+ */
 export function BrandStatementLarge({ node }: CompositionRenderProps) {
   const statement = str(node.content.statement || node.content.title);
   if (!statement) return null;
+  const subtext = str(node.content.subtext);
+  const layout = layoutOf(node, 'centered');
+
+  if (layout === 'anchoredLarge') {
+    return (
+      <section {...sectionDesignProps(node)} className="ai-v2-section ai-v2-statement" data-layout={layout}>
+        <p className="ai-v2-statement-text ai-v2-statement-anchored">{statement}</p>
+        {subtext ? (
+          <div className="ai-v2-wrap">
+            <p className="ai-v2-statement-subtext">{subtext}</p>
+          </div>
+        ) : null}
+      </section>
+    );
+  }
+
   return (
-    <section {...sectionDesignProps(node)} className="ai-v2-section ai-v2-statement">
-      <div className="ai-v2-wrap">
+    <section {...sectionDesignProps(node)} className="ai-v2-section ai-v2-statement" data-layout={layout}>
+      <div className={`ai-v2-wrap${layout === 'splitStatement' ? ' ai-v2-statement-split' : ''}`}>
         <p className="ai-v2-statement-text">{statement}</p>
+        {layout === 'splitStatement' && subtext ? <p className="ai-v2-statement-subtext">{subtext}</p> : null}
       </div>
     </section>
   );
@@ -644,17 +752,33 @@ export function TestimonialsEditorial({ node, asset }: CompositionRenderProps) {
   );
 }
 
-/** Reviews as editorial index — deliberately different from testimonials. */
-export function ReviewsWall({ node, commerce, language }: CompositionRenderProps) {
+/**
+ * Reviews as editorial index — deliberately different from testimonials.
+ *
+ * Phase 4D fixes two real provenance bugs found in the Phase 4 audit, on top of the
+ * density-driven layout choice and internal presentation:
+ *  1. The footer used to print a hardcoded "Verified customer" label on every review —
+ *     StorefrontReview has no `verified` field at all, so this was a fabricated trust
+ *     signal, not a presentation of real data. Removed; only the real customer_name shows.
+ *  2. The average/count used to be computed from the 6-review DISPLAY slice, not the full
+ *     dataset — understating both when a store has more than 6 reviews. Now derived from
+ *     the complete `commerce.reviews` array, then sliced only for what's rendered.
+ *
+ * 'index' additionally gives its first (already real, not reordered-for-effect) review a
+ * lead treatment — genuinely different markup/hierarchy, not the same list item restyled.
+ * 'grid' gets a real density-driven column count instead of a fixed 3 columns for every
+ * brand. Neither invents data: only real reviews, real ratings, real names are ever shown.
+ */
+export function ReviewsWall({ node, commerce, language, brand }: CompositionRenderProps) {
   const title = str(node.content.title, language === 'ro' ? 'Recenzii' : 'Reviews');
-  const reviews = commerce.reviews?.slice(0, 6) || [];
+  const allReviews = commerce.reviews || [];
   const avg =
-    reviews.length > 0 ? reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviews.length : 0;
-  // grid: dense card grid instead of the editorial index list — reads better for a
-  // catalogue_first / dense_campaign page composition than a long vertical list.
-  const grid = layoutOf(node, 'index') === 'grid';
+    allReviews.length > 0 ? allReviews.reduce((s, r) => s + (r.rating || 0), 0) / allReviews.length : 0;
+  const reviews = allReviews.slice(0, 6);
+  const layout = layoutOf(node, 'index');
+  const isGrid = layout === 'grid';
 
-  if (!reviews.length) {
+  if (!allReviews.length) {
     return (
       <section {...sectionDesignProps(node)} className="ai-v2-section ai-v2-reviews">
         <div className="ai-v2-wrap">
@@ -666,7 +790,7 @@ export function ReviewsWall({ node, commerce, language }: CompositionRenderProps
   }
 
   return (
-    <section {...sectionDesignProps(node)} className="ai-v2-section ai-v2-reviews">
+    <section {...sectionDesignProps(node)} className="ai-v2-section ai-v2-reviews" data-layout={layout}>
       <div className="ai-v2-wrap">
         <div className="ai-v2-reviews-head">
           <div>
@@ -675,19 +799,20 @@ export function ReviewsWall({ node, commerce, language }: CompositionRenderProps
               <span>{avg.toFixed(1)}</span>
               <small>/ 5</small>
             </p>
-            <p className="ai-v2-reviews-count">{reviews.length} verified notes</p>
+            <p className="ai-v2-reviews-count">
+              {allReviews.length} {language === 'ro' ? 'recenzii' : 'reviews'}
+            </p>
           </div>
         </div>
-        <ol className={grid ? 'ai-v2-reviews-grid' : 'ai-v2-reviews-index'}>
-          {reviews.map((r) => (
-            <li key={r.id}>
+        <ol className={isGrid ? 'ai-v2-reviews-grid' : 'ai-v2-reviews-index'} data-density={brand.tokens.density}>
+          {reviews.map((r, idx) => (
+            <li key={r.id} className={!isGrid && idx === 0 ? 'ai-v2-reviews-lead' : undefined}>
               <div className="ai-v2-reviews-stars" aria-label={`${r.rating} of 5`}>
                 {'★'.repeat(Math.round(r.rating || 0))}
                 <span className="dim">{'★'.repeat(Math.max(0, 5 - Math.round(r.rating || 0)))}</span>
               </div>
               {r.comment ? <p>{r.comment}</p> : null}
               <footer>
-                <span>Verified customer</span>
                 <span>{r.customer_name}</span>
               </footer>
             </li>
@@ -700,14 +825,14 @@ export function ReviewsWall({ node, commerce, language }: CompositionRenderProps
 
 /* ─── Collections ────────────────────────────────────────────── */
 
-export function CollectionsTiles({ node, commerce, language }: CompositionRenderProps) {
+export function CollectionsTiles({ node, commerce, language, brand }: CompositionRenderProps) {
   const title = str(node.content.title, language === 'ro' ? 'Colecții' : 'Collections');
   const collections = commerce.collections.slice(0, 4);
   const layout = layoutOf(node, 'editorial');
   if (!collections.length) return null;
 
   return (
-    <section {...sectionDesignProps(node)} className="ai-v2-section ai-v2-collections" data-layout={layout}>
+    <section {...sectionDesignProps(node)} className="ai-v2-section ai-v2-collections" data-layout={layout} data-density={brand.tokens.density}>
       <div className="ai-v2-wrap">
         <h2 className="ai-v2-collections-title">{title}</h2>
         <div className={layout === 'stacked' ? 'ai-v2-collections-stacked' : 'ai-v2-collections-editorial'}>
@@ -737,32 +862,76 @@ export function CollectionsTiles({ node, commerce, language }: CompositionRender
 
 /* ─── Newsletter ─────────────────────────────────────────────── */
 
+/**
+ * Phase 4C — three structurally distinct compositions sharing ONE form (defined once
+ * below, reused unchanged in every layout — same input/label/autoComplete/submit-handler,
+ * so accessibility and event behavior never diverge by layout):
+ *  - statement (default/legacy): the pre-existing centered headline + form stack,
+ *    unchanged. Was already `layoutOf()`'s fallback before this phase, but had no
+ *    registered entry — see compositionLayouts.ts's newsletter/quiet comment.
+ *  - split: copy and form occupy distinct grid regions side by side, not stacked.
+ *  - campaign: a full-width bordered band, oversized heading, message and form inline —
+ *    a denser message/CTA relationship for typographyRole:'dominant_structural' brands.
+ * No fabricated copy anywhere: title/text/kicker are only ever the node's own content.
+ */
 export function NewsletterQuiet({ node, language }: CompositionRenderProps) {
   const layout = layoutOf(node, 'statement');
   const title = str(node.content.title, language === 'ro' ? 'Newsletter' : 'Newsletter');
   const text = str(node.content.text);
   const kicker = str(node.content.kicker);
 
+  const form = (
+    <form
+      className="ai-v2-newsletter-form"
+      onSubmit={(e) => {
+        e.preventDefault();
+      }}
+    >
+      <label className="sr-only" htmlFor={`ai-v2-nl-${node.id}`}>
+        Email
+      </label>
+      <input id={`ai-v2-nl-${node.id}`} type="email" placeholder="you@email.com" autoComplete="email" />
+      <button type="submit" className="ai-v2-btn-text">
+        {language === 'ro' ? 'Trimite' : 'Subscribe'}
+      </button>
+    </form>
+  );
+
+  const copy = (
+    <>
+      {kicker ? <p className="ai-v2-kicker">{kicker}</p> : null}
+      <h2>{title}</h2>
+      {text ? <p className="ai-v2-lead">{text}</p> : null}
+    </>
+  );
+
+  if (layout === 'campaign') {
+    return (
+      <section {...sectionDesignProps(node)} className="ai-v2-section ai-v2-newsletter" data-layout={layout}>
+        <div className="ai-v2-wrap ai-v2-newsletter-campaign-band">
+          <div className="ai-v2-newsletter-campaign-copy">{copy}</div>
+          <div className="ai-v2-newsletter-campaign-form">{form}</div>
+        </div>
+      </section>
+    );
+  }
+
+  if (layout === 'split') {
+    return (
+      <section {...sectionDesignProps(node)} className="ai-v2-section ai-v2-newsletter" data-layout={layout}>
+        <div className="ai-v2-wrap ai-v2-newsletter-split-grid">
+          <div className="ai-v2-newsletter-split-copy">{copy}</div>
+          <div className="ai-v2-newsletter-split-form">{form}</div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section {...sectionDesignProps(node)} className="ai-v2-section ai-v2-newsletter" data-layout={layout}>
       <div className="ai-v2-wrap ai-v2-newsletter-stage">
-        {kicker ? <p className="ai-v2-kicker">{kicker}</p> : null}
-        <h2>{title}</h2>
-        {text ? <p className="ai-v2-lead">{text}</p> : null}
-        <form
-          className="ai-v2-newsletter-form"
-          onSubmit={(e) => {
-            e.preventDefault();
-          }}
-        >
-          <label className="sr-only" htmlFor={`ai-v2-nl-${node.id}`}>
-            Email
-          </label>
-          <input id={`ai-v2-nl-${node.id}`} type="email" placeholder="you@email.com" autoComplete="email" />
-          <button type="submit" className="ai-v2-btn-text">
-            {language === 'ro' ? 'Trimite' : 'Subscribe'}
-          </button>
-        </form>
+        {copy}
+        {form}
       </div>
     </section>
   );

@@ -3,8 +3,10 @@ import { brandDesignSystemFromSpec, designSpecSchema, ensureCreativeStrategy } f
 import { siteDocumentSchema, type SiteDocument } from '@/lib/ai-studio/v2/siteTree';
 import {
   applyStrategyDefaults,
+  applyLayoutDefaults,
   normalizeDesignSemanticsForNodes,
   type StrategyNode,
+  type LayoutDefaultNode,
 } from '@shared/ai-studio-v2/strategyDefaults';
 
 type Fixture = {
@@ -34,7 +36,13 @@ function build(
   // value above still wins.
   const strategy = ensureCreativeStrategy(designSpec);
   const defaulted = applyStrategyDefaults(nodes as unknown as StrategyNode[], strategy) as unknown as typeof nodes;
-  const normalizedNodes = normalizeDesignSemanticsForNodes(defaulted as unknown as Parameters<typeof normalizeDesignSemanticsForNodes>[0]) as unknown as typeof nodes;
+  // Phase 4A/4B/4C/4D — same fill-only-if-unset contract as applyStrategyDefaults above,
+  // but for content.layout (editorialSplit, productSpotlight, brandStatement, newsletter,
+  // collections, testimonials, reviews — see strategyDefaults.ts's LAYOUT_DEFAULT_RESOLVERS).
+  // Runs on these hand-authored fixtures for the same reason applyStrategyDefaults does:
+  // without it, only the layout the fixture itself hand-sets ever reaches the renderer.
+  const layoutDefaulted = applyLayoutDefaults(defaulted as unknown as LayoutDefaultNode[], strategy) as unknown as typeof defaulted;
+  const normalizedNodes = normalizeDesignSemanticsForNodes(layoutDefaulted as unknown as Parameters<typeof normalizeDesignSemanticsForNodes>[0]) as unknown as typeof nodes;
   const document = siteDocumentSchema.parse({
     version: 2,
     siteId: id,
@@ -346,6 +354,18 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
         responsive: {},
       },
       {
+        id: 'newsletter_01',
+        type: 'newsletter',
+        variant: 'quiet',
+        visible: true,
+        // No content.layout set — exercises Phase 4C's strategy-driven default. This
+        // brand's typographyRole is 'balanced', so applyLayoutDefaults should resolve
+        // 'split' (copy and form in distinct regions), not the centered 'statement' shape.
+        content: { title: 'The routine, in your inbox', text: 'New formulas and restock notes, twice a month.' },
+        design: {},
+        responsive: {},
+      },
+      {
         id: 'footer_01',
         type: 'footer',
         variant: 'minimal_commerce',
@@ -448,6 +468,31 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
         responsive: {},
       },
       {
+        id: 'statement_01',
+        type: 'brandStatement',
+        variant: 'large_type',
+        visible: true,
+        // No content.layout set — exercises Phase 4B's strategy-driven default. This
+        // brand's typographyRole is 'dominant_structural', so applyLayoutDefaults should
+        // resolve 'anchoredLarge' (breaks outside the content canvas), not 'centered'.
+        content: { statement: 'No quiet drops. No small talk.' },
+        design: {},
+        responsive: {},
+      },
+      {
+        id: 'spotlight_01',
+        type: 'productSpotlight',
+        variant: 'feature',
+        visible: true,
+        // No content.layout set — exercises Phase 4B's strategy-driven default. Same
+        // typographyRole as above, so applyLayoutDefaults should resolve
+        // 'structuredFeature' (copy leads in ratio and DOM order), not the plain 'feature' split.
+        content: { title: 'The anchor piece', body: 'One silhouette, every drop. This is the one that started it.' },
+        design: {},
+        responsive: {},
+        dataBindings: { products: 'featured', limit: 1 },
+      },
+      {
         id: 'mosaic_01',
         type: 'editorialMosaic',
         variant: 'asymmetric',
@@ -456,6 +501,21 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
         design: {},
         responsive: {},
         dataBindings: { products: 'newest', limit: 4 },
+      },
+      {
+        id: 'story_01',
+        type: 'editorialSplit',
+        variant: 'image_text',
+        visible: true,
+        // No content.layout set — exercises Phase 4A's strategy-driven default. This
+        // brand's typographyRole is 'dominant_structural' (see creativeStrategy above),
+        // so applyLayoutDefaults should resolve 'overlayStatement', not the plain split.
+        content: {
+          title: 'Made for the block, not the runway.',
+          body: 'Cut oversized, printed loud. Every drop is small-batch and gone in days.',
+        },
+        design: {},
+        responsive: {},
       },
       {
         id: 'products_01',
@@ -479,6 +539,20 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
         dataBindings: { products: 'featured', limit: 10 },
       },
       {
+        id: 'collections_01',
+        type: 'collections',
+        variant: 'tiles',
+        visible: true,
+        // No content.layout set — exercises Phase 4D's strategy-driven default. This
+        // brand's asymmetry is 'high', so applyLayoutDefaults should resolve 'stacked'
+        // (alternating rows), not the plain 'editorial' grid. imageryRole:'dominant' also
+        // makes the whole block full-bleed edge-to-edge (see IMAGE_LED_TYPES), and
+        // density:'high' tightens the tile gap.
+        content: { title: 'Shop by drop' },
+        design: {},
+        responsive: {},
+      },
+      {
         id: 'testimonials_01',
         type: 'testimonials',
         variant: 'editorial',
@@ -490,6 +564,18 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
             { quote: 'Finally streetwear that feels premium, not costume.', author: 'Noah' },
           ],
         },
+        design: {},
+        responsive: {},
+      },
+      {
+        id: 'newsletter_01',
+        type: 'newsletter',
+        variant: 'quiet',
+        visible: true,
+        // No content.layout set — exercises Phase 4C's strategy-driven default. This
+        // brand's typographyRole is 'dominant_structural', so applyLayoutDefaults should
+        // resolve 'campaign' (assertive, bordered band), not the centered 'statement' shape.
+        content: { title: 'First to know. First to cop.', text: 'Drop alerts only. No filler.' },
         design: {},
         responsive: {},
       },
@@ -633,7 +719,17 @@ export const V2_VARIETY_FIXTURES: Fixture[] = [
         type: 'reviews',
         variant: 'wall',
         visible: true,
-        content: { title: 'Verified listening notes' },
+        // No content.layout set — exercises Phase 4D's strategy-driven default. Auric's
+        // density is 'medium', so this resolves to 'index' (the lead-review hierarchy
+        // treatment), not 'grid'. Lumen Lab's OWN reviews_01 already has an explicit,
+        // pre-existing `layout: 'grid'` (predates Phase 4D — see git blame), so between
+        // the two fixtures both reviews layouts are genuinely exercised: Lumen Lab='grid',
+        // Auric='index'. An earlier pass here explicitly set 'grid' on Auric too, which
+        // was wrong: it left 'index' - the layout with the new lead-review hierarchy work -
+        // with zero live fixture coverage. Title no longer claims "verified" - Phase 4D
+        // removed the system's own fabricated verified-customer label; this fixture's own
+        // copy shouldn't contradict that fix.
+        content: { title: 'What listeners say' },
         design: {},
         responsive: {},
       },

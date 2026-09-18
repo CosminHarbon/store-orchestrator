@@ -940,6 +940,37 @@
   letter-spacing: 0.04em;
 }
 
+/* Spotlight/imageDominant — image widens to the majority of the ratio, copy narrows and
+   bottom-anchors instead of sitting mid-height: a genuine ratio + placement change. */
+.ai-v2-spotlight-grid-dominant {
+  grid-template-columns: 1.6fr 1fr;
+  align-items: end;
+}
+
+.ai-v2-spotlight-grid-dominant .ai-v2-spotlight-media {
+  min-height: clamp(460px, 72vh, 760px);
+}
+
+.ai-v2-spotlight-grid-dominant .ai-v2-spotlight-copy {
+  max-width: 30ch;
+  padding-bottom: clamp(0.5rem, 3vw, 2rem);
+}
+
+/* Spotlight/structuredFeature — copy leads in ratio (JSX also puts it first in DOM order,
+   see compositions.tsx), image becomes the smaller, secondary block, copy rhythm tightens
+   for an information-forward, assertive read. */
+.ai-v2-spotlight-grid-structured {
+  grid-template-columns: 1.1fr 0.75fr;
+}
+
+.ai-v2-spotlight-grid-structured .ai-v2-spotlight-media {
+  min-height: clamp(280px, 42vh, 440px);
+}
+
+.ai-v2-spotlight-grid-structured .ai-v2-spotlight-copy > * + * {
+  margin-top: 0.6rem;
+}
+
 /* Editorial story */
 .ai-v2-editorial-grid {
   display: grid;
@@ -967,6 +998,60 @@
   max-width: 10ch;
 }
 
+/* editorialSplit/offsetNarrow — asymmetric ratio + a narrower, vertically-offset copy
+   block (image-led, restrained-copy composition), not a palette/spacing swap of the
+   classic split. */
+.ai-v2-editorial-grid-offset {
+  grid-template-columns: 1.4fr 1fr;
+}
+
+.ai-v2-editorial-grid-offset .ai-v2-editorial-media {
+  min-height: clamp(420px, 62vh, 640px);
+}
+
+.ai-v2-editorial-grid-offset .ai-v2-editorial-copy {
+  align-self: end;
+  max-width: 30ch;
+  padding-bottom: clamp(0.5rem, 3vw, 2rem);
+}
+
+/* editorialSplit/overlayStatement — no grid: a full-width image with an oversized,
+   statement-scale copy panel overlapping it. Structurally distinct from both split modes
+   above, for brands whose typography should carry structural weight. */
+.ai-v2-editorial-overlay-media {
+  width: 100%;
+  min-height: clamp(480px, 78vh, 820px);
+  overflow: hidden;
+  background: var(--ai-secondary);
+}
+
+.ai-v2-editorial-overlay-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.ai-v2-editorial-overlay-panel {
+  margin-top: -18vh;
+  width: min(560px, 100%);
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  background: var(--ai-bg);
+  position: relative;
+  z-index: 1;
+}
+
+.ai-v2-editorial-overlay[data-reverse='1'] .ai-v2-editorial-overlay-panel {
+  margin-left: auto;
+}
+
+.ai-v2-editorial-overlay-panel h2 {
+  font-size: var(--ai-v2-statement);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  max-width: 14ch;
+}
+
 /* Statement */
 .ai-v2-statement {
   padding: clamp(5rem, 12vw, 8rem) 0;
@@ -979,6 +1064,57 @@
   letter-spacing: -0.04em;
   max-width: 16ch;
   margin: 0 auto;
+}
+
+/* BrandStatement/splitStatement — a real 2-col placement: the statement in a narrower
+   left column, an editorial secondary line (content.subtext) bottom-anchored in the
+   right column. Restrained composition, not a smaller font size. */
+.ai-v2-statement-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(1rem, 4vw, 3rem);
+  align-items: end;
+  text-align: initial;
+}
+
+.ai-v2-statement-split .ai-v2-statement-text {
+  grid-column: 1;
+  margin: 0;
+}
+
+.ai-v2-statement-split .ai-v2-statement-subtext {
+  grid-column: 2;
+  margin: 0;
+}
+
+.ai-v2-statement-subtext {
+  max-width: 34ch;
+  opacity: 0.6;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  margin: 1rem 0 0;
+}
+
+/* BrandStatement/anchoredLarge — breaks OUTSIDE the content canvas entirely (edge-to-edge,
+   using the gutter directly instead of the measure-capped .ai-v2-wrap), the same
+   "let typography own the composition" idiom as editorialSplit's overlayStatement.
+   Deliberately does not set its own font-size: the existing typographyRole ->
+   data-emphasis -> --ai-v2-statement-emphasis-primary chain already governs scale, and a
+   second, competing font-size here would just lose that cascade for no visual gain. */
+.ai-v2-statement-anchored {
+  width: 100%;
+  max-width: none;
+  padding-inline: var(--ai-v2-gutter);
+  margin: 0;
+  text-align: left;
+}
+
+[data-align='center'].ai-v2-statement .ai-v2-statement-anchored {
+  text-align: center;
+}
+
+[data-align='end'].ai-v2-statement .ai-v2-statement-anchored {
+  text-align: right;
 }
 
 /* Mosaic magazine */
@@ -1148,6 +1284,13 @@
   align-items: center;
 }
 
+/* Phase 4D — imageryRole:'dominant' widens the photo column instead of leaving the
+   quote/photo ratio identical for every brand (see IMAGE_LED_TYPES in strategyDefaults.ts).
+   Photo-first ratio, mirroring editorialSplit's offsetNarrow image-led idiom. */
+.ai-v2-testimonial-image[data-bleed='1'] .ai-v2-testimonial-image-grid {
+  grid-template-columns: 1.3fr 0.8fr;
+}
+
 .ai-v2-testimonial-photo {
   min-height: clamp(360px, 55vh, 560px);
   overflow: hidden;
@@ -1243,7 +1386,29 @@
   opacity: 0.5;
 }
 
-/* grid: dense card presentation instead of an editorial vertical list. */
+/* Phase 4D — the lead review gets a genuinely different, larger quote-style treatment;
+   the rest of the index stays the plain compact list above. Real hierarchy, not a
+   font-size bump applied uniformly — this is what materially separates 'index' from
+   'grid' now, on top of the container-level list-vs-cards difference that already existed. */
+.ai-v2-reviews-index .ai-v2-reviews-lead {
+  padding-bottom: 2rem;
+}
+
+.ai-v2-reviews-index .ai-v2-reviews-lead p {
+  font-family: var(--ai-heading), Georgia, serif;
+  font-size: clamp(1.5rem, 2.8vw, 2.1rem);
+  line-height: 1.3;
+  max-width: 34ch;
+}
+
+.ai-v2-reviews-index .ai-v2-reviews-lead .ai-v2-reviews-stars {
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+/* grid: dense card presentation instead of an editorial vertical list. Column count is
+   density-driven (see ReviewsWall's data-density) — 'balanced'/unset keeps the pre-existing
+   3 columns below untouched. */
 .ai-v2-reviews-grid {
   list-style: none;
   margin: 0;
@@ -1251,6 +1416,14 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(1rem, 2.5vw, 1.5rem);
+}
+
+.ai-v2-reviews-grid[data-density='sparse'] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ai-v2-reviews-grid[data-density='dense'] {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .ai-v2-reviews-grid li {
@@ -1275,7 +1448,13 @@
 }
 
 @media (max-width: 720px) {
-  .ai-v2-reviews-grid {
+  /* Same specificity requirement documented elsewhere in this file for the merch
+     dense-grid override: the density-scoped selectors above are unscoped to viewport and
+     more specific than a plain .ai-v2-reviews-grid rule, so both must be listed here too
+     to actually collapse a dense/sparse grid to 2 columns on phones. */
+  .ai-v2-reviews-grid,
+  .ai-v2-reviews-grid[data-density='sparse'],
+  .ai-v2-reviews-grid[data-density='dense'] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1295,6 +1474,20 @@
 .ai-v2-collections-stacked {
   display: grid;
   gap: clamp(1.5rem, 4vw, 3rem);
+}
+
+/* Phase 4D — density-driven tile gap on top of whichever layout is chosen (not a third
+   layout): 'balanced' keeps each layout's own existing gap unchanged, above. Unscoped to
+   viewport on purpose — only `gap` changes here, never grid-template-columns, so there is
+   no mobile-collapse rule for this to fight (unlike the bleed-ratio rules below). */
+.ai-v2-collections[data-density='sparse'] .ai-v2-collections-editorial,
+.ai-v2-collections[data-density='sparse'] .ai-v2-collections-stacked {
+  gap: clamp(2rem, 5vw, 3.5rem);
+}
+
+.ai-v2-collections[data-density='dense'] .ai-v2-collections-editorial,
+.ai-v2-collections[data-density='dense'] .ai-v2-collections-stacked {
+  gap: clamp(0.5rem, 1.5vw, 1rem);
 }
 
 .ai-v2-collections-stacked .ai-v2-collections-block {
@@ -1415,6 +1608,57 @@
   opacity: 1;
 }
 
+/* Newsletter/split — copy and form occupy distinct grid regions side by side, not
+   stacked: a real composition-geometry change, not a padding/font-size variant. */
+.ai-v2-newsletter-split-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: end;
+}
+
+.ai-v2-newsletter-split-copy h2 {
+  font-size: clamp(2rem, 4vw, 3rem);
+  margin: 0;
+  max-width: 14ch;
+}
+
+.ai-v2-newsletter-split-form .ai-v2-newsletter-form {
+  margin-top: 0;
+  max-width: none;
+}
+
+/* Newsletter/campaign — a full-width bordered band: oversized heading and form sit
+   inline in the same row (wrapping on narrow viewports), a denser message/CTA
+   relationship than either the centered stack or the side-by-side split. */
+.ai-v2-newsletter-campaign-band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: clamp(1rem, 3vw, 2.5rem);
+  border-top: 1px solid color-mix(in srgb, var(--ai-text) 16%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--ai-text) 16%, transparent);
+  padding-block: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.ai-v2-newsletter-campaign-copy h2 {
+  font-size: var(--ai-v2-statement);
+  line-height: 1.05;
+  max-width: none;
+  margin: 0;
+}
+
+.ai-v2-newsletter-campaign-form {
+  flex: 1 1 320px;
+  max-width: 420px;
+}
+
+.ai-v2-newsletter-campaign-form .ai-v2-newsletter-form {
+  margin-top: 0;
+  max-width: none;
+}
+
 /* Footers */
 .ai-v2-footer {
   padding: clamp(3rem, 7vw, 5rem) 0;
@@ -1518,10 +1762,71 @@
   .ai-v2-hero-product-stage,
   .ai-v2-spotlight-grid,
   .ai-v2-editorial-grid,
+  .ai-v2-editorial-grid-offset,
+  .ai-v2-statement-split,
   .ai-v2-testimonial-image-grid,
   .ai-v2-merch-feature,
   .ai-v2-mosaic-head,
   .ai-v2-collections-editorial {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-v2-editorial-grid-offset .ai-v2-editorial-copy {
+    align-self: auto;
+    max-width: none;
+    padding-bottom: 0;
+  }
+
+  .ai-v2-editorial-overlay-media {
+    min-height: 320px;
+  }
+
+  .ai-v2-editorial-overlay-panel {
+    margin-top: -3rem;
+    width: 100%;
+  }
+
+  .ai-v2-spotlight-grid-dominant .ai-v2-spotlight-media,
+  .ai-v2-spotlight-grid-structured .ai-v2-spotlight-media {
+    min-height: 300px;
+  }
+
+  .ai-v2-spotlight-grid-dominant .ai-v2-spotlight-copy {
+    max-width: none;
+    padding-bottom: 0;
+  }
+
+  .ai-v2-statement-split .ai-v2-statement-text,
+  .ai-v2-statement-split .ai-v2-statement-subtext {
+    grid-column: 1;
+  }
+
+  .ai-v2-statement-split .ai-v2-statement-subtext {
+    margin-top: 1rem;
+  }
+
+  .ai-v2-newsletter-split-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-v2-newsletter-split-form .ai-v2-newsletter-form {
+    margin-top: 1.5rem;
+  }
+
+  .ai-v2-newsletter-campaign-band {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ai-v2-newsletter-campaign-form {
+    flex-basis: auto;
+    max-width: none;
+  }
+
+  /* Same specificity requirement documented elsewhere in this file for the merch
+     dense-grid override: [data-bleed='1']'s widened ratio is unscoped to viewport, so it
+     must be matched here at equal-or-higher specificity to actually collapse on phones. */
+  .ai-v2-testimonial-image[data-bleed='1'] .ai-v2-testimonial-image-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1779,12 +2084,16 @@
 
 [data-emphasis='primary'] h1,
 [data-emphasis='primary'] h2,
-[data-emphasis='primary'] .ai-v2-statement-text {
+[data-emphasis='primary'] .ai-v2-statement-text,
+[data-emphasis='primary'] .ai-v2-testimonial-quote blockquote p,
+[data-emphasis='primary'] .ai-v2-testimonial-image blockquote p {
   font-size: var(--ai-v2-emphasis-primary);
   letter-spacing: -0.04em;
 }
 [data-emphasis='quiet'] h1,
-[data-emphasis='quiet'] h2 {
+[data-emphasis='quiet'] h2,
+[data-emphasis='quiet'] .ai-v2-testimonial-quote blockquote p,
+[data-emphasis='quiet'] .ai-v2-testimonial-image blockquote p {
   font-size: var(--ai-v2-emphasis-quiet);
   opacity: 0.92;
 }

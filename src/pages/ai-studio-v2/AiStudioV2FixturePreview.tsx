@@ -105,7 +105,18 @@ export default function AiStudioV2FixturePreview() {
         </strong>
         <label>
           Fixture:{' '}
-          <select value={fixtureId} onChange={(e) => setFixtureId(e.target.value)}>
+          <select
+            value={fixtureId}
+            onChange={(e) => setFixtureId(e.target.value)}
+            style={{
+              color: '#111',
+              background: '#fff',
+              font: 'inherit',
+              padding: '4px 6px',
+              borderRadius: 3,
+              border: '1px solid #555',
+            }}
+          >
             {V2_VARIETY_FIXTURES.map((f) => (
               <option key={f.id} value={f.id}>
                 {FIXTURE_LABELS[f.id] || f.id}
