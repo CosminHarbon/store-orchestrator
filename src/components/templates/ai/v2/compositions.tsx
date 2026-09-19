@@ -1,5 +1,6 @@
-import type { CSSProperties } from 'react';
-import { ShoppingBag } from 'lucide-react';
+import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Menu, ShoppingBag, X } from 'lucide-react';
 import type { CompositionRenderProps } from './registry';
 import { resolveProducts } from './registry';
 import { ProductPresentation } from './ProductPresentation';
@@ -7,6 +8,7 @@ import { formatStoreMoney, resolvePresentationMode } from './money';
 import { productReviewStats } from '@/lib/storefront/api';
 import type { StorefrontProduct } from '@/lib/storefront/types';
 import { mobileOrderAttr, mobileColumnsAttr } from '@/lib/ai-studio/v2/responsiveOverride';
+import { useIsCompactViewport } from './useCompactViewport';
 
 /** Per-product rating from real, product-linked reviews only — never a store-wide average. */
 function ratingOf(commerce: CompositionRenderProps['commerce'], product: StorefrontProduct) {
@@ -83,10 +85,66 @@ function Wrap({
 
 /* ─── Navigation ─────────────────────────────────────────────── */
 
-function NavChrome({ node, commerce, transparent }: CompositionRenderProps & { transparent?: boolean }) {
+function NavChrome({ node, commerce, transparent, language }: CompositionRenderProps & { transparent?: boolean }) {
+  const { t } = useTranslation('storefront');
+  // Phase 6D.1 — `language` here is document.meta.language (the SiteDocument's OWN
+  // authored/generation language), the same source every other composition's copy already
+  // follows (see functionalCta). The ambient i18n.language react-i18next would otherwise use
+  // is the merchant's own dashboard/account preferred_language (see LanguageProvider.tsx /
+  // useStorefrontCommerce.ts's applyStorefrontLanguage(cfg.preferredLanguage)) — a DIFFERENT,
+  // unrelated setting that can legitimately differ from the language this specific storefront
+  // was generated in. Forcing `lng` per-call keeps the existing keys/JSON files (no hardcoded
+  // language map, no third translation system) while making nav match the rest of the
+  // generated page instead of the merchant's own account locale.
+  const tNav = (key: string) => t(key, { lng: language });
   const name = str(node.content.storeName, 'Store');
   const logo = str(node.content.logoUrl);
   const tone = str(node.content.tone, transparent ? 'dark' : 'auto');
+  const isCompact = useIsCompactViewport();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const panelId = useId();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const firstActionRef = useRef<HTMLButtonElement>(null);
+
+  // Compact -> desktop viewport transition while the panel is open must force-close it —
+  // a floating panel with no visible trigger left to close it would otherwise get stuck.
+  useEffect(() => {
+    if (!isCompact) setMenuOpen(false);
+  }, [isCompact]);
+
+  // Escape + outside click, and initial focus placement — all scoped to the open panel's
+  // lifetime only (listeners attach/detach with it), no global-always-on listener.
+  useEffect(() => {
+    if (!menuOpen) return;
+    firstActionRef.current?.focus();
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return;
+      setMenuOpen(false);
+      triggerRef.current?.focus();
+    }
+    function onPointerDown(e: PointerEvent) {
+      const target = e.target as Node;
+      if (panelRef.current?.contains(target) || triggerRef.current?.contains(target)) return;
+      setMenuOpen(false);
+    }
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('pointerdown', onPointerDown);
+    };
+  }, [menuOpen]);
+
+  function goHome() {
+    commerce.setView('home');
+    setMenuOpen(false);
+  }
+  function goShop() {
+    commerce.openCatalog();
+    setMenuOpen(false);
+  }
+
   return (
     <header
       className={`ai-v2-nav ${transparent ? 'ai-v2-nav-transparent' : 'ai-v2-nav-minimal'}`}
@@ -98,17 +156,49 @@ function NavChrome({ node, commerce, transparent }: CompositionRenderProps & { t
         </button>
         <nav className="ai-v2-nav-links" aria-label="Primary">
           <button type="button" onClick={() => commerce.setView('home')}>
-            Home
+            {tNav('nav.home')}
           </button>
           <button type="button" onClick={() => commerce.openCatalog()}>
-            Shop
+            {tNav('nav.shop')}
           </button>
         </nav>
-        <button type="button" className="ai-v2-cart" onClick={() => commerce.setCartOpen(true)} aria-label="Open cart">
+        <button
+          type="button"
+          ref={triggerRef}
+          className="ai-v2-nav-menu-trigger"
+          aria-expanded={menuOpen}
+          aria-controls={panelId}
+          aria-label={menuOpen ? tNav('nav.closeMenu') : tNav('nav.openMenu')}
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          {menuOpen ? (
+            <X className="h-5 w-5" strokeWidth={1.5} />
+          ) : (
+            <Menu className="h-5 w-5" strokeWidth={1.5} />
+          )}
+        </button>
+        <button
+          type="button"
+          className="ai-v2-cart"
+          onClick={() => commerce.setCartOpen(true)}
+          aria-label={tNav('nav.openCart')}
+        >
           <ShoppingBag className="h-4 w-4" strokeWidth={1.5} />
           {commerce.cartCount > 0 && <span className="ai-v2-cart-badge">{commerce.cartCount}</span>}
         </button>
       </div>
+      {isCompact && menuOpen && (
+        <div id={panelId} ref={panelRef} className="ai-v2-nav-menu-panel">
+          <nav className="ai-v2-wrap ai-v2-nav-menu-panel-inner" aria-label="Primary">
+            <button type="button" ref={firstActionRef} onClick={goHome}>
+              {tNav('nav.home')}
+            </button>
+            <button type="button" onClick={goShop}>
+              {tNav('nav.shop')}
+            </button>
+          </nav>
+        </div>
+      )}
     </header>
   );
 }

@@ -13,7 +13,8 @@
     "shop": "Shop",
     "allProducts": "All products",
     "openCart": "Open cart",
-    "openMenu": "Open menu"
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
   },
   "home": {
     "collections": "Collections",

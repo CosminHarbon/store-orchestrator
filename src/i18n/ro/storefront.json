@@ -13,7 +13,8 @@
     "shop": "Magazin",
     "allProducts": "Toate produsele",
     "openCart": "Deschide coșul",
-    "openMenu": "Deschide meniul"
+    "openMenu": "Deschide meniul",
+    "closeMenu": "Închide meniul"
   },
   "home": {
     "collections": "Colecții",

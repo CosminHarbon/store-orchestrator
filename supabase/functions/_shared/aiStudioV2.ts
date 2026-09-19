@@ -19,7 +19,7 @@ import {
 import { summarizeDesignSpecValidation } from '../../../shared/ai-studio-v2/designSpecValidation.ts'
 import { applyStrategyDefaults, applyLayoutDefaults, normalizeDesignSemantics, applyChromeVariants, type StrategyNode } from '../../../shared/ai-studio-v2/strategyDefaults.ts'
 import { isValidLayout } from '../../../shared/ai-studio-v2/compositionLayouts.ts'
-import { validateResponsiveApplicability, validatePlacementGraph } from '../../../shared/ai-studio-v2/responsiveApplicability.ts'
+import { validateResponsiveApplicability, validatePlacementGraph, validateMobileHideRestriction } from '../../../shared/ai-studio-v2/responsiveApplicability.ts'
 import {
   buildMerchantFacts,
   getSiteArchitectProvenanceRules,
@@ -106,7 +106,8 @@ design.measure: narrow|standard|wide|bleed
 
 RESPONSIVE (optional per-node mobile override — omit unless mobile should genuinely differ):
 responsive.mobile.variant: swap to a different registered variant of the same type on mobile
-responsive.mobile.hide: drop this node entirely on mobile (e.g. a dense secondary rail)
+responsive.mobile.hide: drop this node entirely on mobile (e.g. a dense secondary rail) —
+NEVER set this on a nav node: primary navigation must stay reachable on mobile; it is rejected
 responsive.mobile.spacing / minHeight: as above, mobile-only
 responsive.mobile.contentOrder (preserve|media_first|text_first): which of a two-region
 media/copy composition's regions leads at compact viewport width. Valid ONLY on
@@ -233,6 +234,14 @@ const siteDocumentSchema = z.object({
   // so a document loaded/published through this edge path gets identical guarantees.
   for (const message of validatePlacementGraph(doc.pages.home.nodes)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message, path: ['pages', 'home', 'nodes'] })
+  }
+  // Phase 6D.1 — same persisted-document nav-hide gate as the client schema (siteTree.ts),
+  // so this edge path (generation output, ai-studio-publish) can never accept/persist a
+  // document with nav.responsive.mobile.hide=true even if it somehow bypassed validateRegistry.
+  for (const n of doc.pages.home.nodes) {
+    for (const message of validateMobileHideRestriction(n.type, n.responsive?.mobile)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: `${message} (node ${n.id})`, path: ['pages', 'home', 'nodes'] })
+    }
   }
 })
 

@@ -344,6 +344,59 @@
   opacity: 1;
 }
 
+/* Hidden by default (desktop) — shown only inside the <=960px compact breakpoint below,
+   the same contract useIsCompactViewport() resolves against. Never a second breakpoint. */
+.ai-v2-nav-menu-trigger {
+  display: none;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 0.45rem;
+  color: inherit;
+}
+
+/* Compact-only dropdown panel, anchored directly under the nav bar via the header's own
+   positioning context (sticky for minimal, absolute for transparent — either already
+   establishes one, so no extra positioning rule is needed on .ai-v2-nav itself). Always its
+   own fully opaque, tokenized surface — deliberately independent of nav transparency, since
+   .ai-v2-nav-transparent never gains a solid background on its own (no scroll-based state in
+   this renderer; see useCompactViewport.ts / SiteTreeRenderer.tsx). */
+.ai-v2-nav-menu-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--ai-bg, #fff);
+  color: var(--ai-text, #111);
+  border-bottom: 1px solid color-mix(in srgb, var(--ai-text) 8%, transparent);
+  border-radius: 0 0 var(--ai-radius, 0) var(--ai-radius, 0);
+  box-shadow: var(--ai-shadow, none);
+}
+
+.ai-v2-nav-menu-panel-inner {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0 1rem;
+}
+
+.ai-v2-nav-menu-panel-inner button {
+  background: none;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--ai-text) 8%, transparent);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: inherit;
+  padding: 0.9rem 0;
+}
+
+.ai-v2-nav-menu-panel-inner button:last-child {
+  border-bottom: 0;
+}
+
 .ai-v2-cart {
   justify-self: end;
   position: relative;
@@ -1750,12 +1803,19 @@
 
 /* ── Responsive ── */
 @media (max-width: 960px) {
+  /* brand | menu trigger | cart — explicit 3-track grid (not the desktop 1fr auto 1fr with
+     nav-links merely hidden), since the compact layout now has its own real middle control
+     instead of an empty center column. */
   .ai-v2-nav-inner {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr auto auto;
   }
 
   .ai-v2-nav-links {
     display: none;
+  }
+
+  .ai-v2-nav-menu-trigger {
+    display: inline-flex;
   }
 
   .ai-v2-hero-split-grid,

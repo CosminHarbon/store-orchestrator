@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { designTokensSchema } from './designSpec';
-import { validatePlacementGraph } from '@shared/ai-studio-v2/responsiveApplicability';
+import { validatePlacementGraph, validateMobileHideRestriction } from '@shared/ai-studio-v2/responsiveApplicability';
 
 /**
  * Premium composition types for Phase 2 registry.
@@ -194,6 +194,18 @@ export const siteDocumentSchema = z
     // that went through applySiteOps — see validatePlacementGraph's own doc comment.
     for (const message of validatePlacementGraph(doc.pages.home.nodes)) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message, path: ['pages', 'home', 'nodes'] });
+    }
+    // Phase 6D.1 — same reasoning as the placement check above: this schema's safeParse is
+    // the ONLY gate a raw persisted document (draft preview or a published storefront) goes
+    // through in AiStorefrontTemplate.tsx, independent of whether it was ever written via
+    // SiteOps. Without this, a document with nav.responsive.mobile.hide=true would load and
+    // render nav-less on mobile despite SiteOps/generation/critique already refusing to
+    // produce one — see validateMobileHideRestriction's own doc comment for why this is the
+    // one narrow rule wired here, not the full validateResponsiveApplicability.
+    for (const n of doc.pages.home.nodes) {
+      for (const message of validateMobileHideRestriction(n.type, n.responsive?.mobile)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: `${message} (node ${n.id})`, path: ['pages', 'home', 'nodes'] });
+      }
     }
   });
 export type SiteDocument = z.infer<typeof siteDocumentSchema>;

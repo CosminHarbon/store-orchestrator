@@ -145,10 +145,43 @@ export function isValidMobileColumns(value: unknown): value is MobileColumns {
 }
 
 /**
- * Validates a node's `responsive.mobile.contentOrder`/`responsive.mobile.columns` against
- * applicability, returning a list of human-readable error messages (empty if valid). Both
- * fields are optional — absence is always valid regardless of applicability. Callers decide
- * whether to throw, collect as validation issues, or reject a SiteOps patch.
+ * Phase 6D — Beta hardening: `nav` must stay reachable at every viewport. Unlike
+ * contentOrder/columns (meaningful on a narrow, opt-in subset of compositions), this is a
+ * flat rejection for exactly one type, symmetric with how `PLACEMENT_RESTRICTED_TYPES`
+ * above already singles out nav/footer by type rather than growing a (type, variant) table.
+ * `footer` is deliberately NOT restricted here — only nav owns the "primary navigation must
+ * remain reachable" contract; hiding the footer on mobile is an ordinary editorial choice.
+ */
+function isMobileHideRestricted(type: string): boolean {
+  return type === 'nav';
+}
+
+/**
+ * Isolated on its own so the PERSISTED-DOCUMENT schema validation (siteTree.ts's
+ * siteDocumentSchema superRefine, and the edge-mirrored siteDocumentSchema in
+ * aiStudioV2.ts) can enforce exactly this one rule at parse time — see the Phase 6D.1
+ * audit, which found that a raw `siteDocumentSchema.safeParse(...)` (the actual path
+ * AiStorefrontTemplate.tsx uses to load both a draft preview and a published storefront)
+ * did NOT reject `nav.responsive.mobile.hide: true`, even though SiteOps/generation/
+ * critique already did. Deliberately narrower than wiring the full
+ * `validateResponsiveApplicability` into that schema: this fixes the exact gap found
+ * without newly gating contentOrder/columns applicability at raw parse time too (a
+ * larger, separately-scoped behavior change). `validateResponsiveApplicability` below
+ * composes this same function — there is exactly one implementation of the rule.
+ */
+export function validateMobileHideRestriction(
+  type: string,
+  mobile: { hide?: unknown } | undefined
+): string[] {
+  if (!mobile || mobile.hide !== true || !isMobileHideRestricted(type)) return [];
+  return [`responsive.mobile.hide is not allowed on ${type} (primary navigation must remain reachable on compact viewports)`];
+}
+
+/**
+ * Validates a node's `responsive.mobile.hide`/`contentOrder`/`columns` against applicability,
+ * returning a list of human-readable error messages (empty if valid). All three fields are
+ * optional — absence (or `hide: false`) is always valid. Callers decide whether to throw,
+ * collect as validation issues, or reject a SiteOps patch.
  *
  * `layout` is the node's resolved `content.layout` — required to correctly reject
  * contentOrder on editorialSplit/image_text's `overlayStatement` sub-layout (see
@@ -160,11 +193,11 @@ export function isValidMobileColumns(value: unknown): value is MobileColumns {
 export function validateResponsiveApplicability(
   type: string,
   variant: string,
-  mobile: { contentOrder?: unknown; columns?: unknown } | undefined,
+  mobile: { hide?: unknown; contentOrder?: unknown; columns?: unknown } | undefined,
   layout?: unknown
 ): string[] {
   if (!mobile) return [];
-  const errors: string[] = [];
+  const errors: string[] = [...validateMobileHideRestriction(type, mobile)];
   if (mobile.contentOrder !== undefined && !isContentOrderApplicable(type, variant, layout)) {
     const reason = isLayoutExcludedFromContentOrder(type, variant, layout)
       ? `content.layout ${JSON.stringify(layout)} has no two-region media/text grid to reorder`
