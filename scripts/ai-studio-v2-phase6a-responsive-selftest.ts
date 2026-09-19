@@ -670,6 +670,95 @@ assert(v2Css.includes('.ai-v2-merch-grid {'), 'the base (unscoped) .ai-v2-merch-
 assert(v2Css.includes('.ai-v2-merch-side {'), 'the base (unscoped) .ai-v2-merch-side rule still exists');
 assert(v2Css.includes('.ai-v2-merch-asymmetric-fill {'), 'the base (unscoped) .ai-v2-merch-asymmetric-fill rule still exists');
 
+/* 11. Phase 6B — Site Architect prompt contract (hero mobile-order reasoning guidance) ---
+   supabase/functions/_shared/aiStudioV2.ts imports zod from a remote https:// specifier
+   (Deno-only), so it cannot be imported as a module from this plain Node/tsx script — same
+   constraint scripts/ai-studio-v5a-pipeline-survival-selftest.ts already works around by
+   reading it as raw text and asserting on stable source markers instead of executing it.
+   This section reuses that exact technique for the Phase 6B prompt addition. */
+
+const edgeSrc = fs.readFileSync(path.join(here, '../supabase/functions/_shared/aiStudioV2.ts'), 'utf8');
+
+// A. The pre-existing Phase 6A contentOrder capability/applicability contract is unchanged.
+assert(
+  edgeSrc.includes('responsive.mobile.contentOrder (preserve|media_first|text_first): which of a two-region'),
+  'Site Architect prompt still states the contentOrder capability contract verbatim'
+);
+assert(
+  edgeSrc.includes('hero/editorial_split, hero/product_focus, productSpotlight/feature, and'),
+  'Site Architect prompt still lists all four contentOrder-applicable compositions'
+);
+assert(
+  edgeSrc.includes('editorialSplit/image_text EXCEPT when its content.layout is overlayStatement'),
+  'Site Architect prompt still states the overlayStatement layout-aware exception'
+);
+
+// B. The pre-existing Phase 6A columns capability/applicability contract is unchanged —
+//    Phase 6B adds no new columns policy (Phase 6B.0 decision D).
+assert(
+  edgeSrc.includes('responsive.mobile.columns (1|2): forces the mobile column count for a grid composition.'),
+  'Site Architect prompt still states the columns capability contract verbatim'
+);
+assert(
+  edgeSrc.includes('Valid ONLY on productGrid/editorial, reviews/wall, and collections/tiles'),
+  'Site Architect prompt still lists all three columns-applicable compositions'
+);
+
+// C. The new Phase 6B hero mobile-order reasoning guidance carries the required semantic
+//    markers — tested as stable short phrases, not a full-paragraph snapshot, so future
+//    wording edits don't break this test unless the underlying idea is actually dropped.
+const heroGuidanceStart = edgeSrc.indexOf('HERO MOBILE ORDER (hero/editorial_split');
+const heroGuidanceEnd = edgeSrc.indexOf('responsive.mobile.columns (1|2): forces the mobile column count');
+assert(
+  heroGuidanceStart !== -1 && heroGuidanceEnd !== -1 && heroGuidanceEnd > heroGuidanceStart,
+  'Site Architect prompt has a HERO MOBILE ORDER guidance block that precedes the columns capability text'
+);
+const heroGuidanceBlock = heroGuidanceStart !== -1 && heroGuidanceEnd > heroGuidanceStart
+  ? edgeSrc.slice(heroGuidanceStart, heroGuidanceEnd)
+  : '';
+
+assert(
+  edgeSrc.includes('collapse their side-by-side media/copy regions into a single'),
+  'hero guidance states that a compact hero turns a side-by-side composition into a sequence'
+);
+assert(
+  edgeSrc.includes('carry the opening beat'),
+  'hero guidance frames the decision as which region carries the opening beat'
+);
+assert(
+  edgeSrc.includes('genuine mobile art-direction decision'),
+  'hero guidance frames media_first/text_first as a deliberate art-direction decision, not a formatting default'
+);
+assert(
+  edgeSrc.includes('leave contentOrder unset'),
+  'hero guidance states that leaving contentOrder unset is the correct move when signals are weak/mixed/conflicting'
+);
+assert(
+  edgeSrc.includes('not an error state'),
+  'hero guidance explicitly frames the unset/media-first default as a considered fallback, not an error'
+);
+assert(
+  edgeSrc.includes('These are NOT deterministic rules'),
+  'hero guidance explicitly disclaims deterministic-rule status for the Design DNA evidence it names'
+);
+
+// Anti-pattern guards: the guidance must reason, not template a lookup table, and must stay
+// scoped to the two heroes Phase 6B actually covers (Phase 6B.0 decision — hero-specific,
+// not extended to productSpotlight/editorialSplit/productGrid/reviews/collections).
+assert(
+  !edgeSrc.includes('typographyRole=dominant_structural -> text_first'),
+  'prompt does NOT contain a hardcoded typographyRole->text_first lookup rule'
+);
+assert(
+  !edgeSrc.includes('imageryRole=dominant -> media_first'),
+  'prompt does NOT contain a hardcoded imageryRole->media_first lookup rule'
+);
+assert(!/->/.test(heroGuidanceBlock), 'hero mobile-order guidance contains no "->" lookup-table-style mapping');
+assert(
+  !/productSpotlight|editorialSplit|productGrid|reviews\/wall|collections\/tiles/.test(heroGuidanceBlock),
+  'hero mobile-order guidance stays hero-scoped (no productSpotlight/editorialSplit/productGrid/reviews/collections mention)'
+);
+
 if (failed > 0) {
   console.error(`\n${failed} Phase 6A responsive self-test(s) FAILED.`);
   process.exit(1);

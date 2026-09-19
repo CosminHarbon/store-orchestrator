@@ -114,6 +114,20 @@ hero/editorial_split, hero/product_focus, productSpotlight/feature, and
 editorialSplit/image_text EXCEPT when its content.layout is overlayStatement (that layout
 has no media/copy grid to reorder) — an invalid combination is rejected, not silently
 ignored. Leave unset ("preserve") unless mobile should genuinely differ from the default.
+HERO MOBILE ORDER (hero/editorial_split and hero/product_focus specifically): on a compact
+viewport these two heroes collapse their side-by-side media/copy regions into a single
+vertical sequence — deciding what leads is a genuine mobile art-direction decision for THIS
+brand, not a formatting default to skip past. Decide which region, the image or the copy,
+should carry the opening beat once side-by-side becomes sequential. Existing Design DNA may
+offer real evidence either way: imagery genuinely meant to dominate the opening moment can
+support media_first; typography genuinely meant to carry structural weight — not just look
+bold — can support text_first. These are NOT deterministic rules; do not mechanically derive
+contentOrder from any single field. When the evidence is weak, mixed, or pulls in different
+directions, leave contentOrder unset: the existing media-first default is a considered, valid
+fallback, not an error state or an unfinished decision. Do not author contentOrder merely to
+create variation between stores. Never set contentOrder on a composition the applicability
+rule above rejects — an invalid combination fails validation rather than silently doing
+nothing.
 responsive.mobile.columns (1|2): forces the mobile column count for a grid composition.
 Valid ONLY on productGrid/editorial, reviews/wall, and collections/tiles — an invalid
 combination is rejected, not silently ignored. Leave unset unless mobile should genuinely
