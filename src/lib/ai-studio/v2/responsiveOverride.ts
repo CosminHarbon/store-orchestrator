@@ -1,4 +1,5 @@
 import { resolveResponsiveVariant, type SiteNode } from './siteTree';
+import { buildPlacementEdges, stableTopologicalSort } from '@shared/ai-studio-v2/responsiveApplicability';
 
 /**
  * Applies a node's `responsive.mobile` override (variant swap, hide, spacing, minHeight)
@@ -58,4 +59,39 @@ export function mobileOrderAttr(node: SiteNode): string | undefined {
 export function mobileColumnsAttr(node: SiteNode): string | undefined {
   const value = node.responsive?.mobile?.columns;
   return value ? String(value) : undefined;
+}
+
+/**
+ * Phase 6C — page-level mobile-only section ordering (responsive.mobile.placement).
+ *
+ * Input MUST be the currently-visible compact-viewport nodes, already in canonical desktop
+ * order (i.e. after `withResponsiveOverride`'s own hide/variant/spacing resolution has been
+ * applied and hidden nodes filtered out — see SiteTreeRenderer.tsx). Filtering to visible
+ * nodes BEFORE calling this is what gives the hidden-anchor contract for free: a placement
+ * referencing a node that isn't in `nodes` (hidden OR deleted OR restricted chrome OR a
+ * genuinely corrupt/legacy reference) is reported by `buildPlacementEdges` as a dropped edge
+ * and silently ignored here — the node simply falls back to its stable desktop-relative
+ * position among the others. This function never rejects, never throws, and always returns
+ * every input node exactly once — see Phase 6C.0C's resolver-correctness audit for why a
+ * genuine stable topological sort (not a sequential remove/splice) is required: the naive
+ * splice approach was proven to violate its own ordering constraints in two of the eight
+ * canonical test cases.
+ *
+ * nav/footer nodes are NEVER filtered out of the input/output here — they are
+ * placement-RESTRICTED (cannot carry a placement, cannot be an anchor — enforced by
+ * `isPlacementAllowed` inside `buildPlacementEdges`), not non-rendered. Because they never
+ * participate in any edge, they behave like any other unconstrained node in the topological
+ * sort and simply keep their own stable desktop-relative position via the index tie-break.
+ *
+ * Desktop rendering never calls this function — see SiteTreeRenderer.tsx, which only invokes
+ * it on the compact-viewport path.
+ */
+export function resolveMobileOrder(nodes: SiteNode[]): SiteNode[] {
+  const { edges } = buildPlacementEdges(nodes);
+  const order = stableTopologicalSort(
+    nodes.map((n) => n.id),
+    edges
+  );
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  return order.map((id) => byId.get(id) as SiteNode);
 }

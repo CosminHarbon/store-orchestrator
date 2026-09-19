@@ -237,5 +237,24 @@ ${registryCatalog}
 - NEVER modify content.copyType === "merchant" fields.
 - Prefer not rewriting creative copy; change presentation/spacing/variant/order.
 - Return empty ops array if nothing safe to apply — that is a valid and preferred outcome vs unsafe ops.
-- Max 12 ops.`;
+- Max 12 ops.
+
+MOBILE-ONLY PAGE ORDERING (responsive.mobile.placement — use ONLY when a recommendation is
+specifically about mobile section order, e.g. "category discovery appears too late on
+mobile"):
+- Shape: { "op":"update", "id": "<moving node>", "patch": { "responsive": { "mobile": {
+  "placement": { "beforeId": "<anchor id>" } } } } } — or "afterId" instead of "beforeId".
+  Exactly one of beforeId/afterId, never both.
+- Meaning is RELATIVE ORDER, not guaranteed adjacency: it renders the section before/after the
+  named anchor on mobile only — desktop order is never touched. If another node also targets
+  the same anchor, both are honored and their own relative order is preserved; do not assume
+  your node lands immediately next to the anchor.
+- Never set placement on a "nav" or "footer" node, and never reference a "nav" or "footer"
+  node id as beforeId/afterId — both are always rejected.
+- To remove a placement you previously set, patch it to null: { "responsive": { "mobile": {
+  "placement": null } } } — this clears only that field; every other responsive.mobile value
+  on that node (hide/spacing/contentOrder/columns) is preserved untouched.
+- Do not add a placement merely because a recommendation mentions "mobile" in passing — only
+  use it when the recommendation is specifically about SECTION ORDER on mobile. Leaving
+  placement unset is the normal, expected case.`;
 }

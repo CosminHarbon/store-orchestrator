@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { designTokensSchema } from './designSpec';
+import { validatePlacementGraph } from '@shared/ai-studio-v2/responsiveApplicability';
 
 /**
  * Premium composition types for Phase 2 registry.
@@ -53,6 +54,31 @@ export const nodeDesignSchema = z.object({
   measure: z.enum(['narrow', 'standard', 'wide', 'bleed']).optional(),
 });
 
+/** Same id bounds/convention as siteNodeSchema.id ("Stable node id like hero_01") — a
+ *  placement anchor is always another node's id, so it must satisfy the same shape. */
+const placementNodeIdSchema = z
+  .string()
+  .min(2)
+  .max(64)
+  .regex(/^[a-z][a-z0-9_]*$/i, 'Stable node id like hero_01');
+
+/**
+ * Phase 6C — page-level mobile-only ordering. Exactly one of beforeId/afterId is valid
+ * (enforced by the union of two `.strict()` object shapes — a payload with both or neither
+ * matches neither arm and is rejected at parse time, no custom refinement needed).
+ *
+ * Semantics are RELATIVE ORDER, not guaranteed adjacency — see
+ * shared/ai-studio-v2/responsiveApplicability.ts's resolver docs. Cross-node rules (self
+ * reference, target existence, nav/footer chrome restriction, cycle-freedom) cannot be
+ * expressed in a per-node Zod shape and are validated separately via
+ * validatePlacementGraph — see this schema's own superRefine below.
+ */
+export const mobilePlacementSchema = z.union([
+  z.object({ beforeId: placementNodeIdSchema }).strict(),
+  z.object({ afterId: placementNodeIdSchema }).strict(),
+]);
+export type MobilePlacement = z.infer<typeof mobilePlacementSchema>;
+
 export const nodeResponsiveSchema = z.object({
   mobile: z
     .object({
@@ -66,6 +92,8 @@ export const nodeResponsiveSchema = z.object({
        *  out-of-scope value fails loudly instead of silently doing nothing. */
       contentOrder: z.enum(['preserve', 'media_first', 'text_first']).optional(),
       columns: z.union([z.literal(1), z.literal(2)]).optional(),
+      /** Phase 6C — page-level mobile-only section ordering. See mobilePlacementSchema. */
+      placement: mobilePlacementSchema.optional(),
     })
     .optional(),
   tablet: z
@@ -158,6 +186,14 @@ export const siteDocumentSchema = z
     }
     if (!types.includes('footer')) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Home must include a footer node', path: ['pages', 'home', 'nodes'] });
+    }
+    // Phase 6C — placement is cross-node state (self reference / target existence /
+    // nav-footer chrome restriction / cycle-freedom), not expressible as a per-node Zod
+    // shape. Runs on EVERY document load (this schema's safeParse is the gate both
+    // AiStorefrontTemplate.tsx load paths and ai-studio-publish use), not only documents
+    // that went through applySiteOps — see validatePlacementGraph's own doc comment.
+    for (const message of validatePlacementGraph(doc.pages.home.nodes)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message, path: ['pages', 'home', 'nodes'] });
     }
   });
 export type SiteDocument = z.infer<typeof siteDocumentSchema>;

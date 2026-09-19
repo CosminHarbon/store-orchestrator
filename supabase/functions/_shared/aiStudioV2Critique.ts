@@ -18,7 +18,7 @@ import {
 } from '../../../shared/ai-studio-v2/visualCriticPrompt.ts'
 import { buildExpectedRenderManifest } from '../../../shared/ai-studio-v2/expectedRenderManifest.ts'
 import { isValidLayout } from '../../../shared/ai-studio-v2/compositionLayouts.ts'
-import { validateResponsiveApplicability } from '../../../shared/ai-studio-v2/responsiveApplicability.ts'
+import { validateResponsiveApplicability, isPlacementAllowed } from '../../../shared/ai-studio-v2/responsiveApplicability.ts'
 import {
   chatJsonForTask,
   chatVisionJsonForTask,
@@ -159,11 +159,44 @@ function checkLayoutAndMobileVariant(
   }
 }
 
+/** Phase 6C — cheap, cost-free structural pre-check for a critique-authored
+ *  responsive.mobile.placement, mirroring the exact style/purpose of the existing
+ *  mobileVariant/contentOrder/columns checks in checkLayoutAndMobileVariant above: catch the
+ *  common mistakes (self reference, nav/footer chrome restriction) before a wasted
+ *  critique-apply round-trip, not a full graph validation. Cycle-freedom is NOT re-checked
+ *  here — that is a whole-document graph property, not a per-op structural one, and remains
+ *  the client's applySiteOps end-of-batch check's job alone (see siteOps.ts) — never
+ *  duplicated. A placement that slips past this pre-filter is still caught there before
+ *  anything is persisted; this only avoids proposing the most obviously-invalid ops. */
+function checkPlacement(
+  nodeId: string,
+  type: string,
+  responsive: Record<string, unknown> | undefined,
+  nodeTypesById: Map<string, string>
+) {
+  const placement = (responsive as { mobile?: { placement?: { beforeId?: string; afterId?: string } } } | undefined)
+    ?.mobile?.placement
+  if (!placement) return
+  const targetId = 'beforeId' in placement ? placement.beforeId : placement.afterId
+  if (!targetId) return
+  if (targetId === nodeId) {
+    throw new Error(`responsive.mobile.placement on node ${nodeId} references itself`)
+  }
+  if (!isPlacementAllowed(type)) {
+    throw new Error(`responsive.mobile.placement is not allowed on node ${nodeId} (nav/footer cannot be repositioned)`)
+  }
+  const targetType = nodeTypesById.get(targetId)
+  if (targetType && !isPlacementAllowed(targetType)) {
+    throw new Error(`responsive.mobile.placement on node ${nodeId} references a nav/footer node, which cannot be used as an anchor`)
+  }
+}
+
 function validateOpsAgainstTree(
   document: { pages: { home: { nodes: Array<{ id: string; type: string; variant: string; content?: Record<string, unknown> }> } } },
   ops: z.infer<typeof siteOpSchema>[]
 ): { ops: z.infer<typeof siteOpSchema>[]; rejected: Array<{ reason: string; op: unknown }> } {
   const ids = new Set(document.pages.home.nodes.map((n) => n.id))
+  const nodeTypesById = new Map(document.pages.home.nodes.map((n) => [n.id, n.type]))
   const valid: z.infer<typeof siteOpSchema>[] = []
   const rejected: Array<{ reason: string; op: unknown }> = []
 
@@ -175,8 +208,10 @@ function validateOpsAgainstTree(
           throw new Error(`invalid composition ${op.node.type}/${op.node.variant}`)
         }
         checkLayoutAndMobileVariant(op.node.type, op.node.variant, op.node.content, op.node.responsive)
+        checkPlacement(op.node.id, op.node.type, op.node.responsive, nodeTypesById)
         if (op.afterId && !ids.has(op.afterId)) throw new Error(`afterId missing ${op.afterId}`)
         ids.add(op.node.id)
+        nodeTypesById.set(op.node.id, op.node.type)
         valid.push(op)
         continue
       }
@@ -195,6 +230,8 @@ function validateOpsAgainstTree(
           throw new Error(`invalid composition ${op.node.type}/${op.node.variant}`)
         }
         checkLayoutAndMobileVariant(op.node.type, op.node.variant, op.node.content, op.node.responsive)
+        checkPlacement(op.node.id, op.node.type, op.node.responsive, nodeTypesById)
+        nodeTypesById.set(op.node.id, op.node.type)
       }
       if (op.op === 'update') {
         const n = document.pages.home.nodes.find((x) => x.id === op.id)
@@ -229,6 +266,7 @@ function validateOpsAgainstTree(
             // silently skip the exception it's supposed to hit.
             const effectiveLayout = patchContent && 'layout' in patchContent ? patchContent.layout : n.content?.layout
             checkLayoutAndMobileVariant(type, variant, undefined, patchResponsive, effectiveLayout)
+            checkPlacement(op.id, type, patchResponsive, nodeTypesById)
           }
         }
       }
@@ -710,4 +748,10 @@ export {
   meetsCritiqueStopThreshold,
   applyCritiqueCalibrationGuards,
   CRITIQUE_STOP_THRESHOLD,
+  // Phase 6C.1 — exported for scripts/ai-studio-v2-phase6c1-critique-null-clear-selftest.ts,
+  // which proves the exact critique-output shape visualCriticPrompt.ts documents (a
+  // responsive.mobile.placement null clear) actually parses and survives validateOpsAgainstTree
+  // end to end, rather than trusting that by inspection alone.
+  siteOpsResponseSchema,
+  validateOpsAgainstTree,
 }

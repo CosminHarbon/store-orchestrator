@@ -40,6 +40,15 @@ export function validateSiteTree(raw: unknown): {
   document: SiteDocument | null;
   issues: SiteTreeValidationIssue[];
 } {
+  // Phase 6C — placement graph validity (self reference, target existence, nav/footer
+  // chrome restriction, cycle-freedom) is already enforced inside siteDocumentSchema's own
+  // superRefine (siteTree.ts, via the shared validatePlacementGraph), the same way the
+  // pre-existing nav/hero/product/footer presence checks are. A document that fails any of
+  // those checks never reaches `parsed.success`, so re-running validatePlacementGraph here
+  // on `parsed.data` would be dead code — deliberately not duplicated (see
+  // shared/ai-studio-v2/responsiveApplicability.ts's own doc comment on why there is exactly
+  // one implementation of this graph algorithm, reused by the schema, applySiteOps, and the
+  // edge-mirrored schema — never a second copy).
   const parsed = siteDocumentSchema.safeParse(raw);
   if (!parsed.success) {
     return {

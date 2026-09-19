@@ -176,3 +176,219 @@ export function validateResponsiveApplicability(
   }
   return errors;
 }
+
+/**
+ * Phase 6C — page-level mobile-only ordering (responsive.mobile.placement).
+ *
+ * Kept deliberately SEPARATE from the (type, variant) applicability tables above:
+ * contentOrder/columns are meaningful on a NARROW subset of variants (a genuine
+ * per-composition nuance), but placement's one restriction — nav/footer chrome — is a flat,
+ * variant-independent, TYPE-level exclusion covering exactly 2 of the ~14 composition types.
+ * Folding it into CONTENT_ORDER_APPLICABLE/COLUMNS_APPLICABLE's per-(type,variant) Set
+ * pattern would mean enumerating every nav/footer variant as excluded entries for no benefit
+ * — a giant special-case table where a one-line categorical rule already exists.
+ *
+ * `nav` has `position: sticky; top: 0` (v2.css) — a genuine structural dependency on being
+ * at/near the top of the document flow; moving it mid-page via a placement override would
+ * make it "stick" partway down the page once scrolled there. `footer` has no equivalent CSS
+ * dependency, but is the site's closing/legal/commerce-wrap-up chrome — appearing mid-page
+ * is an obvious semantic break regardless. Both are excluded in BOTH roles: neither may carry
+ * a placement itself (mover), and no other node's placement may anchor to either of them.
+ * `announcement`/`hero` are deliberately NOT restricted — no structural or schema dependency
+ * on their position was found (see Phase 6C audit), and restricting them would cost real
+ * future conversational-editing flexibility for no demonstrated benefit.
+ */
+const PLACEMENT_RESTRICTED_TYPES: ReadonlySet<string> = new Set(['nav', 'footer']);
+
+export function isPlacementAllowed(type: string): boolean {
+  return !PLACEMENT_RESTRICTED_TYPES.has(type);
+}
+
+/** `id`/`type` are typed optional and `responsive` is `unknown` (same defensive-typing idiom
+ *  as `validateResponsiveApplicability`'s own `mobile` param above), even though every real
+ *  SiteNode always has both: TypeScript's whole-program inference for the actual SiteNode
+ *  type (as it flows through this codebase's larger zod-schema graph) sometimes reports it as
+ *  effectively deep-partial at call sites requiring a required field — a PRE-EXISTING
+ *  characteristic visible even on the current baseline (see critiqueClient.ts's own
+ *  SiteDocument-vs-Json assignability error), not something this module's types introduce.
+ *  Typing both as optional here, with the explicit runtime guards below, sidesteps that
+ *  whole-program inference artifact without weakening real behavior: a node genuinely
+ *  missing an id/type is simply skipped, exactly like any other malformed/legacy input this
+ *  module already tolerates. */
+export type PlacementSourceNode = {
+  id?: string;
+  type?: string;
+  responsive?: unknown;
+};
+
+export type PlacementDropReason =
+  | 'self_reference'
+  | 'missing_target'
+  | 'restricted_mover'
+  | 'restricted_anchor'
+  | 'cycle';
+
+/** "from" must render before "to". */
+export type PlacementEdge = { from: string; to: string };
+
+export type PlacementEdgeResult = {
+  edges: PlacementEdge[];
+  dropped: Array<{ nodeId: string; reason: PlacementDropReason }>;
+};
+
+/**
+ * Single source of truth for turning per-node `placement` values into an acyclic "must
+ * render before" edge set — reused, unchanged, by BOTH write-time validation
+ * (validatePlacementGraph below, and siteOps.ts's end-of-batch check) and the render-time
+ * resolver (responsiveOverride.ts's resolveMobileOrder), so cycle-breaking and every
+ * rejection reason are defined in exactly one place, not two independently-maintained copies.
+ *
+ * Processes nodes in the given (desktop) array order, so which edge gets dropped when a
+ * cycle would otherwise form is deterministic (the edge attempted by the later-desktop-index
+ * mover loses) — see the Phase 6C resolver audit's Case F.
+ *
+ * `nodes` should be the FULL node set for write-time validation (a placement referencing a
+ * currently-hidden-but-persisted node is structurally valid — hidden is a render-time state,
+ * not a document-validity concern) and the CURRENTLY-VISIBLE node set for the render-time
+ * resolver (so a hidden anchor naturally reports as 'missing_target' and its placement is
+ * ignored for that render, exactly the hidden-anchor-fallback contract — see
+ * responsiveOverride.ts). This function itself does not distinguish "hidden" from "deleted";
+ * callers express that distinction purely through what they include in `nodes`.
+ */
+export function buildPlacementEdges(nodes: PlacementSourceNode[]): PlacementEdgeResult {
+  const byId = new Map<string, PlacementSourceNode>();
+  for (const n of nodes) {
+    if (typeof n.id === 'string') byId.set(n.id, n);
+  }
+  const dropped: PlacementEdgeResult['dropped'] = [];
+  const edges: PlacementEdge[] = [];
+  const successors = new Map<string, string[]>();
+
+  function wouldCreateCycle(from: string, to: string): boolean {
+    // Adding from->to would close a cycle iff `to` can already (transitively) reach `from`
+    // through already-accepted edges.
+    const stack = [to];
+    const seen = new Set<string>();
+    while (stack.length) {
+      const cur = stack.pop() as string;
+      if (cur === from) return true;
+      if (seen.has(cur)) continue;
+      seen.add(cur);
+      for (const next of successors.get(cur) || []) stack.push(next);
+    }
+    return false;
+  }
+
+  for (const node of nodes) {
+    if (typeof node.id !== 'string') continue; // defensive only — a real SiteNode always has an id
+    const nodeId: string = node.id;
+    const responsive = node.responsive as { mobile?: { placement?: { beforeId?: string; afterId?: string } | null } } | undefined;
+    const placement = responsive?.mobile?.placement;
+    if (!placement) continue;
+    const targetId = 'beforeId' in placement ? placement.beforeId : placement.afterId;
+    if (!targetId) continue; // malformed past zod — defensive only, never valid input here
+
+    if (targetId === nodeId) {
+      dropped.push({ nodeId, reason: 'self_reference' });
+      continue;
+    }
+    const targetNode = byId.get(targetId);
+    if (!targetNode) {
+      dropped.push({ nodeId, reason: 'missing_target' });
+      continue;
+    }
+    if (!isPlacementAllowed(node.type ?? '')) {
+      dropped.push({ nodeId, reason: 'restricted_mover' });
+      continue;
+    }
+    if (!isPlacementAllowed(targetNode.type ?? '')) {
+      dropped.push({ nodeId, reason: 'restricted_anchor' });
+      continue;
+    }
+    const from = 'beforeId' in placement ? nodeId : targetId;
+    const to = 'beforeId' in placement ? targetId : nodeId;
+    if (wouldCreateCycle(from, to)) {
+      dropped.push({ nodeId, reason: 'cycle' });
+      continue;
+    }
+    edges.push({ from, to });
+    successors.set(from, [...(successors.get(from) || []), to]);
+  }
+
+  return { edges, dropped };
+}
+
+/**
+ * Stable topological sort: returns `nodeIds` reordered to satisfy every edge in `edges`
+ * ("from" before "to"), preferring — among nodes with no remaining unsatisfied predecessor —
+ * whichever has the LOWEST original desktop index. This is what makes the result "as close
+ * to canonical desktop order as possible" rather than an arbitrary valid ordering: a node
+ * with no constraints, or whose constraints are already satisfied, never moves further than
+ * necessary. `edges` must already be acyclic (buildPlacementEdges guarantees this) — this
+ * function does not itself re-check for cycles.
+ */
+export function stableTopologicalSort(nodeIdsInDesktopOrder: string[], edges: PlacementEdge[]): string[] {
+  const indexOf = new Map(nodeIdsInDesktopOrder.map((id, i) => [id, i]));
+  const successors = new Map<string, string[]>();
+  const inDegree = new Map<string, number>();
+  for (const id of nodeIdsInDesktopOrder) inDegree.set(id, 0);
+  for (const { from, to } of edges) {
+    successors.set(from, [...(successors.get(from) || []), to]);
+    inDegree.set(to, (inDegree.get(to) || 0) + 1);
+  }
+
+  const remaining = new Set(nodeIdsInDesktopOrder);
+  const output: string[] = [];
+  while (remaining.size > 0) {
+    let best: string | null = null;
+    for (const id of remaining) {
+      if ((inDegree.get(id) || 0) === 0) {
+        if (best === null || (indexOf.get(id) as number) < (indexOf.get(best) as number)) best = id;
+      }
+    }
+    // Defensive only: buildPlacementEdges guarantees an acyclic edge set, so every remaining
+    // node reaches in-degree 0 eventually. If this ever fires anyway (e.g. a caller passes a
+    // hand-built cyclic edge list directly, bypassing buildPlacementEdges), break the
+    // deadlock deterministically rather than looping forever — never crash, never drop a node.
+    if (best === null) {
+      best = [...remaining].sort((a, b) => (indexOf.get(a) as number) - (indexOf.get(b) as number))[0];
+    }
+    output.push(best);
+    remaining.delete(best);
+    for (const next of successors.get(best) || []) {
+      inDegree.set(next, (inDegree.get(next) || 0) - 1);
+    }
+  }
+  return output;
+}
+
+function describePlacementDrop(nodeId: string, reason: PlacementDropReason): string {
+  switch (reason) {
+    case 'self_reference':
+      return `responsive.mobile.placement on node ${nodeId} references itself`;
+    case 'missing_target':
+      return `responsive.mobile.placement on node ${nodeId} references a node id that does not exist`;
+    case 'restricted_mover':
+      return `responsive.mobile.placement is not allowed on node ${nodeId} (nav/footer cannot be repositioned)`;
+    case 'restricted_anchor':
+      return `responsive.mobile.placement on node ${nodeId} references a nav/footer node, which cannot be used as an anchor`;
+    case 'cycle':
+      return `responsive.mobile.placement on node ${nodeId} would create a placement cycle`;
+  }
+}
+
+/**
+ * WRITE-TIME / full-document validation: every drop reported by buildPlacementEdges is a
+ * hard error here (unlike the render-time resolver, which silently ignores drops as
+ * defense-in-depth for legacy/corrupt documents). Returns human-readable messages, empty if
+ * valid. Pass the FULL node set — see buildPlacementEdges' own doc comment for why hidden
+ * nodes must still be considered "existing" at this layer.
+ *
+ * Used both by siteDocumentSchema's own superRefine (siteTree.ts) — so a document loaded
+ * directly from persistence is validated independently of whether it ever passed through
+ * SiteOps — and by siteOps.ts's end-of-batch check after applying a batch of ops.
+ */
+export function validatePlacementGraph(nodes: PlacementSourceNode[]): string[] {
+  const { dropped } = buildPlacementEdges(nodes);
+  return dropped.map(({ nodeId, reason }) => describePlacementDrop(nodeId, reason));
+}

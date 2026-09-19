@@ -3,7 +3,7 @@ import type { StorefrontCommerce } from '@/hooks/useStorefrontCommerce';
 import type { BrandDesignSystem } from '@/lib/ai-studio/v2/designSpec';
 import { brandTokensToCssVars } from '@/lib/ai-studio/v2/tokens';
 import { useIsCompactViewport } from './useCompactViewport';
-import { withResponsiveOverride } from '@/lib/ai-studio/v2/responsiveOverride';
+import { withResponsiveOverride, resolveMobileOrder } from '@/lib/ai-studio/v2/responsiveOverride';
 import type { SiteDocument } from '@/lib/ai-studio/v2/siteTree';
 import {
   assetForNode,
@@ -26,10 +26,17 @@ export default function SiteTreeRenderer({ document, brand, commerce, onAssetPla
   const language = document.meta.language;
   const style = brandTokensToCssVars(brand) as CSSProperties;
   const isCompact = useIsCompactViewport();
-  const nodes = useMemo(
-    () => document.pages.home.nodes.map((n) => withResponsiveOverride(n, isCompact)),
-    [document.pages.home.nodes, isCompact]
-  );
+  const nodes = useMemo(() => {
+    const overridden = document.pages.home.nodes.map((n) => withResponsiveOverride(n, isCompact));
+    // Desktop path: preserve existing node order exactly — no placement resolver involved.
+    if (!isCompact) return overridden;
+    // Compact path only (Phase 6C): hidden nodes must be filtered out BEFORE the placement
+    // resolver runs, so a placement anchored to a hidden node correctly falls back to the
+    // mover's own desktop-relative position instead of being treated as a valid target that
+    // merely doesn't render — see resolveMobileOrder's own doc comment.
+    const visible = overridden.filter((n) => n.visible !== false);
+    return resolveMobileOrder(visible);
+  }, [document.pages.home.nodes, isCompact]);
 
   // One plan per document/catalog so single-image slots get distinct products
   // instead of every composition independently grabbing index 0.

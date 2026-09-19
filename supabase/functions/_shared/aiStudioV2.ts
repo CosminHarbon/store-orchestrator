@@ -19,7 +19,7 @@ import {
 import { summarizeDesignSpecValidation } from '../../../shared/ai-studio-v2/designSpecValidation.ts'
 import { applyStrategyDefaults, applyLayoutDefaults, normalizeDesignSemantics, applyChromeVariants, type StrategyNode } from '../../../shared/ai-studio-v2/strategyDefaults.ts'
 import { isValidLayout } from '../../../shared/ai-studio-v2/compositionLayouts.ts'
-import { validateResponsiveApplicability } from '../../../shared/ai-studio-v2/responsiveApplicability.ts'
+import { validateResponsiveApplicability, validatePlacementGraph } from '../../../shared/ai-studio-v2/responsiveApplicability.ts'
 import {
   buildMerchantFacts,
   getSiteArchitectProvenanceRules,
@@ -132,6 +132,20 @@ responsive.mobile.columns (1|2): forces the mobile column count for a grid compo
 Valid ONLY on productGrid/editorial, reviews/wall, and collections/tiles — an invalid
 combination is rejected, not silently ignored. Leave unset unless mobile should genuinely
 differ from the default column behavior.
+responsive.mobile.placement ({ "beforeId": "<node id>" } or { "afterId": "<node id>" } —
+exactly one): a PAGE-LEVEL mobile-only ordering override. Renders this section before/after
+the named section on mobile ONLY; desktop order is completely untouched. This means RELATIVE
+ORDER, not guaranteed adjacency — if more than one section targets the same anchor, all are
+honored and their own relative order is preserved, not necessarily immediately next to the
+anchor. Never valid on a "nav" or "footer" node, and never reference a "nav" or "footer" node
+id as the anchor — both are rejected. Leaving placement unset is the normal, expected case:
+the desktop section order is almost always the right mobile order too. Only author it when
+you have a genuine, store-specific reason mobile discovery should differ from desktop — for
+example, an explicit instruction that a particular section must lead on mobile for reasons
+that don't apply on desktop. Do NOT derive placement from ux.mobileStrategy or any other
+DesignSpec field by a mechanical rule — there is no deterministic mapping from that field to
+placement; treat it purely as narrative context, the same way you already do for every other
+architecture decision in this prompt.
 Design knobs you leave unset are filled deterministically from creativeStrategy
 (density/asymmetry/rhythm/typographyRole/imageryRole) — you do not have to set every field.
 The same applies to content.layout on editorialSplit/image_text, productSpotlight/feature,
@@ -170,6 +184,14 @@ const siteNodeSchema = z.object({
       // so an out-of-scope value fails loudly instead of silently doing nothing.
       contentOrder: z.enum(['preserve', 'media_first', 'text_first']).optional(),
       columns: z.union([z.literal(1), z.literal(2)]).optional(),
+      // Phase 6C — page-level mobile-only section ordering. Exactly one of beforeId/afterId
+      // (enforced by the union of two `.strict()` shapes). Cross-node rules (self reference,
+      // target existence, nav/footer chrome restriction, cycle-freedom) are validated
+      // separately below (validatePlacementGraph) — mirrors client siteTree.ts exactly.
+      placement: z.union([
+        z.object({ beforeId: z.string().min(2).max(64).regex(/^[a-z][a-z0-9_]*$/i) }).strict(),
+        z.object({ afterId: z.string().min(2).max(64).regex(/^[a-z][a-z0-9_]*$/i) }).strict(),
+      ]).optional(),
     }).optional(),
   }).default({}),
   dataBindings: z.object({
@@ -207,6 +229,11 @@ const siteDocumentSchema = z.object({
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Home must include a product node', path: ['pages', 'home', 'nodes'] })
   }
   if (!types.includes('footer')) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Home must include footer', path: ['pages', 'home', 'nodes'] })
+  // Phase 6C — same cross-node placement validation as the client schema (siteTree.ts),
+  // so a document loaded/published through this edge path gets identical guarantees.
+  for (const message of validatePlacementGraph(doc.pages.home.nodes)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message, path: ['pages', 'home', 'nodes'] })
+  }
 })
 
 export type SiteDocument = z.infer<typeof siteDocumentSchema>
