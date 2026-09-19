@@ -102,7 +102,8 @@ export function extensionForMime(mime: string): string {
   return 'jpg';
 }
 
-export function formatBytes(bytes: number): string {
+/** Bytes are always stored as integers; this is display-only (binary units, trailing zeros trimmed). */
+export function formatBytes(bytes: number, maxDecimals?: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) return '0 B';
   if (bytes < 1024) return `${Math.round(bytes)} B`;
   const units = ['KB', 'MB', 'GB', 'TB'];
@@ -112,8 +113,8 @@ export function formatBytes(bytes: number): string {
     value /= 1024;
     i += 1;
   }
-  const digits = value >= 10 || i === 0 ? 0 : 1;
-  return `${value.toFixed(digits)} ${units[i]}`;
+  const digits = maxDecimals ?? (value >= 10 || i === 0 ? 0 : 1);
+  return `${Number(value.toFixed(digits))} ${units[i]}`;
 }
 
 export type MediaUsageSnapshot = {

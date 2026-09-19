@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { mapPool, uploadMedia } from '@/lib/media/uploadMedia';
 import { deleteMediaAsset } from '@/lib/media/deleteMedia';
 import { merchantMediaMessage } from '@/lib/media/errors';
+import { takeInputFiles } from '@/lib/media/inputFiles';
 
 interface ProductImage {
   id: string;
@@ -49,6 +50,7 @@ const ProductImageUpload = ({ productId, onImagesChange }: ProductImageUploadPro
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['product-images', productId] });
+    queryClient.invalidateQueries({ queryKey: ['all-product-images'] });
     queryClient.invalidateQueries({ queryKey: ['products'] });
     queryClient.invalidateQueries({ queryKey: ['media-usage'] });
     onImagesChange?.();
@@ -146,6 +148,8 @@ const ProductImageUpload = ({ productId, onImagesChange }: ProductImageUploadPro
     setUploading(true);
     try {
       await uploadImageMutation.mutateAsync(files);
+    } catch {
+      /* surfaced by the mutation's onError toast */
     } finally {
       setUploading(false);
       setPhase(null);
@@ -221,9 +225,8 @@ const ProductImageUpload = ({ productId, onImagesChange }: ProductImageUploadPro
                   accept="image/jpeg,image/png,image/webp,image/gif"
                   multiple
                   onChange={(e) => {
-                    const files = e.target.files;
-                    e.target.value = '';
-                    if (files?.length) void handleFileUpload(files);
+                    const files = takeInputFiles(e.target);
+                    if (files.length) void handleFileUpload(files);
                   }}
                   className="hidden"
                   disabled={uploading}

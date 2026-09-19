@@ -9,6 +9,7 @@ const cors = {
 
 const ALLOWED_MIME = new Set(['image/webp', 'image/jpeg', 'image/png']);
 const HARD_OBJECT_LIMIT = 2 * 1024 * 1024;
+const MAX_ORIGINAL_BYTES = 10 * 1024 * 1024;
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -197,6 +198,20 @@ serve(async (req) => {
       if (!Number.isFinite(expected) || expected < 1 || expected > HARD_OBJECT_LIMIT) {
         return json({ error: 'invalid_size' }, 400);
       }
+      /* Size of the file the merchant picked, measured in the browser before compression.
+         Quota is charged on this value (never less than `expected`, enforced in SQL).
+         Optional so older clients keep working; then the stored size is charged. */
+      let originalSize: number | null = null;
+      if (body.original_size_bytes !== undefined && body.original_size_bytes !== null) {
+        originalSize = Number(body.original_size_bytes);
+        if (
+          !Number.isInteger(originalSize) ||
+          originalSize < 1 ||
+          originalSize > MAX_ORIGINAL_BYTES
+        ) {
+          return json({ error: 'invalid_original_size' }, 400);
+        }
+      }
       const relatedId = await assertEntityOwnership(
         admin,
         merchantId,
@@ -213,7 +228,7 @@ serve(async (req) => {
         p_storage_path: storagePath,
         p_media_type: mediaType,
         p_mime_type: mimeType,
-        p_original_size_bytes: body.original_size_bytes ?? null,
+        p_original_size_bytes: originalSize,
         p_width: body.width ?? null,
         p_height: body.height ?? null,
         p_related_entity_type: mediaType,

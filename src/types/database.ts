@@ -217,6 +217,7 @@ export type Database = {
       media_assets: {
         Row: {
           bucket: string
+          charged_bytes: number
           created_at: string
           height: number | null
           id: string
@@ -1557,6 +1558,45 @@ export type Database = {
       get_my_entitlement_status: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      admin_media_storage_overview: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          store_user_id: string
+          store_name: string | null
+          email: string | null
+          asset_count: number
+          charged_bytes: number
+          stored_bytes: number
+          saved_bytes: number
+          measured_charged_bytes: number
+          measured_stored_bytes: number
+          legacy_asset_count: number
+          legacy_stored_bytes: number
+          counter_bytes_used: number
+          quota_bytes: number
+        }[]
+      }
+      admin_media_product_storage: {
+        Args: { p_store_user_id: string }
+        Returns: {
+          product_id: string | null
+          product_title: string | null
+          asset_id: string
+          product_image_id: string | null
+          public_url: string | null
+          is_primary: boolean | null
+          display_order: number | null
+          mime_type: string
+          width: number | null
+          height: number | null
+          original_size_bytes: number | null
+          stored_size_bytes: number
+          charged_bytes: number
+          saved_bytes: number
+          status: string
+          created_at: string
+        }[]
       }
       admin_list_merchants: {
         Args: Record<PropertyKey, never>

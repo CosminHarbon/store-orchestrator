@@ -28,6 +28,12 @@ assert.equal(extensionForMime('image/jpeg'), 'jpg');
 
 assert.equal(formatBytes(512), '512 B');
 assert.equal(formatBytes(1024), '1 KB');
+assert.equal(formatBytes(5242880), '5 MB');
+assert.equal(formatBytes(2147483648), '2 GB');
+assert.equal(formatBytes(1572864), '1.5 MB');
+assert.equal(formatBytes(921600), '900 KB');
+assert.equal(formatBytes(1950000, 2), '1.86 MB');
+assert.equal(formatBytes(-1), '0 B');
 assert.equal(COMPRESS_PRESETS.product.maxDimension, 2000);
 assert.equal(COMPRESS_PRESETS.logo.preserveAlpha, true);
 assert.equal(COMPRESS_PRESETS.hero.maxDimension, 2400);
