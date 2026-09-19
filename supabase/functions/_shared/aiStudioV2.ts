@@ -19,6 +19,7 @@ import {
 import { summarizeDesignSpecValidation } from '../../../shared/ai-studio-v2/designSpecValidation.ts'
 import { applyStrategyDefaults, applyLayoutDefaults, normalizeDesignSemantics, applyChromeVariants, type StrategyNode } from '../../../shared/ai-studio-v2/strategyDefaults.ts'
 import { isValidLayout } from '../../../shared/ai-studio-v2/compositionLayouts.ts'
+import { validateResponsiveApplicability } from '../../../shared/ai-studio-v2/responsiveApplicability.ts'
 import {
   buildMerchantFacts,
   getSiteArchitectProvenanceRules,
@@ -107,6 +108,16 @@ RESPONSIVE (optional per-node mobile override — omit unless mobile should genu
 responsive.mobile.variant: swap to a different registered variant of the same type on mobile
 responsive.mobile.hide: drop this node entirely on mobile (e.g. a dense secondary rail)
 responsive.mobile.spacing / minHeight: as above, mobile-only
+responsive.mobile.contentOrder (preserve|media_first|text_first): which of a two-region
+media/copy composition's regions leads at compact viewport width. Valid ONLY on
+hero/editorial_split, hero/product_focus, productSpotlight/feature, and
+editorialSplit/image_text EXCEPT when its content.layout is overlayStatement (that layout
+has no media/copy grid to reorder) — an invalid combination is rejected, not silently
+ignored. Leave unset ("preserve") unless mobile should genuinely differ from the default.
+responsive.mobile.columns (1|2): forces the mobile column count for a grid composition.
+Valid ONLY on productGrid/editorial, reviews/wall, and collections/tiles — an invalid
+combination is rejected, not silently ignored. Leave unset unless mobile should genuinely
+differ from the default column behavior.
 Design knobs you leave unset are filled deterministically from creativeStrategy
 (density/asymmetry/rhythm/typographyRole/imageryRole) — you do not have to set every field.
 The same applies to content.layout on editorialSplit/image_text, productSpotlight/feature,
@@ -141,6 +152,10 @@ const siteNodeSchema = z.object({
       hide: z.boolean().optional(),
       spacing: z.enum(['compact', 'cozy', 'airy', 'dramatic']).optional(),
       minHeight: z.enum(['auto', '60vh', '80vh', '100vh']).optional(),
+      // Phase 6A — applicability validated separately (validateRegistry below), not here,
+      // so an out-of-scope value fails loudly instead of silently doing nothing.
+      contentOrder: z.enum(['preserve', 'media_first', 'text_first']).optional(),
+      columns: z.union([z.literal(1), z.literal(2)]).optional(),
     }).optional(),
   }).default({}),
   dataBindings: z.object({
@@ -335,6 +350,13 @@ function validateRegistry(nodes: z.infer<typeof siteNodeSchema>[]): string[] {
     const mobileVariant = node.responsive?.mobile?.variant
     if (mobileVariant !== undefined && !isValidComposition(node.type, mobileVariant)) {
       errors.push(`Invalid responsive.mobile.variant ${JSON.stringify(mobileVariant)} for type ${node.type} on node ${node.id}`)
+    }
+    // Phase 6A — contentOrder/columns are generic fields but only meaningful on a subset
+    // of composition types (see shared/ai-studio-v2/responsiveApplicability.ts). `layout`
+    // (already resolved above) is threaded through so the one layout-aware exception —
+    // editorialSplit/image_text's overlayStatement — is rejected at generation time too.
+    for (const message of validateResponsiveApplicability(node.type, node.variant, node.responsive?.mobile, layout)) {
+      errors.push(`${message} (node ${node.id})`)
     }
   }
   return errors

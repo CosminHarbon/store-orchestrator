@@ -1840,6 +1840,59 @@
     min-height: 320px;
   }
 
+  /* Phase 6A — responsive.mobile.contentOrder: explicit compact-viewport override of the
+     hardcoded image-first defaults just above. 'preserve'/absent leaves those untouched;
+     'media_first' restates the current default explicitly (harmless, same visual result);
+     'text_first' is the new capability — copy visually leads instead of media. Scoped to
+     the four two-region compositions approved in responsiveApplicability.ts; every other
+     composition is unaffected because none of these attribute selectors match it. */
+  .ai-v2-hero-split[data-mobile-order='media_first'] .ai-v2-hero-media {
+    order: -1;
+  }
+
+  .ai-v2-hero-split[data-mobile-order='text_first'] .ai-v2-hero-media {
+    order: 1;
+  }
+
+  .ai-v2-hero-split[data-mobile-order='text_first'] .ai-v2-hero-copy {
+    order: 0;
+  }
+
+  .ai-v2-hero-product[data-mobile-order='media_first'] .ai-v2-hero-product-figure {
+    order: -1;
+  }
+
+  .ai-v2-hero-product[data-mobile-order='text_first'] .ai-v2-hero-product-figure {
+    order: 1;
+  }
+
+  .ai-v2-spotlight[data-mobile-order='media_first'] .ai-v2-spotlight-media {
+    order: -1;
+  }
+
+  .ai-v2-spotlight[data-mobile-order='media_first'] .ai-v2-spotlight-copy {
+    order: 1;
+  }
+
+  .ai-v2-spotlight[data-mobile-order='text_first'] .ai-v2-spotlight-copy {
+    order: -1;
+  }
+
+  .ai-v2-spotlight[data-mobile-order='text_first'] .ai-v2-spotlight-media {
+    order: 1;
+  }
+
+  /* editorialSplit classicSplit/offsetNarrow: no existing compact-viewport order rule to
+     preserve (unlike the two heroes above) — media is already DOM-first, and the desktop
+     `data-reverse` rtl trick already goes inert once the grid collapses to 1 column just
+     above this block. 'media_first'/absent therefore needs no rule at all; only
+     'text_first' is new behavior. `.ai-v2-editorial-grid-offset` always coexists with
+     `.ai-v2-editorial-grid` on the same element (compositions.tsx), so one selector covers
+     both classicSplit and offsetNarrow. */
+  .ai-v2-editorial-split[data-mobile-order='text_first'] .ai-v2-editorial-grid > .ai-v2-editorial-copy {
+    order: -1;
+  }
+
   .ai-v2-merch-side {
     grid-template-columns: 1fr 1fr;
   }
@@ -1861,6 +1914,62 @@
   .ai-v2-merch[data-layout='dense'] .ai-v2-merch-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: clamp(0.6rem, 2vw, 1rem);
+  }
+
+  /* Phase 6A — responsive.mobile.columns: explicit compact-viewport override of the
+     automatic column collapse above (2-up standard / 2-up dense). Same-specificity
+     requirement as the dense override immediately above (3 selector parts: 1 class + 1
+     attribute + 1 class) applies here too — this must also be duplicated in the 520px
+     block below at equal specificity, since that block's own dense override would
+     otherwise win the cascade tie at narrower widths by appearing later in the file.
+     Absent/unset leaves the rules above completely untouched. */
+  .ai-v2-merch[data-mobile-cols='1'] .ai-v2-merch-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ai-v2-merch[data-mobile-cols='2'] .ai-v2-merch-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Phase 6A.1 — featureFirst/asymmetricFeature don't render `.ai-v2-merch-grid` at all, so
+     the override above never reached them (a silent no-op the Phase 6A.1 review caught).
+     These target each layout's own SECONDARY/repeating region only — `.ai-v2-merch-side`
+     (featureFirst) and `.ai-v2-merch-asymmetric-fill` (asymmetricFeature) — never the
+     featured/anchor item itself (`.ai-v2-merch-feature`'s first column, or
+     `.ai-v2-merch-asymmetric-anchor`), so the anchor/featured hierarchy is unchanged
+     regardless of which columns value is authored. (0,3,0) specificity beats every existing
+     rule for both selectors at every width down to the narrowest breakpoint (neither has a
+     same-specificity competitor at 520px the way merch-grid's dense override does), so one
+     placement here is sufficient — no 520px duplicate needed. */
+  .ai-v2-merch[data-mobile-cols='1'] .ai-v2-merch-side,
+  .ai-v2-merch[data-mobile-cols='1'] .ai-v2-merch-asymmetric-fill {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ai-v2-merch[data-mobile-cols='2'] .ai-v2-merch-side,
+  .ai-v2-merch[data-mobile-cols='2'] .ai-v2-merch-asymmetric-fill {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* reviews/wall + collections/tiles: each already collapses on its own (reviews-grid to
+     2-up at 720px regardless of density; collections-editorial to 1-up here at 960px) —
+     this override only needs equal-or-higher specificity than whichever of those already
+     wins, which a class+attribute+class selector achieves in both cases without needing a
+     duplicate at any narrower breakpoint (neither has a same-specificity rule below 960px). */
+  .ai-v2-reviews[data-mobile-cols='1'] .ai-v2-reviews-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ai-v2-reviews[data-mobile-cols='2'] .ai-v2-reviews-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ai-v2-collections[data-mobile-cols='1'] .ai-v2-collections-editorial {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ai-v2-collections[data-mobile-cols='2'] .ai-v2-collections-editorial {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   /* Still premium (full-bleed, tall), but the 480px desktop min-height is excessive
@@ -1932,6 +2041,18 @@
   .ai-v2-merch[data-layout='dense'] .ai-v2-merch-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.6rem;
+  }
+
+  /* Phase 6A — same responsive.mobile.columns override as the 960px block, duplicated at
+     equal specificity: without this, the dense-grid rule immediately above it (same 3-part
+     specificity, but declared later in the file at this narrower breakpoint) would win an
+     explicit columns=1 author choice back at 520px and below. */
+  .ai-v2-merch[data-mobile-cols='1'] .ai-v2-merch-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ai-v2-merch[data-mobile-cols='2'] .ai-v2-merch-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .ai-v2-newsletter-form {

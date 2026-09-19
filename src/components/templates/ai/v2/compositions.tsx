@@ -6,6 +6,7 @@ import { ProductPresentation } from './ProductPresentation';
 import { formatStoreMoney, resolvePresentationMode } from './money';
 import { productReviewStats } from '@/lib/storefront/api';
 import type { StorefrontProduct } from '@/lib/storefront/types';
+import { mobileOrderAttr, mobileColumnsAttr } from '@/lib/ai-studio/v2/responsiveOverride';
 
 /** Per-product rating from real, product-linked reviews only — never a store-wide average. */
 function ratingOf(commerce: CompositionRenderProps['commerce'], product: StorefrontProduct) {
@@ -146,6 +147,7 @@ export function HeroEditorialSplit({ node, commerce, language, asset }: Composit
       className={`ai-v2-hero ai-v2-hero-split ${asymmetric ? 'ai-v2-hero-split-asymmetric' : ''}`}
       {...sectionDesignProps(node)}
       data-spacing={node.design?.spacing || 'airy'}
+      data-mobile-order={mobileOrderAttr(node)}
     >
       <div className="ai-v2-wrap ai-v2-hero-split-grid">
         <div className="ai-v2-hero-copy">
@@ -217,6 +219,7 @@ export function HeroProductFocus({ node, commerce, brand, language, asset }: Com
       className={`ai-v2-hero ai-v2-hero-product ${stacked ? 'ai-v2-hero-product-stacked' : ''}`}
       {...sectionDesignProps(node)}
       data-density={brand.tokens.density}
+      data-mobile-order={mobileOrderAttr(node)}
     >
       <div className="ai-v2-wrap ai-v2-hero-product-stage">
         <div className="ai-v2-hero-product-figure">
@@ -254,7 +257,13 @@ export function ProductGridEditorial(props: CompositionRenderProps) {
   const [first, ...rest] = products;
 
   return (
-    <section {...sectionDesignProps(node)} className="ai-v2-section ai-v2-merch" data-spacing={node.design.spacing || 'airy'} data-layout={layout}>
+    <section
+      {...sectionDesignProps(node)}
+      className="ai-v2-section ai-v2-merch"
+      data-spacing={node.design.spacing || 'airy'}
+      data-layout={layout}
+      data-mobile-cols={mobileColumnsAttr(node)}
+    >
       <div className="ai-v2-wrap">
         <div className="ai-v2-section-head">
           {title ? <h2>{title}</h2> : <span />}
@@ -522,7 +531,12 @@ export function ProductSpotlightFeature({ node, commerce, asset }: CompositionRe
         : 'ai-v2-spotlight-grid';
 
   return (
-    <section {...sectionDesignProps(node)} className="ai-v2-section ai-v2-spotlight" data-layout={layout}>
+    <section
+      {...sectionDesignProps(node)}
+      className="ai-v2-section ai-v2-spotlight"
+      data-layout={layout}
+      data-mobile-order={mobileOrderAttr(node)}
+    >
       <div className={`ai-v2-wrap ${gridClass}`}>
         {layout === 'structuredFeature' ? (
           <>
@@ -561,6 +575,13 @@ export function EditorialSplitImageText({ node, asset }: CompositionRenderProps)
   const media = image ? <img src={image} alt="" /> : <div className="ai-v2-media-fallback tall" />;
 
   if (layout === 'overlayStatement') {
+    // No data-mobile-order here: overlayStatement has no media/copy grid to reorder (a
+    // full-bleed image with a copy panel overlapping it, not two flex/grid siblings) — see
+    // responsiveApplicability.ts's isLayoutExcludedFromContentOrder, which rejects
+    // contentOrder on this exact (type, variant, layout) combination at validation time.
+    // Rendering the attribute here regardless of that rejection would keep the exact
+    // silent-no-op this module exists to prevent, for any document that somehow bypassed
+    // validation.
     return (
       <section
         {...sectionDesignProps(node)}
@@ -587,6 +608,7 @@ export function EditorialSplitImageText({ node, asset }: CompositionRenderProps)
       data-spacing={node.design.spacing || 'dramatic'}
       data-layout={layout}
       data-reverse={reverse ? '1' : '0'}
+      data-mobile-order={mobileOrderAttr(node)}
     >
       <div className={`ai-v2-wrap ai-v2-editorial-grid${layout === 'offsetNarrow' ? ' ai-v2-editorial-grid-offset' : ''}`}>
         <div className="ai-v2-editorial-media">{media}</div>
@@ -790,7 +812,12 @@ export function ReviewsWall({ node, commerce, language, brand }: CompositionRend
   }
 
   return (
-    <section {...sectionDesignProps(node)} className="ai-v2-section ai-v2-reviews" data-layout={layout}>
+    <section
+      {...sectionDesignProps(node)}
+      className="ai-v2-section ai-v2-reviews"
+      data-layout={layout}
+      data-mobile-cols={mobileColumnsAttr(node)}
+    >
       <div className="ai-v2-wrap">
         <div className="ai-v2-reviews-head">
           <div>
@@ -832,7 +859,13 @@ export function CollectionsTiles({ node, commerce, language, brand }: Compositio
   if (!collections.length) return null;
 
   return (
-    <section {...sectionDesignProps(node)} className="ai-v2-section ai-v2-collections" data-layout={layout} data-density={brand.tokens.density}>
+    <section
+      {...sectionDesignProps(node)}
+      className="ai-v2-section ai-v2-collections"
+      data-layout={layout}
+      data-density={brand.tokens.density}
+      data-mobile-cols={mobileColumnsAttr(node)}
+    >
       <div className="ai-v2-wrap">
         <h2 className="ai-v2-collections-title">{title}</h2>
         <div className={layout === 'stacked' ? 'ai-v2-collections-stacked' : 'ai-v2-collections-editorial'}>

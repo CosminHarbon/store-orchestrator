@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { siteNodeSchema, COMPOSITION_VARIANTS, type SiteDocument, type SiteNode } from './siteTree';
 import { normalizeDesignSemantics } from '@shared/ai-studio-v2/strategyDefaults';
 import { isValidLayout } from '@shared/ai-studio-v2/compositionLayouts';
+import { validateResponsiveApplicability } from '@shared/ai-studio-v2/responsiveApplicability';
 
 /**
  * Targeted mutations against SiteTree — never full-site regeneration.
@@ -149,6 +150,15 @@ export function applySiteOps(document: SiteDocument, ops: SiteOps): SiteDocument
       if (!allowed || !allowed.includes(mobileVariant)) {
         throw new Error(`invalid responsive.mobile.variant ${JSON.stringify(mobileVariant)} for node ${n.id} (type ${n.type})`);
       }
+    }
+    // Phase 6A — contentOrder/columns are generic fields but only meaningful on a subset
+    // of composition types (see responsiveApplicability.ts); reject silently-ignored usage
+    // the same way an incompatible mobile.variant is already rejected above. `layout` (the
+    // resolved node's content.layout, already computed above) is threaded through so the
+    // one layout-aware exception — editorialSplit/image_text's overlayStatement — is caught
+    // here too, not just at generation time.
+    for (const message of validateResponsiveApplicability(n.type, n.variant, n.responsive?.mobile, layout)) {
+      throw new Error(`${message} (node ${n.id})`);
     }
   }
 

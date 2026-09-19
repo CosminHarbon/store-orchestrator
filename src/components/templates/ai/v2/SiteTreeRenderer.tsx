@@ -2,8 +2,9 @@ import { useEffect, useMemo, type CSSProperties } from 'react';
 import type { StorefrontCommerce } from '@/hooks/useStorefrontCommerce';
 import type { BrandDesignSystem } from '@/lib/ai-studio/v2/designSpec';
 import { brandTokensToCssVars } from '@/lib/ai-studio/v2/tokens';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { resolveResponsiveVariant, type SiteDocument, type SiteNode } from '@/lib/ai-studio/v2/siteTree';
+import { useIsCompactViewport } from './useCompactViewport';
+import { withResponsiveOverride } from '@/lib/ai-studio/v2/responsiveOverride';
+import type { SiteDocument } from '@/lib/ai-studio/v2/siteTree';
 import {
   assetForNode,
   buildAssetPlan,
@@ -21,35 +22,13 @@ type Props = {
   onAssetPlan?: (plan: AssetPlan) => void;
 };
 
-/**
- * Applies a node's `responsive.mobile` override (variant swap, hide, spacing, minHeight)
- * on top of its base fields when the viewport is mobile. Was schema-defined and even
- * SiteOps-patchable but never actually read anywhere — this is the read side of that.
- * Returns the SAME node reference when nothing applies, so desktop rendering is untouched.
- */
-function withResponsiveOverride(node: SiteNode, isMobile: boolean): SiteNode {
-  const mobile = node.responsive?.mobile;
-  if (!isMobile || !mobile) return node;
-  if (mobile.hide) return { ...node, visible: false };
-  if (!mobile.variant && !mobile.spacing && !mobile.minHeight) return node;
-  return {
-    ...node,
-    variant: resolveResponsiveVariant(node.type, node.variant, mobile.variant),
-    design: {
-      ...node.design,
-      spacing: mobile.spacing || node.design?.spacing,
-      minHeight: mobile.minHeight || node.design?.minHeight,
-    },
-  };
-}
-
 export default function SiteTreeRenderer({ document, brand, commerce, onAssetPlan }: Props) {
   const language = document.meta.language;
   const style = brandTokensToCssVars(brand) as CSSProperties;
-  const isMobile = useIsMobile();
+  const isCompact = useIsCompactViewport();
   const nodes = useMemo(
-    () => document.pages.home.nodes.map((n) => withResponsiveOverride(n, isMobile)),
-    [document.pages.home.nodes, isMobile]
+    () => document.pages.home.nodes.map((n) => withResponsiveOverride(n, isCompact)),
+    [document.pages.home.nodes, isCompact]
   );
 
   // One plan per document/catalog so single-image slots get distinct products

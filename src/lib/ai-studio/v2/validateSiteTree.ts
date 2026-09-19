@@ -1,5 +1,6 @@
 import { isValidComposition } from './compositionCatalog';
 import { siteDocumentSchema, type SiteDocument, type SiteNode } from './siteTree';
+import { validateResponsiveApplicability } from '@shared/ai-studio-v2/responsiveApplicability';
 
 export type SiteTreeValidationIssue = {
   path: string;
@@ -16,6 +17,19 @@ export function validateCompositionRegistry(nodes: SiteNode[]): SiteTreeValidati
         message: `Invalid composition ${node.type}/${node.variant} — not in registry`,
         severity: 'error',
       });
+    }
+  }
+  return issues;
+}
+
+/** Phase 6A — reject responsive.mobile.contentOrder/columns authored on a node type/variant
+ *  that can't visibly express them (see shared/ai-studio-v2/responsiveApplicability.ts). */
+export function validateResponsivePrimitives(nodes: SiteNode[]): SiteTreeValidationIssue[] {
+  const issues: SiteTreeValidationIssue[] = [];
+  for (const node of nodes) {
+    const errors = validateResponsiveApplicability(node.type, node.variant, node.responsive?.mobile, node.content?.layout);
+    for (const message of errors) {
+      issues.push({ path: `nodes.${node.id}.responsive.mobile`, message, severity: 'error' });
     }
   }
   return issues;
@@ -38,7 +52,10 @@ export function validateSiteTree(raw: unknown): {
       })),
     };
   }
-  const registryIssues = validateCompositionRegistry(parsed.data.pages.home.nodes);
+  const registryIssues = [
+    ...validateCompositionRegistry(parsed.data.pages.home.nodes),
+    ...validateResponsivePrimitives(parsed.data.pages.home.nodes),
+  ];
   const errors = registryIssues.filter((i) => i.severity === 'error');
   return {
     ok: errors.length === 0,

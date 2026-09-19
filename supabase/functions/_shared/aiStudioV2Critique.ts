@@ -18,6 +18,7 @@ import {
 } from '../../../shared/ai-studio-v2/visualCriticPrompt.ts'
 import { buildExpectedRenderManifest } from '../../../shared/ai-studio-v2/expectedRenderManifest.ts'
 import { isValidLayout } from '../../../shared/ai-studio-v2/compositionLayouts.ts'
+import { validateResponsiveApplicability } from '../../../shared/ai-studio-v2/responsiveApplicability.ts'
 import {
   chatJsonForTask,
   chatVisionJsonForTask,
@@ -125,12 +126,22 @@ function isValidComposition(type: string, variant: string): boolean {
 
 /** Same guard as siteOps.ts's applySiteOps, for the critique loop's independent SiteOps
  *  application path — a hallucinated content.layout or a cross-type mobile variant must
- *  not reach the live document from here either. */
+ *  not reach the live document from here either.
+ *
+ *  `effectiveLayout` is the node's REAL resolved content.layout for the responsive-
+ *  applicability check (editorialSplit/image_text's overlayStatement exception), separate
+ *  from `content` (which is only the current op's content, if any). A SiteOps `update` that
+ *  patches `responsive` without repeating `content.layout` must still be checked against the
+ *  node's EXISTING layout, not `undefined` — passing `content?.layout` as the default here
+ *  would silently stop enforcing the exception on exactly that kind of patch. Callers that
+ *  already have the full node (insert/replace) can omit it; it then falls back to
+ *  `content?.layout`, which is already the true value in those cases. */
 function checkLayoutAndMobileVariant(
   type: string,
   variant: string,
   content?: Record<string, unknown>,
-  responsive?: Record<string, unknown>
+  responsive?: Record<string, unknown>,
+  effectiveLayout?: unknown
 ) {
   const layout = content?.layout
   if (!isValidLayout(type, variant, layout)) {
@@ -139,6 +150,12 @@ function checkLayoutAndMobileVariant(
   const mobileVariant = (responsive as { mobile?: { variant?: unknown } } | undefined)?.mobile?.variant
   if (mobileVariant !== undefined && !isValidComposition(type, mobileVariant as string)) {
     throw new Error(`invalid responsive.mobile.variant ${JSON.stringify(mobileVariant)} for type ${type}`)
+  }
+  // Phase 6A — same applicability guard as siteOps.ts/aiStudioV2.ts's validateRegistry, so a
+  // critique-issued SiteOps patch can't bypass the rule either.
+  const mobile = (responsive as { mobile?: { contentOrder?: unknown; columns?: unknown } } | undefined)?.mobile
+  for (const message of validateResponsiveApplicability(type, variant, mobile, effectiveLayout ?? layout)) {
+    throw new Error(message)
   }
 }
 
@@ -205,7 +222,13 @@ function validateOpsAgainstTree(
             checkLayoutAndMobileVariant(type, variant, patchContent, undefined)
           }
           if (patchResponsive) {
-            checkLayoutAndMobileVariant(type, variant, undefined, patchResponsive)
+            // The patch may only touch `responsive`, leaving `content.layout` unspecified —
+            // in that case the applicability check must still see the node's EXISTING
+            // layout (n.content?.layout), not undefined, or a patch that only sets
+            // responsive.mobile.contentOrder on an already-overlayStatement node would
+            // silently skip the exception it's supposed to hit.
+            const effectiveLayout = patchContent && 'layout' in patchContent ? patchContent.layout : n.content?.layout
+            checkLayoutAndMobileVariant(type, variant, undefined, patchResponsive, effectiveLayout)
           }
         }
       }

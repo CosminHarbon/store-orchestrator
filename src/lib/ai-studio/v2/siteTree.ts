@@ -60,6 +60,12 @@ export const nodeResponsiveSchema = z.object({
       hide: z.boolean().optional(),
       spacing: nodeDesignSchema.shape.spacing,
       minHeight: nodeDesignSchema.shape.minHeight,
+      /** Phase 6A — see shared/ai-studio-v2/responsiveApplicability.ts for which
+       *  (type, variant) pairs this is meaningful on; applicability is validated
+       *  outside this schema (siteOps.ts, validateSiteTree.ts), not here, so an
+       *  out-of-scope value fails loudly instead of silently doing nothing. */
+      contentOrder: z.enum(['preserve', 'media_first', 'text_first']).optional(),
+      columns: z.union([z.literal(1), z.literal(2)]).optional(),
     })
     .optional(),
   tablet: z
