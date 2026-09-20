@@ -1,0 +1,29 @@
+{
+  "name": "@speedvendors/cursor-storefront-poc",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Developer-only proof of concept: Cursor SDK edits an isolated storefront workspace.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "generate": "tsx src/cli.ts generate",
+    "followup": "tsx src/cli.ts followup",
+    "build:workspace": "tsx src/cli.ts build",
+    "preview": "tsx src/cli.ts preview",
+    "reset": "tsx src/cli.ts reset",
+    "setup": "npm ci --prefix template --ignore-scripts --no-audit --no-fund",
+    "doctor": "tsx src/cli.ts doctor"
+  },
+  "dependencies": {
+    "@cursor/sdk": "^1.0.31"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
