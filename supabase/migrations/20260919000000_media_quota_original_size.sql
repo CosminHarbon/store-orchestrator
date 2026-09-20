@@ -376,6 +376,13 @@ grant execute on function public.release_media_reservation(uuid) to service_role
 revoke all on function public.record_media_deletion(uuid) from public, anon, authenticated;
 grant execute on function public.record_media_deletion(uuid) to service_role;
 
+-- media_quota_for_user(uuid) is an internal helper: its only callers are SECURITY DEFINER functions
+-- (get_media_usage, reserve_media_upload, admin_media_storage_overview), which run as the owner and
+-- need no caller privilege; no client/Edge code calls it. It accepts an arbitrary user id, so leaving
+-- it executable by `authenticated` let any merchant look up another merchant's plan tier and quota.
+revoke all on function public.media_quota_for_user(uuid) from public, anon, authenticated;
+grant execute on function public.media_quota_for_user(uuid) to service_role;
+
 -- =============================================================================
 -- Derive-and-repair: media_usage counters can always be rebuilt from media_assets
 -- =============================================================================

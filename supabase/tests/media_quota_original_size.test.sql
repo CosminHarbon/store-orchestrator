@@ -260,6 +260,35 @@ declare v jsonb; begin
 end $$;
 
 -- =============================================================================
+-- D0. media_quota_for_user stays usable by its intended callers
+-- =============================================================================
+do $$
+declare j jsonb; q bigint;
+begin
+  -- service_role may call the helper directly (server side)
+  perform t.as_service();
+  select quota_bytes into q from public.media_quota_for_user(t.m1());
+  perform t.eq(q, 2147483648, 'Q1 service_role can still resolve a merchant quota');
+
+  -- merchants get their quota through get_media_usage() (SECURITY DEFINER runs the helper as owner)
+  perform t.as_user(t.m1());
+  j := public.get_media_usage();
+  perform t.eq((j->>'quota_bytes')::bigint, 2147483648, 'Q2 merchant quota visible via get_media_usage()');
+  perform t.ok(j->>'user_id' = t.m1()::text, 'Q3 get_media_usage() is scoped to the caller');
+
+  -- reserve/finalize/release keep working under the service-side context (they call the helper internally)
+  perform t.as_service();
+  perform t.upload(t.m3(), 250000, 1048576);
+  perform t.as_service();
+  perform public.release_media_reservation(
+    ((public.reserve_media_upload(t.m3(), 1000, 'product-images', t.m3() || '/x/q.webp', 'product', 'image/webp', 2048, null, null, null, null, t.m3()))->>'reservation_id')::uuid);
+
+  -- superadmin analytics (definer) still resolve quota through the helper
+  perform t.as_user(t.sa(), 'aal2');
+  perform t.ok((select count(*) from public.admin_media_storage_overview() where quota_bytes > 0) = 3, 'Q4 analytics still see every store quota');
+end $$;
+
+-- =============================================================================
 -- D. Security
 -- =============================================================================
 do $$
@@ -281,6 +310,8 @@ declare j jsonb; n int; begin
   perform t.raises($q$ select * from public.admin_media_product_storage('22222222-2222-4222-8222-222222222222') $q$, 'not authorized');
 
   perform t.raises($q$ select public.media_recompute_usage('11111111-1111-4111-8111-111111111111') $q$, 'permission denied');
+  perform t.raises($q$ select * from public.media_quota_for_user('22222222-2222-4222-8222-222222222222') $q$, 'permission denied');
+  perform t.raises($q$ select * from public.media_quota_for_user('11111111-1111-4111-8111-111111111111') $q$, 'permission denied');
   perform t.raises($q$ select public.reserve_media_upload('11111111-1111-4111-8111-111111111111', 1, 'product-images','p','product','image/webp') $q$, 'permission denied');
   perform t.raises($q$ select public.finalize_media_upload(gen_random_uuid(), 1) $q$, 'permission denied');
   perform t.raises($q$ select public.record_media_deletion(gen_random_uuid()) $q$, 'permission denied');
@@ -320,6 +351,7 @@ declare j jsonb; n int; begin
   execute 'set local role anon';
   perform t.raises('select * from public.admin_media_storage_overview()', 'permission denied');
   perform t.raises('select id from public.media_assets', 'permission denied');
+  perform t.raises($q$ select * from public.media_quota_for_user('11111111-1111-4111-8111-111111111111') $q$, 'permission denied');
 end $$;
 
 -- =============================================================================
@@ -403,6 +435,7 @@ begin
     'public.record_media_deletion(uuid)',
     'public.media_expire_reservations_for_user(uuid)',
     'public.media_recompute_usage(uuid)',
+    'public.media_quota_for_user(uuid)',
     'public.media_storage_object_size(text,text)'
   ] loop
     perform t.ok(t.fn_acl(sig) = svc_only, 'H5 service-only EXECUTE on ' || sig || ': ' || t.fn_acl(sig));
