@@ -44,11 +44,24 @@ export function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-/** True when the request carries the project's service-role key (cron / server-to-server). */
+/**
+ * True when the request is a server-to-server call made with the project's service-role key
+ * (cron / other Edge Functions).
+ *
+ * Two accepted forms:
+ *  1. the bearer equals SUPABASE_SERVICE_ROLE_KEY exactly (constant-time compare), or
+ *  2. the bearer is a JWT whose `role` claim is `service_role`. This is only trustworthy because
+ *     every function that calls this has `verify_jwt = true` in config.toml, so the Supabase
+ *     gateway has already verified the signature before our code runs (same reliance as
+ *     billing-admin-access-codes). The runtime may expose the service key in a different format than
+ *     the legacy JWT that pg_cron / operators use, which made form 1 alone unreliable.
+ */
 export function isServiceRoleRequest(req: Request): boolean {
   const token = bearerToken(req);
+  if (!token) return false;
   const service = (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '').trim();
-  return token.length > 0 && service.length > 0 && safeEqual(token, service);
+  if (service.length > 0 && safeEqual(token, service)) return true;
+  return jwtPayload(token)?.role === 'service_role';
 }
 
 /**

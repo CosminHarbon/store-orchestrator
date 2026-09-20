@@ -1,7 +1,8 @@
 // Edge-side free-trial self-test (no network, no Supabase). Run with:
 //   deno run --allow-env --no-lock scripts/free-trial/edge-selftest.ts
 import { requireSpeedVendorsEntitlement, userHasPaidEntitlement } from '../../supabase/functions/_shared/billingEntitlement.ts';
-import { safeEqual, secondsSinceMfa } from '../../supabase/functions/_shared/adminAuth.ts';
+import { isServiceRoleRequest, safeEqual, secondsSinceMfa } from '../../supabase/functions/_shared/adminAuth.ts';
+import { cleanupNonCascadingTables, NON_CASCADING_USER_TABLES } from '../../supabase/functions/_shared/accountCleanup.ts';
 import {
   deliverTrialReminder,
   trialReminderCopy,
@@ -96,6 +97,37 @@ check(await userHasPaidEntitlement(rpcAdmin({ user_has_paid_entitlement: { data:
 check(await userHasPaidEntitlement(rpcAdmin({ user_has_paid_entitlement: { data: true } }), 'u') === true, 'paid subscriber is reported as paid');
 check(await userHasPaidEntitlement(rpcAdmin({ user_has_paid_entitlement: { error: { message: 'no fn' } }, user_has_active_entitlement: { data: true } }), 'u') === true,
   'paid helper falls back to the app-access check when the new RPC is not deployed yet');
+
+// ---------------------------------------------------------------- cron / service-role detection
+const reqWith = (token?: string) => new Request('http://x/', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+check(isServiceRoleRequest(reqWith('service-role-test-key')), 'service key equal to the runtime env value is recognised');
+check(isServiceRoleRequest(reqWith(jwtWith({ role: 'service_role' }))), 'a gateway-verified service_role JWT is recognised even if the env holds another key format');
+check(!isServiceRoleRequest(reqWith(jwtWith({ role: 'authenticated', sub: 'u1' }))), 'a normal user JWT is never treated as the service role');
+check(!isServiceRoleRequest(reqWith(jwtWith({ role: 'anon' }))) && !isServiceRoleRequest(reqWith()) && !isServiceRoleRequest(reqWith('garbage')), 'anon / missing / garbage bearer are not the service role');
+
+// ---------------------------------------------------------------- non-cascading table cleanup (account deletion)
+{
+  const seen: string[] = [];
+  // deno-lint-ignore no-explicit-any
+  const fake: any = {
+    from: (table: string) => ({
+      delete: () => ({
+        eq: (_col: string, _val: string) => ({
+          select: () => {
+            seen.push(table);
+            if (table === 'reviews') return Promise.resolve({ data: null, error: { message: 'boom' } });
+            return Promise.resolve({ data: table === 'collections' ? [{ user_id: 'u' }, { user_id: 'u' }] : [], error: null });
+          },
+        }),
+      }),
+    }),
+  };
+  const res = await cleanupNonCascadingTables(fake, 'u');
+  check(seen.length === NON_CASCADING_USER_TABLES.length && res.deleted.collections === 2, 'cleanup visits every non-cascading table and counts deleted rows');
+  check(res.errors.length === 1 && res.errors[0].startsWith('reviews:'), 'a failing table is reported but does not stop the rest');
+  check(!NON_CASCADING_USER_TABLES.some((t) => ['orders', 'order_items', 'payment_transactions', 'order_returns', 'billing_subscriptions', 'entitlements'].includes(t)),
+    'cleanup can never touch financial / billing tables');
+}
 
 // ---------------------------------------------------------------- delivery channels
 const realFetch = globalThis.fetch;

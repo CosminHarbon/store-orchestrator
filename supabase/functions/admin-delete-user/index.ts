@@ -4,6 +4,7 @@ import {
   secondsSinceMfa,
   writeAdminAudit,
 } from '../_shared/adminAuth.ts';
+import { cleanupNonCascadingTables } from '../_shared/accountCleanup.ts';
 import { billingCorsHeaders } from '../_shared/billingStripe.ts';
 
 /**
@@ -168,11 +169,6 @@ serve(async (req) => {
       }
     }
 
-    // 7a'. Device push tokens: push_tokens has NO foreign key to auth.users, so the cascade would
-    // leave the deleted person's device tokens behind. Remove them explicitly.
-    const { error: pushErr } = await admin.from('push_tokens').delete().eq('user_id', targetId);
-    if (pushErr) storageErrors.push(`push_tokens: ${pushErr.message}`);
-
     // 7b. Delete the auth user (server-side admin API; cascades merchant data)
     const { error: delErr } = await admin.auth.admin.deleteUser(targetId);
     if (delErr) {
@@ -188,6 +184,11 @@ serve(async (req) => {
       return json({ error: 'delete_failed' }, 500);
     }
 
+    // 7c. Tables that reference the user WITHOUT a cascading FK (collections, discounts, template_blocks,
+    // reviews, push_tokens). Done after the auth user is gone so a failed delete never half-wipes a live account.
+    const cleanup = await cleanupNonCascadingTables(admin, targetId);
+    storageErrors.push(...cleanup.errors);
+
     // 8. Verify + final audit
     const { data: rowsAfter } = await admin.rpc('count_user_rows', { p_user_id: targetId });
     const leftover = rowsAfter && typeof rowsAfter === 'object' ? rowsAfter : {};
@@ -202,6 +203,7 @@ serve(async (req) => {
         archived,
         storage_removed: storageRemoved,
         storage_errors: storageErrors,
+        non_cascading_rows_deleted: cleanup.deleted,
         rows_before: rowsBefore ?? {},
         rows_left_behind: leftover,
       },
@@ -213,6 +215,7 @@ serve(async (req) => {
       archived,
       storage_removed: storageRemoved,
       storage_errors: storageErrors,
+      non_cascading_rows_deleted: cleanup.deleted,
       rows_left_behind: leftover,
       audit_recorded: auditOk,
     });
