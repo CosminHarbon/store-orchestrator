@@ -113,23 +113,18 @@ export function useEntitlementGate() {
 }
 
 /**
- * Trial-tracked users (signed up after the free-trial launch) whose access has lapsed. They keep
- * read access to their store and data and can reach billing; every write is refused server-side
- * (RLS restrictive policies + Edge `requireSpeedVendorsEntitlement`).
+ * Application access is decided by the server (`has_access`): superadmin, paid entitlement, an
+ * explicitly-started active trial, or a legacy account. A new account that has not chosen a plan, and
+ * an expired trial, have has_access = false and are sent to the plan-selection screen.
+ * (Access and onboarding completion are separate: this never decides whether setup is skipped.)
  */
-export function isTrialLocked(entitlement: EntitlementStatus): boolean {
-  if (entitlement.is_superadmin) return false;
-  return entitlement.trial?.has_trial === true && entitlement.has_access === false;
-}
-
 function merchantAccessBlocked(entitlement: EntitlementStatus): boolean {
   if (entitlement.is_superadmin) return false;
-  if (isTrialLocked(entitlement)) return false;
-  return isEnforcementEffective(entitlement) && entitlement.has_access === false;
+  return entitlement.has_access === false;
 }
 
 /**
- * Redirects unentitled users to /subscribe when billing enforcement is effective.
+ * Redirects users without application access to /subscribe (plan selection).
  * Superadmin and impersonation are left to the host page.
  * Callers MUST NOT send the user to /setup until `ready && !blocked`.
  */
@@ -186,12 +181,7 @@ export async function resolveEntitledPostLoginPath(): Promise<string> {
 
   const status = await loadMergedEntitlementStatus();
 
-  if (isTrialLocked(status)) {
-    // Expired trial: land on the dashboard (read-only) where the upgrade banner + CTA live.
-    return '/app';
-  }
-
-  if (isEnforcementEffective(status) && !status.has_access) {
+  if (!status.is_superadmin && status.has_access === false) {
     return '/subscribe';
   }
 

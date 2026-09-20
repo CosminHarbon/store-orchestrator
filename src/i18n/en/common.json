@@ -190,7 +190,17 @@
     "codeInvalid": "That access code is not valid.",
     "codeFailed": "Could not apply access code.",
     "codeSuccess": "Access granted",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "trialTitle": "7-Day Free Trial",
+    "trialDesc": "Try SpeedVendors free for 7 days.",
+    "trialFeature": "Full access · No card required",
+    "trialCta": "Start Free Trial",
+    "trialStarting": "Starting…",
+    "trialStarted": "Your 7-day free trial has started.",
+    "trialErrEmail": "Please verify your email address before starting the free trial.",
+    "trialErrEligible": "The free trial is not available for this account. Please choose a plan.",
+    "trialErrSubscribed": "This account already has a subscription.",
+    "trialErrGeneric": "Could not start the free trial. Please try again."
   },
   "trial": {
     "title": "Free Trial",
@@ -198,7 +208,7 @@
     "daysRemaining_other": "{{count}} days remaining",
     "hoursRemaining_one": "{{count}} hour remaining",
     "hoursRemaining_other": "{{count}} hours remaining",
-    "fullAccess": "Full SpeedVendors access until {{date}}. No card required.",
+    "endsLabel": "Trial ends:",
     "choosePlan": "Choose a plan",
     "endsInBanner_one": "Your free trial ends in {{count}} day.",
     "endsInBanner_other": "Your free trial ends in {{count}} days.",
@@ -206,9 +216,10 @@
     "lastDay": "Last day of your free trial — {{time}}.",
     "keepRunning": "Choose a plan to keep your store running.",
     "endedTitle": "Your free trial has ended.",
-    "endedBody": "Choose a plan to continue using SpeedVendors. Your store and data are safe.",
-    "lockedNote": "You can still view your store and data. Editing is locked until you choose a plan.",
+    "endedBody": "Choose a plan to continue using SpeedVendors.",
+    "endedMessage": "Your free trial has ended. Choose a plan to continue using SpeedVendors.",
     "lockedAction": "This action needs an active plan. Your free trial has ended.",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "activeNotice": "You are on the free trial ({{remaining}}). Choose a plan any time to keep SpeedVendors after it ends — paid access starts immediately."
   }
 }

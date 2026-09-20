@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Capacitor } from '@capacitor/core';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
+import { Sparkles } from 'lucide-react';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Button } from '@/components/ui/button';
@@ -30,6 +32,8 @@ const Subscribe = () => {
   const navigate = useNavigate();
   const { gate, refresh } = useEntitlementGate();
   const trial = useTrialStatus();
+  const queryClient = useQueryClient();
+  const [trialBusy, setTrialBusy] = useState(false);
   const [interval, setInterval] = useState<BillingInterval>('monthly');
   const [busy, setBusy] = useState<SpeedVendorsTier | 'code' | null>(null);
   const [accessCode, setAccessCode] = useState('');
@@ -125,6 +129,63 @@ const Subscribe = () => {
     }
   };
 
+  /**
+   * The ONLY place a self-service trial is started: the user pressed "Start Free Trial".
+   * The server decides eligibility, start and end (server time); nothing is sent from here.
+   */
+  const startTrial = async () => {
+    if (trialBusy || busy !== null) return;
+    setTrialBusy(true);
+    try {
+      const { data, error } = await supabase.rpc('start_free_trial');
+      if (error) throw error;
+      const res = (data || {}) as { ok?: boolean; code?: string };
+      if (res.ok || res.code === 'already_started') {
+        if (res.ok) toast.success(t('subscribe.trialStarted'));
+        await queryClient.invalidateQueries({ queryKey: ['trial-status'] });
+        await queryClient.invalidateQueries({ queryKey: ['entitlement-status'] });
+        await refresh();
+        const path = await resolveEntitledPostLoginPath();
+        navigate(path, { replace: true });
+        return;
+      }
+      if (res.code === 'email_not_verified') toast.error(t('subscribe.trialErrEmail'));
+      else if (res.code === 'not_eligible' || res.code === 'not_applicable') toast.error(t('subscribe.trialErrEligible'));
+      else if (res.code === 'already_subscribed') toast.error(t('subscribe.trialErrSubscribed'));
+      else toast.error(t('subscribe.trialErrGeneric'));
+      await queryClient.invalidateQueries({ queryKey: ['trial-status'] });
+    } catch (e) {
+      console.error(e);
+      toast.error(t('subscribe.trialErrGeneric'));
+    } finally {
+      setTrialBusy(false);
+    }
+  };
+
+  const trialCard = trial.eligible ? (
+    <div
+      data-testid="free-trial-card"
+      className="flex flex-col rounded-2xl border border-dashed border-primary/60 bg-primary/5 p-6 text-left"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-sm font-medium text-muted-foreground">{t('subscribe.trialFeature')}</div>
+        <Sparkles className="h-4 w-4 text-primary" aria-hidden />
+      </div>
+      <div className="mt-2 text-2xl font-semibold tracking-tight">{t('subscribe.trialTitle')}</div>
+      <p className="mt-2 text-sm text-muted-foreground">{t('subscribe.trialDesc')}</p>
+      <div className="mt-6 pt-2">
+        <Button
+          type="button"
+          className="w-full"
+          disabled={trialBusy || busy !== null || authLoading || gate.status === 'loading'}
+          onClick={() => void startTrial()}
+        >
+          {trialBusy ? t('subscribe.trialStarting') : t('subscribe.trialCta')}
+        </Button>
+      </div>
+    </div>
+  ) : null;
+
   const redeemCode = async () => {
     if (nativeBlocked) {
       toast.message(t('subscribe.useWebsite'), {
@@ -189,15 +250,28 @@ const Subscribe = () => {
             role="alert"
             className="mx-auto w-full max-w-2xl rounded-2xl border border-destructive/40 bg-destructive/10 p-5 text-center"
           >
-            <p className="font-semibold">{t('trial.endedTitle')}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{t('trial.endedBody')}</p>
+            <p className="font-semibold">{t('trial.endedMessage')}</p>
+          </div>
+        ) : null}
+
+        {trial.level !== 'none' && trial.level !== 'expired' ? (
+          <div className="mx-auto w-full max-w-2xl rounded-2xl border border-primary/30 bg-primary/5 p-4 text-center text-sm">
+            {t('trial.activeNotice', {
+              remaining:
+                trial.level === 'urgent'
+                  ? t('trial.hoursRemaining', { count: Math.max(1, trial.hoursLeft) })
+                  : t('trial.daysRemaining', { count: trial.daysLeft }),
+            })}
           </div>
         ) : null}
 
         {nativeBlocked ? (
-          <div className="rounded-2xl border border-border/60 bg-card/60 p-6 text-center">
-            <p className="text-sm text-muted-foreground">{t('subscribe.nativeTitle')}</p>
-            <p className="mt-2 text-sm text-muted-foreground">{t('subscribe.nativeBody')}</p>
+          <div className="space-y-4">
+            {trialCard ? <div className="mx-auto w-full max-w-sm">{trialCard}</div> : null}
+            <div className="rounded-2xl border border-border/60 bg-card/60 p-6 text-center">
+              <p className="text-sm text-muted-foreground">{t('subscribe.nativeTitle')}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{t('subscribe.nativeBody')}</p>
+            </div>
           </div>
         ) : (
           <>
@@ -224,7 +298,8 @@ const Subscribe = () => {
               </button>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-3">
+            <div className={cn('grid gap-4', trialCard ? 'sm:grid-cols-2 xl:grid-cols-4' : 'lg:grid-cols-3')}>
+              {trialCard}
               {SPEEDVENDORS_TIERS.map((tier) => {
                 const plan = SPEEDVENDORS_PLANS[tier];
                 const price = advertisedPrice(tier, interval);

@@ -30,6 +30,8 @@ type Overview = {
   trial: {
     has_trial: boolean;
     subscription_status: TrialSubscriptionStatus | null;
+    plan_state?: string;
+    trial_state?: string;
     trial_started_at?: string;
     trial_ends_at?: string;
     days_remaining?: number;
@@ -183,7 +185,8 @@ export function AdminUserTrialPanel({
               <Row label="Signed up">{fmtDateTime(o.account.created_at)}</Row>
               <Row label="Last login">{fmtDateTime(o.account.last_sign_in_at)}</Row>
               <Row label="Has app access">{o.has_access ? 'Yes' : 'No — locked'}</Row>
-              <Row label="Trial start">{o.trial.has_trial ? fmtDateTime(o.trial.trial_started_at) : 'No trial (legacy account)'}</Row>
+              <Row label="Plan state">{o.trial.plan_state || '—'}</Row>
+              <Row label="Trial start">{o.trial.has_trial ? fmtDateTime(o.trial.trial_started_at) : 'Trial not started'}</Row>
               <Row label="Trial end">{o.trial.has_trial ? fmtDateTime(o.trial.trial_ends_at) : '—'}</Row>
               <Row label="Days remaining">
                 {o.trial.has_trial && status === 'trialing' ? o.trial.days_remaining : '—'}
@@ -233,7 +236,7 @@ export function AdminUserTrialPanel({
               </div>
               {!o.trial.has_trial ? (
                 <p className="text-xs text-muted-foreground">
-                  Legacy account with no trial. Extending explicitly grants a new trial starting now.
+                  No trial started. Extending explicitly grants a trial starting now (audited).
                 </p>
               ) : null}
             </div>

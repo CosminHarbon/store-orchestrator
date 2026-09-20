@@ -1,27 +1,43 @@
 -- Free-trial SQL self-test. Every check raises on failure (ON_ERROR_STOP aborts the run).
 -- Runs after 00_stubs.sql + billing migration + 20260920120000_free_trial_system.sql.
 
-create schema test;
+create schema if not exists test;
 grant usage on schema test to public;
 
-create function test.as_user(p_uid uuid, p_aal text default 'aal1') returns void language plpgsql as $$
+create or replace function test.as_user(p_uid uuid, p_aal text default 'aal1') returns void language plpgsql as $$
 begin
   perform set_config('request.jwt.claim.sub', p_uid::text, true);
   perform set_config('request.jwt.claims', jsonb_build_object('sub', p_uid, 'aal', p_aal, 'role', 'authenticated')::text, true);
   perform set_config('role', 'authenticated', true);
 end $$;
 
-create function test.as_superuser() returns void language plpgsql as $$
+create or replace function test.as_superuser() returns void language plpgsql as $$
 begin
   perform set_config('role', 'postgres', true);
   perform set_config('request.jwt.claim.sub', '', true);
   perform set_config('request.jwt.claims', '', true);
 end $$;
 
-create function test.check(p_ok boolean, p_msg text) returns void language plpgsql as $$
+create or replace function test.check(p_ok boolean, p_msg text) returns void language plpgsql as $$
 begin
   if p_ok is not true then raise exception 'FAIL: %', p_msg; end if;
   raise notice 'ok   - %', p_msg;
+end $$;
+
+-- Explicit-start model: an account has NO trial until the user presses Start Free Trial.
+-- Accounts created on/after the cutover are "new-flow" accounts; back-date the cutover so fixtures can
+-- have a created_at in the past while still being new-flow accounts.
+update public.billing_settings set trial_program_started_at = now() - interval '30 days' where id = 1;
+
+-- Verified email + the real RPC, exactly as the plan-selection button would call it.
+create or replace function test.start(p_uid uuid) returns jsonb language plpgsql as $$
+declare r jsonb;
+begin
+  update auth.users set email_confirmed_at = coalesce(email_confirmed_at, now()) where id = p_uid;
+  perform test.as_user(p_uid);
+  r := public.start_free_trial();
+  perform test.as_superuser();
+  return r;
 end $$;
 
 -- Merchant write guards, same shape as 20260829070000_billing_enforcement_write_guards.sql
@@ -39,17 +55,42 @@ insert into auth.users (id, email, raw_user_meta_data, created_at) values
 delete from public.user_trials;   -- the two above pre-date the program: no trial
 insert into public.user_roles (user_id, role) values ('00000000-0000-0000-0000-00000000a001', 'superadmin');
 
--- ---------------------------------------------------------------- 1. new user gets a 7-day trial
+-- ---------------------------------------------------------------- 1. account creation does NOT start a trial
 do $$
-declare n uuid := '00000000-0000-0000-0000-00000000b001'; t public.user_trials;
+declare n uuid := '00000000-0000-0000-0000-00000000b001'; t public.user_trials; r jsonb; st jsonb;
 begin
-  insert into auth.users (id, email) values (n, 'newbie@sv.test');
+  insert into auth.users (id, email, created_at) values (n, 'newbie@sv.test', now() - interval '2 days');
   insert into public.profiles (user_id, store_name) values (n, 'Newbie Boutique');
+  perform test.check(not exists (select 1 from public.user_trials where user_id = n), 'CREATING AN ACCOUNT DOES NOT START A TRIAL');
+  perform test.check(not public.user_has_speedvendors_access(n), 'new account with no plan has NO application access');
+  update public.billing_settings set enforcement_enabled = true where id = 1;
+  perform test.check(not public.user_has_speedvendors_access(n), 'and the same with enforcement on');
+  update public.billing_settings set enforcement_enabled = false where id = 1;
+  perform test.check(not public.user_has_speedvendors_access(n), 'new account has no access even when the global enforcement flag is OFF');
+
+  perform test.as_user(n);
+  st := public.get_my_trial_status();
+  perform test.check(st->>'plan_state' = 'no_plan' and st->>'trial_state' = 'not_started' and (st->>'trial_eligible')::boolean and not (st->>'has_trial')::boolean,
+    'status: no_plan / not_started / eligible');
+  perform public.get_my_trial_status(); perform public.get_my_entitlement_status();
+  perform test.as_superuser();
+  perform test.check(not exists (select 1 from public.user_trials where user_id = n), 'reading status / refreshing / revisiting never starts a trial');
+
+  -- explicit start, unverified email first
+  perform test.as_user(n);
+  r := public.start_free_trial();
+  perform test.as_superuser();
+  perform test.check(r->>'code' = 'email_not_verified' and not exists (select 1 from public.user_trials where user_id = n), 'start refused until the email is verified');
+
+  r := test.start(n);
   select * into t from public.user_trials where user_id = n;
-  perform test.check(t.user_id is not null, 'new user receives a trial row via trigger');
+  perform test.check((r->>'ok')::boolean and r->>'code' = 'started' and t.user_id is not null, 'explicit start creates the trial row');
   perform test.check(t.trial_ends_at - t.trial_started_at = interval '7 days', 'trial lasts exactly 7 days');
-  perform test.check(t.trial_started_at = (select created_at from auth.users where id = n), 'trial starts at account creation');
-  perform test.check(t.subscription_status = 'trialing', 'initial status is trialing');
+  perform test.check(t.trial_started_at = now() and t.trial_started_at > (select created_at from auth.users where id = n) + interval '1 day',
+    'trial starts at the selection event (server time), NOT at account creation');
+  perform test.check(t.source = 'self' and t.subscription_status = 'trialing', 'source self, status trialing');
+  perform test.check(not exists (select 1 from public.entitlements where user_id = n) and not exists (select 1 from public.billing_subscriptions where user_id = n),
+    'starting a trial creates no entitlement and no subscription');
 end $$;
 
 -- ---------------------------------------------------------------- 2. trial user has full access
@@ -79,6 +120,10 @@ begin
   perform test.check(public.has_speedvendors_access(), 'legacy user keeps access while enforcement is off');
   perform test.as_superuser();
   perform test.check(not exists (select 1 from public.user_trials where user_id = l), 'no trial row created for legacy user');
+  perform test.as_user(l);
+  perform test.check(public.start_free_trial()->>'code' = 'not_eligible', 'a pre-launch (legacy) account cannot self-start a trial');
+  perform test.as_superuser();
+  perform test.check(not exists (select 1 from public.user_trials where user_id = l), 'legacy account still has no trial row');
   update public.billing_settings set enforcement_enabled = true where id = 1;
   perform test.as_user(l);
   perform test.check(not public.has_speedvendors_access(), 'legacy behaviour with enforcement ON is unchanged (locked without entitlement)');
@@ -92,6 +137,7 @@ declare
   p uuid := '00000000-0000-0000-0000-00000000c001'; cust uuid; t public.user_trials;
 begin
   insert into auth.users (id, email) values (p, 'payer@sv.test');
+  perform test.start(p);
   insert into public.billing_customers (user_id, stripe_customer_id) values (p, 'cus_test1') returning id into cust;
   insert into public.billing_subscriptions (user_id, billing_customer_id, stripe_subscription_id, plan, tier, status)
     values (p, cust, 'sub_test1', 'monthly', 'start', 'active');
@@ -116,6 +162,7 @@ do $$
 declare r uuid := '00000000-0000-0000-0000-00000000d001'; c1 int; c2 int; m text;
 begin
   insert into auth.users (id, email) values (r, 'remind@sv.test');
+  perform test.start(r);
   -- 3-day window
   update public.user_trials set trial_started_at = now() - interval '4 days', trial_ends_at = now() + interval '71 hours' where user_id = r;
   select count(*), max(milestone_key) into c1, m from public.claim_due_trial_reminders() where target_user_id = r;
@@ -202,6 +249,7 @@ declare
 begin
   insert into auth.users (id, email) values (ex, 'expired@sv.test');
   insert into public.profiles (user_id, store_name) values (ex, 'Expired Shop');
+  perform test.start(ex);
   update public.user_trials set trial_started_at = now() - interval '10 days', trial_ends_at = now() - interval '3 days' where user_id = ex;
 
   perform test.as_user(adm, 'aal2');
@@ -330,10 +378,16 @@ begin
   perform test.as_superuser();
 end $$;
 
--- ---------------------------------------------------------------- 11. migration idempotence facts
+-- ---------------------------------------------------------------- 11. migration facts
 do $$
+declare bad boolean := false;
 begin
   perform test.check((select trial_program_started_at from public.billing_settings where id = 1) is not null, 'cutover recorded');
-  perform test.check((select count(*) from public.user_trials t join auth.users u on u.id = t.user_id where t.source = 'signup' and u.created_at < (select trial_program_started_at from public.billing_settings where id = 1)) = 0,
-    'no signup trial pre-dates the cutover (nobody was back-filled)');
+  begin
+    insert into public.user_trials (user_id, trial_started_at, trial_ends_at, original_trial_ends_at, source)
+    values ('00000000-0000-0000-0000-00000000f0f1', now(), now() + interval '7 days', now() + interval '7 days', 'signup');
+  exception when others then bad := true; end;
+  perform test.check(bad, 'the old auto-created source (signup) can no longer be written');
+  perform test.check(not exists (select 1 from pg_trigger where tgname = 'on_auth_user_created_trial'), 'no signup trigger creates trials');
+  perform test.check(not exists (select 1 from pg_proc where proname = 'handle_new_user_trial'), 'the signup trial function is gone');
 end $$;

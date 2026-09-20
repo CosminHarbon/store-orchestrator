@@ -1562,6 +1562,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      start_free_trial: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       admin_trial_summary: {
         Args: Record<PropertyKey, never>
         Returns: Json

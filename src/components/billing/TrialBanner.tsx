@@ -51,7 +51,7 @@ export function TrialBanner() {
 
   let message: string;
   if (expired) {
-    message = `${t('trial.endedTitle')} ${t('trial.endedBody')}`;
+    message = t('trial.endedMessage');
   } else if (level === 'urgent') {
     message = `${t('trial.lastDay', { time: t('trial.hoursRemaining', { count: Math.max(1, trial.hoursLeft) }) })} ${t('trial.keepRunning')}`;
   } else if (level === 'warning') {

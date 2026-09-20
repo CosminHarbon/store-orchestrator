@@ -5,8 +5,22 @@ import { useAuth } from '@/hooks/useAuth';
 import { useImpersonation } from '@/hooks/useImpersonation';
 
 /** Shape returned by public.get_my_trial_status() / the `trial` key of get_my_entitlement_status(). */
+export type PlanState =
+  | 'no_plan'
+  | 'trial_active'
+  | 'trial_expired'
+  | 'paid'
+  | 'past_due'
+  | 'cancelled'
+  | 'legacy';
+
 export type TrialStatus = {
   has_trial: boolean;
+  /** not_started | active | expired — derived on the server from the explicit-start row. */
+  trial_state?: 'not_started' | 'active' | 'expired';
+  plan_state?: PlanState;
+  /** True only for a new account that has not started a trial and is not a subscriber. */
+  trial_eligible?: boolean;
   subscription_status: 'trialing' | 'trial_expired' | 'active' | 'past_due' | 'cancelled' | null;
   is_trial_active?: boolean;
   trial_started_at?: string;
@@ -25,6 +39,8 @@ export type TrialLevel = 'none' | 'calm' | 'notice' | 'warning' | 'urgent' | 'ex
 export type TrialView = {
   loading: boolean;
   status: TrialStatus | null;
+  /** The plan-selection screen may offer "Start Free Trial". */
+  eligible: boolean;
   level: TrialLevel;
   daysLeft: number;
   hoursLeft: number;
@@ -98,7 +114,7 @@ export function useTrialStatus(): TrialView {
   return useMemo<TrialView>(() => {
     const status = data;
     if (!status?.has_trial) {
-      return { loading: query.isLoading && enabled, status, level: 'none', daysLeft: 0, hoursLeft: 0, endsAt: null, locked: false };
+      return { loading: query.isLoading && enabled, status, eligible: status?.trial_eligible === true, level: 'none', daysLeft: 0, hoursLeft: 0, endsAt: null, locked: false };
     }
     const endsAt = status.trial_ends_at ? new Date(status.trial_ends_at) : null;
     const s = secondsLeft ?? 0;
@@ -107,6 +123,7 @@ export function useTrialStatus(): TrialView {
       return {
         loading: false,
         status,
+        eligible: false,
         level: levelForSeconds(s),
         daysLeft: Math.max(0, Math.ceil(s / DAY)),
         hoursLeft: Math.max(0, Math.ceil(s / HOUR)),
@@ -115,9 +132,9 @@ export function useTrialStatus(): TrialView {
       };
     }
     if (status.subscription_status === 'trial_expired') {
-      return { loading: false, status, level: 'expired', daysLeft: 0, hoursLeft: 0, endsAt, locked: true };
+      return { loading: false, status, eligible: false, level: 'expired', daysLeft: 0, hoursLeft: 0, endsAt, locked: true };
     }
     // active / past_due / cancelled: converted users see billing, not the trial UI.
-    return { loading: false, status, level: 'none', daysLeft: 0, hoursLeft: 0, endsAt, locked: status.subscription_status === 'cancelled' };
+    return { loading: false, status, eligible: false, level: 'none', daysLeft: 0, hoursLeft: 0, endsAt, locked: status.subscription_status === 'cancelled' };
   }, [data, secondsLeft, query.isLoading, enabled]);
 }

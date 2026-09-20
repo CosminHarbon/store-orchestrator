@@ -17,8 +17,16 @@ const TONE: Record<TrialLevel, string> = {
 };
 
 /**
- * Settings → Billing trial status. Always visible while a trial is running (or has ended); grows
- * louder as expiry approaches. The countdown is derived from server-reported seconds.
+ * Settings → Billing state for an explicitly-started free trial:
+ *
+ *   Free Trial
+ *   5 days remaining
+ *   Trial ends: September 25, 2026
+ *   [Choose a plan]
+ *
+ * The end date and the countdown come from the server-side trial row (never local storage).
+ * "Choose a plan" opens the SpeedVendors plan-selection screen — a trial has no Stripe subscription
+ * to manage, so it must not open the Stripe Customer Portal.
  */
 export function TrialStatusCard() {
   const { t, i18n } = useTranslation('common');
@@ -30,13 +38,13 @@ export function TrialStatusCard() {
 
   const expired = trial.level === 'expired';
   const endDate = trial.endsAt
-    ? trial.endsAt.toLocaleDateString(locale, { month: 'long', day: 'numeric' })
+    ? trial.endsAt.toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric' })
     : '';
   const remaining =
     trial.level === 'urgent'
       ? t('trial.hoursRemaining', { count: Math.max(1, trial.hoursLeft) })
       : t('trial.daysRemaining', { count: trial.daysLeft });
-  const prominentCta = trial.level === 'warning' || trial.level === 'urgent' || expired;
+  const prominentCta = trial.level !== 'calm';
 
   return (
     <div className={cn('space-y-3 rounded-lg border p-4', TONE[trial.level])} data-trial-level={trial.level}>
@@ -48,34 +56,26 @@ export function TrialStatusCard() {
         )}
         <div className="min-w-0 space-y-1">
           {expired ? (
-            <>
-              <p className="font-semibold">{t('trial.endedTitle')}</p>
-              <p className="text-sm text-muted-foreground">{t('trial.endedBody')}</p>
-              <p className="text-sm text-muted-foreground">{t('trial.lockedNote')}</p>
-            </>
+            <p className="font-semibold">{t('trial.endedMessage')}</p>
           ) : (
             <>
               <p className="font-semibold">{t('trial.title')}</p>
               <p className="text-lg font-semibold leading-tight">{remaining}</p>
-              <p className="text-sm text-muted-foreground">{t('trial.fullAccess', { date: endDate })}</p>
+              <p className="text-sm text-muted-foreground">
+                {t('trial.endsLabel')} <span className="font-medium text-foreground">{endDate}</span>
+              </p>
             </>
           )}
         </div>
       </div>
-      {trial.level !== 'calm' ? (
-        <Button
-          size={prominentCta ? 'default' : 'sm'}
-          variant={prominentCta ? 'default' : 'outline'}
-          className={prominentCta ? 'w-full sm:w-auto' : undefined}
-          onClick={() => navigate('/subscribe')}
-        >
-          {t('trial.choosePlan')}
-        </Button>
-      ) : (
-        <Button size="sm" variant="ghost" className="px-0 underline" onClick={() => navigate('/subscribe')}>
-          {t('trial.choosePlan')}
-        </Button>
-      )}
+      <Button
+        size={prominentCta ? 'default' : 'sm'}
+        variant={prominentCta ? 'default' : 'outline'}
+        className={prominentCta ? 'w-full sm:w-auto' : undefined}
+        onClick={() => navigate('/subscribe')}
+      >
+        {t('trial.choosePlan')}
+      </Button>
     </div>
   );
 }

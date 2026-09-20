@@ -14,6 +14,7 @@ do $$
 declare b uuid := '00000000-0000-0000-0000-00000000b101';
 begin
   insert into auth.users (id, email) values (b, 'boundary@sv.test');
+  perform test.start(b);
   update public.user_trials set trial_started_at = now() - interval '7 days', trial_ends_at = now() + interval '1 microsecond' where user_id = b;
   perform test.check(public.user_has_speedvendors_access(b), 'access 1 microsecond BEFORE trial_ends_at');
   update public.user_trials set trial_ends_at = now() where user_id = b;
@@ -37,6 +38,12 @@ declare
   n uuid := '00000000-0000-0000-0000-00000000b001'; e1 timestamptz; e2 timestamptz; s1 timestamptz;
 begin
   select trial_ends_at, trial_started_at into e1, s1 from public.user_trials where user_id = n;
+  -- pressing Start Free Trial again (double click / second device / revisiting pricing) never restarts it
+  perform test.as_user(n);
+  perform test.check(public.start_free_trial()->>'code' = 'already_started', 'second Start Free Trial is refused (already_started)');
+  perform test.check(public.start_free_trial()->'trial'->>'trial_ends_at' is not null, 'refusal returns the ORIGINAL trial');
+  perform test.as_superuser();
+  perform test.check((select trial_ends_at from public.user_trials where user_id = n) = e1, 'repeated start attempts never move the window');
   -- "logout / login / reinstall / new device" = fresh sessions calling the same server function
   perform test.as_user(n); perform public.get_my_trial_status(); perform test.as_superuser();
   perform test.as_user(n); perform public.get_my_trial_status(); perform public.get_my_trial_status(); perform test.as_superuser();
@@ -57,21 +64,18 @@ begin
   perform test.as_superuser();
 end $$;
 
--- ---------------------------------------------------------------- 15. healing never grants time back
+-- ---------------------------------------------------------------- 15. reading status never creates a trial (no lazy heal)
 do $$
-declare h uuid := '00000000-0000-0000-0000-00000000b201'; res jsonb; old_cutover timestamptz;
+declare h uuid := '00000000-0000-0000-0000-00000000b201'; res jsonb;
 begin
-  select trial_program_started_at into old_cutover from public.billing_settings where id = 1;
-  update public.billing_settings set trial_program_started_at = now() - interval '30 days' where id = 1;
-  insert into auth.users (id, email, created_at) values (h, 'healme@sv.test', now() - interval '10 days');
-  delete from public.user_trials where user_id = h;      -- simulate a missed trigger
+  insert into auth.users (id, email, created_at) values (h, 'noheal@sv.test', now() - interval '10 days');
   perform test.as_user(h);
   res := public.get_my_trial_status();
+  perform public.get_my_trial_status();
   perform test.as_superuser();
-  perform test.check((res->>'has_trial')::boolean and (res->>'subscription_status') = 'trial_expired',
-    'healed trial is anchored to account creation: a 10-day-old account is expired, not given a fresh 7 days');
-  perform test.check(not public.user_has_speedvendors_access(h), 'healed expired user is locked');
-  update public.billing_settings set trial_program_started_at = old_cutover where id = 1;
+  perform test.check(not exists (select 1 from public.user_trials where user_id = h) and res->>'plan_state' = 'no_plan',
+    'get_my_trial_status never starts a trial for an old new-flow account');
+  perform test.check(not public.user_has_speedvendors_access(h), 'still no access');
 end $$;
 
 -- ---------------------------------------------------------------- 16. malformed / missing state
@@ -104,7 +108,7 @@ declare s uuid := '00000000-0000-0000-0000-00000000b301';
 begin
   alter table public.user_trials rename to user_trials_broken;
   insert into auth.users (id, email) values (s, 'signup-survives@sv.test');
-  perform test.check(exists (select 1 from auth.users where id = s), 'signup still succeeds when trial creation fails (warning only)');
+  perform test.check(exists (select 1 from auth.users where id = s), 'signup is completely independent of the trial tables');
   alter table public.user_trials_broken rename to user_trials;
 end $$;
 
@@ -139,6 +143,7 @@ do $$
 declare w uuid := '00000000-0000-0000-0000-00000000b401'; cust uuid;
 begin
   insert into auth.users (id, email) values (w, 'webhook@sv.test');
+  perform test.start(w);
   update public.user_trials set trial_started_at = now() - interval '9 days', trial_ends_at = now() - interval '2 days' where user_id = w;
   perform public.refresh_user_trial_status(w);
   perform test.check((select subscription_status from public.user_trials where user_id = w) = 'trial_expired', 'precondition: expired trial user');
@@ -228,7 +233,16 @@ begin
   insert into public.profiles (user_id, store_name) values (u, 'Lifecycle Store');
   perform test.as_user(u);
   s := public.get_my_trial_status();
-  perform test.check(s->>'subscription_status' = 'trialing' and public.has_speedvendors_access(), 'day 0: trialing with access');
+  perform test.check(s->>'plan_state' = 'no_plan' and not public.has_speedvendors_access(), 'step 1: new account = no plan, no access');
+  begin
+    insert into public.products (user_id, name) values (u, 'too early');
+    raise exception 'write allowed before plan selection';
+  exception when insufficient_privilege then perform test.check(true, 'step 1: writes are refused before a plan is chosen'); end;
+  perform test.as_superuser();
+  perform test.start(u);
+  perform test.as_user(u);
+  s := public.get_my_trial_status();
+  perform test.check(s->>'subscription_status' = 'trialing' and s->>'plan_state' = 'trial_active' and public.has_speedvendors_access(), 'step 2: after Start Free Trial: trialing with access');
   insert into public.products (user_id, name) values (u, 'first product');
   perform test.as_superuser();
   update public.user_trials set trial_started_at = now() - interval '7 days 1 second', trial_ends_at = now() - interval '1 second' where user_id = u;
