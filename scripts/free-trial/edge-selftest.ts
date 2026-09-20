@@ -1,6 +1,6 @@
 // Edge-side free-trial self-test (no network, no Supabase). Run with:
 //   deno run --allow-env --no-lock scripts/free-trial/edge-selftest.ts
-import { requireSpeedVendorsEntitlement } from '../../supabase/functions/_shared/billingEntitlement.ts';
+import { requireSpeedVendorsEntitlement, userHasPaidEntitlement } from '../../supabase/functions/_shared/billingEntitlement.ts';
 import { safeEqual, secondsSinceMfa } from '../../supabase/functions/_shared/adminAuth.ts';
 import {
   deliverTrialReminder,
@@ -85,6 +85,17 @@ Deno.env.set('BILLING_ENFORCEMENT_ENABLED', 'false');
 await requireSpeedVendorsEntitlement(fakeAdmin({ data: false }), 'u1');
 check(true, 'emergency kill switch BILLING_ENFORCEMENT_ENABLED=false still disables the gate');
 Deno.env.delete('BILLING_ENFORCEMENT_ENABLED');
+
+// ---------------------------------------------------------------- paid-only helper (drives has_entitlement)
+// deno-lint-ignore no-explicit-any
+function rpcAdmin(map: Record<string, { data?: unknown; error?: unknown }>): any {
+  return { rpc: (name: string) => Promise.resolve(map[name] ?? { data: null, error: { message: 'missing' } }) };
+}
+check(await userHasPaidEntitlement(rpcAdmin({ user_has_paid_entitlement: { data: false }, user_has_active_entitlement: { data: true } }), 'u') === false,
+  'trial user is NOT reported as a paid subscriber even though the app-access check is true');
+check(await userHasPaidEntitlement(rpcAdmin({ user_has_paid_entitlement: { data: true } }), 'u') === true, 'paid subscriber is reported as paid');
+check(await userHasPaidEntitlement(rpcAdmin({ user_has_paid_entitlement: { error: { message: 'no fn' } }, user_has_active_entitlement: { data: true } }), 'u') === true,
+  'paid helper falls back to the app-access check when the new RPC is not deployed yet');
 
 // ---------------------------------------------------------------- delivery channels
 const realFetch = globalThis.fetch;

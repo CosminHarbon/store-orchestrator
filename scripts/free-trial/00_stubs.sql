@@ -75,3 +75,52 @@ alter table public.products enable row level security;
 create policy products_owner on public.products for all to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
 grant select, insert, update, delete on public.products to authenticated;
+
+-- Production-shaped stand-ins for the merchant write RPCs the migration guards. Same attributes as
+-- prod: SECURITY DEFINER, plpgsql, DECLARE-before-BEGIN, nested BEGIN..EXCEPTION, empty or `public`
+-- search_path, executable by authenticated (bulk_update_stock also by anon).
+create table public.order_returns (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid not null references public.orders(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  notes text
+);
+create table public.push_tokens (id uuid primary key default gen_random_uuid(), user_id uuid not null, device_token text);
+
+create function public.bulk_update_stock(updates jsonb) returns integer language plpgsql security definer set search_path = '' as $$
+declare
+  n integer := 0;
+begin
+  begin
+    n := jsonb_array_length(updates);
+  exception when others then
+    n := -1;
+  end;
+  return n;
+end $$;
+create function public.restore_order_stock(p_order_id uuid, p_cancel_order boolean) returns jsonb language plpgsql security definer set search_path = public as $$
+DECLARE
+  v jsonb := '{}'::jsonb;
+BEGIN
+  RETURN jsonb_build_object('success', true);
+END $$;
+create function public.return_order_items(p_order_id uuid, p_items jsonb, p_mark_refunded boolean, p_cancel_if_full boolean, p_notes text) returns jsonb language plpgsql security definer set search_path = public as $$
+DECLARE
+  v_any boolean := false;
+BEGIN
+  RETURN jsonb_build_object('success', true);
+END $$;
+create function public.save_product_variants(p_product_id uuid, p_payload jsonb) returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_x integer := 1;
+begin
+  return jsonb_build_object('success', true);
+end $$;
+grant execute on function public.bulk_update_stock(jsonb) to anon, authenticated, service_role;
+grant execute on function public.restore_order_stock(uuid, boolean) to authenticated, service_role;
+grant execute on function public.return_order_items(uuid, jsonb, boolean, boolean, text) to authenticated, service_role;
+grant execute on function public.save_product_variants(uuid, jsonb) to authenticated, service_role;
+revoke execute on function public.restore_order_stock(uuid, boolean) from public, anon;
+revoke execute on function public.return_order_items(uuid, jsonb, boolean, boolean, text) from public, anon;
+revoke execute on function public.save_product_variants(uuid, jsonb) from public, anon;
+grant all on all tables in schema public to service_role;

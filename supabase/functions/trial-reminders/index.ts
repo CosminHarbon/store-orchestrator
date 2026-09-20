@@ -51,7 +51,9 @@ serve(async (req) => {
     // ---- Cron path -------------------------------------------------------------------
     if (isServiceRoleRequest(req)) {
       const admin = createClient(supabaseUrl, service);
-      const { data: claimed, error } = await admin.rpc('claim_due_trial_reminders', { p_limit: 500 });
+      // Bounded batch: a run must finish well inside the Edge time limit. Anything not claimed now
+      // is picked up by the next hourly run (reminder windows are 24h wide).
+      const { data: claimed, error } = await admin.rpc('claim_due_trial_reminders', { p_limit: 100 });
       if (error) {
         console.error('claim_due_trial_reminders failed', { message: error.message });
         return json({ error: 'claim_failed' }, 500);
@@ -65,7 +67,7 @@ serve(async (req) => {
       }>;
 
       const summary = { claimed: rows.length, sent: 0, partial: 0, failed: 0 };
-      for (const row of rows) {
+      const deliverOne = async (row: (typeof rows)[number]) => {
         const outcome = await deliverTrialReminder(admin, {
           userId: row.target_user_id,
           milestone: row.milestone_key,
@@ -81,6 +83,10 @@ serve(async (req) => {
         if (completeErr) {
           console.error('complete_trial_reminder failed', { message: completeErr.message });
         }
+      };
+      const CONCURRENCY = 10;
+      for (let i = 0; i < rows.length; i += CONCURRENCY) {
+        await Promise.all(rows.slice(i, i + CONCURRENCY).map(deliverOne));
       }
       return json({ ok: true, ...summary });
     }

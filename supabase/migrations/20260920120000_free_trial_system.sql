@@ -3,9 +3,12 @@
 -- Design (reuses existing billing architecture, no second subscription system):
 --   * billing_settings (singleton)  -> trial_duration_days + trial_program_started_at (cutover).
 --   * user_trials                   -> one server-side trial window per user.
---   * A trial is NOT a paid entitlement. public.entitlements / billing_subscriptions are
---     untouched, so /subscribe, Stripe checkout and "already subscribed" checks keep working.
---     Access is granted by public.user_has_speedvendors_access(), which adds the trial window.
+--   * A trial is NOT a paid entitlement: public.entitlements / billing_subscriptions rows are
+--     never created for it, and "is subscribed" decisions (/subscribe, checkout,
+--     get_my_entitlement_status.has_entitlement) use the new user_has_paid_entitlement().
+--   * user_has_active_entitlement() (the "may use the app" check that ALREADY-DEPLOYED Edge
+--     Functions call) now also honours an active trial, so those functions need no redeploy.
+--   * merchant write RPCs that bypass RLS (SECURITY DEFINER) get an entitlement guard.
 --   * Existing users are never granted a trial: only auth.users created at/after the cutover
 --     (or an explicit superadmin action) get a user_trials row.
 --   * Trial-tracked users are enforced even while billing_settings.enforcement_enabled = false,
@@ -34,7 +37,7 @@ comment on column public.billing_settings.trial_program_started_at is
 -- user_trials
 -- =============================================================================
 
-create table public.user_trials (
+create table if not exists public.user_trials (
   user_id uuid primary key references auth.users (id) on delete cascade,
   trial_started_at timestamptz not null,
   trial_ends_at timestamptz not null,
@@ -53,11 +56,11 @@ create table public.user_trials (
   constraint user_trials_window_check check (trial_ends_at > trial_started_at)
 );
 
-create index user_trials_status_ends_idx
+create index if not exists user_trials_status_ends_idx
   on public.user_trials (subscription_status, trial_ends_at);
-create index user_trials_ends_at_idx
+create index if not exists user_trials_ends_at_idx
   on public.user_trials (trial_ends_at);
-create index user_trials_created_at_idx
+create index if not exists user_trials_created_at_idx
   on public.user_trials (created_at desc);
 
 comment on table public.user_trials is
@@ -65,6 +68,7 @@ comment on table public.user_trials is
 
 alter table public.user_trials enable row level security;
 
+drop policy if exists user_trials_select_own on public.user_trials;
 create policy user_trials_select_own
   on public.user_trials
   for select
@@ -75,6 +79,7 @@ revoke all on table public.user_trials from public, anon;
 grant select on table public.user_trials to authenticated;
 grant all on table public.user_trials to service_role;
 
+drop trigger if exists user_trials_updated_at on public.user_trials;
 create trigger user_trials_updated_at
   before update on public.user_trials
   for each row execute function public.update_updated_at_column();
@@ -83,7 +88,7 @@ create trigger user_trials_updated_at
 -- trial_reminders: persisted once-only reminder state
 -- =============================================================================
 
-create table public.trial_reminders (
+create table if not exists public.trial_reminders (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
   milestone text not null check (milestone in ('3d', '1d', 'final', 'expired')),
@@ -99,15 +104,16 @@ create table public.trial_reminders (
 );
 
 -- The duplicate guard: one automatic reminder per (user, milestone, trial end).
-create unique index trial_reminders_once_uidx
+create unique index if not exists trial_reminders_once_uidx
   on public.trial_reminders (user_id, milestone, trial_ends_at)
   where trigger_source = 'cron';
 
-create index trial_reminders_user_idx
+create index if not exists trial_reminders_user_idx
   on public.trial_reminders (user_id, claimed_at desc);
 
 alter table public.trial_reminders enable row level security;
 
+drop policy if exists trial_reminders_select_own on public.trial_reminders;
 create policy trial_reminders_select_own
   on public.trial_reminders
   for select
@@ -122,7 +128,7 @@ grant all on table public.trial_reminders to service_role;
 -- admin_audit_log (append-only)
 -- =============================================================================
 
-create table public.admin_audit_log (
+create table if not exists public.admin_audit_log (
   id uuid primary key default gen_random_uuid(),
   -- Deliberately NOT foreign keys: the log must outlive deleted users/admins.
   admin_user_id uuid not null,
@@ -134,16 +140,17 @@ create table public.admin_audit_log (
   created_at timestamptz not null default now()
 );
 
-create index admin_audit_log_created_idx on public.admin_audit_log (created_at desc);
-create index admin_audit_log_target_idx on public.admin_audit_log (target_user_id, created_at desc);
-create index admin_audit_log_admin_idx on public.admin_audit_log (admin_user_id, created_at desc);
-create index admin_audit_log_action_idx on public.admin_audit_log (action);
+create index if not exists admin_audit_log_created_idx on public.admin_audit_log (created_at desc);
+create index if not exists admin_audit_log_target_idx on public.admin_audit_log (target_user_id, created_at desc);
+create index if not exists admin_audit_log_admin_idx on public.admin_audit_log (admin_user_id, created_at desc);
+create index if not exists admin_audit_log_action_idx on public.admin_audit_log (action);
 
 comment on table public.admin_audit_log is
   'Append-only record of platform-admin actions (trial extension, manual reminders, account deletion).';
 
 alter table public.admin_audit_log enable row level security;
 
+drop policy if exists admin_audit_log_select_superadmin on public.admin_audit_log;
 create policy admin_audit_log_select_superadmin
   on public.admin_audit_log
   for select
@@ -163,6 +170,7 @@ begin
 end;
 $$;
 
+drop trigger if exists admin_audit_log_no_update on public.admin_audit_log;
 create trigger admin_audit_log_no_update
   before update or delete on public.admin_audit_log
   for each row execute function public.admin_audit_log_immutable();
@@ -174,7 +182,7 @@ create trigger admin_audit_log_no_update
 -- numbers and customer billing data that must be retained, so they are snapshotted here
 -- (service_role only) before the auth user is deleted.
 
-create table public.deleted_account_archive (
+create table if not exists public.deleted_account_archive (
   id uuid primary key default gen_random_uuid(),
   deleted_user_id uuid not null unique,
   deleted_email text,
@@ -185,12 +193,15 @@ create table public.deleted_account_archive (
   order_items jsonb not null default '[]'::jsonb,
   payment_transactions jsonb not null default '[]'::jsonb,
   billing_records jsonb not null default '{}'::jsonb,
-  counts jsonb not null default '{}'::jsonb
+  counts jsonb not null default '{}'::jsonb,
+  order_returns jsonb not null default '[]'::jsonb
 );
 
 comment on table public.deleted_account_archive is
   'Legal-retention snapshot of invoiced/paid orders, items, payments and billing history for hard-deleted accounts. service_role only.';
 
+-- Idempotent for re-runs against a database that already has the table from a partial run.
+alter table public.deleted_account_archive add column if not exists order_returns jsonb not null default '[]'::jsonb;
 alter table public.deleted_account_archive enable row level security;
 revoke all on table public.deleted_account_archive from public, anon, authenticated;
 grant all on table public.deleted_account_archive to service_role;
@@ -198,6 +209,27 @@ grant all on table public.deleted_account_archive to service_role;
 -- =============================================================================
 -- Status + access logic
 -- =============================================================================
+
+-- Original paid-only check (Stripe / access code / manual...). "Is this user a subscriber?".
+create or replace function public.user_has_paid_entitlement(p_user_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path to 'public'
+as $$
+  select exists (
+    select 1
+    from public.entitlements e
+    where e.user_id = p_user_id
+      and e.status = 'active'
+      and e.valid_from <= now()
+      and (e.valid_until is null or e.valid_until > now())
+  );
+$$;
+
+revoke all on function public.user_has_paid_entitlement(uuid) from public, anon, authenticated;
+grant execute on function public.user_has_paid_entitlement(uuid) to service_role;
 
 create or replace function public.user_has_active_trial(p_user_id uuid)
 returns boolean
@@ -217,6 +249,22 @@ $$;
 
 revoke all on function public.user_has_active_trial(uuid) from public, anon, authenticated;
 grant execute on function public.user_has_active_trial(uuid) to service_role;
+
+-- Access check consumed by already-deployed Edge Functions (billingEntitlement.ts) and by
+-- has_speedvendors_access(): paid entitlement OR active trial. NOT "is a subscriber".
+create or replace function public.user_has_active_entitlement(p_user_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path to 'public'
+as $$
+  select public.user_has_paid_entitlement(p_user_id)
+      or public.user_has_active_trial(p_user_id);
+$$;
+
+revoke all on function public.user_has_active_entitlement(uuid) from public, anon, authenticated;
+grant execute on function public.user_has_active_entitlement(uuid) to service_role;
 
 -- Canonical access decision (paid entitlement OR active trial OR superadmin OR legacy+flag off).
 -- Trial-tracked users are enforced regardless of billing_settings.enforcement_enabled.
@@ -241,7 +289,7 @@ begin
     return true;
   end if;
 
-  if public.user_has_active_entitlement(p_user_id) then
+  if public.user_has_paid_entitlement(p_user_id) then
     return true;
   end if;
 
@@ -318,7 +366,7 @@ begin
   end if;
 
   -- Non-Stripe paid access (access codes, manual / superadmin grants).
-  if public.user_has_active_entitlement(p_user_id) then
+  if public.user_has_paid_entitlement(p_user_id) then
     return 'active';
   end if;
 
@@ -393,7 +441,7 @@ grant execute on function public.refresh_user_trial_status(uuid) to service_role
 
 -- Time-driven transitions (trial end, entitlement expiry). Cheap; called by the cron sweeper
 -- and before admin reads. Event-driven transitions are handled by the triggers below.
-create or replace function public.sync_trial_statuses()
+create or replace function public.sync_trial_statuses(p_full boolean default false)
 returns integer
 language plpgsql
 security definer
@@ -405,11 +453,13 @@ declare
   v_before text;
   v_after text;
 begin
+  -- Quick mode (admin reads): only the time-driven trialing -> ended transition.
+  -- Full mode (cron): also re-checks converted users whose entitlement may have lapsed by time.
   for r in
     select t.user_id, t.subscription_status
     from public.user_trials t
-    where t.subscription_status in ('active', 'past_due')
-       or (t.subscription_status = 'trialing' and t.trial_ends_at <= now())
+    where (t.subscription_status = 'trialing' and t.trial_ends_at <= now())
+       or (p_full and t.subscription_status in ('active', 'past_due'))
   loop
     v_before := r.subscription_status;
     v_after := public.refresh_user_trial_status(r.user_id);
@@ -421,8 +471,8 @@ begin
 end;
 $$;
 
-revoke all on function public.sync_trial_statuses() from public, anon, authenticated;
-grant execute on function public.sync_trial_statuses() to service_role;
+revoke all on function public.sync_trial_statuses(boolean) from public, anon, authenticated;
+grant execute on function public.sync_trial_statuses(boolean) to service_role;
 
 -- Keep the materialised status current when billing rows change. Never allowed to break the
 -- Stripe webhook transaction: any failure is downgraded to a WARNING.
@@ -444,10 +494,12 @@ $$;
 
 revoke all on function public.trg_refresh_trial_status() from public, anon, authenticated;
 
+drop trigger if exists billing_subscriptions_refresh_trial on public.billing_subscriptions;
 create trigger billing_subscriptions_refresh_trial
   after insert or update on public.billing_subscriptions
   for each row execute function public.trg_refresh_trial_status();
 
+drop trigger if exists entitlements_refresh_trial on public.entitlements;
 create trigger entitlements_refresh_trial
   after insert or update on public.entitlements
   for each row execute function public.trg_refresh_trial_status();
@@ -577,6 +629,7 @@ $$;
 
 revoke all on function public.handle_new_user_trial() from public, anon, authenticated;
 
+drop trigger if exists on_auth_user_created_trial on auth.users;
 create trigger on_auth_user_created_trial
   after insert on auth.users
   for each row execute function public.handle_new_user_trial();
@@ -612,7 +665,7 @@ begin
   where id = 1;
 
   v_superadmin := public.is_superadmin_user();
-  v_has_entitlement := public.user_has_active_entitlement(v_uid);
+  v_has_entitlement := public.user_has_paid_entitlement(v_uid);
   v_active_trial := public.user_has_active_trial(v_uid);
 
   select coalesce(array_agg(distinct e.source order by e.source), '{}'::text[])
@@ -718,7 +771,7 @@ security definer
 set search_path to 'public'
 as $$
 begin
-  perform public.sync_trial_statuses();
+  perform public.sync_trial_statuses(true);
 
   return query
   with due as (
@@ -1241,6 +1294,7 @@ declare
   v_items jsonb;
   v_payments jsonb;
   v_billing jsonb;
+  v_returns jsonb := '[]'::jsonb;
 begin
   select u.email into v_email from auth.users u where u.id = p_user_id;
   select pr.store_name into v_store from public.profiles pr where pr.user_id = p_user_id limit 1;
@@ -1272,6 +1326,12 @@ begin
       and (o.invoice_number is not null or o.payment_status in ('paid', 'invoiced', 'cash', 'refunded'))
   );
 
+  -- order_returns (partial returns of retained orders) exists in production; guard for older schemas.
+  if to_regclass('public.order_returns') is not null then
+    execute 'select coalesce(jsonb_agg(to_jsonb(r)), ''[]''::jsonb) from public.order_returns r where r.user_id = $1'
+      into v_returns using p_user_id;
+  end if;
+
   select jsonb_build_object(
     'customers', coalesce((select jsonb_agg(to_jsonb(c)) from public.billing_customers c where c.user_id = p_user_id), '[]'::jsonb),
     'subscriptions', coalesce((select jsonb_agg(to_jsonb(s)) from public.billing_subscriptions s where s.user_id = p_user_id), '[]'::jsonb)
@@ -1279,14 +1339,15 @@ begin
 
   insert into public.deleted_account_archive (
     deleted_user_id, deleted_email, store_name, deleted_by,
-    orders, order_items, payment_transactions, billing_records, counts
+    orders, order_items, payment_transactions, billing_records, order_returns, counts
   ) values (
     p_user_id, v_email, v_store, p_deleted_by,
-    v_orders, v_items, v_payments, v_billing,
+    v_orders, v_items, v_payments, v_billing, v_returns,
     jsonb_build_object(
       'orders', jsonb_array_length(v_orders),
       'order_items', jsonb_array_length(v_items),
-      'payment_transactions', jsonb_array_length(v_payments)
+      'payment_transactions', jsonb_array_length(v_payments),
+      'order_returns', jsonb_array_length(v_returns)
     )
   )
   on conflict (deleted_user_id) do update
@@ -1298,15 +1359,80 @@ begin
         order_items = excluded.order_items,
         payment_transactions = excluded.payment_transactions,
         billing_records = excluded.billing_records,
+        order_returns = excluded.order_returns,
         counts = excluded.counts;
 
   return jsonb_build_object(
     'orders', jsonb_array_length(v_orders),
     'order_items', jsonb_array_length(v_items),
-    'payment_transactions', jsonb_array_length(v_payments)
+    'payment_transactions', jsonb_array_length(v_payments),
+    'order_returns', jsonb_array_length(v_returns)
   );
 end;
 $$;
 
 revoke all on function public.admin_archive_account_for_deletion(uuid, uuid) from public, anon, authenticated;
 grant execute on function public.admin_archive_account_for_deletion(uuid, uuid) to service_role;
+
+-- =============================================================================
+-- Server-side guard for merchant write RPCs
+-- =============================================================================
+-- bulk_update_stock, save_product_variants, return_order_items and restore_order_stock are
+-- SECURITY DEFINER and executable by any signed-in user, so they bypass the table write
+-- guards. Without this, a merchant whose trial ended could still change stock / variants /
+-- returns by calling the API directly. The guard only applies to signed-in end users:
+-- service_role callers (store-api, webhooks) and anonymous callers are unaffected.
+
+create or replace function public.assert_entitlement_if_end_user()
+returns void
+language plpgsql
+stable
+security definer
+set search_path to 'public'
+as $$
+begin
+  if auth.uid() is null then
+    return;
+  end if;
+  if coalesce(auth.jwt() ->> 'role', auth.role()) = 'service_role' then
+    return;
+  end if;
+  if not public.user_has_speedvendors_access(auth.uid()) then
+    raise exception 'entitlement_required' using errcode = '42501';
+  end if;
+end;
+$$;
+
+revoke all on function public.assert_entitlement_if_end_user() from public, anon;
+grant execute on function public.assert_entitlement_if_end_user() to authenticated, service_role;
+
+-- Inject the guard as the first statement of each function body, preserving everything else
+-- (signature, owner, SECURITY DEFINER, search_path, grants) by re-issuing pg_get_functiondef.
+-- Idempotent, and fails the whole migration (rolling it back) if the injection point is not found.
+do $$
+declare
+  r record;
+  v_def text;
+  v_new text;
+  v_call constant text := 'perform public.assert_entitlement_if_end_user();';
+begin
+  for r in
+    select p.oid, p.proname
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname in ('bulk_update_stock', 'save_product_variants', 'return_order_items', 'restore_order_stock')
+      and p.prokind = 'f'
+  loop
+    v_def := pg_get_functiondef(r.oid);
+    if position(v_call in v_def) > 0 then
+      continue;
+    end if;
+    -- first top-level BEGIN (after any DECLARE section)
+    v_new := regexp_replace(v_def, '(\mbegin\M)', E'\\1\n  ' || v_call, 'i');
+    if v_new = v_def or position(v_call in v_new) = 0 then
+      raise exception 'could not inject entitlement guard into public.%', r.proname;
+    end if;
+    execute v_new;
+  end loop;
+end $$;

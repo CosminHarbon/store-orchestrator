@@ -7,7 +7,7 @@ import { AppSidebar } from '@/components/AppSidebar';
 import { MobileHeader } from '@/components/MobileHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { useImpersonation } from '@/hooks/useImpersonation';
-import { useMerchantAccessGate } from '@/hooks/useEntitlementGate';
+import { isTrialLocked, useMerchantAccessGate } from '@/hooks/useEntitlementGate';
 import { TrialBanner } from '@/components/billing/TrialBanner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useQuery } from '@tanstack/react-query';
@@ -127,7 +127,8 @@ const Index = () => {
     }
   }, []);
 
-  const { ready: entitlementReady, blocked: entitlementBlocked } = useMerchantAccessGate();
+  const { gate: entitlementGate, ready: entitlementReady, blocked: entitlementBlocked } = useMerchantAccessGate();
+  const trialLocked = entitlementGate.status === 'ready' && isTrialLocked(entitlementGate.entitlement);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -154,6 +155,8 @@ const Index = () => {
       if (!user || !effectiveUserId) return;
       if (isImpersonating) return;
       if (!entitlementReady || entitlementBlocked) return;
+      // Expired-trial users are read-only: don't push them into the write-heavy setup wizard.
+      if (trialLocked) return;
       const { data: isSuper } = await supabase.rpc('is_superadmin_user');
       if (isSuper) return;
       const { data: profile } = await supabase
@@ -172,7 +175,7 @@ const Index = () => {
     };
 
     void checkSetup();
-  }, [user, navigate, effectiveUserId, isImpersonating, entitlementReady, entitlementBlocked]);
+  }, [user, navigate, effectiveUserId, isImpersonating, entitlementReady, entitlementBlocked, trialLocked]);
 
   const { data: profileData } = useQuery({
     queryKey: ['dashboard-profile', effectiveUserId],

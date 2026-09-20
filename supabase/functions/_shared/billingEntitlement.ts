@@ -70,6 +70,7 @@ export function isEntitlementRequiredError(err: unknown): boolean {
   return err instanceof Error && err.message === 'ENTITLEMENT_REQUIRED';
 }
 
+/** "May use the app": paid entitlement OR active free trial (see migration 20260920120000). */
 export async function userHasActiveEntitlement(
   admin: AdminClient,
   userId: string,
@@ -81,6 +82,22 @@ export async function userHasActiveEntitlement(
   if (error) {
     console.error('user_has_active_entitlement failed', { message: error.message });
     return false;
+  }
+  return data === true;
+}
+
+/**
+ * "Is this user a subscriber?" — paid entitlements only (Stripe, access code, manual). An active
+ * free trial does NOT count. Falls back to userHasActiveEntitlement if the RPC is not deployed yet.
+ */
+export async function userHasPaidEntitlement(
+  admin: AdminClient,
+  userId: string,
+): Promise<boolean> {
+  const { data, error } = await admin.rpc('user_has_paid_entitlement', { p_user_id: userId });
+  if (error) {
+    console.error('user_has_paid_entitlement failed', { message: error.message });
+    return userHasActiveEntitlement(admin, userId);
   }
   return data === true;
 }

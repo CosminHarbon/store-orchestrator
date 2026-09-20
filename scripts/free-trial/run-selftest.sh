@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs the free-trial SQL self-test against a scratch Postgres (no Supabase needed).
+# Runs the free-trial SQL self-tests against a scratch Postgres (no Supabase needed).
 # Usage: PGHOST=<socket dir or host> PGPORT=<port> PGUSER=postgres scripts/free-trial/run-selftest.sh
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -11,6 +11,9 @@ P="psql -v ON_ERROR_STOP=1 -q -d $DB"
 $P -f "$here/00_stubs.sql"
 $P -f "$root/supabase/migrations/20260827141430_saas_billing_entitlements.sql"
 $P -c "alter table public.billing_subscriptions add column tier text"
+# The migration must be re-runnable: apply it twice and require the second run to be a clean no-op.
+$P -f "$root/supabase/migrations/20260920120000_free_trial_system.sql"
 $P -f "$root/supabase/migrations/20260920120000_free_trial_system.sql"
 $P -f "$here/10_selftest.sql"
+$P -f "$here/20_selftest_audit.sql"
 echo "free-trial SQL self-test: ALL PASSED"

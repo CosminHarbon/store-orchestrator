@@ -7,9 +7,11 @@ No second subscription system was added. The trial reuses:
 | Existing piece | How the trial uses it |
 | --- | --- |
 | `billing_settings` (singleton) | Gains `trial_duration_days` (7) and `trial_program_started_at` (the **cutover**). |
-| `entitlements` / `billing_subscriptions` | **Untouched.** A trial is *not* an entitlement, so `/subscribe`, Stripe Checkout and "already subscribed" checks still treat trial users as unsubscribed. |
+| `entitlements` / `billing_subscriptions` | No rows are ever created for a trial. "Is subscribed" decisions (`/subscribe`, checkout, `has_entitlement`) use the new `user_has_paid_entitlement()` (the original logic), so trial users are still treated as unsubscribed. |
+| `user_has_active_entitlement()` | The "may use the app" check that **already-deployed Edge Functions call**. It now also honours an active trial, so those functions need **no redeploy**. |
 | `has_speedvendors_access()` + the 14 restrictive write policies | Now also allow an active trial (via `user_has_speedvendors_access`). Every existing RLS write guard therefore enforces the trial with no per-table changes. |
-| `requireSpeedVendorsEntitlement` (Edge) | Calls the same DB function, so the 10 Edge Functions that already gate paid features enforce the trial too. |
+| SECURITY DEFINER write RPCs (`bulk_update_stock`, `save_product_variants`, `return_order_items`, `restore_order_stock`) | These bypass RLS and were callable by any signed-in user without an entitlement check. The migration injects `assert_entitlement_if_end_user()` (no-op for `service_role` / anonymous callers). |
+| `requireSpeedVendorsEntitlement` (Edge) | Updated to call `user_has_speedvendors_access` (with a safe fallback). The 10 gated Functions do not need redeploying for trials to work (see above). |
 | `notifyMerchant` → `send-push-notification` | Push channel for reminders (now returns a delivery result). |
 | Superadmin (`is_superadmin()` = role + AAL2) | Authorises every admin RPC / Edge Function. |
 
@@ -123,16 +125,22 @@ PGHOST=/tmp PGPORT=5432 PGUSER=postgres scripts/free-trial/run-selftest.sh
 deno run --allow-env --allow-net --no-lock scripts/free-trial/edge-selftest.ts
 ```
 
+## Production notes (verified read-only against project `mkkqbekhvcnwcheegjpy` on 2026-09-20)
+
+* `billing_settings.enforcement_enabled` was already **true** (since 2026-08-29): before this change every new signup is locked out until it pays. The trial is what unlocks them.
+* The local `supabase/migrations` files and the remote migration history are **out of sync** (same changes applied under different versions). **Never run `supabase db push` / `migration up`** — apply this migration on its own (`supabase db query --linked -f`, inside a transaction) and record it with `supabase migration repair --status applied 20260920120000`.
+* `ai-studio-publish` / `ai-studio-v2-critique` in production are newer than `origin/main` and cannot be downloaded for comparison, so they are deliberately **not redeployed** from this branch.
+
 ## Deploy order
 
-1. Apply migration `20260920120000_free_trial_system.sql`
-2. Deploy Edge Functions: `billing-entitlement-status`, the 10 gated functions (ai-studio-generate, ai-studio-refine, ai-studio-publish, ai-studio-v2-critique, diagnose-eawb, eawb-quoting, eawb-delivery, oblio-invoice, stripe-connect, test-eawb-connection)
-   (they are bundled with it), `trial-reminders`, `admin-delete-user`
-3. Deploy the frontend
+1. Apply migration `20260920120000_free_trial_system.sql` (idempotent; runs in one transaction)
+2. Deploy exactly three Edge Functions: `billing-entitlement-status` (changed), `trial-reminders` and `admin-delete-user` (new)
+3. Deploy the frontend (web, then iOS/Android builds)
 4. (Optional) set email secrets; create the cron schedule
 
-Edge deployed *before* the migration is safe: `requireSpeedVendorsEntitlement` falls back to the previous
-behaviour if `user_has_speedvendors_access` does not exist yet.
+The old client keeps working against the new backend (`has_access` is now true for a trial user). Deploying
+`billing-entitlement-status` must follow the migration immediately: the *old* function recomputes `has_access`
+without knowing about trials.
 
 ## Rollback
 

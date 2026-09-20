@@ -168,6 +168,11 @@ serve(async (req) => {
       }
     }
 
+    // 7a'. Device push tokens: push_tokens has NO foreign key to auth.users, so the cascade would
+    // leave the deleted person's device tokens behind. Remove them explicitly.
+    const { error: pushErr } = await admin.from('push_tokens').delete().eq('user_id', targetId);
+    if (pushErr) storageErrors.push(`push_tokens: ${pushErr.message}`);
+
     // 7b. Delete the auth user (server-side admin API; cascades merchant data)
     const { error: delErr } = await admin.auth.admin.deleteUser(targetId);
     if (delErr) {
