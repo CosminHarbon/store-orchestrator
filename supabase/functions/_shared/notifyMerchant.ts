@@ -20,20 +20,27 @@ function toStringData(data: Record<string, string>): Record<string, string> {
   return out;
 }
 
-export async function notifyMerchant(input: MerchantNotifyInput): Promise<void> {
+export type MerchantNotifyResult = {
+  ok: boolean;
+  sent?: number;
+  total?: number;
+  reason?: string;
+};
+
+export async function notifyMerchant(input: MerchantNotifyInput): Promise<MerchantNotifyResult> {
   const userId = String(input.userId || '').trim();
   const title = String(input.title || '').trim();
   const body = String(input.body || '').trim();
   if (!userId || !title || !body) {
     console.error('[notifyMerchant] skipped — userId, title, and body are required');
-    return;
+    return { ok: false, reason: 'invalid_input' };
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const serviceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   if (!supabaseUrl || !serviceRole) {
     console.error('[notifyMerchant] missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
-    return;
+    return { ok: false, reason: 'not_configured' };
   }
 
   try {
@@ -55,7 +62,7 @@ export async function notifyMerchant(input: MerchantNotifyInput): Promise<void> 
     if (!response.ok) {
       const text = await response.text().catch(() => '');
       console.error('[notifyMerchant] send-push-notification failed', response.status, text);
-      return;
+      return { ok: false, reason: `http_${response.status}` };
     }
 
     const result = await response.json().catch(() => null);
@@ -65,8 +72,16 @@ export async function notifyMerchant(input: MerchantNotifyInput): Promise<void> 
       total: result?.total,
       success: result?.success,
     });
+    const sent = typeof result?.sent === 'number' ? result.sent : 0;
+    return {
+      ok: sent > 0,
+      sent,
+      total: typeof result?.total === 'number' ? result.total : undefined,
+      reason: sent > 0 ? undefined : 'no_active_device',
+    };
   } catch (error) {
     console.error('[notifyMerchant] error', error);
+    return { ok: false, reason: 'exception' };
   }
 }
 

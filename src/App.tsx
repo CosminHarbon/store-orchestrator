@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import i18n from '@/i18n';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -46,7 +48,35 @@ const StripeConnectReturnListener = () => {
   return null;
 };
 
-const queryClient = new QueryClient();
+/**
+ * Writes refused by the billing write guards (RLS restrictive policies / entitlement_required)
+ * surface as one clear upgrade prompt instead of a raw database error.
+ */
+function isEntitlementWriteError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+  const code = (error as { code?: string } | null)?.code;
+  return (
+    message.includes('entitlement_required') ||
+    message.includes('ENTITLEMENT_REQUIRED') ||
+    (code === '42501' && message.includes('row-level security'))
+  );
+}
+
+const queryClient = new QueryClient({
+  mutationCache: new MutationCache({
+    onError: (error) => {
+      if (!isEntitlementWriteError(error)) return;
+      void queryClient.invalidateQueries({ queryKey: ['trial-status'] });
+      toast.error(i18n.t('common:trial.lockedAction'), {
+        id: 'entitlement-locked',
+        action: {
+          label: i18n.t('common:trial.choosePlan'),
+          onClick: () => window.location.assign('/subscribe'),
+        },
+      });
+    },
+  }),
+});
 
 /**
  * Theme isolation:

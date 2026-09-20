@@ -191,5 +191,24 @@
     "codeFailed": "Could not apply access code.",
     "codeSuccess": "Access granted",
     "signOut": "Sign out"
+  },
+  "trial": {
+    "title": "Free Trial",
+    "daysRemaining_one": "{{count}} day remaining",
+    "daysRemaining_other": "{{count}} days remaining",
+    "hoursRemaining_one": "{{count}} hour remaining",
+    "hoursRemaining_other": "{{count}} hours remaining",
+    "fullAccess": "Full SpeedVendors access until {{date}}. No card required.",
+    "choosePlan": "Choose a plan",
+    "endsInBanner_one": "Your free trial ends in {{count}} day.",
+    "endsInBanner_other": "Your free trial ends in {{count}} days.",
+    "endsTomorrow": "Your free trial ends tomorrow.",
+    "lastDay": "Last day of your free trial — {{time}}.",
+    "keepRunning": "Choose a plan to keep your store running.",
+    "endedTitle": "Your free trial has ended.",
+    "endedBody": "Choose a plan to continue using SpeedVendors. Your store and data are safe.",
+    "lockedNote": "You can still view your store and data. Editing is locked until you choose a plan.",
+    "lockedAction": "This action needs an active plan. Your free trial has ended.",
+    "dismiss": "Dismiss"
   }
 }

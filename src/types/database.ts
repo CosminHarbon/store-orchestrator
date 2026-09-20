@@ -1558,6 +1558,51 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      get_my_trial_status: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      admin_trial_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      admin_get_user_overview: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
+      admin_extend_trial: {
+        Args: {
+          p_user_id: string
+          p_days?: number | null
+          p_new_end?: string | null
+          p_reason?: string | null
+        }
+        Returns: Json
+      }
+      admin_list_trials: {
+        Args: {
+          p_filter?: string
+          p_search?: string | null
+          p_sort?: string
+          p_limit?: number
+          p_offset?: number
+        }
+        Returns: {
+          user_id: string
+          email: string | null
+          user_name: string | null
+          merchant_id: string | null
+          store_name: string | null
+          signed_up_at: string
+          trial_started_at: string
+          trial_ends_at: string
+          days_remaining: number
+          subscription_status: string
+          current_plan: string | null
+          last_sign_in_at: string | null
+          total_count: number
+        }[]
+      }
       admin_list_merchants: {
         Args: Record<PropertyKey, never>
         Returns: {

@@ -18,6 +18,7 @@ import { advertisedMonthlyEquivalent, advertisedPrice } from '@/lib/marketingPri
 import { SPEEDVENDORS_PLANS, SPEEDVENDORS_TIERS, type BillingInterval, type SpeedVendorsTier } from '@/lib/plans/catalogue';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { useTrialStatus } from '@/hooks/useTrialStatus';
 
 /**
  * Subscription gate page. Web: Stripe Checkout + access codes.
@@ -28,6 +29,7 @@ const Subscribe = () => {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const { gate, refresh } = useEntitlementGate();
+  const trial = useTrialStatus();
   const [interval, setInterval] = useState<BillingInterval>('monthly');
   const [busy, setBusy] = useState<SpeedVendorsTier | 'code' | null>(null);
   const [accessCode, setAccessCode] = useState('');
@@ -181,6 +183,16 @@ const Subscribe = () => {
           <h1 className="font-display text-3xl tracking-tight sm:text-4xl">{t('subscribe.title')}</h1>
           <p className="mx-auto max-w-xl text-muted-foreground">{t('subscribe.subtitle')}</p>
         </div>
+
+        {trial.level === 'expired' ? (
+          <div
+            role="alert"
+            className="mx-auto w-full max-w-2xl rounded-2xl border border-destructive/40 bg-destructive/10 p-5 text-center"
+          >
+            <p className="font-semibold">{t('trial.endedTitle')}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t('trial.endedBody')}</p>
+          </div>
+        ) : null}
 
         {nativeBlocked ? (
           <div className="rounded-2xl border border-border/60 bg-card/60 p-6 text-center">

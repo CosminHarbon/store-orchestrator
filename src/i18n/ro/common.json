@@ -191,5 +191,27 @@
     "codeFailed": "Nu am putut aplica codul de acces.",
     "codeSuccess": "Acces acordat",
     "signOut": "Deconectare"
+  },
+  "trial": {
+    "title": "Perioadă de probă gratuită",
+    "daysRemaining_one": "{{count}} zi rămasă",
+    "daysRemaining_few": "{{count}} zile rămase",
+    "daysRemaining_other": "{{count}} de zile rămase",
+    "hoursRemaining_one": "{{count}} oră rămasă",
+    "hoursRemaining_few": "{{count}} ore rămase",
+    "hoursRemaining_other": "{{count}} de ore rămase",
+    "fullAccess": "Acces complet la SpeedVendors până pe {{date}}. Nu este necesar un card.",
+    "choosePlan": "Alege un plan",
+    "endsInBanner_one": "Perioada de probă se încheie în {{count}} zi.",
+    "endsInBanner_few": "Perioada de probă se încheie în {{count}} zile.",
+    "endsInBanner_other": "Perioada de probă se încheie în {{count}} de zile.",
+    "endsTomorrow": "Perioada de probă se încheie mâine.",
+    "lastDay": "Ultima zi de probă gratuită — {{time}}.",
+    "keepRunning": "Alege un plan ca magazinul tău să continue să funcționeze.",
+    "endedTitle": "Perioada de probă gratuită s-a încheiat.",
+    "endedBody": "Alege un plan pentru a continua să folosești SpeedVendors. Magazinul și datele tale sunt în siguranță.",
+    "lockedNote": "Îți poți vedea în continuare magazinul și datele. Editarea este blocată până alegi un plan.",
+    "lockedAction": "Această acțiune necesită un plan activ. Perioada de probă gratuită s-a încheiat.",
+    "dismiss": "Închide"
   }
 }

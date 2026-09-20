@@ -8,6 +8,7 @@ import { MobileHeader } from '@/components/MobileHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { useMerchantAccessGate } from '@/hooks/useEntitlementGate';
+import { TrialBanner } from '@/components/billing/TrialBanner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -293,6 +294,7 @@ const Index = () => {
               </div>
             </div>
           ) : null}
+          {!isImpersonating ? <TrialBanner /> : null}
           <MobileHeader 
             userEmail={user.email || undefined} 
             storeName={profileData?.store_name || t('defaultStoreName')}

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useImpersonation } from '@/hooks/useImpersonation';
+import type { TrialStatus } from '@/hooks/useTrialStatus';
 
 export type EntitlementStatus = {
   has_access: boolean;
@@ -16,6 +17,9 @@ export type EntitlementStatus = {
   active_sources?: string[];
   billing_warning?: string | null;
   grace_until?: string | null;
+  /** Server-derived: trialing | trial_expired | active | past_due | cancelled | null (legacy). */
+  subscription_status?: string | null;
+  trial?: TrialStatus | null;
   subscription?: {
     status: string;
     plan: string | null;
@@ -108,8 +112,19 @@ export function useEntitlementGate() {
   return { gate, refresh };
 }
 
+/**
+ * Trial-tracked users (signed up after the free-trial launch) whose access has lapsed. They keep
+ * read access to their store and data and can reach billing; every write is refused server-side
+ * (RLS restrictive policies + Edge `requireSpeedVendorsEntitlement`).
+ */
+export function isTrialLocked(entitlement: EntitlementStatus): boolean {
+  if (entitlement.is_superadmin) return false;
+  return entitlement.trial?.has_trial === true && entitlement.has_access === false;
+}
+
 function merchantAccessBlocked(entitlement: EntitlementStatus): boolean {
   if (entitlement.is_superadmin) return false;
+  if (isTrialLocked(entitlement)) return false;
   return isEnforcementEffective(entitlement) && entitlement.has_access === false;
 }
 
@@ -170,6 +185,11 @@ export async function resolveEntitledPostLoginPath(): Promise<string> {
   }
 
   const status = await loadMergedEntitlementStatus();
+
+  if (isTrialLocked(status)) {
+    // Expired trial: land on the dashboard (read-only) where the upgrade banner + CTA live.
+    return '/app';
+  }
 
   if (isEnforcementEffective(status) && !status.has_access) {
     return '/subscribe';

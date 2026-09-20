@@ -154,3 +154,12 @@ verify_jwt = false
 
 [functions.media-authorize-upload]
 verify_jwt = true
+
+# Free trial: hourly reminder sweep (service-role bearer) + superadmin manual send (JWT + AAL2,
+# verified in-function via is_superadmin()).
+[functions.trial-reminders]
+verify_jwt = true
+
+# Permanent account deletion — superadmin + AAL2 + recent MFA, verified in-function.
+[functions.admin-delete-user]
+verify_jwt = true

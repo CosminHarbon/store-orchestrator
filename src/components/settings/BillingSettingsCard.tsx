@@ -13,6 +13,7 @@ import { parseInterval, parseTier, SPEEDVENDORS_PLANS } from '@/lib/plans/catalo
 import { formatBytes } from '@/lib/media/constants';
 import { useMediaUsage } from '@/hooks/useMediaUsage';
 import { Capacitor } from '@capacitor/core';
+import { TrialStatusCard } from '@/components/billing/TrialStatusCard';
 import { toIntlLocale } from '@/i18n/types';
 import type { AppLanguage } from '@/i18n/types';
 
@@ -166,6 +167,7 @@ export function BillingSettingsCard() {
         <CardDescription>{t('saasBilling.description')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <TrialStatusCard />
         {warning === 'duplicate_open_subscription' ? (
           <Alert variant="destructive">
             <AlertDescription>{t('saasBilling.duplicateWarning')}</AlertDescription>

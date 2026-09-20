@@ -4,6 +4,7 @@ import {
   isBillingEnforcementActive,
   isSuperadminUserId,
   userHasActiveEntitlement,
+  userHasSpeedVendorsAccess,
 } from '../_shared/billingEntitlement.ts';
 import { billingCorsHeaders, isBillingEnforcementEnvAllowed } from '../_shared/billingStripe.ts';
 
@@ -53,7 +54,10 @@ serve(async (req) => {
     const enforcementActive = await isBillingEnforcementActive(admin);
     const superadmin = await isSuperadminUserId(admin, user.id);
     const hasEntitlement = await userHasActiveEntitlement(admin, user.id);
-    const hasAccess = !enforcementActive || superadmin || hasEntitlement;
+    // Canonical access = superadmin | paid entitlement | active trial | legacy+flag-off.
+    // has_entitlement stays paid-only so /subscribe still treats trial users as unsubscribed.
+    const dbAccess = envAllows ? await userHasSpeedVendorsAccess(admin, user.id) : true;
+    const hasAccess = dbAccess ?? (!enforcementActive || superadmin || hasEntitlement);
 
     return json({
       ...(typeof rpcStatus === 'object' && rpcStatus ? rpcStatus : {}),

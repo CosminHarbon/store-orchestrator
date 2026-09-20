@@ -100,14 +100,44 @@ export async function isSuperadminUserId(
 }
 
 /**
- * Throws if enforcement is on and the user lacks access.
+ * Canonical access decision, computed by Postgres (user_has_speedvendors_access):
+ * superadmin OR paid entitlement OR active free trial OR (legacy user AND enforcement off).
+ * Users with a trial row are enforced even while the global flag is off, so an expired
+ * trial locks server-side without changing behaviour for pre-trial users.
+ * Returns null when the RPC is unavailable (e.g. Edge deployed before the migration).
+ */
+export async function userHasSpeedVendorsAccess(
+  admin: AdminClient,
+  userId: string,
+): Promise<boolean | null> {
+  const { data, error } = await admin.rpc('user_has_speedvendors_access', {
+    p_user_id: userId,
+  });
+  if (error) {
+    console.error('user_has_speedvendors_access failed', { message: error.message });
+    return null;
+  }
+  return data === true;
+}
+
+/**
+ * Throws if the user lacks access.
  * Superadmins bypass. Impersonation must NOT be used for billing mutations —
  * pass the JWT subject only.
+ *
+ * BILLING_ENFORCEMENT_ENABLED=false remains the emergency kill switch and disables all checks.
  */
 export async function requireSpeedVendorsEntitlement(
   admin: AdminClient,
   userId: string,
 ): Promise<void> {
+  if (!isBillingEnforcementEnvAllowed()) return;
+
+  const access = await userHasSpeedVendorsAccess(admin, userId);
+  if (access === true) return;
+  if (access === false) throw new Error('ENTITLEMENT_REQUIRED');
+
+  // RPC unavailable: fall back to the pre-trial behaviour rather than failing open or closed.
   if (!(await isBillingEnforcementActive(admin))) return;
   if (await isSuperadminUserId(admin, userId)) return;
   if (await userHasActiveEntitlement(admin, userId)) return;
