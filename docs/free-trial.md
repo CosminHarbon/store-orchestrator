@@ -1,5 +1,21 @@
 # SpeedVendors 7-day free trial
 
+> **Current model (migration `20260920150000`): a trial starts ONLY when the user presses "Start Free Trial".**
+> Creating an account does not start a trial. Older sections below that mention "signup" describe the first
+> (superseded) version; where they conflict, this box wins.
+>
+> Flow: sign up -> plan-selection screen (`/subscribe`) -> paid plan (Stripe Checkout) OR **Start Free Trial**
+> (`start_free_trial()` RPC: no arguments, server time, one per account, race-safe, creates no subscription or
+> entitlement). Trial states are `not_started` / `active` / `expired`; a `user_trials` row means "consumed".
+> Plan states: `no_plan | trial_active | trial_expired | paid | past_due | cancelled | legacy`.
+> A new-flow account (created on/after `billing_settings.trial_program_started_at`) with no plan has **no application
+> access**, even when `enforcement_enabled` is off. Legacy accounts are unchanged and cannot self-start a trial.
+> Trial users: Settings shows the trial card and "Manage subscription" opens the plan screen (no Stripe portal);
+> paid users keep the Stripe Customer Portal. Expired trial -> plan screen with the "trial has ended" message.
+> Rows auto-created by the first version: in-use accounts became `source = 'grandfathered'` (access preserved to the
+> original end date); never-signed-in ones were removed.
+
+
 ## How it fits the existing billing system
 
 No second subscription system was added. The trial reuses:
