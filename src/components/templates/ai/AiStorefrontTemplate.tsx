@@ -57,6 +57,18 @@ export default function AiStorefrontTemplate({
       setLoadedSpec(specOverride);
       return;
     }
+    if (siteDocumentOverride && brandSystemOverride) {
+      // Caller supplies the full V2 payload directly (e.g. the merchant AI
+      // Studio V2 builder's live preview after generation). Nothing to fetch —
+      // and fetching here would be actively harmful: any fallback that sets
+      // loadedSpec (published/legacy V1 draft_spec, or FLORIST_FIXTURE when a
+      // merchant has no publish history yet) would win priority over this
+      // override in the `spec = specOverride || loadedSpec` derivation below,
+      // silently replacing the real generated brand's colors/fonts in
+      // cssVars/fonts with unrelated V1/fixture data even though v2Payload
+      // itself still correctly picks the override document.
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -130,7 +142,7 @@ export default function AiStorefrontTemplate({
     return () => {
       cancelled = true;
     };
-  }, [apiKey, draft, specOverride]);
+  }, [apiKey, draft, specOverride, siteDocumentOverride, brandSystemOverride]);
 
   const spec = specOverride || loadedSpec;
 
@@ -171,9 +183,51 @@ export default function AiStorefrontTemplate({
   }, [spec, v2Payload?.brandSystem]);
 
   const cssVars = useMemo(() => {
-    if (spec) return specCssVariables(spec);
-    if (v2Payload?.brandSystem) return brandTokensToCssVars(v2Payload.brandSystem);
-    return {};
+    const vars: Record<string, unknown> = spec
+      ? specCssVariables(spec)
+      : v2Payload?.brandSystem
+        ? (brandTokensToCssVars(v2Payload.brandSystem) as unknown as Record<string, unknown>)
+        : {};
+    // Pin this OUTER (.premium-store/.ai-store) wrapper's foreground/background
+    // to Premium's own paired, dark-mode-aware custom properties, rather than
+    // to the brand's flat `color`/`background`.
+    //
+    // Two class rules both target this same element for `color`/`background`:
+    // ai.css's `.ai-store { color: var(--ai-text, #111); background: var(--ai-bg,
+    // #fff) }` and premium.css's `.premium-store { color: var(--prem-ink);
+    // background: var(--prem-bg) }`. Their relative cascade order depends on
+    // real CSS-import/bundle order (which file's rules land later in the
+    // stylesheet) — not something to assert without running the app. Simply
+    // *removing* brandTokensToCssVars()'s literal `color`/`background` (as a
+    // prior pass here did) does NOT resolve this: it leaves the outcome
+    // dependent on that untested cascade order, and if `.ai-store` wins, the
+    // exact same leak reproduces via its `var(--ai-text, #111)` rule instead
+    // of via the inline literal — --ai-text is still set as a custom property
+    // right here, unaffected by removing the literal `color` key.
+    //
+    // Setting `color`/`background` inline to the *string* 'var(--prem-ink)'/
+    // 'var(--prem-bg)' sidesteps that ambiguity entirely: inline style always
+    // wins over both class rules regardless of import order, and it resolves
+    // via --prem-ink/--prem-bg — which premium.css declares (and keeps
+    // dark-mode-paired with --prem-surface) whenever nothing more specific
+    // overrides them, exactly as needed for Premium-rendered views
+    // (catalog/product/checkout, and this template's own header/footer chrome).
+    //
+    // V1 (`specCssVariables`) already sets `--prem-ink: t.text` and
+    // `--prem-bg: t.background` inline — the SAME values as `--ai-text`/
+    // `--ai-bg` — so resolving via --prem-ink/--prem-bg instead of the (now
+    // removed) literal `t.text`/`t.background` computes to an identical color
+    // for V1: zero visual change (see the selftest's V1-equivalence proof).
+    //
+    // V2's own home page is unaffected either way: SiteTreeRenderer's
+    // `.ai-v2-root` sets its own inline color/background from the same brand
+    // tokens directly on its own element, which is not an inherited value and
+    // does not depend on this outer wrapper's resolved color at all.
+    return {
+      ...vars,
+      color: 'var(--prem-ink)',
+      background: 'var(--prem-bg)',
+    };
   }, [spec, v2Payload?.brandSystem]);
 
   const { loading, customization, view, setView, openCatalog, cartCount, setCartOpen, collections } = commerce;

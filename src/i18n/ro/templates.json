@@ -228,5 +228,15 @@
       "ready": "Gata",
       "error": "Nu s-a putut finaliza"
     }
+  },
+  "studioV2": {
+    "generate": "Generează",
+    "regenerate": "Regenerează",
+    "generating": "Îți generăm magazinul…",
+    "mobilePreviewHint": "Aici vezi pagina principală generată, la lățime de telefon. Paginile de magazin, produs și coș se adaptează la dispozitivul real al vizitatorului — verifică-le pe magazinul publicat.",
+    "steps": {
+      "planning": "Planificăm magazinul",
+      "composing": "Compunem pagina principală"
+    }
   }
 }

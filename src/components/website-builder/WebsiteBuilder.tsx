@@ -8,8 +8,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { VisualEditor } from './VisualEditor';
 import AIStudio from '@/components/ai-studio/AIStudio';
+import AIStudioV2 from '@/components/ai-studio/AIStudioV2';
 import '@/styles/website-builder.css';
 import { useImpersonation } from '@/hooks/useImpersonation';
+import { isAiStudioV2MerchantBetaEnabled } from '@/lib/ai-studio/v2/featureFlag';
 
 type BuilderView = 'gallery' | 'editor' | 'studio';
 
@@ -54,6 +56,12 @@ export default function WebsiteBuilder() {
   }
 
   if (view === 'studio') {
+    // Merchant-entry Beta flag — separate from the public V2 rendering flag.
+    // Turning this OFF only reverts which builder a merchant opens; it never
+    // affects an already-published V2 storefront (see featureFlag.ts).
+    if (isAiStudioV2MerchantBetaEnabled()) {
+      return <AIStudioV2 apiKey={profile?.store_api_key} onBack={() => setView('gallery')} />;
+    }
     return (
       <AIStudio
         apiKey={profile?.store_api_key}

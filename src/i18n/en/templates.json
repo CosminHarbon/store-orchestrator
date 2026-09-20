@@ -228,5 +228,15 @@
       "ready": "Ready",
       "error": "Couldn't finish"
     }
+  },
+  "studioV2": {
+    "generate": "Generate",
+    "regenerate": "Regenerate",
+    "generating": "Generating your store…",
+    "mobilePreviewHint": "This shows your generated home page at phone width. Shop, product, and cart pages adapt to the visitor's real device — check those on your published store.",
+    "steps": {
+      "planning": "Planning your storefront",
+      "composing": "Composing the homepage"
+    }
   }
 }
