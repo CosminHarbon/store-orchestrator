@@ -107,7 +107,7 @@ Edge Function `admin-delete-user` (service role, server-side only):
 4. refuse: self, other superadmins, accounts with an open Stripe subscription
 5. audit `user_delete_started` (fail closed — no audit, no delete)
 6. snapshot retained records into `deleted_account_archive` (paid/invoiced/COD/refunded orders + items + payments + billing history)
-7. remove storage objects listed in `media_assets`, then `auth.admin.deleteUser` (FKs cascade the rest)
+7. remove storage objects listed in `media_assets`, then `auth.admin.deleteUser` (FKs cascade the rest), then delete rows from tables that have **no cascading FK** to `auth.users` (`collections`, `discounts`, `template_blocks`, `reviews`, `push_tokens` — verified against production; never financial tables)
 8. re-count rows across every `user_id` table, audit `user_deleted` with leftovers
 
 **Why the archive:** `orders.user_id → auth.users ON DELETE CASCADE`, so deleting the auth user would
@@ -115,13 +115,25 @@ otherwise destroy invoiced orders. Changing those FKs on a live table was judged
 keeps the legally relevant data without touching existing constraints. Stripe Connect accounts are
 listed in the audit metadata but **not** disconnected (Standard accounts belong to the merchant).
 
+## Production verification (2026-09-20)
+
+Migrations `20260920120000` (trial system) and `20260920130000` (privilege hardening) were applied to project
+`mkkqbekhvcnwcheegjpy`; `billing-entitlement-status`, `trial-reminders` and `admin-delete-user` were deployed.
+A disposable merchant was driven through the real endpoints (signup trigger → 7-day trial → guarded writes →
+forced expiry → lockout → cron reminders once-only → entitlement written → instant unlock) and then deleted:
+57/57 checks passed and production was left with no test data. Not verifiable without an admin session +
+authenticator code (verified only on a scratch database): superadmin list/extend/reminder and the delete flow.
+
+Known, deliberate gaps: the hourly cron is not scheduled; email needs a provider; a user can still obtain a
+second trial with a different email address (no card/phone signal exists to prevent that).
+
 ## Tests
 
 ```
-# SQL (scratch Postgres, real billing migration + this migration, stubs for auth/roles)
+# SQL: 184 checks on a scratch Postgres (real billing migration + both trial migrations, applied twice; stubs for auth/roles)
 PGHOST=/tmp PGPORT=5432 PGUSER=postgres scripts/free-trial/run-selftest.sh
 
-# Edge logic (Deno)
+# Edge logic (Deno): 27 checks
 deno run --allow-env --allow-net --no-lock scripts/free-trial/edge-selftest.ts
 ```
 
