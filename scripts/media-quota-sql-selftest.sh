@@ -37,3 +37,17 @@ done
 psql_run -f "$TESTS/media_quota_pre_fixture.sql" >/dev/null
 psql_run -f "$MIG/20260919000000_media_quota_original_size.sql" >/dev/null
 psql_run -f "$TESTS/media_quota_original_size.test.sql"
+
+if [ -n "${MEDIA_TEST_SHOW_GRANTS:-}" ]; then
+  psql_run -P pager=off -c "
+    select tbl, role,
+      coalesce((select string_agg(p, ',' order by p) from unnest(array['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) p
+                where has_table_privilege(role, 'public.' || tbl, p)), '-') as table_level,
+      coalesce((select string_agg(a.attname, ',' order by a.attnum) from pg_attribute a
+                where a.attrelid = ('public.' || tbl)::regclass and a.attnum > 0 and not a.attisdropped
+                  and has_column_privilege(role, 'public.' || tbl, a.attname, 'SELECT')
+                  and not has_table_privilege(role, 'public.' || tbl, 'SELECT')), '-') as column_level_select
+    from (values ('media_assets'), ('media_usage'), ('media_upload_reservations')) v(tbl),
+         (values ('authenticated'), ('anon'), ('service_role'), ('postgres')) r(role)
+    order by 1, 2"
+fi

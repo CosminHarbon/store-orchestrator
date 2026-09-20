@@ -264,9 +264,25 @@ declare j jsonb; n int; begin
   perform t.raises($q$ select public.reserve_media_upload('11111111-1111-4111-8111-111111111111', 1, 'product-images','p','product','image/webp') $q$, 'permission denied');
   perform t.raises($q$ select public.finalize_media_upload(gen_random_uuid(), 1) $q$, 'permission denied');
   perform t.raises($q$ select public.record_media_deletion(gen_random_uuid()) $q$, 'permission denied');
-  perform t.raises('select * from public.media_upload_reservations', 'permission denied');
-  perform t.raises($q$ update public.media_usage set bytes_used = 0 $q$, 'permission denied');
   perform t.raises($q$ update public.media_assets set original_size_bytes = 1 $q$, 'permission denied');
+  perform t.raises($q$ insert into public.media_assets (user_id, bucket, storage_path, media_type, mime_type, size_bytes)
+      values (t.m1(), 'product-images', 'x', 'product', 'image/webp', 1) $q$, 'permission denied');
+  perform t.raises('delete from public.media_assets', 'permission denied');
+  perform t.raises('truncate public.media_assets', 'permission denied');
+
+  -- media_usage / media_upload_reservations keep Supabase's default table grants (unchanged by this
+  -- migration); RLS is what protects them: no write policy exists, so writes touch zero rows and the
+  -- reservations table (no policy at all) is invisible.
+  perform t.eq((select count(*) from public.media_upload_reservations), 0, 'D8 reservations invisible to merchants (RLS)');
+  update public.media_usage set bytes_used = 0;
+  get diagnostics n = row_count;
+  perform t.eq(n, 0, 'D9 merchant cannot modify media_usage (RLS, zero rows)');
+  delete from public.media_usage;
+  get diagnostics n = row_count;
+  perform t.eq(n, 0, 'D10 merchant cannot delete media_usage rows (RLS)');
+  update public.media_upload_reservations set charged_bytes = 0;
+  get diagnostics n = row_count;
+  perform t.eq(n, 0, 'D11 merchant cannot modify reservations (RLS)');
 
   j := public.get_media_usage();
   perform t.ok(not (j ? 'stored_bytes' or j ? 'size_bytes' or j ? 'saved_bytes' or j ? 'physical_bytes'), 'D4 merchant usage RPC exposes no physical/compression data');
@@ -288,6 +304,44 @@ declare j jsonb; n int; begin
   execute 'set local role anon';
   perform t.raises('select * from public.admin_media_storage_overview()', 'permission denied');
   perform t.raises('select id from public.media_assets', 'permission denied');
+end $$;
+
+-- =============================================================================
+-- D2. Exact privileges on media_assets (defense in depth on top of RLS)
+-- =============================================================================
+do $$
+declare
+  col text; p text; tbl text;
+  readable text[] := array['id','user_id','bucket','storage_path','public_url','media_type','status','created_at'];
+begin
+  perform t.as_root();
+  foreach p in array array['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER'] loop
+    perform t.ok(not has_table_privilege('authenticated', 'public.media_assets', p), 'G1 authenticated has no table-level ' || p);
+    perform t.ok(not has_table_privilege('anon', 'public.media_assets', p), 'G2 anon has no table-level ' || p);
+    perform t.ok(has_table_privilege('service_role', 'public.media_assets', p), 'G3 service_role keeps ' || p);
+  end loop;
+
+  for col in select attname::text from pg_attribute
+             where attrelid = 'public.media_assets'::regclass and attnum > 0 and not attisdropped loop
+    perform t.ok(has_column_privilege('authenticated', 'public.media_assets', col, 'SELECT') = (col = any (readable)),
+                 'G4 authenticated column SELECT matches the allow-list for ' || col);
+    perform t.ok(not has_column_privilege('anon', 'public.media_assets', col, 'SELECT'), 'G5 anon cannot read ' || col);
+    foreach p in array array['INSERT','UPDATE','REFERENCES'] loop
+      perform t.ok(not has_column_privilege('authenticated', 'public.media_assets', col, p), 'G6 authenticated has no column ' || p || ' on ' || col);
+    end loop;
+  end loop;
+  perform t.ok(not has_column_privilege('authenticated', 'public.media_assets', 'size_bytes', 'SELECT'), 'G7 size_bytes private');
+  perform t.ok(not has_column_privilege('authenticated', 'public.media_assets', 'original_size_bytes', 'SELECT'), 'G8 original_size_bytes private');
+  perform t.ok(not has_column_privilege('authenticated', 'public.media_assets', 'charged_bytes', 'SELECT'), 'G9 charged_bytes private');
+
+  -- RLS is untouched: enabled everywhere, and no write policy exists on any media table.
+  foreach tbl in array array['media_assets','media_usage','media_upload_reservations'] loop
+    perform t.ok((select relrowsecurity from pg_class where oid = ('public.' || tbl)::regclass), 'G10 RLS enabled on ' || tbl);
+    perform t.ok(not has_any_column_privilege('anon', 'public.' || tbl, 'SELECT'), 'G11 anon cannot read ' || tbl);
+    perform t.eq((select count(*) from pg_policies where schemaname = 'public' and tablename = tbl and cmd <> 'SELECT'), 0, 'G12 no write policy on ' || tbl);
+  end loop;
+  perform t.eq((select count(*) from pg_policies where schemaname = 'public' and tablename = 'media_assets' and policyname = 'media_assets_select_own'), 1, 'G13 media_assets_select_own policy intact');
+  perform t.eq((select count(*) from pg_policies where schemaname = 'public' and tablename = 'media_upload_reservations'), 0, 'G14 reservations remain default-deny');
 end $$;
 
 -- =============================================================================

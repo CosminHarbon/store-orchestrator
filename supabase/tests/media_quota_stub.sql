@@ -8,6 +8,10 @@ begin
   if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin bypassrls; end if;
 end $$;
 
+-- Supabase hands every new public table to anon/authenticated/service_role by default
+-- (pg_default_acl: arwdDxtm). Reproduce it so grant tests reflect production.
+alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+
 create schema if not exists auth;
 create schema if not exists storage;
 grant usage on schema auth, storage, public to anon, authenticated, service_role;

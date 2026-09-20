@@ -56,11 +56,16 @@ where uploaded_by is null
 -- Private columns: merchants must not read physical/compression data via PostgREST
 -- =============================================================================
 
-revoke select on table public.media_assets from authenticated;
+-- Supabase default ACLs give `authenticated` ALL privileges on every new public table, which the
+-- original media migration never revoked. Every media_assets write goes through the Edge Function
+-- (service_role) or SECURITY DEFINER RPCs, so merchants keep only column-level SELECT (RLS still
+-- limits rows to their own). The only client read is VisualEditor's template-image library:
+-- select id, public_url, storage_path, media_type, created_at, status
+-- where user_id = ? and bucket = ? and status = ?  (filter columns need SELECT too).
+revoke all on table public.media_assets from authenticated;
+revoke all on table public.media_assets from anon;
 grant select (
-  id, user_id, bucket, storage_path, public_url, media_type, mime_type, width, height,
-  uploaded_by, related_entity_type, related_entity_id, created_at, updated_at,
-  status, delete_attempted_at
+  id, user_id, bucket, storage_path, public_url, media_type, status, created_at
 ) on table public.media_assets to authenticated;
 
 -- =============================================================================
