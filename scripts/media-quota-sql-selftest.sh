@@ -35,7 +35,11 @@ for f in \
 done
 
 psql_run -f "$TESTS/media_quota_pre_fixture.sql" >/dev/null
-psql_run -f "$MIG/20260919000000_media_quota_original_size.sql" >/dev/null
+# 1) Dry run: the whole migration must execute inside BEGIN..ROLLBACK and leave nothing behind.
+psql_run -v mig="$MIG/20260919000000_media_quota_original_size.sql" -f "$TESTS/media_quota_rollback_probe.sql" >/dev/null
+echo "rollback probe: migration ran completely in a transaction and rolled back cleanly"
+# 2) Real apply as ONE transaction, exactly like `supabase db push` runs a migration file.
+psql_run --single-transaction -f "$MIG/20260919000000_media_quota_original_size.sql" >/dev/null
 psql_run -f "$TESTS/media_quota_original_size.test.sql"
 
 if [ -n "${MEDIA_TEST_SHOW_GRANTS:-}" ]; then

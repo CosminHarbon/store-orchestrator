@@ -61,8 +61,28 @@ begin
   return (f->>'asset_id')::uuid;
 end $$;
 
-create function t.used(uid uuid) returns bigint language sql as $$ select bytes_used from public.media_usage where user_id = uid $$;
-create function t.reserved(uid uuid) returns bigint language sql as $$ select bytes_reserved from public.media_usage where user_id = uid $$;
+create function t.used(uid uuid) returns bigint language sql security definer as $$ select bytes_used from public.media_usage where user_id = uid $$;
+create function t.reserved(uid uuid) returns bigint language sql security definer as $$ select bytes_reserved from public.media_usage where user_id = uid $$;
+
+-- ACL snapshot helpers (exact grantee sets; PUBLIC shows up as PUBLIC, NULL proacl means PUBLIC may execute).
+create function t.tbl_acl(tbl text) returns text language sql as $$
+  select coalesce(string_agg(x.g || '=' || x.p, '; ' order by x.g), 'NONE') from (
+    select case when a.grantee = 0 then 'PUBLIC' else pg_get_userbyid(a.grantee) end as g,
+           string_agg(a.privilege_type, ',' order by a.privilege_type) as p
+    from pg_class c, aclexplode(c.relacl) a where c.oid = tbl::regclass group by 1) x
+$$;
+create function t.col_acl(tbl text) returns text language sql as $$
+  select coalesce(string_agg(x.g || ':' || x.priv || '(' || x.cols || ')', '; ' order by x.g), 'NONE') from (
+    select case when a.grantee = 0 then 'PUBLIC' else pg_get_userbyid(a.grantee) end as g,
+           a.privilege_type as priv, string_agg(att.attname, ',' order by att.attname) as cols
+    from pg_attribute att, aclexplode(att.attacl) a
+    where att.attrelid = tbl::regclass and att.attacl is not null group by 1, 2) x
+$$;
+create function t.fn_acl(sig text) returns text language sql as $$
+  select coalesce(string_agg(g, ',' order by g), 'NULL(=PUBLIC can execute)') from (
+    select distinct (case when a.grantee = 0 then 'PUBLIC' else pg_get_userbyid(a.grantee) end) || ':' || a.privilege_type as g
+    from pg_proc p, aclexplode(p.proacl) a where p.oid = to_regprocedure(sig)) x
+$$;
 
 -- =============================================================================
 -- A. Migration outcome on pre-existing (legacy) data
@@ -270,24 +290,20 @@ declare j jsonb; n int; begin
   perform t.raises('delete from public.media_assets', 'permission denied');
   perform t.raises('truncate public.media_assets', 'permission denied');
 
-  -- media_usage / media_upload_reservations keep Supabase's default table grants (unchanged by this
-  -- migration); RLS is what protects them: no write policy exists, so writes touch zero rows and the
-  -- reservations table (no policy at all) is invisible.
-  perform t.eq((select count(*) from public.media_upload_reservations), 0, 'D8 reservations invisible to merchants (RLS)');
-  update public.media_usage set bytes_used = 0;
-  get diagnostics n = row_count;
-  perform t.eq(n, 0, 'D9 merchant cannot modify media_usage (RLS, zero rows)');
-  delete from public.media_usage;
-  get diagnostics n = row_count;
-  perform t.eq(n, 0, 'D10 merchant cannot delete media_usage rows (RLS)');
-  update public.media_upload_reservations set charged_bytes = 0;
-  get diagnostics n = row_count;
-  perform t.eq(n, 0, 'D11 merchant cannot modify reservations (RLS)');
+  -- media_usage / media_upload_reservations: no direct merchant access at all (RLS stays on as well).
+  perform t.raises('select * from public.media_usage', 'permission denied');
+  perform t.raises('update public.media_usage set bytes_used = 0', 'permission denied');
+  perform t.raises('delete from public.media_usage', 'permission denied');
+  perform t.raises($q$ insert into public.media_usage (user_id) values (gen_random_uuid()) $q$, 'permission denied');
+  perform t.raises('truncate public.media_usage', 'permission denied');
+  perform t.raises('select * from public.media_upload_reservations', 'permission denied');
+  perform t.raises('update public.media_upload_reservations set charged_bytes = 0', 'permission denied');
+  perform t.raises('delete from public.media_upload_reservations', 'permission denied');
+  perform t.raises('truncate public.media_upload_reservations', 'permission denied');
 
   j := public.get_media_usage();
   perform t.ok(not (j ? 'stored_bytes' or j ? 'size_bytes' or j ? 'saved_bytes' or j ? 'physical_bytes'), 'D4 merchant usage RPC exposes no physical/compression data');
   perform t.ok((j->>'bytes_used')::bigint = t.used(t.m1()), 'D5 merchant sees quota (charged) usage');
-  perform t.eq((select count(*) from public.media_usage), 1, 'D6 media_usage RLS: own row only');
 
   -- merchant with MFA-less superadmin role still cannot use the analytics
   perform t.as_user(t.sa(), 'aal1');
@@ -342,6 +358,64 @@ begin
   end loop;
   perform t.eq((select count(*) from pg_policies where schemaname = 'public' and tablename = 'media_assets' and policyname = 'media_assets_select_own'), 1, 'G13 media_assets_select_own policy intact');
   perform t.eq((select count(*) from pg_policies where schemaname = 'public' and tablename = 'media_upload_reservations'), 0, 'G14 reservations remain default-deny');
+end $$;
+
+-- =============================================================================
+-- D3. Exact final ACL snapshot (fails if Supabase default ACLs ever reopen any of this)
+-- =============================================================================
+do $$
+declare
+  -- PostgreSQL 17 (production) adds MAINTAIN to the full table privilege set.
+  all7 constant text := 'DELETE,INSERT,' || case when current_setting('server_version_num')::int >= 170000 then 'MAINTAIN,' else '' end
+                        || 'REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE';
+  svc_only constant text := 'postgres:EXECUTE,service_role:EXECUTE';
+  sig text;
+begin
+  perform t.as_root();
+
+  -- H0: the harness itself reproduces Supabase's default ACLs (a brand-new object is wide open).
+  create table public._acl_probe (id int);
+  create function public._acl_probe_fn() returns int language sql as $f$ select 1 $f$;
+  perform t.ok(has_table_privilege('anon', 'public._acl_probe', 'INSERT')
+           and has_table_privilege('authenticated', 'public._acl_probe', 'TRUNCATE')
+           and has_table_privilege('service_role', 'public._acl_probe', 'SELECT'), 'H0 harness reproduces default table ACLs');
+  perform t.ok(has_function_privilege('anon', 'public._acl_probe_fn()', 'EXECUTE')
+           and has_function_privilege('authenticated', 'public._acl_probe_fn()', 'EXECUTE'), 'H0b harness reproduces default function ACLs');
+  drop function public._acl_probe_fn();
+  drop table public._acl_probe;
+
+  -- Tables: owner + service_role only. anon/authenticated/PUBLIC hold nothing at table level.
+  foreach sig in array array['public.media_assets', 'public.media_usage', 'public.media_upload_reservations'] loop
+    perform t.ok(t.tbl_acl(sig) = 'postgres=' || all7 || '; service_role=' || all7, 'H1 exact table ACL on ' || sig || ': ' || t.tbl_acl(sig));
+  end loop;
+
+  -- Column level: only media_assets, only authenticated, only SELECT, only the eight UI columns.
+  perform t.ok(t.col_acl('public.media_assets') = 'authenticated:SELECT(bucket,created_at,id,media_type,public_url,status,storage_path,user_id)',
+               'H2 exact column ACL on media_assets: ' || t.col_acl('public.media_assets'));
+  perform t.ok(t.col_acl('public.media_usage') = 'NONE', 'H3 no column ACL on media_usage');
+  perform t.ok(t.col_acl('public.media_upload_reservations') = 'NONE', 'H4 no column ACL on media_upload_reservations');
+
+  -- Service-only RPCs: never PUBLIC/anon/authenticated (a NULL proacl would mean PUBLIC can execute).
+  foreach sig in array array[
+    'public.reserve_media_upload(uuid,bigint,text,text,text,text,bigint,integer,integer,text,uuid,uuid)',
+    'public.finalize_media_upload(uuid,bigint,text,text,integer,integer)',
+    'public.release_media_reservation(uuid)',
+    'public.record_media_deletion(uuid)',
+    'public.media_expire_reservations_for_user(uuid)',
+    'public.media_recompute_usage(uuid)',
+    'public.media_storage_object_size(text,text)'
+  ] loop
+    perform t.ok(t.fn_acl(sig) = svc_only, 'H5 service-only EXECUTE on ' || sig || ': ' || t.fn_acl(sig));
+  end loop;
+
+  -- Merchant/superadmin-facing RPCs: authenticated may call them, PUBLIC/anon may not; each enforces its own check inside.
+  foreach sig in array array[
+    'public.admin_media_storage_overview()',
+    'public.admin_media_product_storage(uuid)',
+    'public.get_media_usage(uuid)'
+  ] loop
+    perform t.ok(t.fn_acl(sig) = 'authenticated:EXECUTE,postgres:EXECUTE,service_role:EXECUTE', 'H6 EXECUTE on ' || sig || ': ' || t.fn_acl(sig));
+  end loop;
 end $$;
 
 -- =============================================================================

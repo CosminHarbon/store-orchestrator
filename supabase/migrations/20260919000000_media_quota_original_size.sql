@@ -68,6 +68,12 @@ grant select (
   id, user_id, bucket, storage_path, public_url, media_type, status, created_at
 ) on table public.media_assets to authenticated;
 
+-- media_usage is only read through get_media_usage() (SECURITY DEFINER) and media_upload_reservations
+-- is only touched by the Edge Function (service_role) and definer RPCs, so neither needs any direct
+-- anon/authenticated access. RLS (and the dormant media_usage_select_own policy) stays as is.
+revoke all on table public.media_usage from authenticated, anon;
+revoke all on table public.media_upload_reservations from authenticated, anon;
+
 -- =============================================================================
 -- Reservation / finalize / release / delete: charge original size
 -- =============================================================================
@@ -346,7 +352,29 @@ begin
 end;
 $$;
 
--- Same signatures as before: existing service_role-only grants are preserved by CREATE OR REPLACE.
+-- Same signatures as before, so CREATE OR REPLACE keeps their ACLs. Re-assert them explicitly anyway:
+-- these are service-only and must never be executable by PUBLIC, anon or authenticated,
+-- whatever Supabase's default function ACLs (anon/authenticated/service_role EXECUTE) say.
+revoke all on function public.media_expire_reservations_for_user(uuid) from public, anon, authenticated;
+grant execute on function public.media_expire_reservations_for_user(uuid) to service_role;
+
+revoke all on function public.reserve_media_upload(
+  uuid, bigint, text, text, text, text, bigint, integer, integer, text, uuid, uuid
+) from public, anon, authenticated;
+grant execute on function public.reserve_media_upload(
+  uuid, bigint, text, text, text, text, bigint, integer, integer, text, uuid, uuid
+) to service_role;
+
+revoke all on function public.finalize_media_upload(uuid, bigint, text, text, integer, integer)
+  from public, anon, authenticated;
+grant execute on function public.finalize_media_upload(uuid, bigint, text, text, integer, integer)
+  to service_role;
+
+revoke all on function public.release_media_reservation(uuid) from public, anon, authenticated;
+grant execute on function public.release_media_reservation(uuid) to service_role;
+
+revoke all on function public.record_media_deletion(uuid) from public, anon, authenticated;
+grant execute on function public.record_media_deletion(uuid) to service_role;
 
 -- =============================================================================
 -- Derive-and-repair: media_usage counters can always be rebuilt from media_assets

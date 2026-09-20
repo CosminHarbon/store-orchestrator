@@ -11,6 +11,7 @@ end $$;
 -- Supabase hands every new public table to anon/authenticated/service_role by default
 -- (pg_default_acl: arwdDxtm). Reproduce it so grant tests reflect production.
 alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema public grant execute on functions to anon, authenticated, service_role;
 
 create schema if not exists auth;
 create schema if not exists storage;
