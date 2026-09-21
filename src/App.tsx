@@ -40,6 +40,8 @@ const AiStudioV2FixturePreview = import.meta.env.DEV
   ? lazy(() => import('./pages/ai-studio-v2/AiStudioV2FixturePreview'))
   : null;
 
+const CursorStorefrontPreview = lazy(() => import('./pages/CursorStorefrontPreview'));
+
 const PushNotificationInitializer = () => {
   useFcmPushNotifications();
   return null;
@@ -203,6 +205,16 @@ const App = () => (
                   }
                 />
               ) : null}
+              <Route
+                path="/dev/cursor-preview"
+                element={
+                  <AppThemeProvider>
+                    <Suspense fallback={<div style={{ padding: 24 }}>Loading Cursor preview…</div>}>
+                      <CursorStorefrontPreview />
+                    </Suspense>
+                  </AppThemeProvider>
+                }
+              />
               <Route
                 path="*"
                 element={

@@ -165,6 +165,12 @@ verify_jwt = true
 [functions.cursor-storefront-gateway]
 verify_jwt = true
 
+# Phase 2 — iframe preview of extracted site/.
+# verify_jwt=false: iframes pass a short-lived HMAC `token` query param (no Authorization header).
+# Function still validates token OR Bearer JWT + ownership.
+[functions.cursor-storefront-preview]
+verify_jwt = false
+
 # Phase 1 developer harness — custom bearer (PHASE1_HARNESS_TOKEN), not merchant JWT.
 [functions.cursor-phase1-harness]
 verify_jwt = false

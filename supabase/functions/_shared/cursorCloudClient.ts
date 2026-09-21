@@ -109,6 +109,19 @@ export class CursorCloudClient {
     );
   }
 
+  /** Retry briefly — artifact S3 index can lag a few seconds after a run finishes. */
+  async listArtifactsWithRetry(agentId: string, attempts = 5, delayMs = 2500) {
+    let listed: { items?: Array<{ path: string; sizeBytes?: number }> } = { items: [] };
+    for (let i = 0; i < attempts; i++) {
+      listed = await this.listArtifacts(agentId);
+      if ((listed.items?.length ?? 0) > 0) return listed;
+      if (i < attempts - 1) {
+        await new Promise((r) => setTimeout(r, delayMs));
+      }
+    }
+    return listed;
+  }
+
   getArtifactDownload(agentId: string, path: string) {
     const q = `?path=${encodeURIComponent(path)}`;
     return this.#json<{ url: string; expiresAt: string }>(

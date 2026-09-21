@@ -2,3 +2,7 @@ node_modules/
 dist/
 .DS_Store
 *.log
+artifacts/storefront-build.tar.gz
+artifacts/storefront-manifest.json
+artifacts/.tmp-package/
+artifacts/.package-ok

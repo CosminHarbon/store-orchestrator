@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test:guard": "node --test .cursor/hooks/guardPolicy.test.mjs"
+    "package-artifact": "node scripts/package-artifact.mjs",
+    "build:artifact": "node scripts/ensure-deps.mjs && npm run build && npm run package-artifact",
+    "test:guard": "node --test .cursor/hooks/guardPolicy.test.mjs",
+    "test:package-artifact": "node --test scripts/package-artifact.test.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

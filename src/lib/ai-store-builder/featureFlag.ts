@@ -4,7 +4,7 @@
  * Frontend visibility only — NEVER use as authorization.
  * Backend entitlement + cursor-storefront-gateway enforce access.
  *
- * Defaults OFF. Phase 1 does not expose merchant UI.
+ * Defaults OFF. Phase 2 exposes /dev/cursor-preview when enabled (or superadmin).
  *
  * Enable locally:
  *   VITE_AI_STORE_BUILDER_CURSOR=true

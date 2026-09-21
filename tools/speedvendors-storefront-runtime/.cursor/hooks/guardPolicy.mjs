@@ -27,7 +27,7 @@ export const EDITABLE_PREFIXES = [
 const deny = (reason) => ({
   permission: 'deny',
   user_message: `Blocked by SpeedVendors storefront policy: ${reason}`,
-  agent_message: `Blocked by SpeedVendors storefront policy: ${reason}. Only edit src/storefront/, src/components/, src/styles/, public/, and artifacts/, and only run the storefront build ("npm run build") or read-only inspection commands inside the workspace.`,
+  agent_message: `Blocked by SpeedVendors storefront policy: ${reason}. Only edit src/storefront/, src/components/, src/styles/, public/, and artifacts/, and only run "npm run build", "npm run package-artifact", or "npm run build:artifact" (or read-only inspection) inside the workspace.`,
 });
 
 /** @type {Decision} */
@@ -174,11 +174,60 @@ export function shellDecision(command, cwd, ctx) {
   if (prog === undefined) return deny('could not parse command');
   if (prog.includes('/')) return deny('programs must be invoked by bare name');
   const progName = path.basename(prog);
+  // Artifact packaging helpers (destination must be under /opt/cursor/artifacts/).
+  if (progName === 'mkdir') {
+    if (args.length >= 2 && args[1] === '-p') {
+      const dest = args[2] || '';
+      if (dest === '/opt/cursor/artifacts' || dest.startsWith('/opt/cursor/artifacts/')) return ALLOW;
+    }
+    return deny('mkdir only allowed as "mkdir -p /opt/cursor/artifacts/..."');
+  }
+  if (progName === 'cp') {
+    // cp [-R] <src...> <dest> where dest is under /opt/cursor/artifacts/
+    const dest = args[args.length - 1] || '';
+    if (!(dest === '/opt/cursor/artifacts' || dest.startsWith('/opt/cursor/artifacts/'))) {
+      return deny('cp destination must be under /opt/cursor/artifacts/');
+    }
+    const srcs = args.slice(1, -1).filter((a) => a !== '-R' && a !== '-r');
+    if (srcs.length === 0) return deny('cp requires a source');
+    for (const s of srcs) {
+      const d = pathDecision(s, 'read', ctx, base);
+      if (d.permission === 'deny') return d;
+    }
+    return ALLOW;
+  }
+  if (progName === 'tar') {
+    // Allow: tar -czf /opt/cursor/artifacts/.../dist.tar.gz -C dist .
+    const outIdx = args.findIndex((a) => a === '-czf' || a === '-czf');
+    const fIdx = args.findIndex((a, i) => i > 0 && (args[i - 1] === '-czf' || args[i - 1] === '-f'));
+    const archive = fIdx > 0 ? args[fIdx] : '';
+    if (!archive || !(archive.startsWith('/opt/cursor/artifacts/'))) {
+      return deny('tar archive path must be under /opt/cursor/artifacts/');
+    }
+    return ALLOW;
+  }
+
   if (BLOCKED_PROGRAMS.has(progName)) return deny(`"${progName}" commands are not allowed`);
 
   if (progName === 'npm') {
-    if (args.length === 3 && args[1] === 'run' && args[2] === 'build') return ALLOW;
-    return deny('only "npm run build" is allowed (no installs, publishing, scripts or config changes)');
+    const allowedNpmScripts = new Set(['build', 'package-artifact', 'build:artifact']);
+    // Dependency bootstrap (Cloud Agents clone without node_modules).
+    // Only bare install/ci — never `npm install <pkg>`.
+    const safeInstallFlags = new Set([
+      '--no-audit',
+      '--no-fund',
+      '--prefer-offline',
+      '--ignore-scripts',
+    ]);
+    if (args.length >= 2 && (args[1] === 'ci' || args[1] === 'install')) {
+      const rest = args.slice(2);
+      if (rest.every((a) => safeInstallFlags.has(a))) return ALLOW;
+      return deny('only "npm ci" / "npm install" with safe flags are allowed (no package args)');
+    }
+    if (args.length === 3 && args[1] === 'run' && allowedNpmScripts.has(args[2])) return ALLOW;
+    return deny(
+      'only "npm ci", "npm install", "npm run build", "npm run package-artifact", or "npm run build:artifact" are allowed',
+    );
   }
   if (progName === 'npx') {
     const rest = args.slice(1).join(' ');

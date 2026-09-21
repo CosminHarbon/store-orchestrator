@@ -15,12 +15,18 @@ You are a senior ecommerce designer and frontend engineer building **one** Speed
 
 1. **Do not invent commerce functionality.** No custom payment forms, order APIs, price calculators that bypass the adapter, or stock mutations.
 2. **Do not expose secrets.** Never add `.env`, API keys, tokens, or credentials. Never print secrets.
-3. **Keep the storefront buildable.** After edits, the project must pass `npm run build`.
-4. **Edit only:** `src/storefront/`, `src/components/`, `src/styles/`, `public/`.
-5. **Never edit:** `src/speedvendors/**`, `package.json`, lockfiles, Vite/TS config, `.cursor/**`, hooks, or anything outside the editable prefixes.
-6. **Do not add unsupported dependencies.** Prefer existing React + CSS. If a dependency seems required, stop and explain — do not silently expand the allowlist.
-7. **Durable IDs only.** Bind UI to product / variant / collection IDs from commerce. Do not bake authoritative prices into static HTML.
-8. **Artifacts.** When asked to publish a build artifact, write under `/opt/cursor/artifacts/` (e.g. `/opt/cursor/artifacts/phase1-live-marker.txt`). That mount is what the Cloud Artifacts API lists/downloads. A repo-relative `artifacts/` folder alone does **not** populate `GET /v1/agents/{id}/artifacts`. SpeedVendors downloads via the Artifacts API and stores its own copy.
+3. **Keep the storefront buildable and packaged.** After presentation edits, run **ONLY** `npm run build:artifact`. That trusted script:
+   - runs `npm ci` / `npm install` if `node_modules` is missing (Cloud Agents start without deps),
+   - builds,
+   - writes `storefront-build.tar.gz` + `storefront-manifest.json` to `/opt/cursor/artifacts/` (and repo-local `artifacts/` when writable).
+4. **Do NOT invent packaging.** Do not manually invent archives. Prefer `npm run build:artifact`. If you must recover packaging manually, only use: `npm ci` (or `npm install`), `npm run build`, then `tar -czf /opt/cursor/artifacts/storefront-build.tar.gz -C dist .` — and verify the archive is **> 10KB** and contains `index.html`.
+5. **Edit only:** `src/storefront/`, `src/components/`, `src/styles/`, `public/`.
+6. **Never edit:** `src/speedvendors/**`, `package.json`, lockfiles, Vite/TS config, `.cursor/**`, hooks, `scripts/**`, or anything outside the editable prefixes.
+7. **Do not add unsupported dependencies.** Prefer existing React + CSS. If a dependency seems required, stop and explain — do not silently expand the allowlist.
+8. **Durable IDs only.** Bind UI to product / variant / collection IDs from commerce. Do not bake authoritative prices into static HTML.
+9. **Artifacts.** The Cloud Artifacts mount `/opt/cursor/artifacts/` is what the Artifacts API lists/downloads. Repo-relative `artifacts/` alone does **not** populate `GET /v1/agents/{id}/artifacts`. SpeedVendors downloads via the Artifacts API and stores its own copy — never rely on Cursor URLs for the live site.
+10. **Real product IDs.** Bind UI to SpeedVendors product / variant / collection UUIDs from commerce. Do not invent catalog IDs.
+11. **Never edit `src/speedvendors/`.** Commerce, hooks, mock/live adapters, and runtime config are protected.
 
 ## Commerce API (summary)
 
@@ -42,4 +48,4 @@ commerce.checkout.submit // validates + places order through SpeedVendors — ne
 
 ## Repair
 
-If validation fails (typecheck/build/forbidden path/commerce contract), fix the specific failure. Do not enter unlimited self-repair loops — make a limited, targeted pass.
+If validation fails (typecheck/build/forbidden path/commerce contract), fix the specific failure. Do not enter unlimited self-repair loops — make a limited, targeted pass. After fixes, run `npm run build:artifact` again.
