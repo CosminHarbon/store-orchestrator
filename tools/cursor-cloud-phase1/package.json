@@ -1,0 +1,27 @@
+{
+  "name": "@speedvendors/cursor-cloud-phase1",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Phase 1 production-architecture proof: Cursor Cloud Agents REST client, billing investigation, and developer harness.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "proof": "tsx src/proofHarness.ts",
+    "live": "tsx src/liveVerification.ts",
+    "billing": "tsx src/billingInvestigation.ts",
+    "models": "tsx src/listModels.ts",
+    "doctor": "tsx src/doctor.ts"
+  },
+  "dependencies": {
+    "@cursor/sdk": "^1.0.31"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.8.2"
+  }
+}
