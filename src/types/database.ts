@@ -1008,6 +1008,7 @@ export type Database = {
           mime_type: string
           original_size_bytes: number | null
           public_url: string | null
+          quota_size_bytes: number
           related_entity_id: string | null
           related_entity_type: string | null
           size_bytes: number
@@ -1028,6 +1029,7 @@ export type Database = {
           mime_type: string
           original_size_bytes?: number | null
           public_url?: string | null
+          quota_size_bytes?: number
           related_entity_id?: string | null
           related_entity_type?: string | null
           size_bytes: number
@@ -1048,6 +1050,7 @@ export type Database = {
           mime_type?: string
           original_size_bytes?: number | null
           public_url?: string | null
+          quota_size_bytes?: number
           related_entity_id?: string | null
           related_entity_type?: string | null
           size_bytes?: number
@@ -2450,6 +2453,45 @@ export type Database = {
           shipping_provider: string
           store_name: string
           user_id: string
+        }[]
+      }
+      admin_media_product_storage: {
+        Args: { p_store_user_id: string }
+        Returns: {
+          asset_id: string
+          created_at: string
+          display_order: number | null
+          height: number | null
+          is_primary: boolean | null
+          mime_type: string
+          original_size_bytes: number | null
+          product_id: string | null
+          product_image_id: string | null
+          product_title: string | null
+          public_url: string | null
+          quota_size_bytes: number
+          saved_bytes: number
+          status: string
+          stored_size_bytes: number
+          width: number | null
+        }[]
+      }
+      admin_media_storage_overview: {
+        Args: never
+        Returns: {
+          asset_count: number
+          counter_bytes_used: number
+          email: string | null
+          legacy_asset_count: number
+          legacy_stored_bytes: number
+          measured_quota_bytes: number
+          measured_stored_bytes: number
+          quota_bytes: number
+          quota_size_bytes: number
+          saved_bytes: number
+          store_name: string | null
+          store_user_id: string
+          stored_bytes: number
         }[]
       }
       apply_option_value_images_from_payload: {

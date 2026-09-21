@@ -21,6 +21,7 @@ import {
 import { toast } from 'sonner';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { AdminAccessCodes } from '@/components/admin/AdminAccessCodes';
+import { AdminStoragePanel, AdminStoragePlatformCard } from '@/components/admin/AdminStoragePanel';
 
 type MerchantRow = {
   user_id: string;
@@ -524,7 +525,7 @@ export default function AdminConsole() {
                   <CardTitle>Select a business</CardTitle>
                   <CardDescription>
                     Open any store to inspect orders, products, customers, payments, carts,
-                    reviews, delivery config, and integration keys.
+                    reviews, delivery config, storage, and integration keys.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
@@ -543,6 +544,7 @@ export default function AdminConsole() {
                   )}
                 </CardContent>
               </Card>
+              <AdminStoragePlatformCard onSelectStore={setSelectedUserId} />
             </>
           ) : (
             <>
@@ -605,6 +607,7 @@ export default function AdminConsole() {
                   <TabsTrigger value="carts">Carts</TabsTrigger>
                   <TabsTrigger value="reviews">Reviews</TabsTrigger>
                   <TabsTrigger value="delivery">Delivery</TabsTrigger>
+                  <TabsTrigger value="storage">Storage</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-4">
@@ -1116,6 +1119,10 @@ export default function AdminConsole() {
                       </Card>
                     </>
                   )}
+                </TabsContent>
+
+                <TabsContent value="storage" className="space-y-4">
+                  {tab === 'storage' ? <AdminStoragePanel storeUserId={selected.user_id} /> : null}
                 </TabsContent>
               </Tabs>
             </>
