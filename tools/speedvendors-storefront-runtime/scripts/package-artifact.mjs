@@ -22,11 +22,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync, execSync } from 'node:child_process';
 import { gzipSync } from 'node:zlib';
+import { validateGenerated } from './validate-generated.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const DIST = path.join(ROOT, 'dist');
 const INDEX = path.join(DIST, 'index.html');
+const SV_ROOT = path.join(ROOT, 'src/speedvendors');
 
 const ARCHIVE_FILENAME = 'storefront-build.tar.gz';
 const MANIFEST_FILENAME = 'storefront-manifest.json';
@@ -35,13 +37,27 @@ const ARTIFACT_FORMAT_VERSION = 1;
 const LOCAL_ARTIFACTS = path.join(ROOT, 'artifacts');
 const CLOUD_ARTIFACTS = '/opt/cursor/artifacts';
 
-const PROTECTED_COMMERCE_FILES = [
-  'src/speedvendors/commerce.ts',
-  'src/speedvendors/storeApiCommerce.ts',
-  'src/speedvendors/runtimeConfig.ts',
-  'src/speedvendors/types.ts',
-  'src/speedvendors/hooks.tsx',
-];
+/** @param {string} dir @param {string} [base] */
+function walkTsRel(dir, base = dir) {
+  /** @type {string[]} */
+  const out = [];
+  for (const name of readdirSync(dir, { withFileTypes: true })) {
+    const abs = path.join(dir, name.name);
+    if (name.isDirectory()) {
+      out.push(...walkTsRel(abs, base));
+    } else if (name.isFile() && /\.(ts|tsx)$/.test(name.name)) {
+      out.push(path.relative(base, abs).split(path.sep).join('/'));
+    }
+  }
+  return out;
+}
+
+function listProtectedCommerceFiles() {
+  if (!existsSync(SV_ROOT)) fail(`missing ${SV_ROOT}`);
+  return walkTsRel(SV_ROOT)
+    .map((r) => `src/speedvendors/${r}`)
+    .sort((a, b) => a.localeCompare(b));
+}
 
 function fail(msg, code = 1) {
   console.error(`[package-artifact] ${msg}`);
@@ -90,7 +106,7 @@ function resolveRuntimeCommitSha() {
 function protectedCommerceSha256Map() {
   /** @type {Record<string, string>} */
   const out = {};
-  for (const rel of PROTECTED_COMMERCE_FILES) {
+  for (const rel of listProtectedCommerceFiles()) {
     const abs = path.join(ROOT, rel);
     if (!existsSync(abs)) fail(`missing protected commerce source: ${rel}`);
     out[rel] = createHash('sha256').update(readFileSync(abs)).digest('hex');
@@ -222,6 +238,13 @@ function writeCloud(archiveBytes, manifest) {
 }
 
 function main() {
+  try {
+    const v = validateGenerated(ROOT);
+    console.log(`[package-artifact] validate-generated ok scanned=${v.scanned}`);
+  } catch (e) {
+    fail(e instanceof Error ? e.message : String(e));
+  }
+
   if (!existsSync(INDEX)) fail(`missing ${INDEX} — run "npm run build" first`);
 
   const rawHtml = readFileSync(INDEX, 'utf8');

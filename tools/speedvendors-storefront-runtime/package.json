@@ -8,9 +8,11 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "package-artifact": "node scripts/package-artifact.mjs",
-    "build:artifact": "node scripts/ensure-deps.mjs && npm run build && npm run package-artifact",
+    "validate": "node scripts/validate-generated.mjs",
+    "build:artifact": "node scripts/ensure-deps.mjs && node scripts/validate-generated.mjs && npm run build && npm run package-artifact",
     "test:guard": "node --test .cursor/hooks/guardPolicy.test.mjs",
-    "test:package-artifact": "node --test scripts/package-artifact.test.mjs"
+    "test:package-artifact": "node --test scripts/package-artifact.test.mjs",
+    "test:validate": "node --test scripts/validate-generated.test.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

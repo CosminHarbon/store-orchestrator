@@ -21,20 +21,17 @@ speedvendors-storefront-runtime/
   artifacts/               ← Cursor artifacts API output directory
   .cursor/hooks.json       ← cloud-supported command hooks (defense in depth)
   .cursor/hooks/           ← guard policy
-  public/
+  public/                  ← editable images
   src/
-    app/                   ← (reserved)
-    components/            ← editable presentation components
-    storefront/            ← editable storefront App
-    styles/                ← editable CSS
-    speedvendors/          ← PROTECTED commerce contract + mock
+    storefront/            ← ONLY editable presentation (App, sections, theme.css)
+    speedvendors/          ← PROTECTED commerce + UI (cart/checkout/product chrome)
 ```
 
 ## Editable vs protected
 
 | May edit | Must not edit |
 |---|---|
-| `src/storefront/**`, `src/components/**`, `src/styles/**`, `public/**` | `src/speedvendors/**`, `package.json`, lockfiles, vite/tsconfig, `.cursor/**`, secrets |
+| `src/storefront/**`, `public/**` | `src/speedvendors/**`, `package.json`, lockfiles, vite/tsconfig, scripts, `.cursor/**`, secrets |
 
 ## Commerce
 

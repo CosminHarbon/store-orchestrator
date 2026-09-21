@@ -9,24 +9,66 @@
 
 export const PROTECTED_COMMERCE_FILES = [
   'src/speedvendors/commerce.ts',
-  'src/speedvendors/storeApiCommerce.ts',
-  'src/speedvendors/runtimeConfig.ts',
-  'src/speedvendors/types.ts',
   'src/speedvendors/hooks.tsx',
+  'src/speedvendors/index.ts',
+  'src/speedvendors/mockCommerce.ts',
+  'src/speedvendors/runtimeConfig.ts',
+  'src/speedvendors/storeApiCommerce.ts',
+  'src/speedvendors/types.ts',
+  'src/speedvendors/ui/AddToCartButton.tsx',
+  'src/speedvendors/ui/CartDrawer.tsx',
+  'src/speedvendors/ui/CheckoutButton.tsx',
+  'src/speedvendors/ui/CheckoutForm.tsx',
+  'src/speedvendors/ui/FeaturedProducts.tsx',
+  'src/speedvendors/ui/Footer.tsx',
+  'src/speedvendors/ui/formatMoney.ts',
+  'src/speedvendors/ui/Header.tsx',
+  'src/speedvendors/ui/ProductCard.tsx',
+  'src/speedvendors/ui/ProductDetail.tsx',
+  'src/speedvendors/ui/ProductGrid.tsx',
+  'src/speedvendors/ui/VariantSelector.tsx',
 ] as const;
 
-/** Path → sha256 hex (of source file bytes at runtime tip aaf6ed1…). */
+/** Path → sha256 hex (of source file bytes at runtime tip). */
 export const EXPECTED_PROTECTED_COMMERCE_SHA256: Record<string, string> = {
   'src/speedvendors/commerce.ts':
     '804b7aada1a6ae11ac10e68237b1c339dab10c564908213b18fdb6de5d9c374f',
-  'src/speedvendors/storeApiCommerce.ts':
-    '53c5359e2259c87393b581141db816fcdfe48230b9210dae9809f6fd366369dc',
-  'src/speedvendors/runtimeConfig.ts':
-    'a00ed38f3c8313abc1d2d9b90206d4a0a51eb8511b5534a89fb5c46adbddafa6',
-  'src/speedvendors/types.ts':
-    '509fb05fa225f637f71467c58a0325692e8f62681a69e73575cbcf3e2b89d84c',
   'src/speedvendors/hooks.tsx':
     'f6922f60a09528b3476910022661be4f25e790e087e2825bac7eda2a43c3ebe6',
+  'src/speedvendors/index.ts':
+    '6f75c09d988e8c2d88f7bad3595276c48f3ddf7d0e77b1edcabcf391b08a4f33',
+  'src/speedvendors/mockCommerce.ts':
+    '3147b4f616392e8417e5743f3fc45cc8a236416c2f32ae17aa137ea14e6acc88',
+  'src/speedvendors/runtimeConfig.ts':
+    'a00ed38f3c8313abc1d2d9b90206d4a0a51eb8511b5534a89fb5c46adbddafa6',
+  'src/speedvendors/storeApiCommerce.ts':
+    '190e488d53edc17c14467711857607b9f85c45542a64ab5b89bfb2ddb0c30f33',
+  'src/speedvendors/types.ts':
+    '7cf17b01920c1031968c8f3acd9f101a50bcacc088ef106ba038f0675aa4a7d0',
+  'src/speedvendors/ui/AddToCartButton.tsx':
+    'f3e4abbf72370f3adccb7ea8d03c9781ce47294c3bc2051df7c83b6765d2277f',
+  'src/speedvendors/ui/CartDrawer.tsx':
+    'd589e08daf11ad615e5109a7a65254e1054fbfe5bb7525e4de3d2e0418f03237',
+  'src/speedvendors/ui/CheckoutButton.tsx':
+    'abf012fdc704aa33622ed181d45e4b743e2f26e5d916b27588737514ee315d10',
+  'src/speedvendors/ui/CheckoutForm.tsx':
+    '201d3b37d3f62cc8f5c3e90e26628bce920f7abfcb9932d6bac72c3f3555deae',
+  'src/speedvendors/ui/FeaturedProducts.tsx':
+    'd7ff09747b1f39f97678c9848e55290d57816d6adf85621a59ba2b0e09c0df40',
+  'src/speedvendors/ui/Footer.tsx':
+    '6089d9fbec29c3734dae1d7dc7027e0b68c604b386645b3a00a4dcb2eb752f03',
+  'src/speedvendors/ui/formatMoney.ts':
+    '675711147c24067b260ce27e194b19865281d25b5de8f08a11453a243aaf35d7',
+  'src/speedvendors/ui/Header.tsx':
+    'e1eb83e6cb699503aeb479bd1e95c5602fd304949df0fdf96dd6d8c64ffbdc41',
+  'src/speedvendors/ui/ProductCard.tsx':
+    'dcd809a1d8b339748e9034cf3656985a94cfb2015db70820977d4b4c9c8ed98d',
+  'src/speedvendors/ui/ProductDetail.tsx':
+    '03fb2580f261311b634f92c12e8dfa522b698f416c2ca60ed54d29222732a617',
+  'src/speedvendors/ui/ProductGrid.tsx':
+    'c140cc5a50a21fd63b1f96f852bccfa79007d176fdd49026e84f4ffbc5511e23',
+  'src/speedvendors/ui/VariantSelector.tsx':
+    '0d24f163d711d92af60fc2e7b5de7f367dbc0823f2920ec2bf50dd1fe723f6e8',
 };
 
 export type ProtectedCommerceAssertResult =

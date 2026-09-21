@@ -77,9 +77,17 @@ export interface CheckoutInput {
   name: string;
   email: string;
   phone: string;
-  address: string;
+  /** Home-delivery street name (maps to store-api customer_street). */
+  street: string;
+  /** Home-delivery street number (maps to store-api customer_street_number). */
+  streetNumber: string;
+  /** Home-delivery city (maps to store-api customer_city). */
+  city: string;
+  /** Home-delivery county (maps to store-api customer_county). */
+  county: string;
   notes?: string;
-  paymentMethod: 'card' | 'cash';
+  /** Phase 3 adapter supports cash on delivery only. */
+  paymentMethod: 'cash';
 }
 
 export type CheckoutResult =

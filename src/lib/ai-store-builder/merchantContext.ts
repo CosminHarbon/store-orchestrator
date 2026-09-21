@@ -16,9 +16,9 @@ export const CONTEXT_EXCLUSIONS = [
   'cursor api keys',
 ] as const;
 
-const DEFAULT_MAX_PRODUCTS = 24;
+const DEFAULT_MAX_PRODUCTS = 12;
 const DESC_LIMIT = 280;
-const MAX_IMAGES = 3;
+const MAX_IMAGES = 2;
 
 export type MerchantContextStrategy = {
   maxProducts?: number;

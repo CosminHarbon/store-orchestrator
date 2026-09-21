@@ -81,10 +81,204 @@ export class CursorCloudClient {
   }
 
   getRun(agentId: string, runId: string) {
-    return this.#json<{ id: string; agentId: string; status: string; result?: string }>(
+    return this.#json<{
+      id: string;
+      agentId: string;
+      status: string;
+      result?: string;
+      createdAt?: string;
+      updatedAt?: string;
+      finishedAt?: string;
+      durationMs?: number;
+      [key: string]: unknown;
+    }>('GET', `/v1/agents/${encodeURIComponent(agentId)}/runs/${encodeURIComponent(runId)}`);
+  }
+
+  /** GET /v1/agents/{id}/runs */
+  listRuns(agentId: string, opts?: { limit?: number; cursor?: string }) {
+    const q = new URLSearchParams();
+    if (opts?.limit != null) q.set('limit', String(opts.limit));
+    if (opts?.cursor) q.set('cursor', opts.cursor);
+    const qs = q.toString() ? `?${q}` : '';
+    return this.#json<{ items?: Array<Record<string, unknown>>; nextCursor?: string }>(
       'GET',
-      `/v1/agents/${encodeURIComponent(agentId)}/runs/${encodeURIComponent(runId)}`,
+      `/v1/agents/${encodeURIComponent(agentId)}/runs${qs}`,
     );
+  }
+
+  /**
+   * Legacy conversation history (v0).
+   * GET /v0/agents/{id}/conversation
+   */
+  getConversation(agentId: string) {
+    return this.#json<{
+      id?: string;
+      messages?: Array<{ id?: string; type?: string; text?: string }>;
+    }>('GET', `/v0/agents/${encodeURIComponent(agentId)}/conversation`);
+  }
+
+  /**
+   * Probe any relative Cursor path (debug only). Never logs the API key.
+   * Returns { ok, status, body } instead of throwing on HTTP errors.
+   */
+  async tryGet(path: string): Promise<{ ok: boolean; status: number; body: unknown }> {
+    const clean = path.startsWith('/') ? path : `/${path}`;
+    const headers: Record<string, string> = {
+      Authorization: `Basic ${btoa(`${this.#apiKey}:`)}`,
+      Accept: 'application/json',
+    };
+    const res = await fetch(`${this.#baseUrl}${clean}`, { method: 'GET', headers });
+    const text = await res.text();
+    let parsed: unknown = null;
+    if (text) {
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        parsed = { raw: text.slice(0, 8_000) };
+      }
+    }
+    return { ok: res.ok, status: res.status, body: parsed };
+  }
+
+  /**
+   * Best-effort SSE sample from GET /v1/agents/{id}/runs/{runId}/stream.
+   * Aborts after timeoutMs; does not cancel the Cursor run.
+   */
+  async sampleStream(
+    agentId: string,
+    runId: string,
+    opts?: { timeoutMs?: number; maxEvents?: number },
+  ): Promise<{
+    ok: boolean;
+    status: number;
+    retentionSeconds: number | null;
+    events: Array<{ event: string; data: unknown; id?: string }>;
+    truncated: boolean;
+    error?: string;
+  }> {
+    const timeoutMs = opts?.timeoutMs ?? 4_000;
+    const maxEvents = opts?.maxEvents ?? 40;
+    const url =
+      `${this.#baseUrl}/v1/agents/${encodeURIComponent(agentId)}/runs/${encodeURIComponent(runId)}/stream`;
+    const headers: Record<string, string> = {
+      Authorization: `Basic ${btoa(`${this.#apiKey}:`)}`,
+      Accept: 'text/event-stream',
+    };
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { method: 'GET', headers, signal: ac.signal });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        return {
+          ok: false,
+          status: res.status,
+          retentionSeconds: null,
+          events: [],
+          truncated: false,
+          error: body.slice(0, 500) || `stream_http_${res.status}`,
+        };
+      }
+      const retentionRaw = res.headers.get('X-Cursor-Stream-Retention-Seconds');
+      const retentionSeconds = retentionRaw ? Number(retentionRaw) : null;
+      if (!res.body) {
+        return {
+          ok: true,
+          status: res.status,
+          retentionSeconds,
+          events: [],
+          truncated: false,
+          error: 'no_body',
+        };
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let event: string | undefined;
+      let dataLines: string[] = [];
+      let id: string | undefined;
+      const events: Array<{ event: string; data: unknown; id?: string }> = [];
+      let truncated = false;
+
+      const flush = () => {
+        if (event === undefined && dataLines.length === 0) return;
+        const raw = dataLines.join('\n');
+        let data: unknown = raw;
+        if (raw) {
+          try {
+            data = JSON.parse(raw);
+          } catch {
+            data = raw.length > 2_000 ? `${raw.slice(0, 2_000)}…` : raw;
+          }
+        }
+        const ev: { event: string; data: unknown; id?: string } = {
+          event: event || 'message',
+          data,
+        };
+        if (id !== undefined) ev.id = id;
+        events.push(ev);
+        event = undefined;
+        dataLines = [];
+        id = undefined;
+      };
+
+      while (events.length < maxEvents) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let nl: number;
+        while ((nl = buffer.indexOf('\n')) >= 0) {
+          let line = buffer.slice(0, nl);
+          buffer = buffer.slice(nl + 1);
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (line === '') {
+            flush();
+            if (events.length >= maxEvents) {
+              truncated = true;
+              break;
+            }
+            continue;
+          }
+          if (line.startsWith(':')) continue;
+          const colon = line.indexOf(':');
+          const field = colon < 0 ? line : line.slice(0, colon);
+          let val = colon < 0 ? '' : line.slice(colon + 1);
+          if (val.startsWith(' ')) val = val.slice(1);
+          if (field === 'event') event = val;
+          else if (field === 'data') dataLines.push(val);
+          else if (field === 'id') id = val;
+        }
+        if (events.length >= maxEvents) {
+          truncated = true;
+          break;
+        }
+        if (events.some((e) => e.event === 'done' || e.event === 'result')) break;
+      }
+      try {
+        await reader.cancel();
+      } catch {
+        /* ignore */
+      }
+      return {
+        ok: true,
+        status: res.status,
+        retentionSeconds,
+        events,
+        truncated,
+      };
+    } catch (e) {
+      const aborted = e instanceof Error && e.name === 'AbortError';
+      return {
+        ok: false,
+        status: 0,
+        retentionSeconds: null,
+        events: [],
+        truncated: true,
+        error: aborted ? 'timeout' : e instanceof Error ? e.message : 'stream_error',
+      };
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   cancelRun(agentId: string, runId: string) {

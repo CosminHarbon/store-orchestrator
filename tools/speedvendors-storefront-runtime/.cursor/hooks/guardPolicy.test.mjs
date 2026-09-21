@@ -8,9 +8,13 @@ import { pathDecision, isEditableRel, shellDecision } from './guardPolicy.mjs';
 
 const ctx = { workspace: '/workspace' };
 
-test('allows repo-relative artifacts/ marker', () => {
-  assert.equal(isEditableRel('artifacts/phase1-live-marker.txt'), true);
-  assert.equal(pathDecision('artifacts/phase1-live-marker.txt', 'write', ctx).permission, 'allow');
+test('allows only storefront and public editable prefixes', () => {
+  assert.equal(isEditableRel('src/storefront/App.tsx'), true);
+  assert.equal(isEditableRel('src/storefront/theme.css'), true);
+  assert.equal(isEditableRel('public/logo.png'), true);
+  assert.equal(isEditableRel('src/components/Header.tsx'), false);
+  assert.equal(isEditableRel('src/styles/storefront.css'), false);
+  assert.equal(isEditableRel('artifacts/phase1-live-marker.txt'), false);
 });
 
 test('allows only /opt/cursor/artifacts mount (not broader /opt/cursor)', () => {
@@ -35,9 +39,10 @@ test('allows storefront-bundle under /opt/cursor/artifacts', () => {
 
 test('still protects commerce and env paths', () => {
   assert.equal(pathDecision('src/speedvendors/commerce.ts', 'write', ctx).permission, 'deny');
+  assert.equal(pathDecision('src/speedvendors/ui/CheckoutForm.tsx', 'write', ctx).permission, 'deny');
   assert.equal(pathDecision('src/speedvendors/storeApiCommerce.ts', 'write', ctx).permission, 'deny');
   assert.equal(pathDecision('.env', 'write', ctx).permission, 'deny');
-  assert.equal(pathDecision('src/styles/storefront.css', 'write', ctx).permission, 'allow');
+  assert.equal(pathDecision('src/storefront/theme.css', 'write', ctx).permission, 'allow');
 });
 
 test('allows packaging commands into /opt/cursor/artifacts only', () => {
@@ -69,21 +74,22 @@ test('allows packaging commands into /opt/cursor/artifacts only', () => {
   );
 });
 
-test('allows npm ci / npm install bootstrap (no package args)', () => {
-  assert.equal(shellDecision('npm ci', undefined, ctx).permission, 'allow');
-  assert.equal(shellDecision('npm install', undefined, ctx).permission, 'allow');
+test('blocks all package manager installs', () => {
+  assert.equal(shellDecision('npm ci', undefined, ctx).permission, 'deny');
+  assert.equal(shellDecision('npm install', undefined, ctx).permission, 'deny');
   assert.equal(
     shellDecision('npm install --no-audit --no-fund', undefined, ctx).permission,
-    'allow',
+    'deny',
   );
   assert.equal(shellDecision('npm install lodash', undefined, ctx).permission, 'deny');
-  assert.equal(shellDecision('npm ci lodash', undefined, ctx).permission, 'deny');
+  assert.equal(shellDecision('npm add lodash', undefined, ctx).permission, 'deny');
+  assert.equal(shellDecision('npm uninstall lodash', undefined, ctx).permission, 'deny');
 });
 
-test('allows npm build / package-artifact / build:artifact only', () => {
+test('allows npm build / build:artifact only', () => {
   assert.equal(shellDecision('npm run build', undefined, ctx).permission, 'allow');
-  assert.equal(shellDecision('npm run package-artifact', undefined, ctx).permission, 'allow');
   assert.equal(shellDecision('npm run build:artifact', undefined, ctx).permission, 'allow');
+  assert.equal(shellDecision('npm run package-artifact', undefined, ctx).permission, 'deny');
   assert.equal(shellDecision('npm run preview', undefined, ctx).permission, 'deny');
   assert.equal(shellDecision('npm run test:guard', undefined, ctx).permission, 'deny');
 });

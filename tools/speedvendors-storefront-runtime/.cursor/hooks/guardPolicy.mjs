@@ -12,10 +12,7 @@ import path from 'node:path';
 /** Workspace-relative prefixes Cursor may create/edit/delete files under. */
 export const EDITABLE_PREFIXES = [
   'src/storefront/',
-  'src/components/',
-  'src/styles/',
   'public/',
-  'artifacts/',
 ];
 
 /**
@@ -27,7 +24,7 @@ export const EDITABLE_PREFIXES = [
 const deny = (reason) => ({
   permission: 'deny',
   user_message: `Blocked by SpeedVendors storefront policy: ${reason}`,
-  agent_message: `Blocked by SpeedVendors storefront policy: ${reason}. Only edit src/storefront/, src/components/, src/styles/, public/, and artifacts/, and only run "npm run build", "npm run package-artifact", or "npm run build:artifact" (or read-only inspection) inside the workspace.`,
+  agent_message: `Blocked by SpeedVendors storefront policy: ${reason}. Only edit src/storefront/ and public/, and only run "npm run build:artifact" or "npm run build" (or read-only inspection) inside the workspace.`,
 });
 
 /** @type {Decision} */
@@ -198,7 +195,6 @@ export function shellDecision(command, cwd, ctx) {
   }
   if (progName === 'tar') {
     // Allow: tar -czf /opt/cursor/artifacts/.../dist.tar.gz -C dist .
-    const outIdx = args.findIndex((a) => a === '-czf' || a === '-czf');
     const fIdx = args.findIndex((a, i) => i > 0 && (args[i - 1] === '-czf' || args[i - 1] === '-f'));
     const archive = fIdx > 0 ? args[fIdx] : '';
     if (!archive || !(archive.startsWith('/opt/cursor/artifacts/'))) {
@@ -210,24 +206,15 @@ export function shellDecision(command, cwd, ctx) {
   if (BLOCKED_PROGRAMS.has(progName)) return deny(`"${progName}" commands are not allowed`);
 
   if (progName === 'npm') {
-    const allowedNpmScripts = new Set(['build', 'package-artifact', 'build:artifact']);
-    // Dependency bootstrap (Cloud Agents clone without node_modules).
-    // Only bare install/ci — never `npm install <pkg>`.
-    const safeInstallFlags = new Set([
-      '--no-audit',
-      '--no-fund',
-      '--prefer-offline',
-      '--ignore-scripts',
-    ]);
-    if (args.length >= 2 && (args[1] === 'ci' || args[1] === 'install')) {
-      const rest = args.slice(2);
-      if (rest.every((a) => safeInstallFlags.has(a))) return ALLOW;
-      return deny('only "npm ci" / "npm install" with safe flags are allowed (no package args)');
+    // Package installs/adds/removes are NEVER allowed for the agent.
+    // Dependency bootstrap happens inside trusted `npm run build:artifact` → ensure-deps.mjs.
+    const blockedNpm = new Set(['install', 'i', 'ci', 'add', 'uninstall', 'remove', 'rm', 'update', 'upgrade']);
+    if (args.length >= 2 && blockedNpm.has(args[1])) {
+      return deny('package manager installs are not allowed — run "npm run build:artifact" only');
     }
+    const allowedNpmScripts = new Set(['build', 'build:artifact']);
     if (args.length === 3 && args[1] === 'run' && allowedNpmScripts.has(args[2])) return ALLOW;
-    return deny(
-      'only "npm ci", "npm install", "npm run build", "npm run package-artifact", or "npm run build:artifact" are allowed',
-    );
+    return deny('only "npm run build" or "npm run build:artifact" are allowed');
   }
   if (progName === 'npx') {
     const rest = args.slice(1).join(' ');

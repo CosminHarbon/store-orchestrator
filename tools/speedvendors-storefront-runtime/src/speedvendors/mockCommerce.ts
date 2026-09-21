@@ -191,8 +191,20 @@ export function createMockCommerce(): SpeedVendorsCommerce {
       async submit(input: CheckoutInput): Promise<CheckoutResult> {
         if (snapshot.lines.length === 0) return { ok: false, error: 'Your cart is empty.' };
         if (!input.name.trim()) return { ok: false, error: 'Please enter your name.' };
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) return { ok: false, error: 'Please enter a valid email.' };
-        if (!input.address.trim()) return { ok: false, error: 'Please enter a delivery address.' };
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) {
+          return { ok: false, error: 'Please enter a valid email.' };
+        }
+        if (!input.phone?.trim()) return { ok: false, error: 'Please enter your phone number.' };
+        if (!input.street.trim()) return { ok: false, error: 'Please enter your street.' };
+        if (!input.streetNumber.trim()) return { ok: false, error: 'Please enter your street number.' };
+        if (!input.city.trim()) return { ok: false, error: 'Please enter your city.' };
+        if (!input.county.trim()) return { ok: false, error: 'Please enter your county.' };
+        if (input.paymentMethod !== 'cash') {
+          return {
+            ok: false,
+            error: 'Only cash on delivery is supported. Card checkout is not available.',
+          };
+        }
         orderCounter += 1;
         const orderId = `MOCK-${String(orderCounter).padStart(4, '0')}`;
         lines = [];

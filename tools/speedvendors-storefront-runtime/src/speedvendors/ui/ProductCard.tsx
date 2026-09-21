@@ -1,10 +1,8 @@
-import type { Product } from '../speedvendors';
+// PROTECTED: product card presentation. Cursor may not edit this file.
+import type { Product } from '../types';
+import { formatPrice } from './formatMoney';
 
-export function formatPrice(amount: number, currency: string): string {
-  return `${amount.toFixed(2)} ${currency}`;
-}
-
-interface ProductCardProps {
+export interface ProductCardProps {
   product: Product;
   onOpen: (productId: string) => void;
 }
@@ -12,7 +10,7 @@ interface ProductCardProps {
 export default function ProductCard({ product, onOpen }: ProductCardProps) {
   const image = product.images[0];
   return (
-    <button className="sf-card" onClick={() => onOpen(product.id)}>
+    <button className="sf-card" onClick={() => onOpen(product.id)} type="button">
       <div className="sf-card-media">
         {image && <img src={image.url} alt={image.alt} loading="lazy" />}
         {!product.inStock && <span className="sf-badge">Sold out</span>}
@@ -23,7 +21,9 @@ export default function ProductCard({ product, onOpen }: ProductCardProps) {
         <span className="sf-price">
           {formatPrice(product.price.amount, product.price.currency)}
           {product.compareAtPrice && (
-            <s className="sf-price-old">{formatPrice(product.compareAtPrice.amount, product.compareAtPrice.currency)}</s>
+            <s className="sf-price-old">
+              {formatPrice(product.compareAtPrice.amount, product.compareAtPrice.currency)}
+            </s>
           )}
         </span>
       </div>

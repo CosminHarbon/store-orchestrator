@@ -55,9 +55,11 @@ describe('assertProtectedCommerceHashes', () => {
     assert.equal(r.ok, false);
   });
 
-  it('lists all protected commerce paths', () => {
+  it('lists all protected commerce paths including ui/', () => {
     assert.ok(PROTECTED_COMMERCE_FILES.includes('src/speedvendors/commerce.ts'));
     assert.ok(PROTECTED_COMMERCE_FILES.includes('src/speedvendors/hooks.tsx'));
-    assert.equal(PROTECTED_COMMERCE_FILES.length, 5);
+    assert.ok(PROTECTED_COMMERCE_FILES.includes('src/speedvendors/ui/CheckoutForm.tsx'));
+    assert.ok(PROTECTED_COMMERCE_FILES.includes('src/speedvendors/ui/ProductGrid.tsx'));
+    assert.ok(PROTECTED_COMMERCE_FILES.length >= 5);
   });
 });

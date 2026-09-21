@@ -1,4 +1,4 @@
-/* EDITABLE presentation layer. Baseline storefront styles, responsive by default. */
+/* EDITABLE: design tokens + presentation. Compose/restyle — do not invent commerce. */
 :root {
   --sf-bg: #fbfaf8;
   --sf-fg: #16130f;
@@ -25,6 +25,7 @@ main { flex: 1; }
 .sf-narrow { max-width: 560px; }
 
 .sf-header { display: flex; align-items: center; justify-content: space-between; padding: .9rem 1rem; border-bottom: 1px solid var(--sf-line); position: sticky; top: 0; background: var(--sf-bg); z-index: 10; }
+.sf-nav { display: flex; align-items: center; gap: 1rem; }
 .sf-brand { background: none; border: 0; font-family: var(--sf-font-display); font-size: 1.35rem; letter-spacing: .02em; padding: 0; }
 .sf-cart-btn { background: none; border: 1px solid var(--sf-line); border-radius: 999px; padding: .4rem .9rem; display: inline-flex; gap: .5rem; align-items: center; }
 .sf-cart-count { background: var(--sf-accent); color: var(--sf-accent-fg); border-radius: 999px; min-width: 1.4rem; height: 1.4rem; display: inline-grid; place-items: center; font-size: .8rem; }

@@ -1,14 +1,13 @@
 #!/usr/bin/env node
 /**
  * Regenerate EXPECTED_PROTECTED_COMMERCE_SHA256 for Deno ingest gate.
- * Writes supabase/functions/_shared/cursorProtectedCommerce.ts (hashes only section via stdout paste)
- * and prints the map for package-artifact validation.
+ * Hashes ALL source files under src/speedvendors/** (*.ts, *.tsx).
  *
  * Run from repo root or runtime package:
  *   node tools/speedvendors-storefront-runtime/scripts/gen-protected-commerce-hashes.mjs
  */
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -16,34 +15,52 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RUNTIME_ROOT = path.resolve(__dirname, '..');
 const REPO_ROOT = path.resolve(RUNTIME_ROOT, '../..');
 const OUT = path.join(REPO_ROOT, 'supabase/functions/_shared/cursorProtectedCommerce.ts');
+const SV_ROOT = path.join(RUNTIME_ROOT, 'src/speedvendors');
 
-const FILES = [
-  'src/speedvendors/commerce.ts',
-  'src/speedvendors/storeApiCommerce.ts',
-  'src/speedvendors/runtimeConfig.ts',
-  'src/speedvendors/types.ts',
-  'src/speedvendors/hooks.tsx',
-];
+function walkTs(dir, base = dir) {
+  /** @type {string[]} */
+  const out = [];
+  for (const name of readdirSync(dir, { withFileTypes: true })) {
+    const abs = path.join(dir, name.name);
+    if (name.isDirectory()) {
+      out.push(...walkTs(abs, base));
+    } else if (name.isFile() && /\.(ts|tsx)$/.test(name.name)) {
+      out.push(path.relative(base, abs).split(path.sep).join('/'));
+    }
+  }
+  return out;
+}
 
 function sha256File(abs) {
   return createHash('sha256').update(readFileSync(abs)).digest('hex');
 }
 
+if (!existsSync(SV_ROOT)) {
+  console.error(`missing ${SV_ROOT}`);
+  process.exit(1);
+}
+
+const relFiles = walkTs(SV_ROOT)
+  .map((r) => `src/speedvendors/${r}`)
+  .sort((a, b) => a.localeCompare(b));
+
+if (relFiles.length === 0) {
+  console.error('no speedvendors source files found');
+  process.exit(1);
+}
+
+/** @type {Record<string, string>} */
 const map = {};
-for (const rel of FILES) {
+for (const rel of relFiles) {
   const abs = path.join(RUNTIME_ROOT, rel);
-  if (!existsSync(abs)) {
-    console.error(`missing ${abs}`);
-    process.exit(1);
-  }
   map[rel] = sha256File(abs);
   console.log(`${map[rel]}  ${rel}`);
 }
 
-const entries = FILES.map(
-  (rel) =>
-    `  '${rel}':\n    '${map[rel]}',`,
-).join('\n');
+const listEntries = relFiles.map((rel) => `  '${rel}',`).join('\n');
+const hashEntries = relFiles
+  .map((rel) => `  '${rel}':\n    '${map[rel]}',`)
+  .join('\n');
 
 const body = `/**
  * Expected SHA-256 of protected SpeedVendors commerce sources (runtime mirror).
@@ -55,16 +72,12 @@ const body = `/**
  */
 
 export const PROTECTED_COMMERCE_FILES = [
-  'src/speedvendors/commerce.ts',
-  'src/speedvendors/storeApiCommerce.ts',
-  'src/speedvendors/runtimeConfig.ts',
-  'src/speedvendors/types.ts',
-  'src/speedvendors/hooks.tsx',
+${listEntries}
 ] as const;
 
 /** Path → sha256 hex (of source file bytes at runtime tip). */
 export const EXPECTED_PROTECTED_COMMERCE_SHA256: Record<string, string> = {
-${entries}
+${hashEntries}
 };
 
 export type ProtectedCommerceAssertResult =
@@ -111,4 +124,4 @@ export function assertProtectedCommerceHashes(
 `;
 
 writeFileSync(OUT, body);
-console.log(`wrote ${OUT}`);
+console.log(`wrote ${OUT} (${relFiles.length} files)`);

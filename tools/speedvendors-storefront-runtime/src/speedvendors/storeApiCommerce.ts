@@ -2,8 +2,8 @@
 // Import-free copy of the monorepo adapter (no path into store-orchestrator src).
 //
 // Checkout limitations:
-// - Freeform address → best-effort structured RO fields (may fail custom delivery quotes).
-// - Cash COD only; card returns an error (Stripe/Netopia not wired here).
+// - Structured home-delivery address (street, streetNumber, city, county) → store-api customer_* fields.
+// - Cash on delivery only (card not supported in this adapter).
 // - Server re-prices; client amounts are display-only.
 
 import type { CartApi, SpeedVendorsCommerce } from './commerce';
@@ -282,30 +282,29 @@ export function createStoreApiCommerce(opts: CreateStoreApiCommerceOpts): SpeedV
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) {
           return { ok: false, error: 'Please enter a valid email.' };
         }
-        if (!input.address.trim()) {
-          return { ok: false, error: 'Please enter a delivery address.' };
-        }
-        if (input.paymentMethod === 'card') {
+        if (!input.phone?.trim()) return { ok: false, error: 'Please enter your phone number.' };
+        if (!input.street.trim()) return { ok: false, error: 'Please enter your street.' };
+        if (!input.streetNumber.trim()) return { ok: false, error: 'Please enter your street number.' };
+        if (!input.city.trim()) return { ok: false, error: 'Please enter your city.' };
+        if (!input.county.trim()) return { ok: false, error: 'Please enter your county.' };
+        if (input.paymentMethod !== 'cash') {
           return {
             ok: false,
-            error: 'Card checkout is not available in this adapter yet. Choose cash on delivery.',
+            error: 'Only cash on delivery is supported. Card checkout is not available.',
           };
         }
-
-        const address = input.address.trim();
-        const parts = address.split(',').map((s) => s.trim()).filter(Boolean);
 
         const payload = {
           customer_name: input.name.trim(),
           customer_email: input.email.trim(),
-          customer_phone: input.phone?.trim() || null,
+          customer_phone: input.phone.trim(),
           customer_notes: input.notes?.trim() || null,
           payment_method: 'cash',
           delivery_type: 'home',
-          customer_street: parts[0] || address,
-          customer_street_number: '1',
-          customer_city: parts[1] || 'N/A',
-          customer_county: parts[2] || parts[1] || 'N/A',
+          customer_street: input.street.trim(),
+          customer_street_number: input.streetNumber.trim(),
+          customer_city: input.city.trim(),
+          customer_county: input.county.trim(),
           billing_same_as_delivery: true,
           items: snapshot.lines.map((l) => ({
             product_id: l.productId,

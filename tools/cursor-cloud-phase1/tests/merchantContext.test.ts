@@ -17,7 +17,7 @@ describe('merchantContext', () => {
     assert.ok(CONTEXT_EXCLUSIONS.some((x) => /PII/i.test(x)));
   });
 
-  it('truncates descriptions to 280 chars and caps images at 3', () => {
+  it('truncates descriptions to 280 chars and caps images at 2 by default', () => {
     const long = 'x'.repeat(500);
     const ctx = buildCursorStorefrontContext({
       store: { user_id: 'u1', store_name: 'Demo', currency: 'RON' },
@@ -35,11 +35,26 @@ describe('merchantContext', () => {
           ],
         },
       ],
-      strategy: { maxProducts: 24 },
+      strategy: { maxProducts: 12 },
     });
     assert.equal(ctx.products.length, 1);
     assert.ok(ctx.products[0].description.length <= 280);
-    assert.equal(ctx.products[0].images.length, 3);
+    assert.equal(ctx.products[0].images.length, 2);
+  });
+
+  it('defaults maxProducts to 12 when strategy omits it', () => {
+    const products = Array.from({ length: 20 }, (_, i) => ({
+      id: `p${i}`,
+      title: `P${i}`,
+      description: 'd',
+      price: i,
+    }));
+    const ctx = buildCursorStorefrontContext({
+      store: { user_id: 'u1', store_name: 'S' },
+      products,
+    });
+    assert.equal(ctx.products.length, 12);
+    assert.equal(ctx.strategy.maxProducts, 12);
   });
 
   it('respects maxProducts and featuredIds order', () => {
