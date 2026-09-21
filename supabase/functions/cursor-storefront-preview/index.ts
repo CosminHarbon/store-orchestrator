@@ -193,12 +193,17 @@ serve(async (req) => {
     return json({ error: 'object_not_found', path: safePath }, 404);
   }
 
-  const headers = {
+  const headers: Record<string, string> = {
     ...cors,
     'Content-Type': contentTypeForPath(safePath),
     'Cache-Control': 'private, max-age=60',
-    'X-Content-Type-Options': 'nosniff',
+    'X-SV-Preview': 'phase3-v13',
   };
+  // Supabase edge currently rewrites HTML GET bodies to Content-Type: text/plain.
+  // Keep nosniff for non-HTML; omit it for HTML so browsers can still render the document.
+  if (!safePath.toLowerCase().endsWith('.html')) {
+    headers['X-Content-Type-Options'] = 'nosniff';
+  }
 
   if (req.method === 'HEAD') {
     return new Response(null, { status: 200, headers });
@@ -213,9 +218,7 @@ serve(async (req) => {
       .maybeSingle();
     const storeApiKey = profile?.store_api_key ? String(profile.store_api_key) : null;
     const apiBase = `${supabaseUrl.replace(/\/$/, '')}/functions/v1/store-api`;
-    const endpointPath = url.pathname.includes('/functions/v1/')
-      ? url.pathname
-      : '/functions/v1/cursor-storefront-preview';
+    const endpointPath = `${supabaseUrl.replace(/\/$/, '')}/functions/v1/cursor-storefront-preview`;
     const rewritten = rewriteHtmlForQueryPreview(html, {
       versionId,
       token,
@@ -223,7 +226,14 @@ serve(async (req) => {
       storeApiKey,
       apiBase,
     });
-    return new Response(rewritten, { status: 200, headers });
+    const body = new Blob([rewritten], { type: 'text/html; charset=utf-8' });
+    return new Response(body, {
+      status: 200,
+      headers: {
+        ...headers,
+        'Content-Type': 'text/html; charset=utf-8',
+      },
+    });
   }
 
   return new Response(blob.stream(), { status: 200, headers });

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { Check, Copy, ExternalLink, LayoutTemplate, Sparkles } from 'lucide-react';
+import { Check, Copy, ExternalLink, LayoutTemplate, Sparkles, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,11 +9,13 @@ import { toast } from 'sonner';
 import { VisualEditor } from './VisualEditor';
 import AIStudio from '@/components/ai-studio/AIStudio';
 import AIStudioV2 from '@/components/ai-studio/AIStudioV2';
+import CursorAiStoreBuilder from '@/components/ai-store-builder/CursorAiStoreBuilder';
 import '@/styles/website-builder.css';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { isAiStudioV2MerchantBetaEnabled } from '@/lib/ai-studio/v2/featureFlag';
+import { isAiStoreBuilderCursorEnabled } from '@/lib/ai-store-builder/featureFlag';
 
-type BuilderView = 'gallery' | 'editor' | 'studio';
+type BuilderView = 'gallery' | 'editor' | 'studio' | 'cursor-studio';
 
 export default function WebsiteBuilder() {
   const { t } = useTranslation('templates');
@@ -22,6 +24,7 @@ export default function WebsiteBuilder() {
   const [view, setView] = useState<BuilderView>('gallery');
   const [editorTemplateId, setEditorTemplateId] = useState('elementar');
   const [copiedKey, setCopiedKey] = useState(false);
+  const cursorBuilderEnabled = isAiStoreBuilderCursorEnabled();
 
   const { data: profile } = useQuery({
     queryKey: ['profile', effectiveUserId],
@@ -53,6 +56,10 @@ export default function WebsiteBuilder() {
         onBack={() => setView('gallery')}
       />
     );
+  }
+
+  if (view === 'cursor-studio') {
+    return <CursorAiStoreBuilder onBack={() => setView('gallery')} />;
   }
 
   if (view === 'studio') {
@@ -158,6 +165,32 @@ export default function WebsiteBuilder() {
           </Button>
         </div>
       </div>
+
+      {cursorBuilderEnabled && (
+        <div className="rounded-3xl border border-[#6E3DFF]/25 bg-gradient-to-br from-[#F4F0FF] via-white to-white p-5 shadow-sm md:p-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#6E3DFF]/20 bg-white px-3 py-1 text-xs text-[#6E3DFF]">
+                <Wand2 className="h-3.5 w-3.5" />
+                Build with AI
+              </div>
+              <h2 className="text-xl font-semibold tracking-tight">Build your store with AI</h2>
+              <p className="max-w-xl text-sm text-muted-foreground">
+                Describe your brand and get a live draft storefront — refine it in chat like Lovable,
+                powered by your real products.
+              </p>
+            </div>
+            <Button
+              className="h-11 rounded-full bg-[#6E3DFF] px-5 hover:bg-[#5b30e0]"
+              onClick={() => setView('cursor-studio')}
+              disabled={!profile?.store_api_key}
+            >
+              <Wand2 className="mr-2 h-4 w-4" />
+              Build with AI
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="rounded-3xl border bg-gradient-to-br from-[#F4F0FF] to-white p-5 shadow-sm md:p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
