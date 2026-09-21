@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import { parseInterval, parseTier, SPEEDVENDORS_PLANS } from '@/lib/plans/catalo
 import { formatBytes } from '@/lib/media/constants';
 import { useMediaUsage } from '@/hooks/useMediaUsage';
 import { Capacitor } from '@capacitor/core';
+import { TrialStatusCard } from '@/components/billing/TrialStatusCard';
 import { toIntlLocale } from '@/i18n/types';
 import type { AppLanguage } from '@/i18n/types';
 
@@ -71,6 +73,7 @@ function intervalLabel(
 export function BillingSettingsCard() {
   const { t, i18n } = useTranslation('settings');
   const locale = toIntlLocale((i18n.language === 'en' ? 'en' : 'ro') as AppLanguage);
+  const navigate = useNavigate();
   const [changeBusy, setChangeBusy] = useState(false);
   const [portalBusy, setPortalBusy] = useState(false);
   const { data: usage } = useMediaUsage();
@@ -82,6 +85,10 @@ export function BillingSettingsCard() {
       return rpc as EntitlementStatus;
     },
   });
+
+  // A free trial has NO Stripe subscription, so there is nothing to manage in the Customer Portal:
+  // trial (and no-plan) users are sent to the SpeedVendors plan-selection screen instead.
+  const managePlans = () => navigate('/subscribe');
 
   const openPortal = async () => {
     if (Capacitor.isNativePlatform()) {
@@ -157,6 +164,8 @@ export function BillingSettingsCard() {
   };
   const warning = data?.billing_warning;
   const sub = data?.subscription;
+  const hasPaidSubscription =
+    !!sub?.status && ['active', 'trialing', 'past_due', 'unpaid', 'paused'].includes(sub.status);
   const canceling = sub?.status === 'active' && sub.cancel_at_period_end === true;
 
   return (
@@ -166,6 +175,7 @@ export function BillingSettingsCard() {
         <CardDescription>{t('saasBilling.description')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <TrialStatusCard />
         {warning === 'duplicate_open_subscription' ? (
           <Alert variant="destructive">
             <AlertDescription>{t('saasBilling.duplicateWarning')}</AlertDescription>
@@ -185,6 +195,8 @@ export function BillingSettingsCard() {
           <p className="text-sm text-muted-foreground">{t('saasBilling.loading')}</p>
         ) : (
           <dl className="grid gap-2 text-sm sm:grid-cols-2">
+            {hasPaidSubscription ? (
+              <>
             <div>
               <dt className="text-muted-foreground">{t('saasBilling.plan')}</dt>
               <dd className="font-medium">{tierLabel(t, sub?.tier)}</dd>
@@ -212,6 +224,8 @@ export function BillingSettingsCard() {
               <dt className="text-muted-foreground">{t('saasBilling.status')}</dt>
               <dd className="font-medium">{statusLabel(t, sub, locale)}</dd>
             </div>
+              </>
+            ) : null}
             <div className="sm:col-span-2">
               <dt className="text-muted-foreground">{t('saasBilling.storage.title')}</dt>
               <dd className="font-medium">
@@ -238,12 +252,14 @@ export function BillingSettingsCard() {
         )}
 
         <div className="flex flex-wrap gap-2">
-          <Button onClick={() => void openPortal()} disabled={portalBusy}>
+          <Button onClick={() => (hasPaidSubscription ? void openPortal() : managePlans())} disabled={portalBusy}>
             {portalBusy
               ? t('saasBilling.opening')
               : canceling
                 ? t('saasBilling.reactivate')
-                : t('saasBilling.manage')}
+                : hasPaidSubscription
+                  ? t('saasBilling.manage')
+                  : t('saasBilling.subscribeNow')}
           </Button>
           <Button variant="outline" onClick={() => void refetch()}>
             {t('saasBilling.refresh')}

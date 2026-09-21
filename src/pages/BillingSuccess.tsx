@@ -48,7 +48,10 @@ const BillingSuccess = () => {
             navigate(path, { replace: true });
             return;
           }
-        } else if (data?.has_entitlement || (data?.enforcement_active && data?.has_access)) {
+        } else if (
+          data?.has_entitlement ||
+          (data?.enforcement_active && data?.has_access && !data?.trial?.is_trial_active)
+        ) {
           setPhase('ready');
           const path = await resolveEntitledPostLoginPath();
           navigate(path, { replace: true });

@@ -3,7 +3,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.53.0';
 import {
   isBillingEnforcementActive,
   isSuperadminUserId,
-  userHasActiveEntitlement,
+  userHasPaidEntitlement,
+  userHasSpeedVendorsAccess,
 } from '../_shared/billingEntitlement.ts';
 import { billingCorsHeaders, isBillingEnforcementEnvAllowed } from '../_shared/billingStripe.ts';
 
@@ -52,8 +53,11 @@ serve(async (req) => {
     const envAllows = isBillingEnforcementEnvAllowed();
     const enforcementActive = await isBillingEnforcementActive(admin);
     const superadmin = await isSuperadminUserId(admin, user.id);
-    const hasEntitlement = await userHasActiveEntitlement(admin, user.id);
-    const hasAccess = !enforcementActive || superadmin || hasEntitlement;
+    const hasEntitlement = await userHasPaidEntitlement(admin, user.id);
+    // Canonical access = superadmin | paid entitlement | active trial | legacy+flag-off.
+    // has_entitlement stays paid-only so /subscribe still treats trial users as unsubscribed.
+    const dbAccess = envAllows ? await userHasSpeedVendorsAccess(admin, user.id) : true;
+    const hasAccess = dbAccess ?? (!enforcementActive || superadmin || hasEntitlement);
 
     return json({
       ...(typeof rpcStatus === 'object' && rpcStatus ? rpcStatus : {}),

@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { AdminAccessCodes } from '@/components/admin/AdminAccessCodes';
 import { AdminStoragePanel, AdminStoragePlatformCard } from '@/components/admin/AdminStoragePanel';
+import AdminTrials from '@/components/admin/AdminTrials';
 
 type MerchantRow = {
   user_id: string;
@@ -101,7 +102,7 @@ export default function AdminConsole() {
   const [search, setSearch] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [tab, setTab] = useState('overview');
-  const [section, setSection] = useState<'merchants' | 'billing'>('merchants');
+  const [section, setSection] = useState<'merchants' | 'billing' | 'trials'>('merchants');
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [orderSearch, setOrderSearch] = useState('');
 
@@ -399,9 +400,10 @@ export default function AdminConsole() {
           <Badge variant="secondary">MFA</Badge>
         </div>
         <div className="flex items-center gap-2">
-          <Tabs value={section} onValueChange={(v) => setSection(v as 'merchants' | 'billing')}>
+          <Tabs value={section} onValueChange={(v) => setSection(v as 'merchants' | 'billing' | 'trials')}>
             <TabsList>
               <TabsTrigger value="merchants">Merchants</TabsTrigger>
+              <TabsTrigger value="trials">Trials</TabsTrigger>
               <TabsTrigger value="billing">Billing</TabsTrigger>
             </TabsList>
           </Tabs>
@@ -412,7 +414,14 @@ export default function AdminConsole() {
         </div>
       </header>
 
-      {section === 'billing' ? (
+      {section === 'trials' ? (
+        <AdminTrials
+          onOpenMerchant={(userId) => {
+            setSelectedUserId(userId);
+            setSection('merchants');
+          }}
+        />
+      ) : section === 'billing' ? (
         <div className="max-w-[1100px] mx-auto p-4 space-y-4">
           <div>
             <h1 className="text-lg font-semibold">Billing</h1>

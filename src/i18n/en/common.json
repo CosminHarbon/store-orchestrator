@@ -156,8 +156,17 @@
     }
   },
   "subscribe": {
-    "title": "Choose your plan",
-    "subtitle": "Subscribe to unlock SpeedVendors for your store. Cancel anytime from billing settings.",
+    "title": "How do you want to start?",
+    "subtitle": "Start a 7-day free trial with no credit card, or choose a paid plan now.",
+    "choiceStartEyebrow": "Start free",
+    "choiceStartTitle": "7-day free trial",
+    "choiceStartDesc": "Explore SpeedVendors for 7 days. No credit card required.",
+    "choiceSubscribeEyebrow": "Subscribe now",
+    "choiceSubscribeTitle": "Choose a plan",
+    "choiceSubscribeDesc": "Select the plan that fits your business and activate paid access immediately.",
+    "choiceSubscribeCta": "Choose a plan",
+    "continueTrialCta": "Continue with free trial",
+    "plansHeading": "Paid plans",
     "monthly": "Monthly",
     "yearly": "Annual",
     "twoMonthsFree": "2 months free",
@@ -190,6 +199,45 @@
     "codeInvalid": "That access code is not valid.",
     "codeFailed": "Could not apply access code.",
     "codeSuccess": "Access granted",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "trialTitle": "7-Day Free Trial",
+    "trialDesc": "Try SpeedVendors free for 7 days.",
+    "trialFeature": "Full access · No credit card required",
+    "trialCta": "Start 7-day free trial",
+    "trialNoCard": "No credit card required",
+    "trialStarting": "Starting…",
+    "trialStarted": "Your 7-day free trial has started.",
+    "trialErrEmail": "Please verify your email address before starting the free trial.",
+    "trialErrEligible": "The free trial is not available for this account. Please choose a plan.",
+    "trialErrSubscribed": "This account already has a subscription.",
+    "trialErrGeneric": "Could not start the free trial. Please try again."
+  },
+  "trial": {
+    "title": "Free Trial",
+    "daysRemaining_one": "{{count}} day remaining",
+    "daysRemaining_other": "{{count}} days remaining",
+    "hoursRemaining_one": "{{count}} hour remaining",
+    "hoursRemaining_other": "{{count}} hours remaining",
+    "endsLabel": "Your trial ends on",
+    "choosePlan": "Subscribe now",
+    "endsInBanner_one": "Your free trial ends in {{count}} day.",
+    "endsInBanner_other": "Your free trial ends in {{count}} days.",
+    "endsTomorrow": "Your free trial ends tomorrow.",
+    "lastDay": "Last day of your free trial — {{time}}.",
+    "keepRunning": "Choose a plan to keep your store running.",
+    "endedTitle": "Your free trial has ended.",
+    "endedBody": "Choose a plan to continue using SpeedVendors.",
+    "endedMessage": "Your free trial has ended. Choose a plan to continue using SpeedVendors.",
+    "lockedAction": "This action needs an active plan. Your free trial has ended.",
+    "dismiss": "Dismiss",
+    "activeNotice": "You are on the free trial ({{remaining}}). Choose a plan any time to keep SpeedVendors after it ends — paid access starts immediately."
+  },
+  "landing": {
+    "pricing": {
+      "trialEyebrow": "Try SpeedVendors free for 7 days",
+      "trialNoCard": "No credit card required",
+      "trialCta": "Start 7-day free trial",
+      "choosePlanCta": "Choose a plan"
+    }
   }
 }

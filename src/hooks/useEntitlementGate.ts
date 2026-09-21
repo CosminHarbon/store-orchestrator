@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useImpersonation } from '@/hooks/useImpersonation';
+import type { TrialStatus } from '@/hooks/useTrialStatus';
 
 export type EntitlementStatus = {
   has_access: boolean;
@@ -16,6 +17,9 @@ export type EntitlementStatus = {
   active_sources?: string[];
   billing_warning?: string | null;
   grace_until?: string | null;
+  /** Server-derived: trialing | trial_expired | active | past_due | cancelled | null (legacy). */
+  subscription_status?: string | null;
+  trial?: TrialStatus | null;
   subscription?: {
     status: string;
     plan: string | null;
@@ -70,7 +74,19 @@ async function loadMergedEntitlementStatus(): Promise<EntitlementStatus> {
       body: {},
     });
     if (edge && typeof edge === 'object' && !('error' in edge && (edge as { error?: string }).error)) {
+      // Preserve RPC trial-aware access: a stale Edge deploy must not wipe has_access for
+      // an active application-level trial (or force paid-only semantics onto has_entitlement).
+      const rpcAccess = entitlement.has_access;
+      const rpcPaid = entitlement.has_entitlement;
+      const rpcTrial = entitlement.trial;
+      const rpcSubStatus = entitlement.subscription_status;
       Object.assign(entitlement, edge);
+      if (rpcAccess === true) entitlement.has_access = true;
+      if (typeof rpcPaid === 'boolean') entitlement.has_entitlement = rpcPaid;
+      if (rpcTrial && !entitlement.trial) entitlement.trial = rpcTrial;
+      if (rpcSubStatus && entitlement.subscription_status == null) {
+        entitlement.subscription_status = rpcSubStatus;
+      }
     }
   } catch {
     /* RPC is enough when Edge is unavailable */
@@ -108,13 +124,19 @@ export function useEntitlementGate() {
   return { gate, refresh };
 }
 
+/**
+ * Application access is decided by the server (`has_access`): superadmin, paid entitlement, an
+ * explicitly-started active trial, or a legacy account. A new account that has not chosen a plan, and
+ * an expired trial, have has_access = false and are sent to the plan-selection screen.
+ * (Access and onboarding completion are separate: this never decides whether setup is skipped.)
+ */
 function merchantAccessBlocked(entitlement: EntitlementStatus): boolean {
   if (entitlement.is_superadmin) return false;
-  return isEnforcementEffective(entitlement) && entitlement.has_access === false;
+  return entitlement.has_access === false;
 }
 
 /**
- * Redirects unentitled users to /subscribe when billing enforcement is effective.
+ * Redirects users without application access to /subscribe (plan selection).
  * Superadmin and impersonation are left to the host page.
  * Callers MUST NOT send the user to /setup until `ready && !blocked`.
  */
@@ -171,7 +193,7 @@ export async function resolveEntitledPostLoginPath(): Promise<string> {
 
   const status = await loadMergedEntitlementStatus();
 
-  if (isEnforcementEffective(status) && !status.has_access) {
+  if (!status.is_superadmin && status.has_access === false) {
     return '/subscribe';
   }
 

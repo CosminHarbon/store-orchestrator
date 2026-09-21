@@ -444,18 +444,24 @@ export type Database = {
           enforcement_enabled: boolean
           grace_period_days: number
           id: number
+          trial_duration_days: number
+          trial_program_started_at: string | null
           updated_at: string
         }
         Insert: {
           enforcement_enabled?: boolean
           grace_period_days?: number
           id?: number
+          trial_duration_days?: number
+          trial_program_started_at?: string | null
           updated_at?: string
         }
         Update: {
           enforcement_enabled?: boolean
           grace_period_days?: number
           id?: number
+          trial_duration_days?: number
+          trial_program_started_at?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -2424,6 +2430,48 @@ export type Database = {
         }
         Relationships: []
       }
+      user_trials: {
+        Row: {
+          converted_at: string | null
+          created_at: string
+          extended_count: number
+          original_trial_ends_at: string
+          source: string
+          status_updated_at: string | null
+          subscription_status: string | null
+          trial_ends_at: string
+          trial_started_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          converted_at?: string | null
+          created_at?: string
+          extended_count?: number
+          original_trial_ends_at: string
+          source?: string
+          status_updated_at?: string | null
+          subscription_status?: string | null
+          trial_ends_at: string
+          trial_started_at: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          converted_at?: string | null
+          created_at?: string
+          extended_count?: number
+          original_trial_ends_at?: string
+          source?: string
+          status_updated_at?: string | null
+          subscription_status?: string | null
+          trial_ends_at?: string
+          trial_started_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       product_variant_stats: {
@@ -2454,6 +2502,25 @@ export type Database = {
           store_name: string
           user_id: string
         }[]
+      }
+      admin_extend_trial: {
+        Args: {
+          p_days?: number | null
+          p_new_end?: string | null
+          p_reason?: string | null
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      admin_list_trials: {
+        Args: {
+          p_filter?: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string | null
+          p_sort?: string
+        }
+        Returns: Json
       }
       admin_media_product_storage: {
         Args: { p_store_user_id: string }
@@ -2598,6 +2665,9 @@ export type Database = {
       }
       get_media_usage: { Args: { p_acting_as?: string }; Returns: Json }
       get_my_entitlement_status: { Args: never; Returns: Json }
+      get_my_trial_status: { Args: never; Returns: Json }
+      start_free_trial: { Args: never; Returns: Json }
+      admin_trial_summary: { Args: never; Returns: Json }
       has_role: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean

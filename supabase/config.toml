@@ -154,3 +154,9 @@ verify_jwt = false
 
 [functions.media-authorize-upload]
 verify_jwt = true
+
+[functions.trial-reminders]
+verify_jwt = true
+
+[functions.admin-delete-user]
+verify_jwt = true

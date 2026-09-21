@@ -265,22 +265,26 @@ export default function Landing() {
             <div className="flex flex-wrap gap-3">
               <Button
                 size="lg"
+                data-testid="landing-trial-cta"
                 className="rounded-full h-12 px-6 bg-[hsl(var(--sv-accent))] text-[hsl(var(--sv-on-accent))] hover:bg-[hsl(var(--sv-accent-deep))]"
-                onClick={() => navigate('/auth?tab=signup')}
+                onClick={() => navigate('/auth?tab=signup&intent=trial')}
               >
-                {t('landing.hero.ctaPrimary')}
+                {t('landing.pricing.trialCta')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
               <Button
                 size="lg"
                 variant="outline"
+                data-testid="landing-choose-plan-cta"
                 className="rounded-full h-12 px-6 border-[hsl(var(--sv-line))] bg-transparent"
-                onClick={() => scrollTo('how-it-works')}
+                onClick={() => navigate('/auth?tab=signup&intent=subscribe')}
               >
-                {t('landing.hero.ctaSecondary')}
+                {t('landing.pricing.choosePlanCta')}
               </Button>
             </div>
-            <p className="text-sm font-medium text-[hsl(var(--sv-ink))]/55">{t('landing.hero.tagline')}</p>
+            <p className="text-sm font-medium text-[hsl(var(--sv-ink))]/55" data-testid="landing-trial-nocard">
+              {t('landing.pricing.trialEyebrow')} · {t('landing.pricing.trialNoCard')}
+            </p>
           </motion.div>
 
           <motion.div
@@ -469,6 +473,34 @@ export default function Landing() {
           </div>
         </motion.div>
 
+        <motion.div
+          {...fade}
+          data-testid="landing-pricing-trial"
+          className="mx-auto mb-10 max-w-2xl text-center space-y-3"
+        >
+          <p className="text-sm font-semibold text-[hsl(var(--sv-accent))]">
+            {t('landing.pricing.trialEyebrow')}
+          </p>
+          <p className="text-sm text-[hsl(var(--sv-ink))]/60">{t('landing.pricing.trialNoCard')}</p>
+          <div className="flex flex-wrap justify-center gap-3 pt-1">
+            <Button
+              size="lg"
+              className="rounded-full h-11 px-6 bg-[hsl(var(--sv-accent))] text-[hsl(var(--sv-on-accent))] hover:bg-[hsl(var(--sv-accent-deep))]"
+              onClick={() => navigate('/auth?tab=signup&intent=trial')}
+            >
+              {t('landing.pricing.trialCta')}
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="rounded-full h-11 px-6"
+              onClick={() => navigate('/auth?tab=signup&intent=subscribe')}
+            >
+              {t('landing.pricing.choosePlanCta')}
+            </Button>
+          </div>
+        </motion.div>
+
         <motion.div {...fade} className="grid gap-4 lg:grid-cols-3">
           {SPEEDVENDORS_TIERS.map((tier) => {
             const plan = SPEEDVENDORS_PLANS[tier];
@@ -530,9 +562,9 @@ export default function Landing() {
                 <Button
                   size="lg"
                   className="w-full rounded-full h-11 bg-[hsl(var(--sv-accent))] text-[hsl(var(--sv-on-accent))] hover:bg-[hsl(var(--sv-accent-deep))]"
-                  onClick={() => navigate('/auth?tab=signup')}
+                  onClick={() => navigate('/auth?tab=signup&intent=subscribe')}
                 >
-                  {t('landing.pricing.cta')}
+                  {t('landing.pricing.choosePlanCta')}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>

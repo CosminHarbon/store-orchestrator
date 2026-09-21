@@ -717,6 +717,7 @@
       "full": "Media allowance reached. Delete unused media or upgrade your plan.",
       "adminStored": "Actual stored: {{stored}}",
       "adminSaving": "Optimization saving: ~{{percent}}%"
-    }
+    },
+    "subscribeNow": "Subscribe now"
   }
 }

@@ -33,6 +33,17 @@ const Auth = () => {
   const navigate = useNavigate();
   const [canResend, setCanResend] = useState(false);
   const needsEmailVerification = searchParams.get('verify') === '1';
+  const signupIntent = searchParams.get('intent');
+
+  useEffect(() => {
+    if (signupIntent === 'trial' || signupIntent === 'subscribe') {
+      try {
+        sessionStorage.setItem('sv_signup_intent', signupIntent);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [signupIntent]);
 
   useEffect(() => {
     // On native platforms, redirect to welcome if user hasn't seen it

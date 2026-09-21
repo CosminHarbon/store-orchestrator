@@ -156,8 +156,17 @@
     }
   },
   "subscribe": {
-    "title": "Alege planul",
-    "subtitle": "Abonează-te pentru a debloca SpeedVendors pentru magazinul tău. Poți anula oricând din setările de facturare.",
+    "title": "Cum vrei să începi?",
+    "subtitle": "Pornește o perioadă de probă gratuită de 7 zile fără card, sau alege un plan plătit acum.",
+    "choiceStartEyebrow": "Începe gratuit",
+    "choiceStartTitle": "Perioadă de probă gratuită — 7 zile",
+    "choiceStartDesc": "Explorează SpeedVendors timp de 7 zile. Nu este necesar un card.",
+    "choiceSubscribeEyebrow": "Abonează-te acum",
+    "choiceSubscribeTitle": "Alege un plan",
+    "choiceSubscribeDesc": "Selectează planul potrivit afacerii tale și activează accesul plătit imediat.",
+    "choiceSubscribeCta": "Alege un plan",
+    "continueTrialCta": "Continuă cu perioada de probă",
+    "plansHeading": "Planuri plătite",
     "monthly": "Lunar",
     "yearly": "Anual",
     "twoMonthsFree": "2 luni gratuite",
@@ -190,6 +199,48 @@
     "codeInvalid": "Codul de acces nu este valid.",
     "codeFailed": "Nu am putut aplica codul de acces.",
     "codeSuccess": "Acces acordat",
-    "signOut": "Deconectare"
+    "signOut": "Deconectare",
+    "trialTitle": "Perioadă de probă gratuită — 7 zile",
+    "trialDesc": "Încearcă SpeedVendors gratuit timp de 7 zile.",
+    "trialFeature": "Acces complet · Nu este necesar un card",
+    "trialCta": "Încearcă gratuit 7 zile",
+    "trialNoCard": "Nu este necesar un card",
+    "trialStarting": "Se pornește…",
+    "trialStarted": "Perioada ta de probă gratuită de 7 zile a început.",
+    "trialErrEmail": "Verifică-ți adresa de email înainte de a începe perioada de probă.",
+    "trialErrEligible": "Perioada de probă nu este disponibilă pentru acest cont. Alege un abonament.",
+    "trialErrSubscribed": "Acest cont are deja un abonament.",
+    "trialErrGeneric": "Nu am putut porni perioada de probă. Încearcă din nou."
+  },
+  "trial": {
+    "title": "Perioadă de probă gratuită",
+    "daysRemaining_one": "Mai ai {{count}} zi",
+    "daysRemaining_few": "Mai ai {{count}} zile",
+    "daysRemaining_other": "Mai ai {{count}} de zile",
+    "hoursRemaining_one": "Mai este {{count}} oră",
+    "hoursRemaining_few": "Mai sunt {{count}} ore",
+    "hoursRemaining_other": "Mai sunt {{count}} de ore",
+    "endsLabel": "Perioada de probă se încheie pe",
+    "choosePlan": "Abonează-te acum",
+    "endsInBanner_one": "Perioada de probă se încheie în {{count}} zi.",
+    "endsInBanner_few": "Perioada de probă se încheie în {{count}} zile.",
+    "endsInBanner_other": "Perioada de probă se încheie în {{count}} de zile.",
+    "endsTomorrow": "Perioada de probă se încheie mâine.",
+    "lastDay": "Ultima zi de probă gratuită — {{time}}.",
+    "keepRunning": "Alege un abonament ca magazinul tău să continue să funcționeze.",
+    "endedTitle": "Perioada ta de probă gratuită s-a încheiat.",
+    "endedBody": "Alege un abonament pentru a continua să folosești SpeedVendors.",
+    "endedMessage": "Perioada ta de probă gratuită s-a încheiat. Alege un abonament pentru a continua să folosești SpeedVendors.",
+    "lockedAction": "Această acțiune necesită un abonament activ. Perioada de probă gratuită s-a încheiat.",
+    "dismiss": "Închide",
+    "activeNotice": "Ești în perioada de probă gratuită ({{remaining}}). Alege oricând un abonament ca să păstrezi SpeedVendors după încheiere — accesul plătit începe imediat."
+  },
+  "landing": {
+    "pricing": {
+      "trialEyebrow": "Încearcă SpeedVendors gratuit 7 zile",
+      "trialNoCard": "Nu este necesar un card",
+      "trialCta": "Încearcă gratuit 7 zile",
+      "choosePlanCta": "Alege un plan"
+    }
   }
 }

@@ -717,6 +717,7 @@
       "full": "Limita de media a fost atinsă. Șterge media nefolosită sau treci la un plan superior.",
       "adminStored": "Stocat efectiv: {{stored}}",
       "adminSaving": "Economie optimizare: ~{{percent}}%"
-    }
+    },
+    "subscribeNow": "Abonează-te acum"
   }
 }
