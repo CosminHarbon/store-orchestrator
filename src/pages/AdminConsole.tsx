@@ -23,6 +23,10 @@ import { useImpersonation } from '@/hooks/useImpersonation';
 import { AdminAccessCodes } from '@/components/admin/AdminAccessCodes';
 import { AdminStoragePanel, AdminStoragePlatformCard } from '@/components/admin/AdminStoragePanel';
 import AdminTrials from '@/components/admin/AdminTrials';
+import { AdminDesignRequests } from '@/components/admin/AdminDesignRequests';
+import type { Database } from '@/types/database';
+
+type OrderStatusEnum = Database['public']['Enums']['order_status_enum'];
 
 type MerchantRow = {
   user_id: string;
@@ -102,7 +106,7 @@ export default function AdminConsole() {
   const [search, setSearch] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [tab, setTab] = useState('overview');
-  const [section, setSection] = useState<'merchants' | 'billing' | 'trials'>('merchants');
+  const [section, setSection] = useState<'merchants' | 'billing' | 'trials' | 'designs'>('merchants');
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [orderSearch, setOrderSearch] = useState('');
 
@@ -358,7 +362,11 @@ export default function AdminConsole() {
 
   const updateOrderField = async (
     orderId: string,
-    patch: { order_status?: string; payment_status?: string; shipping_status?: string }
+    patch: {
+      order_status?: OrderStatusEnum;
+      payment_status?: string;
+      shipping_status?: string;
+    }
   ) => {
     const { error } = await supabase.from('orders').update(patch).eq('id', orderId);
     if (error) {
@@ -400,9 +408,10 @@ export default function AdminConsole() {
           <Badge variant="secondary">MFA</Badge>
         </div>
         <div className="flex items-center gap-2">
-          <Tabs value={section} onValueChange={(v) => setSection(v as 'merchants' | 'billing' | 'trials')}>
+          <Tabs value={section} onValueChange={(v) => setSection(v as 'merchants' | 'billing' | 'trials' | 'designs')}>
             <TabsList>
               <TabsTrigger value="merchants">Merchants</TabsTrigger>
+              <TabsTrigger value="designs">Designs</TabsTrigger>
               <TabsTrigger value="trials">Trials</TabsTrigger>
               <TabsTrigger value="billing">Billing</TabsTrigger>
             </TabsList>
@@ -414,9 +423,16 @@ export default function AdminConsole() {
         </div>
       </header>
 
-      {section === 'trials' ? (
-        <AdminTrials
+      {section === 'designs' ? (
+        <AdminDesignRequests
           onOpenMerchant={(userId) => {
+            setSelectedUserId(userId);
+            setSection('merchants');
+          }}
+        />
+      ) : section === 'trials' ? (
+        <AdminTrials
+          onOpenUser={(userId) => {
             setSelectedUserId(userId);
             setSection('merchants');
           }}
@@ -764,7 +780,9 @@ export default function AdminConsole() {
                                   <div className="text-xs text-muted-foreground mb-1">Order status</div>
                                   <Select
                                     value={o.order_status || 'paid'}
-                                    onValueChange={(v) => void updateOrderField(o.id, { order_status: v })}
+                                    onValueChange={(v) =>
+                                      void updateOrderField(o.id, { order_status: v as OrderStatusEnum })
+                                    }
                                   >
                                     <SelectTrigger>
                                       <SelectValue />

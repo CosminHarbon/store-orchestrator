@@ -1,0 +1,29 @@
+{
+  "name": "speedvendors-storefront-runtime",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "package-artifact": "node scripts/package-artifact.mjs",
+    "validate": "node scripts/validate-generated.mjs",
+    "build:artifact": "node scripts/ensure-deps.mjs && node scripts/validate-generated.mjs && npm run build && npm run package-artifact",
+    "test:guard": "node --test .cursor/hooks/guardPolicy.test.mjs",
+    "test:package-artifact": "node --test scripts/package-artifact.test.mjs",
+    "test:validate": "node --test scripts/validate-generated.test.mjs"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  },
+  "description": "Isolated SpeedVendors storefront Cloud Agent runtime (no secrets, no main monorepo)."
+}

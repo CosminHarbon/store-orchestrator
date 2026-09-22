@@ -1,0 +1,3 @@
+.proof-output/
+node_modules/
+*.log
