@@ -1,0 +1,3 @@
+/* Shared storefront shell — themes own all visual tokens under [data-sv-theme]. */
+html, body { margin: 0; }
+body { background: #0b0b10; }

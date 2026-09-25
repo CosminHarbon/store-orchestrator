@@ -41,6 +41,7 @@ const AiStudioV2FixturePreview = import.meta.env.DEV
   : null;
 
 const CursorStorefrontPreview = lazy(() => import('./pages/CursorStorefrontPreview'));
+const HostedCheckout = lazy(() => import('./pages/HostedCheckout'));
 
 const PushNotificationInitializer = () => {
   useFcmPushNotifications();
@@ -87,6 +88,14 @@ const App = () => (
                   <StorefrontThemeProvider>
                     <TemplateViewer />
                   </StorefrontThemeProvider>
+                }
+              />
+              <Route
+                path="/checkout"
+                element={
+                  <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-background" role="status" aria-label="Loading"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}>
+                    <HostedCheckout />
+                  </Suspense>
                 }
               />
               <Route

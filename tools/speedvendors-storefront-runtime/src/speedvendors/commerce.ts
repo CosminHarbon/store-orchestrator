@@ -24,8 +24,17 @@ export interface CartApi {
 }
 
 export interface CheckoutApi {
-  /** Validates and places the order. Never throws for validation problems. */
+  /** Validates and places the order. Never throws for validation problems. Embedded COD path. */
   submit(input: CheckoutInput): Promise<CheckoutResult>;
+  /**
+   * Option B: create a server checkout draft and return the hosted checkout URL.
+   * AI-editable layers must not construct checkout URLs or payment payloads themselves.
+   */
+  startHostedCheckout(input?: {
+    returnOrigin?: string;
+    returnPath?: string;
+    hostedCheckoutOrigin?: string;
+  }): Promise<{ ok: true; checkoutUrl: string; expiresAt: string } | { ok: false; error: string }>;
 }
 
 export interface SpeedVendorsCommerce {

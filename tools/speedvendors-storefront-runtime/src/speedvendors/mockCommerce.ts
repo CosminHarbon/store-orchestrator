@@ -211,6 +211,12 @@ export function createMockCommerce(): SpeedVendorsCommerce {
         publish();
         return { ok: true, orderId, message: 'Mock order placed. No payment was taken.' };
       },
+      async startHostedCheckout() {
+        return {
+          ok: false as const,
+          error: 'Hosted checkout requires live store-api configuration.',
+        };
+      },
     },
   };
 }

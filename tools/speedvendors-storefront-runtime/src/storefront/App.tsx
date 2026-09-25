@@ -1,74 +1,38 @@
-// EDITABLE presentation layer entry. Compose protected SpeedVendors UI only.
-// Do not reimplement cart, checkout, payments, or order APIs.
-import { useState } from 'react';
-import './theme.css';
-import {
-  CartDrawer,
-  CheckoutForm,
-  Footer,
-  Header,
-  ProductDetail,
-  useCart,
-  useMerchant,
-} from '../speedvendors';
-import HeroSection from './sections/Hero';
-import MerchandisingSection from './sections/Merchandising';
-import { storefrontConfig } from './storefront.config';
+// EDITABLE presentation entry — resolves an allowlisted theme and mounts it.
+import { useEffect, useMemo, useState } from 'react';
+import './shell.css';
+import { resolveContentSlots, type ContentSlots } from './contentSlots';
+import { readConfiguredThemeId, resolveTheme } from './themeRegistry';
 
-type View = { name: 'home' } | { name: 'product'; id: string } | { name: 'checkout' };
+/** Parent dashboard may push sanitized content for live curated-theme editing. */
+const SV_CONTENT_MESSAGE = 'sv:set-content';
 
 export default function StorefrontApp() {
-  const [view, setView] = useState<View>({ name: 'home' });
-  const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
-  const [cartOpen, setCartOpen] = useState(false);
+  const theme = useMemo(() => resolveTheme(readConfiguredThemeId()), []);
+  const [contentTick, setContentTick] = useState(0);
 
-  const { data: merchant } = useMerchant();
-  const { cart } = useCart();
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || typeof data !== 'object') return;
+      if ((data as { type?: string }).type !== SV_CONTENT_MESSAGE) return;
+      const payload = (data as { payload?: unknown }).payload;
+      if (!payload || typeof payload !== 'object') return;
+      // Only accept plain JSON objects — never executable markup.
+      (window as Window & { __SV_CONTENT__?: unknown }).__SV_CONTENT__ = payload;
+      setContentTick((n) => n + 1);
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
 
-  const goHome = () => {
-    setView({ name: 'home' });
-    window.scrollTo({ top: 0 });
-  };
-
-  const openProduct = (id: string) => setView({ name: 'product', id });
-
-  return (
-    <div className="sf-root">
-      <Header
-        merchant={merchant}
-        cartCount={cart.itemCount}
-        onOpenCart={() => setCartOpen(true)}
-        onHome={goHome}
-      />
-      <main>
-        {view.name === 'home' && (
-          <>
-            <HeroSection
-              merchant={merchant}
-              ctaLabel={storefrontConfig.heroCtaLabel}
-              onCta={() => document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' })}
-            />
-            <MerchandisingSection
-              categoryId={categoryId}
-              onCategoryChange={setCategoryId}
-              featuredIds={storefrontConfig.featuredProductIds}
-              onOpenProduct={openProduct}
-              showFilters={storefrontConfig.showCategoryFilters}
-            />
-          </>
-        )}
-        {view.name === 'product' && <ProductDetail productId={view.id} onBack={goHome} />}
-        {view.name === 'checkout' && <CheckoutForm onBack={goHome} />}
-      </main>
-      <Footer merchant={merchant} />
-      <CartDrawer
-        open={cartOpen}
-        onClose={() => setCartOpen(false)}
-        onCheckout={() => {
-          setCartOpen(false);
-          setView({ name: 'checkout' });
-        }}
-      />
-    </div>
+  const content: ContentSlots = useMemo(
+    () => resolveContentSlots(theme.defaultContent),
+    // contentTick forces re-resolve after parent postMessage updates __SV_CONTENT__.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [theme, contentTick, typeof window !== 'undefined' ? window.location.search : ''],
   );
+
+  const Root = theme.Root;
+  return <Root content={content} />;
 }

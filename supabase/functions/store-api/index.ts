@@ -6,6 +6,16 @@ import {
   sanitizeCustomerNotes,
 } from '../_shared/geoDelivery.ts'
 import { formatRonAmount, notifyMerchant, shortOrderRef } from '../_shared/notifyMerchant.ts'
+import {
+  buildHostedCheckoutUrl,
+  CHECKOUT_DRAFT_MAX_LINES,
+  getCheckoutAppOrigin,
+  mintCheckoutDraftToken,
+  validateHostedCheckoutOrigin,
+  validateReturnOrigin,
+  validateReturnPath,
+  verifyCheckoutDraftToken,
+} from '../_shared/checkoutDraft.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1021,6 +1031,96 @@ Deno.serve(async (req) => {
     )
 
     const url = new URL(req.url)
+    const pathEarly = url.pathname.split('/').filter(Boolean).pop() || ''
+
+    // GET checkout-draft is authenticated by the opaque draft token (capability), not X-API-Key.
+    if (pathEarly === 'checkout-draft' && req.method === 'GET') {
+      const token = url.searchParams.get('token') || url.searchParams.get('draft') || ''
+      const verified = await verifyCheckoutDraftToken(token)
+      if (!verified.ok) {
+        return new Response(JSON.stringify({ error: verified.error, code: verified.code }), {
+          status: verified.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      const { payload } = verified
+      const canonical = await canonicaliseOrderItems(supabase, payload.merchant_user_id, payload.items)
+      if (!canonical.ok) {
+        return new Response(JSON.stringify(canonical.body), {
+          status: canonical.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      const { data: profileRow } = await supabase
+        .from('profiles')
+        .select('store_name, home_delivery_fee, locker_delivery_fee, cash_payment_enabled, cash_payment_fee, preferred_language, store_api_key, payment_provider, netpopia_api_key, netpopia_signature, shipping_provider, delivery_message, free_delivery')
+        .eq('user_id', payload.merchant_user_id)
+        .maybeSingle()
+      if (!profileRow || String(profileRow.store_api_key) !== payload.store_api_key) {
+        return new Response(JSON.stringify({ error: 'Draft merchant mismatch', code: 'DRAFT_MERCHANT_MISMATCH' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      const productIds = canonical.items.map((i) => i.product_id)
+      const { data: images } = await supabase
+        .from('product_images')
+        .select('product_id, image_url, is_primary, display_order')
+        .in('product_id', productIds)
+        .order('display_order', { ascending: true })
+      const imageByProduct = new Map<string, string>()
+      for (const img of images || []) {
+        if (!imageByProduct.has(img.product_id) || img.is_primary) {
+          imageByProduct.set(img.product_id, img.image_url)
+        }
+      }
+      const freeDelivery = isFreeDelivery(profileRow as any)
+      const homeFee = freeDelivery ? 0 : Number(profileRow.home_delivery_fee || 0)
+      const lockerFee = freeDelivery ? 0 : Number(profileRow.locker_delivery_fee || 0)
+      const cashEnabled = profileRow.cash_payment_enabled !== false
+      const cashFee = cashEnabled ? Number(profileRow.cash_payment_fee || 0) : 0
+      const cardEnabled =
+        profileRow.payment_provider !== 'none' &&
+        !!(profileRow.netpopia_api_key && profileRow.netpopia_signature)
+      const lockerEnabled = profileRow.shipping_provider !== 'manual'
+      const lines = canonical.items.map((item) => ({
+        product_id: item.product_id,
+        variant_id: item.variant_id,
+        title: item.title,
+        quantity: item.quantity,
+        unit_price: item.price,
+        line_total: roundMoney(item.price * item.quantity),
+        image_url: imageByProduct.get(item.product_id) || null,
+        stock: item.stock,
+      }))
+      return new Response(
+        JSON.stringify({
+          store_name: profileRow.store_name || payload.store_name || 'Store',
+          store_api_key: payload.store_api_key,
+          preferred_language: profileRow.preferred_language || 'ro',
+          currency: 'RON',
+          expires_at: new Date(payload.exp * 1000).toISOString(),
+          return_origin: payload.return_origin,
+          return_path: payload.return_path || '/',
+          items: lines,
+          subtotal: canonical.subtotal,
+          home_delivery_fee: homeFee,
+          locker_delivery_fee: lockerFee,
+          cash_payment_fee: cashFee,
+          cash_payment_enabled: cashEnabled,
+          // Baseline estimate assumes home + COD; UI recomputes from selection + live quote.
+          estimated_total: roundMoney(canonical.subtotal + homeFee + cashFee),
+          supported: {
+            home_delivery: true,
+            cash: cashEnabled,
+            card: cardEnabled,
+            locker: lockerEnabled,
+          },
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
     // Check for API key in both query params and headers
     const apiKey = url.searchParams.get('api_key') || req.headers.get('X-API-Key')
 
@@ -1229,6 +1329,7 @@ Deno.serve(async (req) => {
               'template-blocks',
               'cleanup-abandoned-orders',
               'delivery-quote',
+              'checkout-draft',
             ],
             features: {
               products: true,
@@ -1407,6 +1508,88 @@ Deno.serve(async (req) => {
           )
         }
         break
+      }
+
+      case 'checkout-draft': {
+        if (req.method !== 'POST') {
+          return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+            status: 405,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+        let body: Record<string, unknown> = {}
+        try {
+          body = await req.json()
+        } catch {
+          return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+        const rawItems = Array.isArray(body.items) ? body.items : []
+        if (rawItems.length > CHECKOUT_DRAFT_MAX_LINES) {
+          return new Response(
+            JSON.stringify({
+              error: `Cart is limited to ${CHECKOUT_DRAFT_MAX_LINES} lines`,
+              code: 'INVALID_ITEMS',
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+          )
+        }
+        const originCheck = validateReturnOrigin(body.return_origin)
+        if (!originCheck.ok) {
+          return new Response(JSON.stringify({ error: originCheck.error, code: originCheck.code }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+        const pathCheck = validateReturnPath(body.return_path)
+        if (!pathCheck.ok) {
+          return new Response(JSON.stringify({ error: pathCheck.error, code: pathCheck.code }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+        const hostedCheck = validateHostedCheckoutOrigin(body.hosted_checkout_origin)
+        if (!hostedCheck.ok) {
+          return new Response(JSON.stringify({ error: hostedCheck.error, code: hostedCheck.code }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+        const canonical = await canonicaliseOrderItems(supabase, userId, rawItems)
+        if (!canonical.ok) {
+          return new Response(JSON.stringify(canonical.body), {
+            status: canonical.status,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+        const { token, payload } = await mintCheckoutDraftToken({
+          merchant_user_id: userId,
+          store_api_key: String(apiKey),
+          store_name: profile.store_name || 'Store',
+          items: canonical.items.map((i) => ({
+            product_id: i.product_id,
+            variant_id: i.variant_id,
+            quantity: i.quantity,
+          })),
+          return_origin: originCheck.origin,
+          return_path: pathCheck.path,
+        })
+        const checkoutUrl = buildHostedCheckoutUrl(hostedCheck.origin, token)
+        return new Response(
+          JSON.stringify({
+            draft_token: token,
+            checkout_url: checkoutUrl,
+            expires_at: new Date(payload.exp * 1000).toISOString(),
+            item_count: canonical.items.reduce((n, i) => n + i.quantity, 0),
+            line_count: canonical.items.length,
+            subtotal: canonical.subtotal,
+            currency: 'RON',
+            store_name: profile.store_name || 'Store',
+          }),
+          { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        )
       }
 
       case 'delivery-quote': {
@@ -4010,7 +4193,8 @@ Deno.serve(async (req) => {
               'reviews',
               'product-reviews',
               'template-blocks',
-              'cleanup-abandoned-orders'
+              'cleanup-abandoned-orders',
+              'checkout-draft',
             ]
           }),
           { 

@@ -1,17 +1,45 @@
 // PROTECTED: cart drawer via commerce.cart. Cursor may not edit this file.
-import { useCart } from '../hooks';
+import { useState } from 'react';
+import { useCart, useCheckout } from '../hooks';
 import { formatPrice } from './formatMoney';
 import CheckoutButton from './CheckoutButton';
+import { readRuntimeConfig, shouldUseHostedCheckout } from '../runtimeConfig';
 
 export interface CartDrawerProps {
   open: boolean;
   onClose: () => void;
-  /** Navigate to protected checkout form view. */
+  /** Navigate to protected embedded CheckoutForm view (rollback / mock path). */
   onCheckout: () => void;
 }
 
 export default function CartDrawer({ open, onClose, onCheckout }: CartDrawerProps) {
   const { cart, updateQuantity, removeItem } = useCart();
+  const { startHostedCheckout } = useCheckout();
+  const [handoffError, setHandoffError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function handleCheckout() {
+    setHandoffError(null);
+    const cfg = readRuntimeConfig();
+    if (!shouldUseHostedCheckout(cfg)) {
+      onCheckout();
+      return;
+    }
+    setBusy(true);
+    const result = await startHostedCheckout({
+      returnOrigin: typeof window !== 'undefined' ? window.location.origin : undefined,
+      returnPath: '/',
+      hostedCheckoutOrigin: cfg.hostedCheckoutOrigin || undefined,
+    });
+    setBusy(false);
+    if (!result.ok) {
+      setHandoffError(result.error);
+      return;
+    }
+    // Full navigation to SpeedVendors-hosted checkout (AI cannot rewrite this URL construction).
+    window.location.assign(result.checkoutUrl);
+  }
+
   return (
     <>
       <div className={`sf-scrim${open ? ' is-open' : ''}`} onClick={onClose} aria-hidden="true" />
@@ -63,7 +91,19 @@ export default function CartDrawer({ open, onClose, onCheckout }: CartDrawerProp
                 <span>Subtotal</span>
                 <strong>{formatPrice(cart.subtotal.amount, cart.subtotal.currency)}</strong>
               </div>
-              <CheckoutButton mode="openForm" onOpenForm={onCheckout} />
+              <CheckoutButton
+                mode="openForm"
+                onOpenForm={() => {
+                  void handleCheckout();
+                }}
+                label={busy ? 'Starting checkout…' : 'Checkout'}
+                disabled={busy}
+              />
+              {handoffError && (
+                <p className="sf-error" role="alert">
+                  {handoffError}
+                </p>
+              )}
             </div>
           </>
         )}

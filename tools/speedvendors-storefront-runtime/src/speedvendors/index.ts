@@ -3,7 +3,7 @@ export type * from './types';
 export type { SpeedVendorsCommerce, CartApi, CheckoutApi } from './commerce';
 export { createMockCommerce } from './mockCommerce';
 export { createStoreApiCommerce } from './storeApiCommerce';
-export { readRuntimeConfig, hasLiveCommerceConfig } from './runtimeConfig';
+export { readRuntimeConfig, hasLiveCommerceConfig, shouldUseHostedCheckout } from './runtimeConfig';
 export type { SvRuntimeConfig } from './runtimeConfig';
 export {
   CommerceProvider,

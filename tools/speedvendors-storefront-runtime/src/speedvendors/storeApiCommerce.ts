@@ -331,6 +331,54 @@ export function createStoreApiCommerce(opts: CreateStoreApiCommerceOpts): SpeedV
           message: 'Order placed (cash on delivery). Prices were confirmed by SpeedVendors.',
         };
       },
+      async startHostedCheckout(input) {
+        if (snapshot.lines.length === 0) {
+          return { ok: false, error: 'Your cart is empty.' };
+        }
+        const returnOrigin =
+          input?.returnOrigin ||
+          (typeof window !== 'undefined' ? window.location.origin : '');
+        if (!returnOrigin) {
+          return { ok: false, error: 'Missing return origin for checkout handoff.' };
+        }
+        const hostedCheckoutOrigin =
+          input?.hostedCheckoutOrigin ||
+          (typeof window !== 'undefined'
+            ? window.__SV_RUNTIME__?.hostedCheckoutOrigin ||
+              window.__SV_RUNTIME__?.HOSTED_CHECKOUT_ORIGIN
+            : undefined) ||
+          undefined;
+
+        const payload: Record<string, unknown> = {
+          items: snapshot.lines.map((l) => ({
+            product_id: l.productId,
+            variant_id: l.variantId,
+            quantity: l.quantity,
+          })),
+          return_origin: returnOrigin,
+          return_path: input?.returnPath || '/',
+        };
+        if (hostedCheckoutOrigin) payload.hosted_checkout_origin = hostedCheckoutOrigin;
+
+        const res = await fetch(`${base}/checkout-draft`, {
+          method: 'POST',
+          headers: { ...apiHeaders(apiKey), 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          return { ok: false, error: String(data.error || data.message || 'Could not start checkout') };
+        }
+        const checkoutUrl = String(data.checkout_url || '');
+        if (!checkoutUrl) {
+          return { ok: false, error: 'Checkout URL missing from server response.' };
+        }
+        return {
+          ok: true,
+          checkoutUrl,
+          expiresAt: String(data.expires_at || ''),
+        };
+      },
     },
   };
 }

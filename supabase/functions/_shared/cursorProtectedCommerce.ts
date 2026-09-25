@@ -32,23 +32,23 @@ export const PROTECTED_COMMERCE_FILES = [
 /** Path → sha256 hex (of source file bytes at runtime tip). */
 export const EXPECTED_PROTECTED_COMMERCE_SHA256: Record<string, string> = {
   'src/speedvendors/commerce.ts':
-    '804b7aada1a6ae11ac10e68237b1c339dab10c564908213b18fdb6de5d9c374f',
+    '062fbc67dd12a6b82562818699260f652b58dc32dd3406a30d18036a4a868036',
   'src/speedvendors/hooks.tsx':
-    'f6922f60a09528b3476910022661be4f25e790e087e2825bac7eda2a43c3ebe6',
+    'ec4c014b0eb3b2ec10ee1c1bd9cfa0ba035b114308faa7f3783ba24c5f9c774a',
   'src/speedvendors/index.ts':
-    '6f75c09d988e8c2d88f7bad3595276c48f3ddf7d0e77b1edcabcf391b08a4f33',
+    '36b9c1e113ca99dce4f322df2c3ea6d5dcb617342ed9b615872e1b191068a5c1',
   'src/speedvendors/mockCommerce.ts':
-    '3147b4f616392e8417e5743f3fc45cc8a236416c2f32ae17aa137ea14e6acc88',
+    '9c8c06c77ebfd0dd0814e28f8f550fb44294e6a0d71e14a18b3159649bdc9218',
   'src/speedvendors/runtimeConfig.ts':
-    'a00ed38f3c8313abc1d2d9b90206d4a0a51eb8511b5534a89fb5c46adbddafa6',
+    '182921f7478406a7396990b50f570be26438b5025a4c2e3378232409b0f5071a',
   'src/speedvendors/storeApiCommerce.ts':
-    '190e488d53edc17c14467711857607b9f85c45542a64ab5b89bfb2ddb0c30f33',
+    '94f515dd7d2887a1b555846f9711df179e67f26d0c17035c6ebcb2c8163ecfff',
   'src/speedvendors/types.ts':
     '7cf17b01920c1031968c8f3acd9f101a50bcacc088ef106ba038f0675aa4a7d0',
   'src/speedvendors/ui/AddToCartButton.tsx':
     'f3e4abbf72370f3adccb7ea8d03c9781ce47294c3bc2051df7c83b6765d2277f',
   'src/speedvendors/ui/CartDrawer.tsx':
-    'd589e08daf11ad615e5109a7a65254e1054fbfe5bb7525e4de3d2e0418f03237',
+    'ce7ef880642bae324f13fef62850fdf637286676bf1281e466c4ec49bbbb969f',
   'src/speedvendors/ui/CheckoutButton.tsx':
     'abf012fdc704aa33622ed181d45e4b743e2f26e5d916b27588737514ee315d10',
   'src/speedvendors/ui/CheckoutForm.tsx':

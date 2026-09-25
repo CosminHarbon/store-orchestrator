@@ -31,6 +31,7 @@ import AIStudioV2 from '@/components/ai-studio/AIStudioV2';
 import CursorAiStoreBuilder from '@/components/ai-store-builder/CursorAiStoreBuilder';
 import { SpecialistDesignFlow } from './SpecialistDesignFlow';
 import { TemplateCatalog } from './TemplateCatalog';
+import { NovateeThemeEditor } from './NovateeThemeEditor';
 import '@/styles/website-builder.css';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { isAiStudioV2MerchantBetaEnabled } from '@/lib/ai-studio/v2/featureFlag';
@@ -46,7 +47,8 @@ type BuilderView =
   | 'studio'
   | 'cursor-studio'
   | 'specialist'
-  | 'templates';
+  | 'templates'
+  | 'novatee-editor';
 
 export default function WebsiteBuilder() {
   const { t } = useTranslation('templates');
@@ -123,6 +125,10 @@ export default function WebsiteBuilder() {
     return <SpecialistDesignFlow onBack={() => setView('gallery')} />;
   }
 
+  if (view === 'novatee-editor') {
+    return <NovateeThemeEditor onBack={() => setView('templates')} />;
+  }
+
   if (view === 'templates') {
     return (
       <TemplateCatalog
@@ -131,6 +137,7 @@ export default function WebsiteBuilder() {
           setEditorTemplateId(id);
           setView('editor');
         }}
+        onCustomizeCurated={() => setView('novatee-editor')}
       />
     );
   }
