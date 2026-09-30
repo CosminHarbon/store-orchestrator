@@ -3,7 +3,7 @@ export type * from './types';
 export type { SpeedVendorsCommerce, CartApi, CheckoutApi } from './commerce';
 export { createMockCommerce } from './mockCommerce';
 export { createStoreApiCommerce } from './storeApiCommerce';
-export { readRuntimeConfig, hasLiveCommerceConfig } from './runtimeConfig';
+export { readRuntimeConfig, hasLiveCommerceConfig, shouldUseHostedCheckout } from './runtimeConfig';
 export type { SvRuntimeConfig } from './runtimeConfig';
 export {
   CommerceProvider,
@@ -30,6 +30,13 @@ export { default as VariantSelector } from './ui/VariantSelector';
 export type { VariantSelectorProps } from './ui/VariantSelector';
 export { default as AddToCartButton } from './ui/AddToCartButton';
 export type { AddToCartButtonProps } from './ui/AddToCartButton';
+export { default as CommerceLoading } from './ui/CommerceLoading';
+export type { CommerceLoadingProps } from './ui/CommerceLoading';
+export {
+  resolveVariantOptionLabel,
+  formatCartVariantLine,
+  selectOptionPrompt,
+} from './variantLabel';
 export { default as CartDrawer } from './ui/CartDrawer';
 export type { CartDrawerProps } from './ui/CartDrawer';
 export { default as CheckoutForm } from './ui/CheckoutForm';

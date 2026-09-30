@@ -174,7 +174,8 @@ export function SpecialistDesignFlow({ onBack }: Props) {
           Get a store designed for your business
         </h1>
         <p className="text-sm text-muted-foreground md:text-base">
-          Designed by a SpeedVendors specialist — not automated AI generation.
+          Designed by a SpeedVendors human specialist — not automated AI generation. They will create
+          it for you and be right back.
         </p>
       </div>
 
@@ -353,10 +354,14 @@ function StatusCard({
       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6E3DFF]">
         Design request
       </p>
-      <h2 className="mt-2 text-xl font-semibold tracking-tight">
-        Your design request has been submitted
+      <h2 className="mt-2 text-xl font-semibold tracking-tight md:text-2xl">
+        Design sent to our human team
       </h2>
-      <p className="mt-2 text-sm text-muted-foreground">
+      <p className="mt-2 text-sm text-muted-foreground md:text-base">
+        They will create it for you and be right back. Your live storefront stays unchanged until the
+        team delivers.
+      </p>
+      <p className="mt-3 text-sm">
         Status: <span className="font-medium text-foreground">{label}</span>
       </p>
       <div className="mt-4 space-y-2 text-sm">

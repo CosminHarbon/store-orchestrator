@@ -8,7 +8,10 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "sync:curated-runtime": "node scripts/sync-curated-runtime.mjs",
+    "build:curated-runtime": "npm --prefix tools/speedvendors-storefront-runtime run build && node scripts/sync-curated-runtime.mjs",
+    "test:curated-editor": "node scripts/curated-theme-editor-selftest.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.2",

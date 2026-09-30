@@ -35,6 +35,11 @@ export interface ProductVariant {
   id: string;
   label: string;
   inStock: boolean;
+  /**
+   * Canonical option/attribute name for this variant group when known
+   * (e.g. Size, Colour, Material). Null when commerce did not supply one.
+   */
+  optionName?: string | null;
 }
 
 export interface Product {
@@ -48,6 +53,11 @@ export interface Product {
   categoryId: string;
   inStock: boolean;
   variants: ProductVariant[];
+  /**
+   * Ordered option/attribute names from commerce (Size, Colour, …).
+   * Empty when the product has no named options.
+   */
+  optionNames?: string[];
 }
 
 export interface ProductQuery {
@@ -61,6 +71,8 @@ export interface CartLine {
   variantId: string | null;
   title: string;
   variantLabel: string | null;
+  /** Option/attribute name paired with variantLabel when known (not hard-coded "Size"). */
+  variantOptionName?: string | null;
   imageUrl: string | null;
   quantity: number;
   unitPrice: Money;

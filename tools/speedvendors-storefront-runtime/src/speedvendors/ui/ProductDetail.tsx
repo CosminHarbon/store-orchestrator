@@ -1,22 +1,38 @@
 // PROTECTED: product detail with gallery, variants, and add-to-cart. Cursor may not edit.
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useProduct } from '../hooks';
 import { formatPrice } from './formatMoney';
 import VariantSelector from './VariantSelector';
 import AddToCartButton from './AddToCartButton';
+import { resolveVariantOptionLabel } from '../variantLabel';
+import CommerceLoading from './CommerceLoading';
 
 export interface ProductDetailProps {
   productId: string;
   onBack: () => void;
+  /** Optional theme loading UI; default keeps accessible status text. */
+  loadingFallback?: ReactNode;
 }
 
-export default function ProductDetail({ productId, onBack }: ProductDetailProps) {
+export default function ProductDetail({ productId, onBack, loadingFallback }: ProductDetailProps) {
   const { data: product, loading } = useProduct(productId);
   const [variantId, setVariantId] = useState<string | null>(null);
   const [imageIndex, setImageIndex] = useState(0);
 
-  if (loading && !product) return <p className="sf-section sf-muted">Loading…</p>;
+  if (loading && !product) {
+    return (
+      <CommerceLoading
+        className="sf-section"
+        label="Loading product"
+        visuallyHidden={Boolean(loadingFallback)}
+      >
+        {loadingFallback}
+      </CommerceLoading>
+    );
+  }
   if (!product) return <p className="sf-section">Product not found.</p>;
+
+  const optionLabel = resolveVariantOptionLabel(product);
 
   return (
     <section className="sf-section sf-product">
@@ -54,7 +70,12 @@ export default function ProductDetail({ productId, onBack }: ProductDetailProps)
             )}
           </p>
           <p>{product.description}</p>
-          <VariantSelector variants={product.variants} value={variantId} onChange={setVariantId} />
+          <VariantSelector
+            variants={product.variants}
+            value={variantId}
+            onChange={setVariantId}
+            label={optionLabel}
+          />
           <AddToCartButton product={product} variantId={variantId} />
         </div>
       </div>

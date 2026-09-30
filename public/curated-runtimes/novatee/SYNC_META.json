@@ -1,0 +1,6 @@
+{
+  "themeId": "novatee",
+  "syncedAt": "2026-09-25T13:15:09.823Z",
+  "source": "tools/speedvendors-storefront-runtime/dist",
+  "note": "Monorepo mirror artifact. Private tip sync required before Cloud Agent packaging pins."
+}

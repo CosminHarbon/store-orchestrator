@@ -11,10 +11,106 @@ import type {
 } from './types';
 import { formatStorefrontPriceRange } from './variantSelection';
 
-export const STORE_API_BASE = 'https://mkkqbekhvcnwcheegjpy.supabase.co/functions/v1/store-api';
+export const STORE_API_BASE =
+  (typeof import.meta !== 'undefined' &&
+    (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_STORE_API_BASE) ||
+  'https://mkkqbekhvcnwcheegjpy.supabase.co/functions/v1/store-api';
+
+/** Hosted SpeedVendors checkout origin (Option B). */
+export const CHECKOUT_APP_ORIGIN =
+  (typeof import.meta !== 'undefined' &&
+    (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_CHECKOUT_APP_ORIGIN) ||
+  (typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:8080');
 
 export function storeApiHeaders(apiKey: string): HeadersInit {
   return { 'X-API-Key': apiKey };
+}
+
+export type CheckoutDraftCreateInput = {
+  items: Array<{ product_id: string; variant_id?: string | null; quantity: number }>;
+  return_origin: string;
+  return_path?: string;
+  hosted_checkout_origin?: string;
+};
+
+export type CheckoutDraftCreateResult = {
+  draft_token: string;
+  checkout_url: string;
+  expires_at: string;
+  item_count: number;
+  line_count: number;
+  subtotal: number;
+  currency: string;
+  store_name: string;
+};
+
+export type CheckoutDraftLine = {
+  product_id: string;
+  variant_id: string | null;
+  title: string;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+  image_url: string | null;
+  stock: number;
+};
+
+export type CheckoutDraftView = {
+  store_name: string;
+  store_api_key: string;
+  preferred_language?: string;
+  currency: string;
+  expires_at: string;
+  return_origin: string;
+  return_path: string;
+  items: CheckoutDraftLine[];
+  subtotal: number;
+  home_delivery_fee: number;
+  locker_delivery_fee: number;
+  cash_payment_fee: number;
+  cash_payment_enabled: boolean;
+  estimated_total: number;
+  supported: { home_delivery: boolean; cash: boolean; card: boolean; locker: boolean };
+};
+
+export async function createCheckoutDraft(
+  apiKey: string,
+  input: CheckoutDraftCreateInput,
+): Promise<CheckoutDraftCreateResult> {
+  const res = await fetch(`${STORE_API_BASE}/checkout-draft`, {
+    method: 'POST',
+    headers: { ...storeApiHeaders(apiKey), 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(String(data.error || 'Failed to create checkout draft')) as Error & {
+      code?: string;
+      status?: number;
+    };
+    err.code = data.code;
+    err.status = res.status;
+    throw err;
+  }
+  return data as CheckoutDraftCreateResult;
+}
+
+export async function fetchCheckoutDraft(token: string): Promise<CheckoutDraftView> {
+  const res = await fetch(
+    `${STORE_API_BASE}/checkout-draft?token=${encodeURIComponent(token)}`,
+    { headers: { Accept: 'application/json' } },
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(String(data.error || 'Failed to load checkout draft')) as Error & {
+      code?: string;
+      status?: number;
+    };
+    err.code = data.code;
+    err.status = res.status;
+    throw err;
+  }
+  return data as CheckoutDraftView;
 }
 
 function mapProduct(p: any): StorefrontProduct {

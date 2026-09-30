@@ -73,7 +73,12 @@ export async function submitDesignRequest(input: {
     .select(MERCHANT_COLUMNS)
     .single();
   if (error) throw error;
-  return data as MerchantDesignRequest;
+  const row = data as MerchantDesignRequest;
+  // Fire-and-forget staff email — never block merchant success on notify failure.
+  void supabase.functions
+    .invoke('design-request-notify', { body: { request_id: row.id } })
+    .catch(() => undefined);
+  return row;
 }
 
 export async function updateSubmittedDesignRequest(

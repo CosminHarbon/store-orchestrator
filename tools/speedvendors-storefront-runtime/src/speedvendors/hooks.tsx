@@ -73,5 +73,5 @@ export function useCart() {
 
 export function useCheckout() {
   const c = useCommerce();
-  return { submit: c.checkout.submit };
+  return { submit: c.checkout.submit, startHostedCheckout: c.checkout.startHostedCheckout };
 }

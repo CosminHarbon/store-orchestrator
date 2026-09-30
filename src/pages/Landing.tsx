@@ -277,6 +277,18 @@ export default function Landing() {
     }
   }, [navigate]);
 
+  // Every CTA leads to /auth. Warm that chunk once the page is idle so the click is instant
+  // even though routes are code-split.
+  useEffect(() => {
+    const warm = () => void import('./Auth');
+    if (typeof window.requestIdleCallback === 'function') {
+      const id = window.requestIdleCallback(warm, { timeout: 4000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = window.setTimeout(warm, 2500);
+    return () => window.clearTimeout(id);
+  }, []);
+
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
     onScroll();

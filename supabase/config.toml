@@ -174,3 +174,7 @@ verify_jwt = false
 # Phase 1 developer harness — custom bearer (PHASE1_HARNESS_TOKEN), not merchant JWT.
 [functions.cursor-phase1-harness]
 verify_jwt = false
+
+# Staff email when a merchant submits a specialist storefront design request.
+[functions.design-request-notify]
+verify_jwt = true
