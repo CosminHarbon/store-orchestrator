@@ -88,12 +88,42 @@ function mapProductLocal(raw: Record<string, unknown>, currency: string): Produc
         : Number(raw.price) || 0;
   const original = typeof raw.original_price === 'number' ? raw.original_price : null;
 
+  const optionsRaw = Array.isArray(raw.options) ? (raw.options as Array<Record<string, unknown>>) : [];
+  const optionNames = optionsRaw
+    .map((o) => (typeof o.name === 'string' ? o.name.trim() : ''))
+    .filter(Boolean);
+  const optionGroupName =
+    optionNames.length === 1 ? optionNames[0] : optionNames.length > 1 ? optionNames.join(' / ') : null;
+
+  const valueLabelById = new Map<string, string>();
+  for (const opt of optionsRaw) {
+    const values = Array.isArray(opt.values) ? (opt.values as Array<Record<string, unknown>>) : [];
+    for (const val of values) {
+      const id = typeof val.id === 'string' ? val.id : '';
+      const value = typeof val.value === 'string' ? val.value.trim() : '';
+      if (id && value) valueLabelById.set(id, value);
+    }
+  }
+
   const variants: ProductVariant[] = Array.isArray(raw.variants)
-    ? (raw.variants as Array<Record<string, unknown>>).map((v) => ({
-        id: String(v.id),
-        label: String(v.title || v.sku || 'Variant'),
-        inStock: Number(v.stock ?? 1) > 0 && v.active !== false,
-      }))
+    ? (raw.variants as Array<Record<string, unknown>>).map((v) => {
+        const optionValueIds = Array.isArray(v.option_value_ids)
+          ? (v.option_value_ids as unknown[]).map(String)
+          : [];
+        const fromOptions = optionValueIds
+          .map((id) => valueLabelById.get(id))
+          .filter((x): x is string => Boolean(x));
+        const label =
+          fromOptions.length > 0
+            ? fromOptions.join(' / ')
+            : String(v.title || v.sku || 'Variant');
+        return {
+          id: String(v.id),
+          label,
+          inStock: Number(v.stock ?? 1) > 0 && v.active !== false,
+          optionName: optionGroupName,
+        };
+      })
     : [];
 
   const collectionIds = Array.isArray(raw.collection_ids) ? (raw.collection_ids as string[]) : [];
@@ -108,6 +138,7 @@ function mapProductLocal(raw: Record<string, unknown>, currency: string): Produc
     categoryId: collectionIds[0] || '',
     inStock: Number(raw.stock ?? 1) > 0,
     variants,
+    optionNames,
   };
 }
 
@@ -211,6 +242,7 @@ export function createStoreApiCommerce(opts: CreateStoreApiCommerceOpts): SpeedV
             variantId: variant?.id ?? null,
             title: product.title,
             variantLabel: variant?.label ?? null,
+            variantOptionName: variant?.optionName ?? product.optionNames?.[0] ?? null,
             imageUrl: product.images[0]?.url ?? null,
             quantity,
             unitPrice: product.price,

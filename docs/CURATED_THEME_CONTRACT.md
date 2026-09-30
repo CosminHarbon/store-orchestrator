@@ -65,7 +65,12 @@ Decorative SVG, layout geometry, animations, default type system, visual effects
 
 ## Sections
 
-Optional marketing sections may be shown/hidden and reordered via `content.sections` (`marquee` | `featured` | `why`).
+Optional marketing sections may be shown/hidden and reordered via `content.sections`.
+
+- **Novatee:** `marquee` | `featured` | `why`
+- **Foundation:** `marquee` | `collections` | `featured` | `editorial` | `why` | `ctaBand`
+
+Section IDs are theme-local. Sanitizers drop unknown ids for the active theme — do not widen a single global union every time a theme adds a block.
 
 **Never hideable:** hero, shop/catalog, header/cart, checkout handoff, footer shell.
 
@@ -74,18 +79,24 @@ Optional marketing sections may be shown/hidden and reordered via `content.secti
 ```ts
 {
   version: 1,
-  themeId: '<allowlisted-id>',
+  themeId: 'novatee' | 'foundation' | /* allowlisted */,
   status: 'draft' | 'published',
-  content: ContentSlots,
+  content: ThemeSpecificContent,
   updatedAt?: string
 }
 ```
+
+`content` is validated by a **registry-dispatched** sanitizer (`mergeThemeContent(themeId, …)`):
+
+- Shared/common slots for fields every theme reuses
+- `NovateeContentSlots` / `FoundationContentSlots` for theme-specific keys
+- Theme-specific defaults, editor schema, and section allowlists
+- Unknown fields removed; existing Novatee drafts remain compatible
 
 Used by: manual editor ↔ saved draft ↔ runtime `__SV_CONTENT__` ↔ future AI designer.
 
 - Sanitize on **save** and **runtime inject**, not on every keystroke (trimming must not eat Space while typing).
 - Unknown fields rejected/removed; no HTML/JS.
-
 ## CSS & a11y
 
 - Scope all theme rules under `[data-sv-theme="<id>"]`

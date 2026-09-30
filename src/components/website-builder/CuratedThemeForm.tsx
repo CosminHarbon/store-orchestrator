@@ -2,7 +2,7 @@
  * Generic curated-theme form — renders fields from EditorFieldSchema.
  * Themes become editable by registering schema + defaults, not a new hard-coded form.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowDown, ArrowUp, Eye, EyeOff, Loader2, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -51,10 +51,13 @@ type Props = {
 };
 
 const WHY_ICON_OPTIONS: WhyCardIcon[] = ['star', 'art', 'secure', 'ship'];
-const SECTION_LABELS: Record<MarketingSectionId, string> = {
+const SECTION_LABELS: Record<string, string> = {
   marquee: 'Marquee',
   featured: 'Featured',
   why: 'Why us',
+  collections: 'Collections',
+  editorial: 'Editorial',
+  ctaBand: 'Call to action',
 };
 
 function FieldShell({
@@ -81,18 +84,27 @@ function MediaField({
   onChange,
   hint,
   mediaKind = 'hero',
+  defaultValue,
 }: {
   label: string;
   value: MediaSlot | null | undefined;
   onChange: (next: MediaSlot | null) => void;
   hint?: string;
   mediaKind?: MediaType;
+  /** When set, shows Reset to restore the theme default media. */
+  defaultValue?: MediaSlot | null;
 }) {
   const { t: tCommon } = useTranslation('common');
   const { effectiveUserId } = useImpersonation();
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [alt, setAlt] = useState(value?.alt || '');
+  const [urlDraft, setUrlDraft] = useState(value?.src || '');
+
+  useEffect(() => {
+    setAlt(value?.alt || '');
+    setUrlDraft(value?.src || '');
+  }, [value?.src, value?.alt]);
 
   const { data: files = [], isLoading, refetch } = useQuery({
     queryKey: ['template-images-library', effectiveUserId, 'curated-schema'],
@@ -118,8 +130,22 @@ function MediaField({
       toast.error('That media URL is not allowed.');
       return;
     }
+    setUrlDraft(url);
     onChange({ src: url, ...(alt.trim() ? { alt: alt.trim().slice(0, 200) } : {}) });
     setOpen(false);
+  };
+
+  const applyUrlDraft = () => {
+    const trimmed = urlDraft.trim();
+    if (!trimmed) {
+      onChange(null);
+      return;
+    }
+    if (!isSafeMediaUrl(trimmed)) {
+      toast.error('That media URL is not allowed.');
+      return;
+    }
+    onChange({ src: trimmed, ...(alt.trim() ? { alt: alt.trim().slice(0, 200) } : {}) });
   };
 
   const upload = async (file: File) => {
@@ -143,7 +169,14 @@ function MediaField({
     <FieldShell label={label} hint={hint}>
       <div className="flex flex-wrap items-center gap-2">
         {value?.src ? (
-          <img src={value.src} alt={value.alt || ''} className="h-14 w-14 rounded-lg border object-cover" />
+          <img
+            src={value.src}
+            alt={value.alt || ''}
+            className="h-14 w-14 rounded-lg border object-cover"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.opacity = '0.35';
+            }}
+          />
         ) : (
           <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-dashed text-[10px] text-muted-foreground">
             None
@@ -153,10 +186,51 @@ function MediaField({
           {value?.src ? 'Change' : 'Select'}
         </Button>
         {value?.src ? (
-          <Button type="button" variant="ghost" size="sm" onClick={() => onChange(null)}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setUrlDraft('');
+              setAlt('');
+              onChange(null);
+            }}
+          >
             Remove
           </Button>
         ) : null}
+        {defaultValue !== undefined ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              const next = defaultValue ? { ...defaultValue } : null;
+              setUrlDraft(next?.src || '');
+              setAlt(next?.alt || '');
+              onChange(next);
+            }}
+          >
+            Reset to default
+          </Button>
+        ) : null}
+      </div>
+      <div className="mt-2 flex gap-2">
+        <Input
+          placeholder="https://… image URL"
+          value={urlDraft}
+          onChange={(e) => setUrlDraft(e.target.value)}
+          onBlur={applyUrlDraft}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              applyUrlDraft();
+            }
+          }}
+        />
+        <Button type="button" variant="outline" size="sm" onClick={applyUrlDraft}>
+          Apply URL
+        </Button>
       </div>
       <Input
         className="mt-2"
@@ -321,7 +395,27 @@ export function CuratedThemeForm({ schema, content, onChange }: Props) {
             hint={field.helpText}
             value={(value as MediaSlot | null | undefined) || null}
             onChange={(next) => setPath(field.key, next)}
+            defaultValue={null}
           />
+        );
+      case 'commerce-note':
+        return (
+          <div
+            key={field.key}
+            className="rounded-xl border border-dashed bg-muted/40 px-3 py-3 space-y-2"
+          >
+            <p className="text-sm font-medium">{field.label}</p>
+            {field.helpText ? (
+              <p className="text-[11px] text-muted-foreground leading-relaxed">{field.helpText}</p>
+            ) : null}
+            {field.manageHref ? (
+              <Button type="button" variant="outline" size="sm" asChild>
+                <a href={field.manageHref}>{field.manageLabel || 'Open Products'}</a>
+              </Button>
+            ) : field.manageLabel ? (
+              <p className="text-xs font-medium text-foreground">{field.manageLabel}</p>
+            ) : null}
+          </div>
         );
       case 'product':
         return (
@@ -576,14 +670,22 @@ export function CuratedThemeForm({ schema, content, onChange }: Props) {
         );
       }
       case 'section-controls': {
+        const defaultOpts = field.sectionOptions?.length
+          ? field.sectionOptions
+          : [
+              { id: 'marquee', label: 'Marquee' },
+              { id: 'featured', label: 'Featured' },
+              { id: 'why', label: 'Why us' },
+            ];
+        const defaultOrder = defaultOpts.map((o) => o.id) as MarketingSectionId[];
         const sections = (value as SectionSlots | null) || {
-          order: ['marquee', 'featured', 'why'] as MarketingSectionId[],
+          order: defaultOrder,
           hidden: [],
         };
-        const order = sections.order.length
-          ? sections.order
-          : (['marquee', 'featured', 'why'] as MarketingSectionId[]);
+        const order = (sections.order.length ? sections.order : defaultOrder) as MarketingSectionId[];
         const hidden = new Set(sections.hidden || []);
+        const labelFor = (id: string) =>
+          defaultOpts.find((o) => o.id === id)?.label || SECTION_LABELS[id] || id;
         const move = (idx: number, dir: -1 | 1) => {
           const next = order.slice();
           const j = idx + dir;
@@ -606,7 +708,7 @@ export function CuratedThemeForm({ schema, content, onChange }: Props) {
                 key={id}
                 className="flex items-center justify-between gap-2 rounded-xl border px-3 py-2"
               >
-                <span className="text-sm font-medium">{SECTION_LABELS[id]}</span>
+                <span className="text-sm font-medium">{labelFor(id)}</span>
                 <div className="flex items-center gap-1">
                   <Button type="button" size="icon" variant="ghost" onClick={() => move(idx, -1)}>
                     <ArrowUp className="h-4 w-4" />

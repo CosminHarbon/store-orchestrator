@@ -1,3 +1,30 @@
-/* Shared storefront shell — themes own all visual tokens under [data-sv-theme]. */
-html, body { margin: 0; }
-body { background: #0b0b10; }
+/* Shared storefront shell — themes own visual tokens under [data-sv-theme]. */
+html,
+body {
+  margin: 0;
+  /* Themes set --sv-page-bg on documentElement (see useThemePageBackground). */
+  background: var(--sv-page-bg, #0b0b10);
+}
+
+/* Accessible clip — keep status text for AT while themes show skeletons. */
+.sf-visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.sf-loading {
+  position: relative;
+}
+
+.sf-loading__label {
+  margin: 0;
+  color: inherit;
+  opacity: 0.72;
+}

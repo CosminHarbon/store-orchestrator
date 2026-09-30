@@ -4,7 +4,7 @@
  * Does NOT set profiles.active_template (that would publish / overwrite the live store).
  */
 import { supabase } from '@/integrations/supabase/client';
-import type { CuratedThemeId } from './novatee';
+import type { CuratedThemeId } from './themeIds';
 import {
   createDraftConfig,
   parseStorefrontContentConfig,

@@ -15,18 +15,21 @@ import {
 } from '@/components/theme/ThemeProvider';
 import { LanguageProvider } from '@/i18n/LanguageProvider';
 import Landing from './pages/Landing';
-import Index from './pages/Index';
-import Auth from './pages/Auth';
-import Welcome from './pages/Welcome';
-import AuthCallback from './pages/AuthCallback';
-import NotFound from './pages/NotFound';
-import TemplateViewer from './pages/TemplateViewer';
-import SetupWizard from './pages/SetupWizard';
-import PrivacyPolicy from './pages/PrivacyPolicy';
-import AdminConsole from './pages/AdminConsole';
-import AdminMfa from './pages/AdminMfa';
-import Subscribe from './pages/Subscribe';
-import BillingSuccess from './pages/BillingSuccess';
+
+// Landing stays in the entry chunk (it is the first paint for most visitors);
+// every other route is split so marketing traffic never downloads the dashboard.
+const Index = lazy(() => import('./pages/Index'));
+const Auth = lazy(() => import('./pages/Auth'));
+const Welcome = lazy(() => import('./pages/Welcome'));
+const AuthCallback = lazy(() => import('./pages/AuthCallback'));
+const NotFound = lazy(() => import('./pages/NotFound'));
+const TemplateViewer = lazy(() => import('./pages/TemplateViewer'));
+const SetupWizard = lazy(() => import('./pages/SetupWizard'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const AdminConsole = lazy(() => import('./pages/AdminConsole'));
+const AdminMfa = lazy(() => import('./pages/AdminMfa'));
+const Subscribe = lazy(() => import('./pages/Subscribe'));
+const BillingSuccess = lazy(() => import('./pages/BillingSuccess'));
 
 const AiStudioV2Showcase = import.meta.env.DEV
   ? lazy(() => import('./pages/ai-studio-v2/AiStudioV2Showcase'))
@@ -42,6 +45,12 @@ const AiStudioV2FixturePreview = import.meta.env.DEV
 
 const CursorStorefrontPreview = lazy(() => import('./pages/CursorStorefrontPreview'));
 const HostedCheckout = lazy(() => import('./pages/HostedCheckout'));
+
+const RouteFallback = () => (
+  <div className="flex min-h-screen items-center justify-center bg-background" role="status" aria-label="Loading">
+    <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+  </div>
+);
 
 const PushNotificationInitializer = () => {
   useFcmPushNotifications();
@@ -73,6 +82,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <StripeConnectReturnListener />
+            <Suspense fallback={<RouteFallback />}>
             <Routes>
               <Route
                 path="/"
@@ -93,7 +103,7 @@ const App = () => (
               <Route
                 path="/checkout"
                 element={
-                  <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-background" role="status" aria-label="Loading"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}>
+                  <Suspense fallback={<RouteFallback />}>
                     <HostedCheckout />
                   </Suspense>
                 }
@@ -233,6 +243,7 @@ const App = () => (
                 }
               />
             </Routes>
+            </Suspense>
           </BrowserRouter>
         </TooltipProvider>
       </LanguageProvider>

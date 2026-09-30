@@ -1,5 +1,5 @@
 // Novatee theme root — composes protected SpeedVendors commerce UI only.
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import './theme.css';
 import {
   CartDrawer,
@@ -17,6 +17,7 @@ import {
   type ContentSlots,
   type MarketingSectionId,
 } from '../../contentSlots';
+import { useThemePageBackground } from '../../useThemePageBackground';
 import { novateeContentDefaults, novateeThemeOptions } from './defaults';
 import { novateeSystemUi } from './systemUi';
 import HeroSection from './sections/Hero';
@@ -38,6 +39,8 @@ export type NovateeStorefrontProps = {
 };
 
 export default function NovateeStorefront({ content: contentProp }: NovateeStorefrontProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  useThemePageBackground(rootRef, '#0b0b10');
   const [view, setView] = useState<View>({ name: 'home' });
   const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
   const [cartOpen, setCartOpen] = useState(false);
@@ -169,7 +172,7 @@ export default function NovateeStorefront({ content: contentProp }: NovateeStore
   const socialLinks = content.socialLinks || [];
 
   return (
-    <div className="sf-root" data-sv-theme="novatee">
+    <div className="sf-root" data-sv-theme="novatee" ref={rootRef}>
       <a className="sf-skip" href="#shop">
         {novateeSystemUi.skipToShop}
       </a>

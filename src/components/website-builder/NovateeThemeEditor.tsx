@@ -34,6 +34,7 @@ import {
   loadCuratedThemeDraft,
   saveCuratedThemeDraft,
 } from '@/lib/curated-themes/draftPersistence';
+import { STORE_API_BASE, CHECKOUT_APP_ORIGIN } from '@/lib/storefront/api';
 import { CuratedThemePreviewFrame } from './CuratedThemePreviewFrame';
 import { CuratedThemeForm } from './CuratedThemeForm';
 import { NOVATEE_EDITOR_SCHEMA } from '@/lib/curated-themes/novateeEditorSchema';
@@ -95,11 +96,11 @@ export function NovateeThemeEditor({ onBack }: Props) {
   const runtime = useMemo(() => {
     const key = profileQuery.data?.store_api_key;
     if (!key) return null;
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
     return {
       storeApiKey: key,
-      apiBase: `${supabaseUrl}/functions/v1/store-api`,
-      hostedCheckoutOrigin: window.location.origin,
+      apiBase: STORE_API_BASE,
+      hostedCheckoutOrigin: CHECKOUT_APP_ORIGIN || window.location.origin,
+      returnOrigin: window.location.origin,
     };
   }, [profileQuery.data?.store_api_key]);
 

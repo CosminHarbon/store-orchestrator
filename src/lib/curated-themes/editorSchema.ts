@@ -15,7 +15,8 @@ export type EditorFieldType =
   | 'social-links'
   | 'product'
   | 'nav-labels'
-  | 'section-controls';
+  | 'section-controls'
+  | 'commerce-note';
 
 export type EditorFieldGroup =
   | 'Brand'
@@ -26,7 +27,11 @@ export type EditorFieldGroup =
   | 'Why us'
   | 'Navigation'
   | 'Footer'
-  | 'Social';
+  | 'Social'
+  | 'Collections'
+  | 'Editorial'
+  | 'Call to action'
+  | 'Product page';
 
 export type EditorChoiceOption = {
   value: string;
@@ -48,6 +53,11 @@ export type EditorFieldSchema = {
   visibleWhen?: { key: string; equals: string | boolean | null };
   /** Placeholder for text inputs. */
   placeholder?: string;
+  /** For section-controls: theme-specific marketing section ids + labels. */
+  sectionOptions?: { id: string; label: string }[];
+  /** For commerce-note: deep-link into merchant console tabs. */
+  manageHref?: string;
+  manageLabel?: string;
 };
 
 export type CuratedThemeEditorSchema = {

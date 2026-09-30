@@ -4,8 +4,9 @@
  * Live React theme still comes from the packaged curated runtime artifact.
  */
 import type { ContentSlots } from './contentSlots';
+import type { CuratedThemeId } from './themeIds';
 
-export type CuratedThemeId = 'novatee';
+export type { CuratedThemeId } from './themeIds';
 
 export const NOVATEE_MANIFEST = {
   id: 'novatee' as const,

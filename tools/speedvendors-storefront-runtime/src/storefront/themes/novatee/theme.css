@@ -1,5 +1,7 @@
 /* Novatee theme — scoped under [data-sv-theme="novatee"]. Do not leak globally. */
 [data-sv-theme="novatee"], [data-sv-theme="novatee"][data-theme='dark']{
+  --sv-page-bg: #0b0b10;
+
   --sf-bg: #0b0b10;
   --sf-bg-2: #12121a;
   --sf-surface: #171722;

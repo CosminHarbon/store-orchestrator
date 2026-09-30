@@ -6,8 +6,62 @@ export type HeroMediaMode = 'template-art' | 'image' | 'featured-product';
 
 export type WhyCardIcon = 'star' | 'art' | 'secure' | 'ship';
 
-/** Optional marketing sections that may be reordered or hidden. */
-export type MarketingSectionId = 'marquee' | 'featured' | 'why';
+/** Shared marketing section ids used by Novatee. */
+export type NovateeMarketingSectionId = 'marquee' | 'featured' | 'why';
+
+/** Foundation adds collections / editorial / CTA band — theme-local, not a global Novatee widen. */
+export type FoundationMarketingSectionId =
+  | NovateeMarketingSectionId
+  | 'collections'
+  | 'editorial'
+  | 'ctaBand';
+
+/** Form/registry union — active theme sanitizer decides which ids survive. */
+export type MarketingSectionId = FoundationMarketingSectionId;
+
+export type FoundationExtensionSlots = {
+  collectionsEyebrow?: string | null;
+  collectionsTitle?: string | null;
+  editorialEyebrow?: string | null;
+  editorialTitle?: string | null;
+  editorialBody?: string | null;
+  editorialCtaLabel?: string | null;
+  editorialMedia?: MediaSlot | null;
+  /** template-art (default) | image | hidden */
+  editorialMediaMode?: 'template-art' | 'image' | 'hidden' | null;
+  ctaEyebrow?: string | null;
+  ctaTitle?: string | null;
+  ctaBody?: string | null;
+  ctaLabel?: string | null;
+  /** Optional soft background behind the CTA band. */
+  ctaBackgroundImage?: MediaSlot | null;
+  relatedTitle?: string | null;
+};
+
+export const FOUNDATION_EXTENSION_LIMITS = {
+  collectionsEyebrow: 80,
+  collectionsTitle: 120,
+  editorialEyebrow: 80,
+  editorialTitle: 120,
+  editorialBody: 400,
+  editorialCtaLabel: 60,
+  ctaEyebrow: 80,
+  ctaTitle: 120,
+  ctaBody: 280,
+  ctaLabel: 60,
+  relatedTitle: 80,
+} as const;
+
+export const NOVATEE_SECTION_IDS = new Set<NovateeMarketingSectionId>(['marquee', 'featured', 'why']);
+export const FOUNDATION_SECTION_IDS = new Set<FoundationMarketingSectionId>([
+  'marquee',
+  'featured',
+  'why',
+  'collections',
+  'editorial',
+  'ctaBand',
+]);
+
 
 export type WhyCardSlot = {
   title: string;
@@ -71,7 +125,8 @@ export type HeroContentSlots = {
   secondaryCtaLabel?: string | null;
 };
 
-export type ContentSlots = {
+/** Shared fields present on every curated theme. */
+export type SharedContentSlots = {
   logo?: MediaSlot | null;
   announcement?: string | null;
   hero: HeroContentSlots;
@@ -93,8 +148,31 @@ export type ContentSlots = {
   socialLinks?: SocialLinkSlot[] | null;
   /** Used when merchant has no tagline and supportingCopy is null. */
   merchantTaglineFallback?: string | null;
-  sections?: SectionSlots | null;
 };
+
+export type NovateeContentSlots = SharedContentSlots & {
+  sections?: {
+    order: NovateeMarketingSectionId[];
+    hidden: NovateeMarketingSectionId[];
+  } | null;
+};
+
+export type FoundationContentSlots = SharedContentSlots &
+  FoundationExtensionSlots & {
+    sections?: {
+      order: FoundationMarketingSectionId[];
+      hidden: FoundationMarketingSectionId[];
+    } | null;
+  };
+
+/**
+ * Editor/runtime bag. Theme sanitizers strip unknown fields so Novatee drafts
+ * never permanently absorb Foundation-only keys.
+ */
+export type ContentSlots = SharedContentSlots &
+  Partial<FoundationExtensionSlots> & {
+    sections?: SectionSlots | null;
+  };
 
 const MAX_SRC = 2048;
 const MAX_TEXT = 500;
@@ -104,7 +182,7 @@ export const MAX_SOCIAL_LINKS = 8;
 export const MAX_HERO_STAT_TITLE = 40;
 export const MAX_HERO_STAT_SUBTITLE = 80;
 
-const MARKETING_SECTION_IDS = new Set<MarketingSectionId>(['marquee', 'featured', 'why']);
+const MARKETING_SECTION_IDS = FOUNDATION_SECTION_IDS;
 
 /** Accept only same-origin relative paths or http(s) URLs — never javascript:/data: blobs. */
 export function isSafeMediaUrl(raw: unknown): raw is string {
@@ -226,38 +304,97 @@ function sanitizeSocialLinks(raw: unknown): SocialLinkSlot[] | null {
   return out.length ? out : null;
 }
 
-function sanitizeSections(raw: unknown): SectionSlots | null {
+function sanitizeSections(
+  raw: unknown,
+  allowed: Set<string> = MARKETING_SECTION_IDS,
+): SectionSlots | null {
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
 
   const order: MarketingSectionId[] = [];
-  const seen = new Set<MarketingSectionId>();
+  const seen = new Set<string>();
   if (Array.isArray(r.order)) {
     for (const id of r.order) {
       if (typeof id !== 'string') continue;
-      if (!MARKETING_SECTION_IDS.has(id as MarketingSectionId)) continue;
-      const sid = id as MarketingSectionId;
-      if (seen.has(sid)) continue;
-      seen.add(sid);
-      order.push(sid);
+      if (!allowed.has(id)) continue;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      order.push(id as MarketingSectionId);
     }
   }
 
   const hidden: MarketingSectionId[] = [];
-  const hiddenSeen = new Set<MarketingSectionId>();
+  const hiddenSeen = new Set<string>();
   if (Array.isArray(r.hidden)) {
     for (const id of r.hidden) {
       if (typeof id !== 'string') continue;
-      if (!MARKETING_SECTION_IDS.has(id as MarketingSectionId)) continue;
-      const sid = id as MarketingSectionId;
-      if (hiddenSeen.has(sid)) continue;
-      hiddenSeen.add(sid);
-      hidden.push(sid);
+      if (!allowed.has(id)) continue;
+      if (hiddenSeen.has(id)) continue;
+      hiddenSeen.add(id);
+      hidden.push(id as MarketingSectionId);
     }
   }
 
   if (!order.length && !hidden.length) return null;
   return { order, hidden };
+}
+
+function sanitizeFoundationExtensions(
+  o: Record<string, unknown>,
+  defaults: ContentSlots,
+): FoundationExtensionSlots {
+  const lim = FOUNDATION_EXTENSION_LIMITS;
+  return {
+    collectionsEyebrow:
+      o.collectionsEyebrow !== undefined
+        ? sanitizeText(o.collectionsEyebrow, lim.collectionsEyebrow)
+        : defaults.collectionsEyebrow ?? null,
+    collectionsTitle:
+      o.collectionsTitle !== undefined
+        ? sanitizeText(o.collectionsTitle, lim.collectionsTitle)
+        : defaults.collectionsTitle ?? null,
+    editorialEyebrow:
+      o.editorialEyebrow !== undefined
+        ? sanitizeText(o.editorialEyebrow, lim.editorialEyebrow)
+        : defaults.editorialEyebrow ?? null,
+    editorialTitle:
+      o.editorialTitle !== undefined
+        ? sanitizeText(o.editorialTitle, lim.editorialTitle)
+        : defaults.editorialTitle ?? null,
+    editorialBody:
+      o.editorialBody !== undefined
+        ? sanitizeText(o.editorialBody, lim.editorialBody)
+        : defaults.editorialBody ?? null,
+    editorialCtaLabel:
+      o.editorialCtaLabel !== undefined
+        ? sanitizeText(o.editorialCtaLabel, lim.editorialCtaLabel)
+        : defaults.editorialCtaLabel ?? null,
+    editorialMedia:
+      o.editorialMedia !== undefined
+        ? sanitizeMediaSlot(o.editorialMedia)
+        : defaults.editorialMedia ?? null,
+    editorialMediaMode: (() => {
+      const raw =
+        o.editorialMediaMode !== undefined ? o.editorialMediaMode : defaults.editorialMediaMode;
+      return raw === 'image' || raw === 'hidden' || raw === 'template-art' ? raw : 'template-art';
+    })(),
+    ctaEyebrow:
+      o.ctaEyebrow !== undefined ? sanitizeText(o.ctaEyebrow, lim.ctaEyebrow) : defaults.ctaEyebrow ?? null,
+    ctaTitle:
+      o.ctaTitle !== undefined ? sanitizeText(o.ctaTitle, lim.ctaTitle) : defaults.ctaTitle ?? null,
+    ctaBody:
+      o.ctaBody !== undefined ? sanitizeText(o.ctaBody, lim.ctaBody) : defaults.ctaBody ?? null,
+    ctaLabel:
+      o.ctaLabel !== undefined ? sanitizeText(o.ctaLabel, lim.ctaLabel) : defaults.ctaLabel ?? null,
+    ctaBackgroundImage:
+      o.ctaBackgroundImage !== undefined
+        ? sanitizeMediaSlot(o.ctaBackgroundImage)
+        : defaults.ctaBackgroundImage ?? null,
+    relatedTitle:
+      o.relatedTitle !== undefined
+        ? sanitizeText(o.relatedTitle, lim.relatedTitle)
+        : defaults.relatedTitle ?? null,
+  };
 }
 
 const HERO_MODES = new Set<HeroMediaMode>(['template-art', 'image', 'featured-product']);
@@ -386,6 +523,55 @@ export function mergeContentSlots(
   };
 }
 
+
+export type CuratedThemeSanitizeId = 'novatee' | 'foundation';
+
+/**
+ * Registry-dispatched sanitize: active theme determines allowed fields + section ids.
+ * Unknown fields are dropped. Existing Novatee drafts stay compatible.
+ */
+export function mergeThemeContent(
+  themeId: CuratedThemeSanitizeId,
+  defaults: ContentSlots,
+  override: unknown,
+): ContentSlots {
+  const allowedSections =
+    themeId === 'foundation' ? FOUNDATION_SECTION_IDS : NOVATEE_SECTION_IDS;
+  const base = mergeContentSlots(defaults, override);
+  // Re-sanitize sections with theme allowlist (mergeContentSlots used the wide set).
+  const o = override && typeof override === 'object' ? (override as Record<string, unknown>) : {};
+  const sections =
+    o.sections !== undefined
+      ? sanitizeSections(o.sections, allowedSections)
+      : sanitizeSections(defaults.sections, allowedSections) || defaults.sections || null;
+
+  if (themeId === 'foundation') {
+    const ext = sanitizeFoundationExtensions(o, defaults);
+    return { ...base, ...ext, sections };
+  }
+
+  // Novatee: strip Foundation-only keys so they never persist on Novatee drafts.
+  const {
+    collectionsEyebrow: _a,
+    collectionsTitle: _b,
+    editorialEyebrow: _c,
+    editorialTitle: _d,
+    editorialBody: _e,
+    editorialCtaLabel: _f,
+    editorialMedia: _g,
+    editorialMediaMode: _gm,
+    ctaEyebrow: _h,
+    ctaTitle: _i,
+    ctaBody: _j,
+    ctaLabel: _k,
+    ctaBackgroundImage: _kb,
+    relatedTitle: _l,
+    ...novateeOnly
+  } = base;
+  void _a; void _b; void _c; void _d; void _e; void _f; void _g; void _gm; void _h; void _i; void _j; void _k; void _kb; void _l;
+  return { ...novateeOnly, sections };
+}
+
 declare global {
   interface Window {
     /**
@@ -411,7 +597,13 @@ export function previewQueryHintsAllowed(raw: unknown = typeof window !== 'undef
  */
 export function resolveContentSlots(defaults: ContentSlots): ContentSlots {
   const injected = typeof window !== 'undefined' ? window.__SV_CONTENT__ : null;
-  let merged = mergeContentSlots(defaults, injected);
+  const themeHint =
+    injected && typeof injected === 'object' && typeof (injected as Record<string, unknown>).themeId === 'string'
+      ? String((injected as Record<string, unknown>).themeId)
+      : null;
+  const themeId: CuratedThemeSanitizeId =
+    themeHint === 'foundation' ? 'foundation' : 'novatee';
+  let merged = mergeThemeContent(themeId, defaults, injected);
 
   if (typeof window !== 'undefined' && previewQueryHintsAllowed(injected)) {
     try {

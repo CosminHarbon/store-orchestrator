@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useCart } from '../hooks';
 import type { Product } from '../types';
+import { selectOptionPrompt } from '../variantLabel';
 
 export interface AddToCartButtonProps {
   product: Product;
@@ -35,7 +36,7 @@ export default function AddToCartButton({
       {!product.inStock
         ? 'Sold out'
         : needsVariant && !variantId
-          ? 'Select a size'
+          ? selectOptionPrompt(product)
           : added
             ? 'Added ✓'
             : 'Add to cart'}

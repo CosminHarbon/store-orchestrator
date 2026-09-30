@@ -4,12 +4,48 @@ import { useCart, useCheckout } from '../hooks';
 import { formatPrice } from './formatMoney';
 import CheckoutButton from './CheckoutButton';
 import { readRuntimeConfig, shouldUseHostedCheckout } from '../runtimeConfig';
+import { formatCartVariantLine } from '../variantLabel';
 
 export interface CartDrawerProps {
   open: boolean;
   onClose: () => void;
   /** Navigate to protected embedded CheckoutForm view (rollback / mock path). */
   onCheckout: () => void;
+}
+
+/** Trusted message type for curated preview iframes → parent app. */
+export const SV_HOSTED_CHECKOUT_MESSAGE = 'sv:hosted-checkout' as const;
+
+function resolveReturnOrigin(): string | null {
+  const cfg = readRuntimeConfig();
+  if (cfg.returnOrigin && cfg.returnOrigin !== 'null') return cfg.returnOrigin;
+  if (cfg.hostedCheckoutOrigin && cfg.hostedCheckoutOrigin !== 'null') {
+    return cfg.hostedCheckoutOrigin;
+  }
+  if (typeof window !== 'undefined' && window.location?.origin && window.location.origin !== 'null') {
+    return window.location.origin;
+  }
+  return null;
+}
+
+/**
+ * Top-level pages navigate normally. Sandboxed curated preview iframes cannot safely
+ * top-navigate; ask the parent (merchant app) to open a validated checkout URL.
+ */
+function openHostedCheckoutUrl(checkoutUrl: string) {
+  const embedded = typeof window !== 'undefined' && window.self !== window.top;
+  if (embedded) {
+    try {
+      window.parent.postMessage(
+        { type: SV_HOSTED_CHECKOUT_MESSAGE, checkoutUrl },
+        '*',
+      );
+      return;
+    } catch {
+      /* fall through */
+    }
+  }
+  window.location.assign(checkoutUrl);
 }
 
 export default function CartDrawer({ open, onClose, onCheckout }: CartDrawerProps) {
@@ -25,9 +61,14 @@ export default function CartDrawer({ open, onClose, onCheckout }: CartDrawerProp
       onCheckout();
       return;
     }
+    const returnOrigin = resolveReturnOrigin();
+    if (!returnOrigin) {
+      setHandoffError('Missing return origin for checkout handoff.');
+      return;
+    }
     setBusy(true);
     const result = await startHostedCheckout({
-      returnOrigin: typeof window !== 'undefined' ? window.location.origin : undefined,
+      returnOrigin,
       returnPath: '/',
       hostedCheckoutOrigin: cfg.hostedCheckoutOrigin || undefined,
     });
@@ -36,8 +77,7 @@ export default function CartDrawer({ open, onClose, onCheckout }: CartDrawerProp
       setHandoffError(result.error);
       return;
     }
-    // Full navigation to SpeedVendors-hosted checkout (AI cannot rewrite this URL construction).
-    window.location.assign(result.checkoutUrl);
+    openHostedCheckoutUrl(result.checkoutUrl);
   }
 
   return (
@@ -60,7 +100,11 @@ export default function CartDrawer({ open, onClose, onCheckout }: CartDrawerProp
                   {line.imageUrl && <img src={line.imageUrl} alt="" />}
                   <div className="sf-line-info">
                     <strong>{line.title}</strong>
-                    {line.variantLabel && <span className="sf-muted">Size {line.variantLabel}</span>}
+                    {line.variantLabel && (
+                      <span className="sf-muted">
+                        {formatCartVariantLine(line.variantLabel, line.variantOptionName)}
+                      </span>
+                    )}
                     <span>{formatPrice(line.lineTotal.amount, line.lineTotal.currency)}</span>
                     <div className="sf-qty">
                       <button

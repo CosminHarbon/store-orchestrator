@@ -7,8 +7,11 @@ import type { ContentSlots, HeroMediaMode } from './contentSlots';
 import { novateeContentDefaults } from './themes/novatee/defaults';
 import { novateeManifest } from './themes/novatee/manifest';
 import NovateeStorefront from './themes/novatee/NovateeStorefront';
+import { foundationContentDefaults } from './themes/foundation/defaults';
+import { foundationManifest } from './themes/foundation/manifest';
+import FoundationStorefront from './themes/foundation/FoundationStorefront';
 
-export type ThemeId = 'novatee';
+export type ThemeId = 'novatee' | 'foundation';
 
 export type ThemeManifest = {
   id: ThemeId;
@@ -43,9 +46,25 @@ const NOVATEE: StorefrontTheme = {
   Root: NovateeStorefront,
 };
 
+const FOUNDATION: StorefrontTheme = {
+  id: 'foundation',
+  manifest: {
+    id: foundationManifest.id,
+    name: foundationManifest.name,
+    shortDescription: foundationManifest.shortDescription,
+    categoryTags: [...foundationManifest.categoryTags],
+    previewImage: foundationManifest.previewImage,
+    availableContentSlots: [...foundationManifest.availableContentSlots],
+    supportedHeroMediaModes: [...foundationManifest.supportedHeroMediaModes],
+  },
+  defaultContent: foundationContentDefaults,
+  Root: FoundationStorefront,
+};
+
 /** Explicit allowlist — add future themes here only. */
 const THEME_REGISTRY: Record<ThemeId, StorefrontTheme> = {
   novatee: NOVATEE,
+  foundation: FOUNDATION,
 };
 
 export const DEFAULT_THEME_ID: ThemeId = 'novatee';

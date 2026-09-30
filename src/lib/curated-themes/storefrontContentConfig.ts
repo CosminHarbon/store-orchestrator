@@ -4,10 +4,13 @@
  * Do not invent a second format for AI.
  */
 import {
-  mergeContentSlots,
+  mergeThemeContent,
   type ContentSlots,
+  type CuratedThemeSanitizeId,
 } from './contentSlots';
-import { NOVATEE_CONTENT_DEFAULTS, type CuratedThemeId } from './novatee';
+import { NOVATEE_CONTENT_DEFAULTS } from './novatee';
+import { FOUNDATION_CONTENT_DEFAULTS } from './foundation';
+import type { CuratedThemeId } from './themeIds';
 
 export const STOREFRONT_CONTENT_CONFIG_VERSION = 1 as const;
 
@@ -26,14 +29,14 @@ export type StorefrontRuntimeContentPayload = ContentSlots & {
   allowPreviewQueryHints?: boolean;
 };
 
-const THEME_IDS = new Set<CuratedThemeId>(['novatee']);
+const THEME_IDS = new Set<CuratedThemeId>(['novatee', 'foundation']);
 
 export function isCuratedThemeId(raw: unknown): raw is CuratedThemeId {
   return typeof raw === 'string' && THEME_IDS.has(raw as CuratedThemeId);
 }
 
 export function defaultsForTheme(themeId: CuratedThemeId): ContentSlots {
-  if (themeId === 'novatee') return structuredClone(NOVATEE_CONTENT_DEFAULTS);
+  if (themeId === 'foundation') return structuredClone(FOUNDATION_CONTENT_DEFAULTS);
   return structuredClone(NOVATEE_CONTENT_DEFAULTS);
 }
 
@@ -46,6 +49,10 @@ export function createDraftConfig(themeId: CuratedThemeId): StorefrontContentCon
     content: defaultsForTheme(themeId),
     updatedAt: new Date().toISOString(),
   };
+}
+
+function asSanitizeId(themeId: CuratedThemeId): CuratedThemeSanitizeId {
+  return themeId === 'foundation' ? 'foundation' : 'novatee';
 }
 
 /**
@@ -64,7 +71,7 @@ export function parseStorefrontContentConfig(
   const defaults = defaultsForTheme(themeId);
   const contentRaw =
     o.content && typeof o.content === 'object' ? o.content : o;
-  const content = mergeContentSlots(defaults, contentRaw);
+  const content = mergeThemeContent(asSanitizeId(themeId), defaults, contentRaw);
   const status = o.status === 'published' ? 'published' : 'draft';
   const version =
     o.version === STOREFRONT_CONTENT_CONFIG_VERSION
@@ -88,7 +95,7 @@ export function validateStorefrontContentConfig(
     version: STOREFRONT_CONTENT_CONFIG_VERSION,
     themeId,
     status: config.status === 'published' ? 'published' : 'draft',
-    content: mergeContentSlots(defaultsForTheme(themeId), config.content),
+    content: mergeThemeContent(asSanitizeId(themeId), defaultsForTheme(themeId), config.content),
     updatedAt: new Date().toISOString(),
   };
 }

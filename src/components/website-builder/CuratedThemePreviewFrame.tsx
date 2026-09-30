@@ -10,7 +10,12 @@ import {
   toRuntimeContentPayload,
   type StorefrontContentConfig,
 } from '@/lib/curated-themes/storefrontContentConfig';
-import type { CuratedThemeId } from '@/lib/curated-themes/novatee';
+import type { CuratedThemeId } from '@/lib/curated-themes/themeIds';
+import {
+  isAllowedHostedCheckoutUrl,
+  parseHostedCheckoutMessage,
+} from '@/lib/curated-themes/hostedCheckoutHandoff';
+import { toast } from 'sonner';
 
 type Device = 'desktop' | 'mobile';
 
@@ -27,6 +32,7 @@ type Props = {
 /**
  * Live curated-theme preview via packaged runtime + safe JSON injection.
  * Boots once per runtime key; subsequent content edits use postMessage (no remount).
+ * Hosted checkout: iframe posts a validated URL; parent navigates top-level.
  */
 export function CuratedThemePreviewFrame({
   themeId,
@@ -44,9 +50,11 @@ export function CuratedThemePreviewFrame({
   const [booted, setBooted] = useState(false);
   const configRef = useRef(config);
   configRef.current = config;
+  const runtimeRef = useRef(runtime);
+  runtimeRef.current = runtime;
 
   const runtimeKey = runtime
-    ? `${themeId}|${runtime.storeApiKey}|${runtime.apiBase}|${runtime.hostedCheckoutOrigin}`
+    ? `${themeId}|${runtime.storeApiKey}|${runtime.apiBase}|${runtime.hostedCheckoutOrigin}|${runtime.returnOrigin}`
     : '';
 
   useEffect(() => {
@@ -94,6 +102,26 @@ export function CuratedThemePreviewFrame({
     iframeRef.current?.contentWindow?.postMessage({ type: 'sv:set-content', payload }, '*');
   }, [config, booted, srcDoc]);
 
+  // Trusted checkout handoff from sandboxed curated runtime iframe.
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      const msg = parseHostedCheckoutMessage(event.data);
+      if (!msg) return;
+      const frame = iframeRef.current;
+      if (!frame?.contentWindow || event.source !== frame.contentWindow) return;
+      const cfg = runtimeRef.current;
+      if (!cfg?.hostedCheckoutOrigin) return;
+      if (!isAllowedHostedCheckoutUrl(msg.checkoutUrl, cfg.hostedCheckoutOrigin)) {
+        toast.error('Checkout URL was rejected (origin/path not allowed).');
+        return;
+      }
+      // Top-level navigation — sandbox blocks iframe top-nav by design.
+      window.location.assign(msg.checkoutUrl);
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
+
   return (
     <div className={className}>
       {!hideChrome ? (
@@ -128,17 +156,17 @@ export function CuratedThemePreviewFrame({
       ) : null}
 
       <div
-        className={`mx-auto overflow-hidden rounded-xl border bg-[#0b0b10] shadow-sm transition-all ${
+        className={`mx-auto overflow-hidden rounded-xl border bg-[#fbfaf8] shadow-sm transition-all ${
           device === 'mobile' ? 'h-[640px] w-[390px] max-w-full' : 'h-[640px] w-full'
         }`}
       >
         {srcDoc ? (
           <iframe
             ref={iframeRef}
-            title="Novatee storefront preview"
+            title={`${themeId} storefront preview`}
             srcDoc={srcDoc}
             sandbox={CURATED_PREVIEW_IFRAME_SANDBOX}
-            className="h-full w-full bg-[#0b0b10]"
+            className="h-full w-full bg-[#fbfaf8]"
             referrerPolicy="no-referrer"
           />
         ) : (

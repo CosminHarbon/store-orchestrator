@@ -90,7 +90,10 @@ const PRODUCTS: Product[] = SEEDS.map((s) => ({
   ],
   categoryId: s.categoryId,
   inStock: s.inStock !== false,
-  variants: s.sizes ? SIZES.map((v) => ({ ...v })) : [],
+  optionNames: s.sizes ? ['Size'] : [],
+  variants: s.sizes
+    ? SIZES.map((v) => ({ ...v, optionName: 'Size' as const }))
+    : [],
 }));
 
 function recompute(lines: CartLine[]): Cart {
@@ -136,6 +139,7 @@ export function createMockCommerce(): SpeedVendorsCommerce {
             variantId: variant?.id ?? null,
             title: product.title,
             variantLabel: variant?.label ?? null,
+            variantOptionName: variant?.optionName ?? product.optionNames?.[0] ?? null,
             imageUrl: product.images[0]?.url ?? null,
             quantity,
             unitPrice: product.price,

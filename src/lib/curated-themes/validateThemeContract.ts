@@ -49,6 +49,9 @@ export function validateCuratedThemeContract(opts: {
   const fieldKeys = opts.editorSchema.fields.map((f) => f.key);
 
   for (const key of fieldKeys) {
+    const field = opts.editorSchema.fields.find((f) => f.key === key);
+    // Informational notes are not content slots.
+    if (field?.type === 'commerce-note') continue;
     if (!slotSet.has(key)) {
       // section-controls maps to "sections"
       if (key === 'sections' && slotSet.has('sections')) continue;

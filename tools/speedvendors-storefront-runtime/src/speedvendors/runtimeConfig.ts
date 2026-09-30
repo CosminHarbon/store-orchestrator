@@ -10,6 +10,11 @@ export type SvRuntimeConfig = {
    */
   hostedCheckoutOrigin: string | null;
   /**
+   * Origin for "return to store" after hosted checkout.
+   * Required in srcdoc / opaque-origin iframes where location.origin is "null".
+   */
+  returnOrigin: string | null;
+  /**
    * Rollback/compatibility: use embedded COD CheckoutForm instead of hosted redirect.
    * Set window.__SV_RUNTIME__.useEmbeddedCodCheckout = true or VITE_SV_EMBEDDED_COD_CHECKOUT=true.
    */
@@ -25,6 +30,8 @@ declare global {
       API_BASE?: string;
       hostedCheckoutOrigin?: string;
       HOSTED_CHECKOUT_ORIGIN?: string;
+      returnOrigin?: string;
+      RETURN_ORIGIN?: string;
       useEmbeddedCodCheckout?: boolean | string;
       USE_EMBEDDED_COD_CHECKOUT?: boolean | string;
     };
@@ -69,12 +76,29 @@ export function readRuntimeConfig(): SvRuntimeConfig {
     readEnv('VITE_SV_CHECKOUT_APP_ORIGIN') ||
     readEnv('VITE_CHECKOUT_APP_ORIGIN') ||
     null;
+  const pageOrigin =
+    typeof window !== 'undefined' && window.location?.origin && window.location.origin !== 'null'
+      ? window.location.origin
+      : null;
+  const returnOrigin =
+    win?.returnOrigin ||
+    win?.RETURN_ORIGIN ||
+    readEnv('VITE_SV_RETURN_ORIGIN') ||
+    hostedCheckoutOrigin ||
+    pageOrigin ||
+    null;
   const useEmbeddedCodCheckout =
     readBoolFlag(win?.useEmbeddedCodCheckout) ||
     readBoolFlag(win?.USE_EMBEDDED_COD_CHECKOUT) ||
     readBoolFlag(readEnv('VITE_SV_EMBEDDED_COD_CHECKOUT'));
 
-  return { storeApiKey, apiBase, hostedCheckoutOrigin, useEmbeddedCodCheckout };
+  return {
+    storeApiKey,
+    apiBase,
+    hostedCheckoutOrigin,
+    returnOrigin,
+    useEmbeddedCodCheckout,
+  };
 }
 
 export function hasLiveCommerceConfig(cfg: SvRuntimeConfig = readRuntimeConfig()): boolean {

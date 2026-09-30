@@ -1,15 +1,23 @@
 // PROTECTED: featured products by durable IDs via commerce.getProduct. Cursor may not edit.
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useCommerce } from '../hooks';
 import type { Product } from '../types';
 import ProductCard from './ProductCard';
+import CommerceLoading from './CommerceLoading';
 
 export interface FeaturedProductsProps {
   ids: string[];
   onOpenProduct: (productId: string) => void;
+  loadingFallback?: ReactNode;
+  loadingLabel?: string;
 }
 
-export default function FeaturedProducts({ ids, onOpenProduct }: FeaturedProductsProps) {
+export default function FeaturedProducts({
+  ids,
+  onOpenProduct,
+  loadingFallback,
+  loadingLabel = 'Loading products',
+}: FeaturedProductsProps) {
   const commerce = useCommerce();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +44,11 @@ export default function FeaturedProducts({ ids, onOpenProduct }: FeaturedProduct
   }, [commerce, ids.join('|')]);
 
   if (loading && products.length === 0) {
-    return <p className="sf-muted">Loading…</p>;
+    return (
+      <CommerceLoading label={loadingLabel} visuallyHidden={Boolean(loadingFallback)}>
+        {loadingFallback}
+      </CommerceLoading>
+    );
   }
 
   if (products.length === 0) return null;

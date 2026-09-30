@@ -5,6 +5,7 @@ export interface VariantSelectorProps {
   variants: ProductVariant[];
   value: string | null;
   onChange: (variantId: string) => void;
+  /** Option/attribute name from commerce (Size, Colour…). Defaults to neutral "Option". */
   label?: string;
 }
 
@@ -12,7 +13,7 @@ export default function VariantSelector({
   variants,
   value,
   onChange,
-  label = 'Size',
+  label = 'Option',
 }: VariantSelectorProps) {
   if (variants.length === 0) return null;
 

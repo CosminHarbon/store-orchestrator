@@ -110,6 +110,19 @@ export default function AdminConsole() {
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [orderSearch, setOrderSearch] = useState('');
 
+  const designInboxQuery = useQuery({
+    queryKey: ['admin-design-requests-inbox-count'],
+    enabled: gate.status === 'ready',
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_list_storefront_design_requests' as never);
+      if (error) throw error;
+      const rows = (data || []) as Array<{ status?: string }>;
+      return rows.filter((r) => r.status === 'submitted' || r.status === 'in_review').length;
+    },
+  });
+  const designInboxCount = designInboxQuery.data ?? 0;
+
   useEffect(() => {
     if (loading || gate.status === 'loading') return;
     if (!user) {
@@ -411,7 +424,14 @@ export default function AdminConsole() {
           <Tabs value={section} onValueChange={(v) => setSection(v as 'merchants' | 'billing' | 'trials' | 'designs')}>
             <TabsList>
               <TabsTrigger value="merchants">Merchants</TabsTrigger>
-              <TabsTrigger value="designs">Designs</TabsTrigger>
+              <TabsTrigger value="designs" className="gap-1.5">
+                Designs
+                {designInboxCount > 0 ? (
+                  <Badge className="h-5 min-w-5 rounded-full bg-[#6E3DFF] px-1.5 text-[10px] text-white">
+                    {designInboxCount}
+                  </Badge>
+                ) : null}
+              </TabsTrigger>
               <TabsTrigger value="trials">Trials</TabsTrigger>
               <TabsTrigger value="billing">Billing</TabsTrigger>
             </TabsList>

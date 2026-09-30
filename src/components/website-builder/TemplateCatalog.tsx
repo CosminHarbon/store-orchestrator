@@ -26,15 +26,18 @@ import {
 import { trackWebsiteBuilderEvent } from '@/lib/website-builder/analytics';
 import { applyStoreTemplate } from '@/lib/website-builder/applyTemplate';
 import { NOVATEE_MANIFEST } from '@/lib/curated-themes/novatee';
+import { FOUNDATION_MANIFEST } from '@/lib/curated-themes/foundation';
+import type { CuratedThemeId } from '@/lib/curated-themes/themeIds';
 import { createDraftConfig } from '@/lib/curated-themes/storefrontContentConfig';
 import { ensureCuratedThemeDraft } from '@/lib/curated-themes/draftPersistence';
+import { STORE_API_BASE, CHECKOUT_APP_ORIGIN } from '@/lib/storefront/api';
 import { CuratedThemePreviewFrame } from './CuratedThemePreviewFrame';
 
 type Props = {
   onBack: () => void;
   onCustomize?: (templateId: TemplateCatalogId) => void;
   /** Open curated Novatee editor (draft only — does not publish). */
-  onCustomizeCurated?: (themeId: 'novatee') => void;
+  onCustomizeCurated?: (themeId: CuratedThemeId) => void;
 };
 
 const CATEGORY_LABELS: Partial<Record<TemplateCategory, string>> = {
@@ -61,6 +64,9 @@ export function TemplateCatalog({ onBack, onCustomize, onCustomizeCurated }: Pro
   const [novateePreviewOpen, setNovateePreviewOpen] = useState(false);
   const [novateeConfirmOpen, setNovateeConfirmOpen] = useState(false);
   const [novateePreviewDevice, setNovateePreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
+  const [foundationPreviewOpen, setFoundationPreviewOpen] = useState(false);
+  const [foundationConfirmOpen, setFoundationConfirmOpen] = useState(false);
+  const [foundationPreviewDevice, setFoundationPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
 
   useEffect(() => {
     trackWebsiteBuilderEvent('template_catalog_opened');
@@ -90,6 +96,16 @@ export function TemplateCatalog({ onBack, onCustomize, onCustomizeCurated }: Pro
     },
   });
 
+  const foundationDraftQuery = useQuery({
+    queryKey: ['curated-theme-draft', effectiveUserId, 'foundation'],
+    enabled: !!effectiveUserId,
+    queryFn: async () => {
+      const { loadCuratedThemeDraft } = await import('@/lib/curated-themes/draftPersistence');
+      const existing = await loadCuratedThemeDraft(effectiveUserId!, 'foundation');
+      return existing || createDraftConfig('foundation');
+    },
+  });
+
   const categories = useMemo(() => availableTemplateCategories(), []);
   const templates = useMemo(() => filterTemplates(category), [category]);
   const activeTemplate = profileQuery.data?.active_template || null;
@@ -101,17 +117,26 @@ export function TemplateCatalog({ onBack, onCustomize, onCustomizeCurated }: Pro
     category === 'fashion' ||
     category === 'editable';
 
+  const showFoundation =
+    category === 'all' ||
+    category === 'minimal' ||
+    category === 'editable' ||
+    category === 'fashion' ||
+    category === 'beauty' ||
+    category === 'home';
+
   const curatedRuntime = useMemo(() => {
     if (!apiKey) return null;
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
     return {
       storeApiKey: apiKey,
-      apiBase: `${supabaseUrl}/functions/v1/store-api`,
-      hostedCheckoutOrigin: window.location.origin,
+      apiBase: STORE_API_BASE,
+      hostedCheckoutOrigin: CHECKOUT_APP_ORIGIN || window.location.origin,
+      returnOrigin: window.location.origin,
     };
   }, [apiKey]);
 
   const novateePreviewConfig = draftQuery.data || createDraftConfig('novatee');
+  const foundationPreviewConfig = foundationDraftQuery.data || createDraftConfig('foundation');
 
   const applyMutation = useMutation({
     mutationFn: async (templateId: TemplateCatalogId) => {
@@ -152,6 +177,25 @@ export function TemplateCatalog({ onBack, onCustomize, onCustomizeCurated }: Pro
     onError: (e: Error) => toast.error(e.message || 'Could not create Novatee draft'),
   });
 
+  const useFoundationMutation = useMutation({
+    mutationFn: async () => {
+      if (!effectiveUserId) throw new Error('Not signed in');
+      return ensureCuratedThemeDraft({
+        userId: effectiveUserId,
+        themeId: 'foundation',
+        storeName: profileQuery.data?.store_name || 'My Store',
+      });
+    },
+    onSuccess: () => {
+      trackWebsiteBuilderEvent('template_selected', { template_id: 'foundation' });
+      toast.success('Foundation draft ready — customize without changing your live store');
+      setFoundationConfirmOpen(false);
+      void qc.invalidateQueries({ queryKey: ['curated-theme-draft', effectiveUserId, 'foundation'] });
+      onCustomizeCurated?.('foundation');
+    },
+    onError: (e: Error) => toast.error(e.message || 'Could not create Foundation draft'),
+  });
+
   const previewEntry = previewId ? getTemplateById(previewId) : null;
   const previewUrl =
     previewId && apiKey
@@ -173,9 +217,10 @@ export function TemplateCatalog({ onBack, onCustomize, onCustomizeCurated }: Pro
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6E3DFF]">
           Templates
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Store templates</h1>
+        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Design directions</h1>
         <p className="max-w-2xl text-sm text-muted-foreground md:text-base">
-          Choose a professionally designed starting point for your storefront.
+          Pick a look as inspiration. When you publish, our human team creates the final storefront
+          for you.
         </p>
       </div>
 
@@ -246,8 +291,64 @@ export function TemplateCatalog({ onBack, onCustomize, onCustomizeCurated }: Pro
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Opens a draft editor with your live products. Does not replace your published storefront
-                until a curated publish path is available.
+                Opens a draft editor with your live products. Publishing sends this direction to our
+                human design team — they create the final store for you.
+              </p>
+            </div>
+          </article>
+        ) : null}
+
+        {showFoundation ? (
+          <article className="overflow-hidden rounded-3xl border bg-card shadow-sm">
+            <div className="relative h-48 bg-[#fbfaf8] md:h-56">
+              <img
+                src={FOUNDATION_MANIFEST.previewImage}
+                alt="Foundation theme preview"
+                className="h-full w-full object-cover object-top"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = 'none';
+                }}
+              />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#f3f0ec] via-transparent to-transparent" />
+              <div className="absolute bottom-3 left-4 right-4">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-[#4a1d55]">Curated theme</p>
+                <p className="font-serif text-xl text-[#1d1622] md:text-2xl">{FOUNDATION_MANIFEST.name}</p>
+              </div>
+            </div>
+            <div className="space-y-3 p-5">
+              <div className="flex flex-wrap gap-2">
+                {FOUNDATION_MANIFEST.categoryTags.slice(0, 4).map((tag) => (
+                  <Badge key={tag} variant="outline" className="capitalize">
+                    {tag}
+                  </Badge>
+                ))}
+                <Badge variant="secondary">Editable draft</Badge>
+              </div>
+              <p className="text-sm text-muted-foreground line-clamp-3">
+                {FOUNDATION_MANIFEST.shortDescription}
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  variant="outline"
+                  className="flex-1 rounded-full"
+                  onClick={() => {
+                    trackWebsiteBuilderEvent('template_previewed', { template_id: 'foundation' });
+                    setFoundationPreviewOpen(true);
+                    setFoundationPreviewDevice('desktop');
+                  }}
+                >
+                  Preview
+                </Button>
+                <Button
+                  className="flex-1 rounded-full bg-[#4a1d55] hover:bg-[#33123c]"
+                  onClick={() => setFoundationConfirmOpen(true)}
+                >
+                  Use this template
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Opens a draft editor with your live products. Publishing sends this direction to our
+                human design team — they create the final store for you.
               </p>
             </div>
           </article>
@@ -423,11 +524,11 @@ export function TemplateCatalog({ onBack, onCustomize, onCustomizeCurated }: Pro
       <Dialog open={novateeConfirmOpen} onOpenChange={setNovateeConfirmOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Use Novatee as a draft?</DialogTitle>
+            <DialogTitle>Use Novatee as inspiration?</DialogTitle>
             <DialogDescription>
-              This creates or opens a Novatee draft you can customize. Your currently published
-              storefront ({activeTemplate || 'none'}) stays unchanged until a curated publish workflow
-              is available.
+              Opens a Novatee draft you can customize. Publishing sends it to our human design team —
+              they create the final store for you. Your live storefront (
+              {activeTemplate || 'none'}) stays unchanged until then.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -440,6 +541,51 @@ export function TemplateCatalog({ onBack, onCustomize, onCustomizeCurated }: Pro
               onClick={() => useNovateeMutation.mutate()}
             >
               {useNovateeMutation.isPending ? 'Opening…' : 'Use this template'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={foundationPreviewOpen} onOpenChange={setFoundationPreviewOpen}>
+        <DialogContent className="max-w-5xl gap-0 overflow-hidden p-0 sm:rounded-2xl">
+          <div className="border-b px-4 py-3">
+            <DialogTitle className="text-base">Foundation preview</DialogTitle>
+            <DialogDescription className="text-xs">
+              Live products via your store API — draft only, does not publish.
+            </DialogDescription>
+          </div>
+          <div className="p-4">
+            <CuratedThemePreviewFrame
+              themeId="foundation"
+              config={foundationPreviewConfig}
+              runtime={curatedRuntime}
+              device={foundationPreviewDevice}
+              onDeviceChange={setFoundationPreviewDevice}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={foundationConfirmOpen} onOpenChange={setFoundationConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Use Foundation as inspiration?</DialogTitle>
+            <DialogDescription>
+              Opens a Foundation draft you can customize. Publishing sends it to our human design
+              team — they create the final store for you. Your live storefront stays unchanged until
+              then.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFoundationConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-[#4a1d55] hover:bg-[#33123c]"
+              disabled={useFoundationMutation.isPending}
+              onClick={() => useFoundationMutation.mutate()}
+            >
+              Continue
             </Button>
           </DialogFooter>
         </DialogContent>

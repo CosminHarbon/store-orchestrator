@@ -4,16 +4,21 @@
  */
 import type { StorefrontContentConfig } from './storefrontContentConfig';
 import { toRuntimeContentPayload } from './storefrontContentConfig';
-import { NOVATEE_RUNTIME_BASE, type CuratedThemeId } from './novatee';
+import { NOVATEE_RUNTIME_BASE } from './novatee';
+import { FOUNDATION_RUNTIME_BASE } from './foundation';
+import type { CuratedThemeId } from './themeIds';
 
 export type CuratedPreviewRuntimeOpts = {
   storeApiKey: string;
   apiBase: string;
   hostedCheckoutOrigin: string;
+  /** Parent app origin for return_origin (srcdoc has opaque/"null" origin). */
+  returnOrigin: string;
 };
 
 const RUNTIME_BASE: Record<CuratedThemeId, string> = {
   novatee: NOVATEE_RUNTIME_BASE,
+  foundation: FOUNDATION_RUNTIME_BASE,
 };
 
 /** Sandbox for merchant curated preview (trusted SpeedVendors runtime, not AI HTML). */
@@ -66,6 +71,7 @@ export async function buildCuratedPreviewSrcDoc(opts: {
     storeApiKey: opts.runtime.storeApiKey,
     apiBase: opts.runtime.apiBase,
     hostedCheckoutOrigin: opts.runtime.hostedCheckoutOrigin,
+    returnOrigin: opts.runtime.returnOrigin,
     useEmbeddedCodCheckout: false,
   };
 
