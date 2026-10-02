@@ -17,72 +17,60 @@ import {
   CreditCard,
   FileText,
   Globe,
-  Home,
-  LayoutDashboard,
-  LayoutTemplate,
-  MapPin,
+  HeartHandshake,
+  Info,
   Menu,
   Minus,
   Package,
+  Palette,
+  Plug,
   Plus,
   ShoppingBag,
+  SlidersHorizontal,
   Sparkles,
-  Star,
-  Store,
   Truck,
   Users,
+  Video,
   Warehouse,
   X,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { BrandLogo } from '@/components/brand/BrandLogo';
-import { CountUp } from '@/components/landing/CountUp';
 import { HeroMockup } from '@/components/landing/HeroMockup';
+import { SetupRequestDialog } from '@/components/landing/SetupRequestDialog';
 import { SpotlightCard } from '@/components/landing/SpotlightCard';
-import { DesignMock, RunMock, SellMock } from '@/components/landing/TourMockups';
 import { useLanguage } from '@/i18n/LanguageProvider';
 import type { AppLanguage } from '@/i18n/types';
-import { advertisedMonthlyEquivalent, advertisedPrice, hasPrice, MARKETING_PRICING } from '@/lib/marketingPricing';
+import {
+  advertisedMonthlyEquivalent,
+  advertisedPrice,
+  ASSISTED_SETUP_FEE_RON,
+  ASSISTED_SETUP_PRODUCT_COUNT,
+  ASSISTED_SETUP_TRAINING_MINUTES,
+  formatLei,
+} from '@/lib/marketingPricing';
 import { SPEEDVENDORS_PLANS, SPEEDVENDORS_TIERS } from '@/lib/plans/catalogue';
 import { cn } from '@/lib/utils';
 import '@/styles/marketing.css';
 
-const NAV_IDS = ['features', 'how-it-works', 'pricing', 'faq'] as const;
+const NAV_IDS = ['included', 'how-it-works', 'features', 'pricing', 'faq'] as const;
 type NavId = (typeof NAV_IDS)[number];
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
-const FEATURE_ICONS = [
-  LayoutTemplate,
-  Package,
-  Warehouse,
-  ShoppingBag,
-  CreditCard,
-  Truck,
-  FileText,
-  Users,
-  Star,
-  BarChart3,
-] as const;
+/** Order matches landing.included.items: design, products, integrations, adjustments, training. */
+const INCLUDED_ICONS = [Palette, Package, Plug, SlidersHorizontal, Video] as const;
 
-/** Bento layout: the wide cards are Website (0) and Shipping (5) — together each row sums to four columns. */
-const BENTO_SPAN = [
-  'sm:col-span-2 lg:col-span-2',
-  '',
-  '',
-  '',
-  '',
-  'sm:col-span-2 lg:col-span-2',
-  '',
-  '',
-  '',
-  '',
-] as const;
+/** Order matches landing.platform.items. */
+const FEATURE_ICONS = [Package, Warehouse, ShoppingBag, CreditCard, Truck, FileText, Users, BarChart3] as const;
 
-const TOUR_ICONS = [Store, ShoppingBag, LayoutDashboard] as const;
-const TOUR_MOCKS = [DesignMock, SellMock, RunMock] as const;
-const TRUST_ICONS = [CreditCard, Truck, FileText] as const;
-const FLOW_ICONS = [Users, Store, LayoutDashboard, CreditCard, Truck, FileText] as const;
+/** Interpolation values shared by every offer string, so copy and numbers never drift apart. */
+const OFFER = {
+  setup: formatLei(ASSISTED_SETUP_FEE_RON),
+  from: formatLei(SPEEDVENDORS_PLANS.start.monthlyAmountRon),
+  products: ASSISTED_SETUP_PRODUCT_COUNT,
+  minutes: ASSISTED_SETUP_TRAINING_MINUTES,
+};
 
 function Section({
   id,
@@ -216,46 +204,6 @@ function HowItWorks({ steps, reveal }: { steps: { title: string; desc: string }[
   );
 }
 
-function ShippingVisual() {
-  const reduceMotion = useReducedMotion();
-  return (
-    <div className="relative flex h-16 items-center" aria-hidden>
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-mist))] text-[hsl(var(--sv-ink))]/60">
-        <Home className="h-4 w-4" />
-      </span>
-      <span className="relative mx-2 h-px flex-1 border-t-2 border-dashed border-[hsl(var(--sv-line))]">
-        <motion.span
-          className="absolute -top-3.5 flex h-7 w-7 items-center justify-center rounded-full bg-[hsl(var(--sv-accent))] text-white shadow-[0_8px_18px_-6px_hsl(var(--sv-accent))]"
-          initial={{ left: '0%' }}
-          animate={reduceMotion ? { left: '50%' } : { left: ['0%', '92%', '0%'] }}
-          transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
-        >
-          <Truck className="h-3.5 w-3.5" />
-        </motion.span>
-      </span>
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[hsl(var(--sv-accent))]/40 bg-[hsl(var(--sv-accent))]/10 text-[hsl(var(--sv-accent))]">
-        <MapPin className="h-4 w-4" />
-      </span>
-    </div>
-  );
-}
-
-function WebsiteVisual() {
-  return (
-    <div className="grid h-24 grid-cols-[1.4fr_1fr] gap-2" aria-hidden>
-      <div className="rounded-xl bg-gradient-to-br from-[hsl(var(--sv-accent))] via-[hsl(var(--sv-pink))] to-[hsl(var(--sv-cyan))] p-3">
-        <div className="h-2 w-2/3 rounded-full bg-white/90" />
-        <div className="mt-2 h-2 w-1/3 rounded-full bg-white/60" />
-        <div className="mt-3 h-4 w-14 rounded-full bg-white" />
-      </div>
-      <div className="grid grid-rows-2 gap-2">
-        <div className="sv-mock-tile" />
-        <div className="sv-mock-tile" />
-      </div>
-    </div>
-  );
-}
-
 export default function Landing() {
   const { t, ready } = useTranslation('auth');
   const { language, setLanguage } = useLanguage();
@@ -265,8 +213,8 @@ export default function Landing() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeNav, setActiveNav] = useState<NavId | null>(null);
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
-  const [tab, setTab] = useState(0);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [requestOpen, setRequestOpen] = useState(false);
 
   const { scrollYProgress } = useScroll();
   const barScale = useSpring(scrollYProgress, { stiffness: 140, damping: 30, mass: 0.25 });
@@ -277,8 +225,8 @@ export default function Landing() {
     }
   }, [navigate]);
 
-  // Every CTA leads to /auth. Warm that chunk once the page is idle so the click is instant
-  // even though routes are code-split.
+  // Login and the self-serve trial lead to /auth. Warm that chunk once the page is idle so the
+  // click is instant even though routes are code-split.
   useEffect(() => {
     const warm = () => void import('./Auth');
     if (typeof window.requestIdleCallback === 'function') {
@@ -313,29 +261,27 @@ export default function Landing() {
     return () => observer.disconnect();
   }, [ready]);
 
+  const heroHighlights = t('landing.hero.highlights', { returnObjects: true, ...OFFER });
+  const includedItems = t('landing.included.items', { returnObjects: true, ...OFFER });
+  const trainingItems = t('landing.included.training', { returnObjects: true });
+  const howSteps = t('landing.how.steps', { returnObjects: true, ...OFFER });
   const featureItems = t('landing.platform.items', { returnObjects: true });
-  const howSteps = t('landing.how.steps', { returnObjects: true });
-  const faqItems = t('landing.faq.items', { returnObjects: true });
-  const included = t('landing.pricing.included', { returnObjects: true });
-  const showcasePanels = t('landing.showcase.panels', { returnObjects: true });
-  const showcaseTabs = t('landing.showcase.tabs', { returnObjects: true });
   const trustItems = t('landing.trust.items', { returnObjects: true });
-  const statItems = t('landing.stats.items', { returnObjects: true });
-  const flowNodes = t('landing.ecosystem.nodes', { returnObjects: true });
-  const techPoints = t('landing.tech.points', { returnObjects: true });
+  const setupItems = t('landing.pricing.setupItems', { returnObjects: true, ...OFFER });
+  const planIncluded = t('landing.pricing.included', { returnObjects: true });
+  const faqItems = t('landing.faq.items', { returnObjects: true, ...OFFER });
 
   if (
     !ready ||
-    !Array.isArray(featureItems) ||
+    !Array.isArray(heroHighlights) ||
+    !Array.isArray(includedItems) ||
+    !Array.isArray(trainingItems) ||
     !Array.isArray(howSteps) ||
-    !Array.isArray(faqItems) ||
-    !Array.isArray(included) ||
-    !Array.isArray(showcasePanels) ||
-    !Array.isArray(showcaseTabs) ||
+    !Array.isArray(featureItems) ||
     !Array.isArray(trustItems) ||
-    !Array.isArray(statItems) ||
-    !Array.isArray(flowNodes) ||
-    !Array.isArray(techPoints)
+    !Array.isArray(setupItems) ||
+    !Array.isArray(planIncluded) ||
+    !Array.isArray(faqItems)
   ) {
     return (
       <div className="sv-marketing min-h-screen flex items-center justify-center">
@@ -344,16 +290,15 @@ export default function Landing() {
     );
   }
 
-  const features = featureItems as { title: string; desc: string }[];
+  const highlights = heroHighlights as string[];
+  const included = includedItems as { title: string; desc: string }[];
+  const training = trainingItems as string[];
   const steps = howSteps as { title: string; desc: string }[];
-  const faqs = faqItems as { q: string; a: string }[];
-  const includedList = included as string[];
-  const panels = showcasePanels as { title: string; body: string; items: string[] }[];
-  const tabs = showcaseTabs as string[];
+  const features = featureItems as { title: string; desc: string }[];
   const trust = trustItems as { name: string; role: string }[];
-  const stats = statItems as { value: number; label: string }[];
-  const nodes = flowNodes as string[];
-  const points = techPoints as string[];
+  const setupList = setupItems as string[];
+  const planList = planIncluded as string[];
+  const faqs = faqItems as { q: string; a: string }[];
 
   const reveal = (delay = 0): MotionProps =>
     reduceMotion
@@ -370,15 +315,15 @@ export default function Landing() {
     document.getElementById(id)?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
   };
 
+  const openRequest = () => {
+    setMenuOpen(false);
+    setRequestOpen(true);
+  };
+
   const toggleLanguage = () => {
     const next: AppLanguage = language === 'en' ? 'ro' : 'en';
     void setLanguage(next);
   };
-
-  const ActiveMock = TOUR_MOCKS[tab] ?? DesignMock;
-  const activePanel = panels[tab] ?? panels[0];
-
-  const marqueeItems = features.map((item, i) => ({ ...item, Icon: FEATURE_ICONS[i] ?? Store }));
 
   return (
     <div className="sv-marketing min-h-screen">
@@ -400,7 +345,7 @@ export default function Landing() {
               <BrandLogo variant="horizontal" imgClassName="h-7 w-auto max-w-[170px]" />
             </Link>
 
-            <nav className="hidden md:flex items-center gap-1" aria-label="Primary">
+            <nav className="hidden lg:flex items-center gap-1" aria-label="Primary">
               {NAV_IDS.map((id) => (
                 <button
                   key={id}
@@ -435,10 +380,15 @@ export default function Landing() {
                   {t('landing.nav.login')}
                 </Link>
               </span>
-              <Link to="/auth?tab=signup" className="sv-btn sv-btn--primary sv-btn--sm">
+              <button
+                type="button"
+                onClick={openRequest}
+                className="sv-btn sv-btn--primary sv-btn--sm"
+                data-testid="landing-nav-setup-cta"
+              >
                 {t('landing.nav.getStarted')}
-              </Link>
-              <span className="inline-flex md:hidden">
+              </button>
+              <span className="inline-flex lg:hidden">
                 <button
                   type="button"
                   className="sv-btn sv-btn--plain sv-btn--sm !px-2.5"
@@ -461,7 +411,7 @@ export default function Landing() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -8, scale: 0.98 }}
                 transition={{ duration: 0.2 }}
-                className="mt-2 rounded-3xl border border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-paper))] p-3 shadow-2xl md:hidden"
+                className="mt-2 rounded-3xl border border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-paper))] p-3 shadow-2xl lg:hidden"
               >
                 <nav className="flex flex-col" aria-label="Mobile">
                   {NAV_IDS.map((id) => (
@@ -507,12 +457,11 @@ export default function Landing() {
               transition={{ duration: 0.5 }}
               className="mb-7 flex justify-center"
             >
-              <span className="sv-hero-badge" data-testid="landing-trial-nocard">
-                <span className="sv-hero-badge__dot sv-pulse">
-                  <Sparkles className="mr-1 h-3 w-3" />
-                  {t('landing.hero.badgeTag')}
+              <span className="sv-hero-badge max-w-full text-left">
+                <span className="sv-hero-badge__dot sv-pulse shrink-0 !px-1.5">
+                  <HeartHandshake className="h-3.5 w-3.5" />
                 </span>
-                {t('landing.pricing.trialNoCard')}
+                {t('landing.hero.badge')}
               </span>
             </motion.div>
 
@@ -535,39 +484,54 @@ export default function Landing() {
               {t('landing.hero.subtitle')}
             </motion.p>
 
+            <motion.p
+              initial={reduceMotion ? false : { opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.25, ease: EASE }}
+              className="mt-6 inline-flex rounded-full border border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-paper))]/80 px-4 py-2 font-display text-sm font-semibold sm:text-base"
+              data-testid="landing-hero-price"
+            >
+              {t('landing.hero.price', OFFER)}
+            </motion.p>
+
             <motion.div
               initial={reduceMotion ? false : { opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.3, ease: EASE }}
-              className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"
+              className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row"
             >
-              <Link
-                to="/auth?tab=signup&intent=trial"
-                data-testid="landing-trial-cta"
+              <button
+                type="button"
+                onClick={openRequest}
+                data-testid="landing-setup-cta"
                 className="sv-btn sv-btn--primary sv-btn--lg w-full sm:w-auto"
               >
-                {t('landing.pricing.trialCta')}
+                {t('landing.hero.ctaPrimary')}
                 <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                to="/auth?tab=signup&intent=subscribe"
-                data-testid="landing-choose-plan-cta"
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollTo('included')}
+                data-testid="landing-included-cta"
                 className="sv-btn sv-btn--ghost sv-btn--lg w-full sm:w-auto"
               >
-                {t('landing.pricing.choosePlanCta')}
-              </Link>
+                {t('landing.hero.ctaSecondary')}
+              </button>
             </motion.div>
 
-            <motion.button
-              type="button"
-              onClick={() => scrollTo('how-it-works')}
+            <motion.ul
               initial={reduceMotion ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ duration: 0.7, delay: 0.5 }}
-              className="mt-6 text-sm font-medium text-[hsl(var(--sv-ink))]/55 underline-offset-4 transition-colors hover:text-[hsl(var(--sv-accent))] hover:underline"
+              transition={{ duration: 0.7, delay: 0.45 }}
+              className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm font-medium text-[hsl(var(--sv-ink))]/60"
             >
-              {t('landing.hero.scroll')} ↓
-            </motion.button>
+              {highlights.map((item) => (
+                <li key={item} className="inline-flex items-center gap-1.5">
+                  <Check className="h-4 w-4 text-[hsl(var(--sv-accent))]" strokeWidth={2.5} />
+                  {item}
+                </li>
+              ))}
+            </motion.ul>
           </div>
 
           <div className="relative z-10 mx-auto mt-12 sm:mt-16 max-w-6xl px-4 sm:px-6 lg:px-8">
@@ -575,192 +539,30 @@ export default function Landing() {
           </div>
         </Section>
 
-        {/* Integrations */}
-        <Section className="pb-8 pt-6 sm:pt-10">
-          <motion.div {...reveal()} className="space-y-6">
-            <p className="text-center text-xs font-semibold uppercase tracking-[0.18em] text-[hsl(var(--sv-ink))]/45">
-              {t('landing.trust.label')}
-            </p>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {trust.map((item, i) => {
-                const Icon = TRUST_ICONS[i] ?? CreditCard;
-                return (
-                  <SpotlightCard key={item.name} className="flex items-center gap-4 p-4 sm:p-5">
+        {/* What you get */}
+        <Section id="included" className="py-16 sm:py-24">
+          <SectionHeading
+            reveal={reveal()}
+            eyebrow={t('landing.included.eyebrow')}
+            title={t('landing.included.title')}
+            subtitle={t('landing.included.subtitle', OFFER)}
+          />
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+            {included.map((item, i) => {
+              const Icon = INCLUDED_ICONS[i] ?? Sparkles;
+              return (
+                <motion.div
+                  key={item.title}
+                  {...reveal((i % 3) * 0.06)}
+                  // Three cards on the first row, two wider ones on the second.
+                  className={cn('flex', i < 3 ? 'lg:col-span-2' : 'lg:col-span-3', i === included.length - 1 && 'sm:col-span-2 lg:col-span-3')}
+                >
+                  <SpotlightCard className="flex w-full flex-col gap-4 p-5 sm:p-6">
                     <span className="sv-icon-tile">
                       <Icon className="h-5 w-5" strokeWidth={1.75} />
                     </span>
-                    <span>
-                      <span className="block font-display text-lg font-bold leading-tight">{item.name}</span>
-                      <span className="block text-sm text-[hsl(var(--sv-ink))]/55">{item.role}</span>
-                    </span>
-                  </SpotlightCard>
-                );
-              })}
-            </div>
-          </motion.div>
-        </Section>
-
-        {/* Stats */}
-        <Section className="py-16 sm:py-20">
-          <motion.dl
-            {...reveal()}
-            className="grid grid-cols-2 gap-px overflow-hidden rounded-3xl border border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-line))] lg:grid-cols-4"
-          >
-            {stats.map((stat) => (
-              <div key={stat.label} className="flex flex-col bg-[hsl(var(--sv-paper))] px-5 py-7 text-center sm:py-9">
-                <dt className="order-2 mt-2 text-xs sm:text-sm font-medium text-[hsl(var(--sv-ink))]/55">{stat.label}</dt>
-                <dd className="font-display text-5xl sm:text-6xl font-extrabold leading-none tracking-tight">
-                  <CountUp to={stat.value} className="sv-gradient-text" />
-                </dd>
-              </div>
-            ))}
-          </motion.dl>
-        </Section>
-
-        {/* Capability tour */}
-        <Section id="features" className="py-16 sm:py-24">
-          <SectionHeading
-            reveal={reveal()}
-            eyebrow={t('landing.showcase.eyebrow')}
-            title={t('landing.showcase.title')}
-            subtitle={t('landing.showcase.subtitle')}
-          />
-
-          <motion.div {...reveal(0.05)}>
-            <div
-              role="tablist"
-              aria-label={t('landing.showcase.title')}
-              className="relative mb-8 inline-flex rounded-full border border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-mist))] p-1"
-            >
-              {tabs.map((label, i) => {
-                const Icon = TOUR_ICONS[i] ?? Store;
-                const selected = tab === i;
-                return (
-                  <button
-                    key={label}
-                    role="tab"
-                    id={`tour-tab-${i}`}
-                    aria-selected={selected}
-                    aria-controls="tour-panel"
-                    type="button"
-                    onClick={() => setTab(i)}
-                    className={cn(
-                      'relative z-10 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors sm:px-6',
-                      selected ? 'text-white' : 'text-[hsl(var(--sv-ink))]/60 hover:text-[hsl(var(--sv-ink))]'
-                    )}
-                  >
-                    {selected ? (
-                      <motion.span
-                        layoutId="tour-pill"
-                        className="absolute inset-0 -z-10 rounded-full bg-gradient-to-br from-[hsl(var(--sv-accent))] to-[hsl(var(--sv-accent-deep))] shadow-[0_10px_24px_-10px_hsl(var(--sv-accent))]"
-                        transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-                      />
-                    ) : null}
-                    <Icon className="h-4 w-4" strokeWidth={2} />
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div
-              id="tour-panel"
-              role="tabpanel"
-              aria-labelledby={`tour-tab-${tab}`}
-              className="grid items-center gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:gap-14"
-            >
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={`text-${tab}`}
-                  initial={reduceMotion ? false : { opacity: 0, y: 14 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={reduceMotion ? undefined : { opacity: 0, y: -10 }}
-                  transition={{ duration: 0.3 }}
-                  className="space-y-5"
-                >
-                  <h3 className="font-display text-2xl sm:text-4xl font-bold leading-tight tracking-tight">
-                    {activePanel.title}
-                  </h3>
-                  <p className="sv-lead">{activePanel.body}</p>
-                  <ul className="flex flex-wrap gap-2 pt-1">
-                    {activePanel.items.map((item) => (
-                      <li
-                        key={item}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-mist))] px-3 py-1.5 text-sm text-[hsl(var(--sv-ink))]/75"
-                      >
-                        <Check className="h-3.5 w-3.5 text-[hsl(var(--sv-accent))]" strokeWidth={2.5} />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </motion.div>
-              </AnimatePresence>
-
-              <div className="relative">
-                <div className="sv-glow absolute -inset-6 -z-10 opacity-70" aria-hidden />
-                <AnimatePresence mode="wait" initial={false}>
-                  <motion.div
-                    key={`mock-${tab}`}
-                    initial={reduceMotion ? false : { opacity: 0, y: 20, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={reduceMotion ? undefined : { opacity: 0, y: -12, scale: 0.98 }}
-                    transition={{ duration: 0.35, ease: EASE }}
-                  >
-                    <ActiveMock />
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-            </div>
-          </motion.div>
-        </Section>
-
-        {/* Module ticker */}
-        <div className="sv-marquee py-6" aria-hidden>
-          <div className="sv-marquee__track">
-            {[0, 1].map((copy) => (
-              <ul key={copy} className="flex shrink-0 items-center gap-3 pr-3">
-                {marqueeItems.map(({ title, Icon }) => (
-                  <li
-                    key={`${copy}-${title}`}
-                    className="inline-flex items-center gap-2 rounded-full border border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-mist))] px-4 py-2 text-sm font-semibold text-[hsl(var(--sv-ink))]/70"
-                  >
-                    <Icon className="h-4 w-4 text-[hsl(var(--sv-accent))]" strokeWidth={1.9} />
-                    {title}
-                  </li>
-                ))}
-              </ul>
-            ))}
-          </div>
-        </div>
-
-        {/* Platform bento */}
-        <Section className="py-16 sm:py-24">
-          <SectionHeading
-            reveal={reveal()}
-            eyebrow={t('landing.platform.eyebrow')}
-            title={t('landing.platform.title')}
-            subtitle={t('landing.platform.subtitle')}
-          />
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {features.map((item, i) => {
-              const Icon = FEATURE_ICONS[i] ?? Store;
-              const wide = Boolean(BENTO_SPAN[i]);
-              return (
-                <motion.div key={item.title} {...reveal((i % 4) * 0.06)} className={cn('flex', BENTO_SPAN[i])}>
-                  <SpotlightCard className="flex w-full flex-col justify-between gap-6 p-5 sm:p-6">
-                    {!wide ? (
-                      <span className="absolute right-5 top-4 font-display text-sm font-bold text-[hsl(var(--sv-ink))]/15">
-                        {String(i + 1).padStart(2, '0')}
-                      </span>
-                    ) : null}
-                    {i === 0 ? <WebsiteVisual /> : i === 5 ? <ShippingVisual /> : null}
-                    <div className={cn('space-y-3', wide ? '' : 'pt-2')}>
-                      {!wide ? (
-                        <span className="sv-icon-tile">
-                          <Icon className="h-5 w-5" strokeWidth={1.75} />
-                        </span>
-                      ) : null}
+                    <div className="space-y-2">
                       <h3 className="font-display text-lg font-bold">{item.title}</h3>
                       <p className="text-sm leading-relaxed text-[hsl(var(--sv-ink))]/60">{item.desc}</p>
                     </div>
@@ -769,33 +571,29 @@ export default function Landing() {
               );
             })}
           </div>
-        </Section>
 
-        {/* Ecosystem flow */}
-        <Section className="py-16 sm:py-24">
-          <SectionHeading
-            center
-            reveal={reveal()}
-            title={t('landing.ecosystem.title')}
-            subtitle={t('landing.ecosystem.subtitle')}
-          />
-          <motion.ol {...reveal(0.05)} className="relative grid grid-cols-3 gap-y-10 lg:grid-cols-6">
-            <span className="sv-pipe-line hidden lg:block" aria-hidden />
-            {nodes.map((node, i) => {
-              const Icon = FLOW_ICONS[i] ?? Store;
-              return (
-                <li key={node} className="sv-pipe-item relative flex flex-col items-center gap-3 text-center">
-                  <span className="sv-pipe-node">
-                    <Icon className="h-6 w-6" strokeWidth={1.7} />
-                    <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[hsl(var(--sv-paper))] border border-[hsl(var(--sv-line))] text-[10px] font-bold text-[hsl(var(--sv-ink))]/60">
-                      {i + 1}
-                    </span>
+          <motion.div
+            {...reveal(0.05)}
+            className="mt-6 grid gap-6 rounded-3xl border border-[hsl(var(--sv-accent))]/25 bg-[hsl(var(--sv-accent))]/[0.06] p-6 sm:p-8 lg:grid-cols-[1fr_1.1fr] lg:items-center"
+          >
+            <div className="space-y-3">
+              <p className="font-display text-xl font-bold">{t('landing.included.trainingTitle')}</p>
+              <p className="text-sm leading-relaxed text-[hsl(var(--sv-ink))]/65">{t('landing.included.after', OFFER)}</p>
+            </div>
+            <ul className="grid gap-2.5 sm:grid-cols-2">
+              {training.map((item) => (
+                <li
+                  key={item}
+                  className="flex items-start gap-2.5 rounded-2xl border border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-paper))] px-4 py-3 text-sm font-medium"
+                >
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--sv-accent))]">
+                    <Check className="h-3 w-3 text-white" strokeWidth={3} />
                   </span>
-                  <span className="text-sm font-semibold">{node}</span>
+                  {item}
                 </li>
-              );
-            })}
-          </motion.ol>
+              ))}
+            </ul>
+          </motion.div>
         </Section>
 
         {/* How it works */}
@@ -810,34 +608,72 @@ export default function Landing() {
           <HowItWorks steps={steps} reveal={reveal} />
         </Section>
 
-        {/* We handle the technology */}
-        <Section className="py-16 sm:py-24">
-          <motion.div {...reveal()} className="sv-dark sv-panel-dark px-6 py-12 sm:px-12 sm:py-16">
-            <div className="sv-aurora" aria-hidden>
-              <i />
-              <i />
-              <i />
-            </div>
-            <div className="sv-panel-dark__grid" aria-hidden />
-            <div className="relative grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
-              <div className="space-y-5">
-                <h2 className="sv-h2 !text-[clamp(1.75rem,3.6vw,2.75rem)]">{t('landing.tech.title')}</h2>
-                <p className="text-base sm:text-lg leading-relaxed text-white/65">{t('landing.tech.subtitle')}</p>
-              </div>
-              <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                {points.map((point, i) => (
-                  <motion.li
-                    key={point}
-                    {...reveal(0.05 * i)}
-                    className="flex gap-3 rounded-2xl border border-white/10 bg-white/[0.07] p-4 text-sm text-white/85"
-                  >
-                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--sv-accent))]">
-                      <Check className="h-3 w-3 text-white" strokeWidth={3} />
+        {/* Platform features (compact) */}
+        <Section id="features" className="py-16 sm:py-24">
+          <SectionHeading
+            reveal={reveal()}
+            eyebrow={t('landing.platform.eyebrow')}
+            title={t('landing.platform.title')}
+            subtitle={t('landing.platform.subtitle')}
+          />
+
+          <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4">
+            {features.map((item, i) => {
+              const Icon = FEATURE_ICONS[i] ?? Package;
+              return (
+                <motion.div key={item.title} {...reveal((i % 4) * 0.05)} className="flex">
+                  <SpotlightCard className="flex w-full items-start gap-3 p-4 sm:p-5">
+                    <span className="sv-icon-tile !h-10 !w-10 shrink-0">
+                      <Icon className="h-[1.1rem] w-[1.1rem]" strokeWidth={1.75} />
                     </span>
-                    {point}
-                  </motion.li>
-                ))}
-              </ul>
+                    <span className="space-y-1">
+                      <span className="block font-display text-base font-bold">{item.title}</span>
+                      <span className="block text-sm leading-snug text-[hsl(var(--sv-ink))]/60">{item.desc}</span>
+                    </span>
+                  </SpotlightCard>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          <motion.div {...reveal(0.05)} className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[hsl(var(--sv-ink))]/45">
+              {t('landing.trust.label')}
+            </p>
+            <ul className="flex flex-wrap justify-center gap-2">
+              {trust.map((item) => (
+                <li
+                  key={item.name}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-mist))] px-3 py-1.5 text-sm"
+                >
+                  <span className="font-semibold">{item.name}</span>
+                  <span className="text-[hsl(var(--sv-ink))]/55">· {item.role}</span>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+        </Section>
+
+        {/* People behind the store */}
+        <Section className="py-16 sm:py-24">
+          <motion.div
+            {...reveal()}
+            className="sv-card sv-card--featured relative isolate overflow-hidden px-6 py-12 text-center sm:px-12 sm:py-16"
+          >
+            <div className="sv-glow absolute left-1/2 top-0 -z-10 h-64 w-[36rem] max-w-full -translate-x-1/2 -translate-y-1/3 opacity-60" aria-hidden />
+            <div className="mx-auto max-w-2xl space-y-5">
+              <span className="sv-icon-tile mx-auto">
+                <HeartHandshake className="h-5 w-5" strokeWidth={1.75} />
+              </span>
+              <p className="sv-eyebrow justify-center">{t('landing.human.eyebrow')}</p>
+              <h2 className="sv-h2 text-balance">{t('landing.human.title')}</h2>
+              <p className="sv-lead">{t('landing.human.body')}</p>
+              <div className="pt-2">
+                <button type="button" onClick={openRequest} className="sv-btn sv-btn--ghost">
+                  {t('landing.hero.ctaPrimary')}
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </motion.div>
         </Section>
@@ -852,8 +688,62 @@ export default function Landing() {
             subtitle={t('landing.pricing.subtitle')}
           />
 
-          <motion.div {...reveal()} className="mb-12 flex justify-center">
-            <div className="sv-toggle" role="group" aria-label={t('landing.pricing.title')}>
+          {/* One-time assisted setup */}
+          <motion.div
+            {...reveal()}
+            data-testid="landing-pricing-setup"
+            className="sv-card sv-card--featured mx-auto grid max-w-5xl gap-8 p-6 sm:p-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-12"
+          >
+            <div className="flex flex-col gap-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[hsl(var(--sv-ink))]/45">
+                {t('landing.pricing.setupLabel')}
+              </p>
+              <span className="inline-flex w-fit items-center gap-1 rounded-full bg-gradient-to-r from-[hsl(var(--sv-accent))] to-[hsl(var(--sv-pink))] px-3 py-1 text-[11px] font-bold text-white">
+                <HeartHandshake className="h-3 w-3" />
+                {t('landing.pricing.setupTag')}
+              </span>
+              <div className="flex items-baseline gap-2">
+                <span className="font-display text-5xl font-extrabold tracking-tight sm:text-6xl">{OFFER.setup}</span>
+                <span className="text-sm text-[hsl(var(--sv-ink))]/55">{t('landing.pricing.setupOnce')}</span>
+              </div>
+              <p className="text-sm leading-relaxed text-[hsl(var(--sv-ink))]/60">{t('landing.included.after', OFFER)}</p>
+              <div className="mt-auto pt-2">
+                <button
+                  type="button"
+                  onClick={openRequest}
+                  className="sv-btn sv-btn--primary sv-btn--lg w-full sm:w-auto"
+                  data-testid="landing-pricing-setup-cta"
+                >
+                  {t('landing.hero.ctaPrimary')}
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <ul className="space-y-3 self-center">
+              {setupList.map((item) => (
+                <li key={item} className="flex gap-3 text-sm sm:text-base text-[hsl(var(--sv-ink))]/80">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--sv-accent))]">
+                    <Check className="h-3 w-3 text-white" strokeWidth={3} />
+                  </span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+
+          {/* Recurring subscription */}
+          <motion.div {...reveal()} className="mx-auto mt-20 max-w-2xl space-y-3 text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[hsl(var(--sv-ink))]/45">
+              {t('landing.pricing.subscriptionLabel')}
+            </p>
+            <h3 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">{t('landing.pricing.subscriptionTitle')}</h3>
+            <p className="text-sm sm:text-base leading-relaxed text-[hsl(var(--sv-ink))]/60">
+              {t('landing.pricing.subscriptionSubtitle')}
+            </p>
+          </motion.div>
+
+          <motion.div {...reveal()} className="mb-10 mt-8 flex justify-center">
+            <div className="sv-toggle" role="group" aria-label={t('landing.pricing.subscriptionLabel')}>
               {(['monthly', 'yearly'] as const).map((interval) => (
                 <button
                   key={interval}
@@ -893,13 +783,13 @@ export default function Landing() {
                   key={tier}
                   className={cn(
                     'sv-card flex flex-col p-6 sm:p-8',
-                    plan.popular ? 'sv-card--featured lg:-my-4 lg:py-12' : 'hover:border-[hsl(var(--sv-accent))]/40'
+                    plan.popular ? 'border-[hsl(var(--sv-accent))]/45' : 'hover:border-[hsl(var(--sv-accent))]/40'
                   )}
                 >
                   <div className="mb-5 flex items-center justify-between gap-2">
-                    <h3 className="font-display text-xl font-bold">{plan.name}</h3>
+                    <h4 className="font-display text-xl font-bold">{plan.name}</h4>
                     {plan.popular ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[hsl(var(--sv-accent))] to-[hsl(var(--sv-pink))] px-3 py-1 text-[11px] font-bold text-white">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-[hsl(var(--sv-accent))]/12 px-3 py-1 text-[11px] font-bold text-[hsl(var(--sv-accent))]">
                         <Sparkles className="h-3 w-3" />
                         {t('landing.pricing.mostPopular')}
                       </span>
@@ -914,7 +804,7 @@ export default function Landing() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={reduceMotion ? undefined : { opacity: 0, y: -10 }}
                         transition={{ duration: 0.22 }}
-                        className="font-display text-5xl font-extrabold tracking-tight"
+                        className="font-display text-4xl font-extrabold tracking-tight sm:text-5xl"
                       >
                         {price}
                       </motion.span>
@@ -943,8 +833,8 @@ export default function Landing() {
                     {t('landing.pricing.storage', { size: plan.mediaQuotaGiB })}
                   </p>
 
-                  <ul className="mb-8 flex-1 space-y-3">
-                    {includedList.map((item) => (
+                  <ul className="flex-1 space-y-3">
+                    {planList.map((item) => (
                       <li key={`${tier}-${item}`} className="flex gap-3 text-sm text-[hsl(var(--sv-ink))]/75">
                         <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--sv-accent))]/12">
                           <Check className="h-3 w-3 text-[hsl(var(--sv-accent))]" strokeWidth={3} />
@@ -953,14 +843,6 @@ export default function Landing() {
                       </li>
                     ))}
                   </ul>
-
-                  <Link
-                    to="/auth?tab=signup&intent=subscribe"
-                    className={cn('sv-btn w-full', plan.popular ? 'sv-btn--primary' : 'sv-btn--ghost')}
-                  >
-                    {t('landing.pricing.choosePlanCta')}
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
                 </div>
               );
             })}
@@ -968,28 +850,47 @@ export default function Landing() {
 
           <motion.div
             {...reveal()}
-            data-testid="landing-pricing-trial"
-            className="mx-auto mt-14 flex max-w-3xl flex-col items-center gap-4 rounded-3xl border border-[hsl(var(--sv-accent))]/25 bg-[hsl(var(--sv-accent))]/[0.06] px-6 py-8 text-center"
+            data-testid="landing-pricing-notes"
+            className="mx-auto mt-8 max-w-3xl space-y-2 rounded-2xl border border-dashed border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-mist))]/60 p-5"
           >
-            <p className="font-display text-xl font-bold">{t('landing.pricing.trialEyebrow')}</p>
-            <p className="text-sm text-[hsl(var(--sv-ink))]/60">{t('landing.pricing.trialNoCard')}</p>
-            <Link to="/auth?tab=signup&intent=trial" className="sv-btn sv-btn--primary">
-              {t('landing.pricing.trialCta')}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            <p className="flex gap-2.5 text-sm leading-relaxed text-[hsl(var(--sv-ink))]/70">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-[hsl(var(--sv-accent))]" />
+              {t('landing.pricing.providersNote')}
+            </p>
+            <p className="pl-[1.6rem] text-sm leading-relaxed text-[hsl(var(--sv-ink))]/60">
+              {t('landing.pricing.notIncluded')}
+            </p>
           </motion.div>
 
+          {/* Self-serve alternative: the existing trial flow */}
           <motion.div
             {...reveal()}
-            className="mx-auto mt-6 max-w-3xl space-y-1.5 rounded-2xl border border-dashed border-[hsl(var(--sv-line))] bg-[hsl(var(--sv-mist))]/60 p-5"
+            data-testid="landing-pricing-trial"
+            className="mx-auto mt-10 flex max-w-3xl flex-col items-center gap-4 rounded-3xl border border-[hsl(var(--sv-line))] px-6 py-8 text-center sm:flex-row sm:justify-between sm:text-left"
           >
-            <p className="text-sm font-semibold">{t('landing.pricing.setupTitle')}</p>
-            <p className="text-sm leading-relaxed text-[hsl(var(--sv-ink))]/60">{t('landing.pricing.setupBody')}</p>
-            {hasPrice(MARKETING_PRICING.setupFee) ? (
-              <p className="pt-1 text-sm font-medium">{MARKETING_PRICING.setupFee}</p>
-            ) : (
-              <p className="pt-1 text-xs text-[hsl(var(--sv-ink))]/45">{t('landing.pricing.setupFeeTbd')}</p>
-            )}
+            <div className="space-y-1">
+              <p className="font-display text-lg font-bold">{t('landing.pricing.selfServeTitle')}</p>
+              <p className="text-sm text-[hsl(var(--sv-ink))]/60">
+                {t('landing.pricing.selfServeBody')} {t('landing.pricing.trialNoCard')}.
+              </p>
+            </div>
+            <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto">
+              <Link
+                to="/auth?tab=signup&intent=trial"
+                data-testid="landing-trial-cta"
+                className="sv-btn sv-btn--ghost w-full sm:w-auto"
+              >
+                {t('landing.pricing.trialCta')}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to="/auth?tab=signup&intent=subscribe"
+                data-testid="landing-choose-plan-cta"
+                className="text-center text-sm font-medium text-[hsl(var(--sv-ink))]/60 underline-offset-4 hover:text-[hsl(var(--sv-accent))] hover:underline"
+              >
+                {t('landing.pricing.choosePlanCta')}
+              </Link>
+            </div>
           </motion.div>
         </Section>
 
@@ -1032,28 +933,20 @@ export default function Landing() {
             </div>
             <div className="sv-panel-dark__grid" aria-hidden />
             <div className="relative mx-auto max-w-3xl space-y-6">
-              <span className="sv-hero-badge !text-white/85 !border-white/15 !bg-white/[0.06]">
-                <span className="sv-hero-badge__dot">
-                  <Sparkles className="mr-1 h-3 w-3" />
-                  {t('landing.final.badgeTag')}
-                </span>
-                {t('landing.final.badgeText')}
-              </span>
-              <h2 className="font-display text-[clamp(1.9rem,4.4vw,3.4rem)] font-bold leading-[1.08] tracking-[-0.04em]">
+              <h2 className="font-display text-[clamp(1.9rem,4.4vw,3.4rem)] font-bold leading-[1.08] tracking-[-0.04em] text-balance">
                 {t('landing.final.title')}
               </h2>
               <p className="mx-auto max-w-xl text-base sm:text-lg text-white/65">{t('landing.final.subtitle')}</p>
-              <div className="flex flex-col items-center justify-center gap-3 pt-2 sm:flex-row">
-                <Link to="/auth?tab=signup&intent=trial" className="sv-btn sv-btn--white sv-btn--lg w-full sm:w-auto">
+              <div className="flex justify-center pt-2">
+                <button
+                  type="button"
+                  onClick={openRequest}
+                  className="sv-btn sv-btn--white sv-btn--lg w-full sm:w-auto"
+                  data-testid="landing-final-cta"
+                >
                   {t('landing.final.cta')}
                   <ArrowRight className="h-4 w-4" />
-                </Link>
-                <Link
-                  to="/auth?tab=signup&intent=subscribe"
-                  className="sv-btn sv-btn--ghost sv-btn--lg w-full sm:w-auto"
-                >
-                  {t('landing.pricing.choosePlanCta')}
-                </Link>
+                </button>
               </div>
             </div>
           </motion.div>
@@ -1093,7 +986,7 @@ export default function Landing() {
               </li>
               <li>
                 <Link to="/auth?tab=signup" className="hover:text-[hsl(var(--sv-accent))]">
-                  {t('landing.nav.getStarted')}
+                  {t('landing.nav.createAccount')}
                 </Link>
               </li>
             </ul>
@@ -1124,6 +1017,8 @@ export default function Landing() {
           SpeedVendors
         </p>
       </footer>
+
+      <SetupRequestDialog open={requestOpen} onOpenChange={setRequestOpen} />
     </div>
   );
 }

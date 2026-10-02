@@ -24,6 +24,7 @@ import { AdminAccessCodes } from '@/components/admin/AdminAccessCodes';
 import { AdminStoragePanel, AdminStoragePlatformCard } from '@/components/admin/AdminStoragePanel';
 import AdminTrials from '@/components/admin/AdminTrials';
 import { AdminDesignRequests } from '@/components/admin/AdminDesignRequests';
+import { AdminSetupRequests } from '@/components/admin/AdminSetupRequests';
 import type { Database } from '@/types/database';
 
 type OrderStatusEnum = Database['public']['Enums']['order_status_enum'];
@@ -106,7 +107,7 @@ export default function AdminConsole() {
   const [search, setSearch] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [tab, setTab] = useState('overview');
-  const [section, setSection] = useState<'merchants' | 'billing' | 'trials' | 'designs'>('merchants');
+  const [section, setSection] = useState<'merchants' | 'billing' | 'trials' | 'designs' | 'setup'>('merchants');
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [orderSearch, setOrderSearch] = useState('');
 
@@ -122,6 +123,19 @@ export default function AdminConsole() {
     },
   });
   const designInboxCount = designInboxQuery.data ?? 0;
+
+  const setupInboxQuery = useQuery({
+    queryKey: ['admin-setup-requests-inbox-count'],
+    enabled: gate.status === 'ready',
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_list_store_setup_requests' as never);
+      if (error) throw error;
+      const rows = (data || []) as Array<{ status?: string }>;
+      return rows.filter((r) => r.status === 'new').length;
+    },
+  });
+  const setupInboxCount = setupInboxQuery.data ?? 0;
 
   useEffect(() => {
     if (loading || gate.status === 'loading') return;
@@ -421,7 +435,7 @@ export default function AdminConsole() {
           <Badge variant="secondary">MFA</Badge>
         </div>
         <div className="flex items-center gap-2">
-          <Tabs value={section} onValueChange={(v) => setSection(v as 'merchants' | 'billing' | 'trials' | 'designs')}>
+          <Tabs value={section} onValueChange={(v) => setSection(v as 'merchants' | 'billing' | 'trials' | 'designs' | 'setup')}>
             <TabsList>
               <TabsTrigger value="merchants">Merchants</TabsTrigger>
               <TabsTrigger value="designs" className="gap-1.5">
@@ -429,6 +443,14 @@ export default function AdminConsole() {
                 {designInboxCount > 0 ? (
                   <Badge className="h-5 min-w-5 rounded-full bg-[#6E3DFF] px-1.5 text-[10px] text-white">
                     {designInboxCount}
+                  </Badge>
+                ) : null}
+              </TabsTrigger>
+              <TabsTrigger value="setup" className="gap-1.5">
+                Setup
+                {setupInboxCount > 0 ? (
+                  <Badge className="h-5 min-w-5 rounded-full bg-[#6E3DFF] px-1.5 text-[10px] text-white">
+                    {setupInboxCount}
                   </Badge>
                 ) : null}
               </TabsTrigger>
@@ -450,6 +472,8 @@ export default function AdminConsole() {
             setSection('merchants');
           }}
         />
+      ) : section === 'setup' ? (
+        <AdminSetupRequests />
       ) : section === 'trials' ? (
         <AdminTrials
           onOpenUser={(userId) => {
