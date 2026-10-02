@@ -12,6 +12,11 @@ export const MARKETING_PRICING = {
   setupFee: '' as string,
 } as const;
 
+/** One-time assisted setup offer shown on the landing page (not charged through Stripe). */
+export const ASSISTED_SETUP_FEE_RON = 499;
+export const ASSISTED_SETUP_PRODUCT_COUNT = 20;
+export const ASSISTED_SETUP_TRAINING_MINUTES = 30;
+
 export function hasPrice(value: string | undefined | null): boolean {
   return Boolean(value && value.trim().length > 0);
 }
