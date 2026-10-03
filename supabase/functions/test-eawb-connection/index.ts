@@ -47,6 +47,16 @@ serve(async (req) => {
       throw e;
     }
 
+    // Optional one-shot key from the wizard (validate before persisting).
+    let body: Record<string, unknown> = {};
+    try {
+      body = await req.json();
+    } catch {
+      body = {};
+    }
+    const overrideKey =
+      typeof body.api_key === 'string' && body.api_key.trim() ? body.api_key.trim() : null;
+
     // Get profile
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
@@ -58,9 +68,10 @@ serve(async (req) => {
       throw new Error('Profile not found');
     }
 
-    console.log('Profile loaded, eAWB key present:', !!profile.eawb_api_key);
+    const apiKey = overrideKey || profile.eawb_api_key;
+    console.log('Profile loaded, eAWB key present:', !!apiKey, 'override:', !!overrideKey);
 
-    if (!profile.eawb_api_key) {
+    if (!apiKey) {
       return new Response(JSON.stringify({
         success: false,
         error: 'NO_API_KEY',
@@ -71,8 +82,7 @@ serve(async (req) => {
       });
     }
 
-    const apiKey = profile.eawb_api_key;
-    const results = [];
+    const results: Array<Record<string, unknown>> = [];
 
     // Test 1: Get carriers
     console.log('Testing carriers endpoint...');
@@ -241,24 +251,52 @@ serve(async (req) => {
       `)
       .eq('is_active', true);
 
+    const carriersOk = results.find((r) => r.test === 'carriers')?.success === true;
+    const servicesOk = results.find((r) => r.test === 'services')?.success === true;
+    const quotingOk = results.find((r) => r.test === 'orders/prices')?.success === true;
+    // A valid API key must reach carriers + services. Quoting can fail when
+    // addresses/defaults are incomplete — that is tracked separately.
+    const apiKeyValid = carriersOk && servicesOk;
+    const setupComplete = Boolean(
+      (overrideKey || profile.eawb_api_key) &&
+        profile.eawb_shipping_address_id &&
+        profile.eawb_billing_address_id,
+    );
+
     const summary = {
-      apiConfigured: !!profile.eawb_api_key,
+      apiConfigured: Boolean(overrideKey || profile.eawb_api_key),
       billingAddressId: profile.eawb_billing_address_id,
+      shippingAddressId: profile.eawb_shipping_address_id,
       defaultCarrierId: profile.eawb_default_carrier_id,
       defaultServiceId: profile.eawb_default_service_id,
-      carriersEndpoint: results.find(r => r.test === 'carriers')?.success || false,
-      servicesEndpoint: results.find(r => r.test === 'services')?.success || false,
-      quotingEndpoint: results.find(r => r.test === 'orders/prices')?.success || false,
+      carriersEndpoint: carriersOk,
+      servicesEndpoint: servicesOk,
+      quotingEndpoint: quotingOk,
       databaseCarriers: dbCarriers?.length || 0,
-      overallSuccess: results.every(r => r.success)
+      apiKeyValid,
+      setupComplete,
+      overallSuccess: apiKeyValid && (overrideKey ? true : setupComplete),
     };
 
     return new Response(JSON.stringify({
-      success: true,
+      success: summary.overallSuccess,
+      apiKeyValid,
+      setupComplete,
       baseUrl: EAWB_BASE_URL,
+      error: !apiKeyValid
+        ? 'INVALID_API_KEY'
+        : !setupComplete && !overrideKey
+          ? 'SETUP_INCOMPLETE'
+          : null,
+      message: !apiKeyValid
+        ? 'eAWB rejected the API key (carriers/services check failed).'
+        : !setupComplete && !overrideKey
+          ? 'API key works, but pickup and billing addresses are not fully configured.'
+          : 'eAWB connection successful.',
       profile: {
-        hasApiKey: !!profile.eawb_api_key,
+        hasApiKey: Boolean(overrideKey || profile.eawb_api_key),
         billingAddressId: profile.eawb_billing_address_id,
+        shippingAddressId: profile.eawb_shipping_address_id,
         defaultCarrierId: profile.eawb_default_carrier_id,
         defaultServiceId: profile.eawb_default_service_id
       },

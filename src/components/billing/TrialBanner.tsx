@@ -5,6 +5,8 @@ import { Clock, Lock, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useTrialStatus, type TrialLevel } from '@/hooks/useTrialStatus';
+import { isNativeBillingPurchaseBlocked } from '@/hooks/useEntitlementGate';
+import { openWebSubscribeInBrowser } from '@/lib/billing/openWebSubscribe';
 
 const TONE: Partial<Record<TrialLevel, string>> = {
   notice: 'bg-sky-500/10 border-sky-500/30',
@@ -78,7 +80,17 @@ export function TrialBanner() {
         <span className="min-w-0">{message}</span>
       </div>
       <div className="flex items-center gap-1">
-        <Button size="sm" variant={level === 'notice' ? 'outline' : 'default'} onClick={() => navigate('/subscribe')}>
+        <Button
+          size="sm"
+          variant={level === 'notice' ? 'outline' : 'default'}
+          onClick={() => {
+            if (isNativeBillingPurchaseBlocked()) {
+              void openWebSubscribeInBrowser('/subscribe');
+              return;
+            }
+            navigate('/subscribe');
+          }}
+        >
           {t('trial.choosePlan')}
         </Button>
         {!persistent ? (

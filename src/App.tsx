@@ -22,6 +22,7 @@ const Index = lazy(() => import('./pages/Index'));
 const Auth = lazy(() => import('./pages/Auth'));
 const Welcome = lazy(() => import('./pages/Welcome'));
 const AuthCallback = lazy(() => import('./pages/AuthCallback'));
+const AuthWebSession = lazy(() => import('./pages/AuthWebSession'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const TemplateViewer = lazy(() => import('./pages/TemplateViewer'));
 const SetupWizard = lazy(() => import('./pages/SetupWizard'));
@@ -137,6 +138,14 @@ const App = () => (
                 element={
                   <AppThemeProvider>
                     <AuthCallback />
+                  </AppThemeProvider>
+                }
+              />
+              <Route
+                path="/auth/web-session"
+                element={
+                  <AppThemeProvider>
+                    <AuthWebSession />
                   </AppThemeProvider>
                 }
               />

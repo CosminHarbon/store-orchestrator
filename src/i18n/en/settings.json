@@ -489,7 +489,8 @@
       "apiKeyRequired": "API Key is required.",
       "pickupRequired": "Select a pickup address to continue.",
       "billingRequired": "Select a billing address to continue.",
-      "openBrowserFailed": "Could not open eAWB. Please try again."
+      "openBrowserFailed": "Could not open eAWB. Please try again.",
+      "apiKeyInvalid": "That eAWB API key was rejected. Check the key and try again."
     },
     "paths": {
       "eawbHome": "eAWB",
@@ -584,7 +585,8 @@
       "testConnection": "Test Connection",
       "editDetails": "Edit Details",
       "advancedSettings": "Advanced Settings",
-      "disconnect": "Disconnect"
+      "disconnect": "Disconnect",
+      "continueSetup": "Continue setup"
     },
     "advanced": {
       "title": "Advanced Settings",
@@ -598,7 +600,13 @@
       "disconnected": "eAWB disconnected. You can reconnect anytime.",
       "testOk": "eAWB connection successful.",
       "pickupLinked": "Pickup address linked.",
-      "lockerSaved": "Default pickup locker saved."
+      "lockerSaved": "Default pickup locker saved.",
+      "setupIncomplete": "API key works, but eAWB setup is incomplete. Finish pickup and billing addresses."
+    },
+    "incomplete": {
+      "title": "eAWB setup incomplete",
+      "badge": "Incomplete",
+      "description": "Some details were saved, but setup was not finished. Continue the wizard to select pickup and billing addresses, then test the connection."
     }
   },
   "stripeConnect": {

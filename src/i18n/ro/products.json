@@ -135,6 +135,8 @@
     "updateFailed": "Actualizarea produsului a eșuat",
     "deleted": "Produs șters cu succes",
     "deleteFailed": "Ștergerea produsului a eșuat",
+    "deleteDenied": "Nu s-a putut șterge produsul. Accesul la plan poate fi expirat, sau sesiunea de admin necesită MFA înainte de modificări.",
+    "selectedDeletePartial": "Unele produse nu au putut fi șterse. Reîncarcă pagina și încearcă din nou.",
     "skuRequired": "SKU-ul este obligatoriu",
     "skuValidateFailed": "Nu s-a putut valida SKU-ul",
     "skuTaken": "Acest SKU este deja folosit de alt produs",

@@ -135,6 +135,8 @@
     "updateFailed": "Failed to update product",
     "deleted": "Product deleted successfully",
     "deleteFailed": "Failed to delete product",
+    "deleteDenied": "Could not delete this product. Your plan access may have expired, or an admin session needs MFA before writing.",
+    "selectedDeletePartial": "Some products could not be deleted. Refresh and try again.",
     "skuRequired": "SKU is required",
     "skuValidateFailed": "Could not validate SKU",
     "skuTaken": "This SKU is already used by another product",

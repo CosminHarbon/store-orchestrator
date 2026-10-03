@@ -699,7 +699,7 @@ export function ProductEditorDrawer({
       }}
     >
       <SheetContent className="w-full sm:max-w-5xl p-0 flex flex-col gap-0 overflow-hidden [&>button]:hidden">
-        <div className="border-b px-4 py-3 flex items-start justify-between gap-3 shrink-0">
+        <div className="border-b px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] flex items-start justify-between gap-3 shrink-0">
           <div className="min-w-0">
             <SheetHeader className="text-left space-y-1">
               <SheetTitle className="truncate">{form.title || 'Untitled product'}</SheetTitle>
@@ -736,7 +736,7 @@ export function ProductEditorDrawer({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 min-h-full">
             {/* Media column */}
             <div className="border-b lg:border-b-0 lg:border-r p-4 space-y-3 bg-muted/10">
@@ -1281,7 +1281,7 @@ export function ProductEditorDrawer({
         {/* Sticky save bar */}
         <div
           className={cn(
-            'shrink-0 border-t bg-background/95 backdrop-blur px-4 py-3 flex items-center justify-between gap-3 transition-opacity',
+            'shrink-0 border-t bg-background/95 backdrop-blur px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex items-center justify-between gap-3 transition-opacity',
             isDirty ? 'opacity-100' : 'opacity-60'
           )}
         >

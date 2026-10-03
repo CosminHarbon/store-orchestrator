@@ -32,6 +32,10 @@ import { withActingAsUserId } from '@/lib/actingAs';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { goToShippingSettings } from '@/lib/openExternalUrl';
+import {
+  isEawbSetupComplete,
+  isEawbSetupIncomplete,
+} from '@/lib/shipping/eawbSetupStatus';
 
 export type EawbShippingPanelProps = {
   profile: {
@@ -65,7 +69,8 @@ export function EawbShippingPanel({
   const { effectiveUserId } = useImpersonation();
   const queryClient = useQueryClient();
 
-  const isConnected = Boolean(profile?.eawb_api_key?.trim());
+  const isConnected = isEawbSetupComplete(profile);
+  const isIncomplete = isEawbSetupIncomplete(profile);
 
   const [wizardOpen, setWizardOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -84,9 +89,11 @@ export function EawbShippingPanel({
       });
       if (error) throw error;
       if (data?.success) {
-        toast.success(t('eawbSetup.toast.testOk'));
+        toast.success(data?.message || t('eawbSetup.toast.testOk'));
+      } else if (data?.apiKeyValid && data?.error === 'SETUP_INCOMPLETE') {
+        toast.error(data?.message || t('eawbSetup.toast.setupIncomplete'));
       } else {
-        toast.error(data?.error || t('toast.connectionFailed'));
+        toast.error(data?.message || data?.error || t('toast.connectionFailed'));
       }
     } catch (e: any) {
       toast.error(e?.message || t('toast.connectionFailed'));
@@ -188,6 +195,51 @@ export function EawbShippingPanel({
             >
               <Settings2 className="h-4 w-4 mr-2" />
               {t('eawbSetup.actions.advancedSettings')}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setDisconnectOpen(true)}
+              disabled={disconnecting}
+            >
+              <Unplug className="h-4 w-4 mr-2" />
+              {t('eawbSetup.actions.disconnect')}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : isIncomplete ? (
+        <Card className="border-amber-500/40 bg-gradient-to-br from-amber-500/10 via-background to-background overflow-hidden">
+          <CardHeader className="pb-3">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-700 dark:text-amber-400">
+                <PlugZap className="h-6 w-6" aria-hidden />
+              </div>
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <CardTitle className="text-base">{t('eawbSetup.incomplete.title')}</CardTitle>
+                  <Badge variant="outline" className="border-amber-500/50 text-amber-800 dark:text-amber-300">
+                    {t('eawbSetup.incomplete.badge')}
+                  </Badge>
+                </div>
+                <CardDescription>{t('eawbSetup.incomplete.description')}</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button type="button" onClick={() => setWizardOpen(true)} disabled={disconnecting}>
+              {t('eawbSetup.actions.continueSetup')}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void testConnection()}
+              disabled={testLoading || disconnecting}
+            >
+              {testLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <PlugZap className="h-4 w-4 mr-2" />}
+              {t('eawbSetup.actions.testConnection')}
             </Button>
             <Button
               type="button"

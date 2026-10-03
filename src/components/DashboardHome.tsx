@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { useStoreOnboarding } from '@/hooks/useStoreOnboarding';
+import { isShippingIntegrationReady } from '@/lib/shipping/eawbSetupStatus';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -282,7 +283,7 @@ export default function DashboardHome({ onTabChange, storeName }: DashboardHomeP
         supabase
           .from('profiles')
           .select(
-            'store_name, setup_completed, welcome_dismissed, netpopia_api_key, netpopia_signature, eawb_api_key, shipping_provider, payment_provider'
+            'store_name, setup_completed, welcome_dismissed, netpopia_api_key, netpopia_signature, eawb_api_key, shipping_provider, payment_provider, eawb_shipping_address_id, eawb_billing_address_id'
           )
           .eq('user_id', effectiveUserId!)
           .single(),
@@ -469,9 +470,7 @@ export default function DashboardHome({ onTabChange, storeName }: DashboardHomeP
         profile?.payment_provider === 'none' ||
           (profile?.netpopia_api_key?.trim() && profile?.netpopia_signature?.trim())
       );
-      const shippingConnected = Boolean(
-        profile?.shipping_provider === 'manual' || profile?.eawb_api_key?.trim()
-      );
+      const shippingConnected = isShippingIntegrationReady(profile);
       const hasProducts = (productsRes.count || 0) > 0;
 
       return {

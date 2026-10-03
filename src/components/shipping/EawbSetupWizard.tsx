@@ -165,6 +165,26 @@ export function EawbSetupWizard({
     }
     setSavingKey(true);
     try {
+      // Validate against eAWB before persisting — abandoned/wrong keys must not look "connected".
+      const { data: testData, error: testError } = await supabase.functions.invoke(
+        'test-eawb-connection',
+        {
+          body: withActingAsUserId({ api_key: apiKey.trim() }),
+          headers: {
+            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          },
+        },
+      );
+      if (testError) throw testError;
+      const keyOk =
+        testData?.apiKeyValid === true ||
+        (testData?.apiKeyValid == null && testData?.success === true);
+      if (!keyOk) {
+        setApiKeyError(t('eawbSetup.errors.apiKeyInvalid'));
+        toast.error(testData?.message || t('eawbSetup.errors.apiKeyInvalid'));
+        return false;
+      }
+
       const { data, error } = await supabase
         .from('profiles')
         .update({
@@ -333,10 +353,12 @@ export function EawbSetupWizard({
       if (error) throw error;
       if (data?.success) {
         setTestPassed(true);
-        toast.success(t('eawbSetup.toast.testOk'));
+        toast.success(data?.message || t('eawbSetup.toast.testOk'));
         setPhase('success');
+      } else if (data?.apiKeyValid && data?.error === 'SETUP_INCOMPLETE') {
+        toast.error(data?.message || t('eawbSetup.toast.setupIncomplete'));
       } else {
-        toast.error(data?.error || t('toast.connectionFailed'));
+        toast.error(data?.message || data?.error || t('toast.connectionFailed'));
       }
     } catch (e: any) {
       toast.error(e?.message || t('toast.connectionFailed'));

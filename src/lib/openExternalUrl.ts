@@ -2,8 +2,8 @@ import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 
 /**
- * Open an external URL without navigating away from the SpeedVendors app.
- * Native: Capacitor Browser (in-app browser sheet).
+ * Open an external URL without navigating away from the SpeedVendors app shell.
+ * Native: Capacitor Browser (SFSafariViewController / Chrome Custom Tabs).
  * Web: new browser tab.
  */
 export async function openExternalUrl(url: string): Promise<void> {
