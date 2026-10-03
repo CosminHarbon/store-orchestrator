@@ -40,7 +40,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
-import { deleteEntityMedia } from '@/lib/media/deleteMedia';
+import { deleteProductsByIds, ProductDeleteError } from '@/lib/products/deleteProducts';
 import { toast } from 'sonner';
 import { ExportDialog } from '@/components/export/ExportDialog';
 import type { ExportRow } from '@/lib/export/types';
@@ -473,18 +473,21 @@ const ProductManagement = () => {
 
   const deleteProductMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('products').delete().eq('id', id);
-      if (error) throw error;
-      await deleteEntityMedia('product', id);
+      await deleteProductsByIds([id]);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['media-usage'] });
+      queryClient.invalidateQueries({ queryKey: ['product-collections-map'] });
       toast.success(tProducts('toast.deleted'));
     },
     onError: (error) => {
-      toast.error(tProducts('toast.deleteFailed'));
       console.error(error);
+      if (error instanceof ProductDeleteError && error.code === 'permission_denied') {
+        toast.error(tProducts('toast.deleteDenied'));
+        return;
+      }
+      toast.error(tProducts('toast.deleteFailed'));
     },
   });
 
@@ -667,19 +670,24 @@ const ProductManagement = () => {
     if (!selectedProducts.length) return;
     if (!confirm(tProducts('confirm.deleteSelected', { count: selectedProducts.length }))) return;
     try {
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .in(
-          'id',
-          selectedProducts.map((p) => p.id)
-        );
-      if (error) throw error;
+      await deleteProductsByIds(selectedProducts.map((p) => p.id));
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['media-usage'] });
+      queryClient.invalidateQueries({ queryKey: ['product-collections-map'] });
       setSelectedIds(new Set());
       toast.success(tProducts('toast.selectedDeleted'));
     } catch (e) {
       console.error(e);
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      if (e instanceof ProductDeleteError && e.code === 'permission_denied') {
+        toast.error(tProducts('toast.deleteDenied'));
+        return;
+      }
+      if (e instanceof ProductDeleteError && e.code === 'partial') {
+        setSelectedIds(new Set());
+        toast.error(tProducts('toast.selectedDeletePartial'));
+        return;
+      }
       toast.error(tProducts('toast.selectedDeleteFailed'));
     }
   };

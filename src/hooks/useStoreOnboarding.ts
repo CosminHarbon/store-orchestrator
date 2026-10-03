@@ -12,6 +12,7 @@ import {
   isDefaultStoreName,
   parseOnboardingState,
 } from '@/components/onboarding/onboardingTypes';
+import { isShippingIntegrationReady } from '@/lib/shipping/eawbSetupStatus';
 
 type ProfileRow = {
   store_name: string | null;
@@ -95,9 +96,7 @@ export function useStoreOnboarding() {
         (profileQuery.data?.netpopia_api_key?.trim() &&
           profileQuery.data?.netpopia_signature?.trim())
     );
-    const shippingDone = Boolean(
-      profileQuery.data?.shipping_provider === 'manual' || profileQuery.data?.eawb_api_key?.trim()
-    );
+    const shippingDone = isShippingIntegrationReady(profileQuery.data);
     const productDone = (productsQuery.data || 0) > 0;
     const storefrontDone = Boolean(
       state.selected_template || customizationQuery.data?.id

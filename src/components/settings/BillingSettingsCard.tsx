@@ -15,6 +15,7 @@ import { formatBytes } from '@/lib/media/constants';
 import { useMediaUsage } from '@/hooks/useMediaUsage';
 import { Capacitor } from '@capacitor/core';
 import { TrialStatusCard } from '@/components/billing/TrialStatusCard';
+import { openWebSubscribeInBrowser } from '@/lib/billing/openWebSubscribe';
 import { toIntlLocale } from '@/i18n/types';
 import type { AppLanguage } from '@/i18n/types';
 
@@ -88,7 +89,14 @@ export function BillingSettingsCard() {
 
   // A free trial has NO Stripe subscription, so there is nothing to manage in the Customer Portal:
   // trial (and no-plan) users are sent to the SpeedVendors plan-selection screen instead.
-  const managePlans = () => navigate('/subscribe');
+  // Native: open the website already signed in (no in-app Stripe purchase).
+  const managePlans = () => {
+    if (Capacitor.isNativePlatform()) {
+      void openWebSubscribeInBrowser('/subscribe');
+      return;
+    }
+    navigate('/subscribe');
+  };
 
   const openPortal = async () => {
     if (Capacitor.isNativePlatform()) {

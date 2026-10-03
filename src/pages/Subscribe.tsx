@@ -25,13 +25,15 @@ import {
   type SignupIntent,
 } from '@/lib/billing/trialCtaVisibility';
 import { SPEEDVENDORS_PLANS, SPEEDVENDORS_TIERS, type BillingInterval, type SpeedVendorsTier } from '@/lib/plans/catalogue';
+import { openWebSubscribeInBrowser } from '@/lib/billing/openWebSubscribe';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 
 /**
  * Subscription / trial gate. Web: trial start + Stripe Checkout + access codes.
- * Native: entitlement-aware message only (no Checkout / codes in this phase).
+ * Native: no in-app purchase — messaging stays; "Choose a plan" opens the website
+ * already signed in via /auth/web-session handoff.
  */
 const Subscribe = () => {
   const { t } = useTranslation('common');
@@ -93,6 +95,14 @@ const Subscribe = () => {
     plansRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  const choosePlan = () => {
+    if (nativeBlocked) {
+      void openWebSubscribeInBrowser('/subscribe');
+      return;
+    }
+    scrollToPlans();
+  };
+
   const enterApp = async () => {
     await queryClient.invalidateQueries({ queryKey: ['trial-status'] });
     await queryClient.invalidateQueries({ queryKey: ['entitlement-status'] });
@@ -103,9 +113,7 @@ const Subscribe = () => {
 
   const startCheckout = async (tier: SpeedVendorsTier) => {
     if (nativeBlocked) {
-      toast.message(t('subscribe.nativeCta'), {
-        description: t('subscribe.nativeCtaDesc'),
-      });
+      void openWebSubscribeInBrowser('/subscribe');
       return;
     }
     if (alreadyEntitled) {
@@ -210,9 +218,7 @@ const Subscribe = () => {
 
   const redeemCode = async () => {
     if (nativeBlocked) {
-      toast.message(t('subscribe.useWebsite'), {
-        description: t('subscribe.codeWebsiteDesc'),
-      });
+      void openWebSubscribeInBrowser('/subscribe');
       return;
     }
     const code = accessCode.trim();
@@ -307,7 +313,7 @@ const Subscribe = () => {
               <Button type="button" onClick={() => void enterApp()}>
                 {t('subscribe.continueTrialCta')}
               </Button>
-              <Button type="button" variant="outline" onClick={scrollToPlans}>
+              <Button type="button" variant="outline" onClick={choosePlan}>
                 {t('subscribe.choiceSubscribeCta')}
               </Button>
             </div>
@@ -333,7 +339,7 @@ const Subscribe = () => {
             <h2 className="mt-2 text-2xl font-semibold tracking-tight">{t('subscribe.choiceSubscribeTitle')}</h2>
             <p className="mt-2 text-sm text-muted-foreground">{t('subscribe.choiceSubscribeDesc')}</p>
             <div className="mt-6 pt-2">
-              <Button type="button" variant={emphasizePlans ? 'default' : 'outline'} className="w-full" onClick={scrollToPlans}>
+              <Button type="button" variant={emphasizePlans ? 'default' : 'outline'} className="w-full" onClick={choosePlan}>
                 {t('subscribe.choiceSubscribeCta')}
               </Button>
             </div>
@@ -376,6 +382,11 @@ const Subscribe = () => {
             <div className="rounded-2xl border border-border/60 bg-card/60 p-6 text-center">
               <p className="text-sm text-muted-foreground">{t('subscribe.nativeTitle')}</p>
               <p className="mt-2 text-sm text-muted-foreground">{t('subscribe.nativeBody')}</p>
+              <div className="mt-6">
+                <Button type="button" className="w-full sm:w-auto" onClick={choosePlan}>
+                  {t('subscribe.choiceSubscribeCta')}
+                </Button>
+              </div>
             </div>
           </div>
         ) : (

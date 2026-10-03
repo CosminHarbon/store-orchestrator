@@ -489,7 +489,8 @@
       "apiKeyRequired": "Cheia API este obligatorie.",
       "pickupRequired": "Selectează o adresă de ridicare pentru a continua.",
       "billingRequired": "Selectează o adresă de facturare pentru a continua.",
-      "openBrowserFailed": "Nu am putut deschide eAWB. Încearcă din nou."
+      "openBrowserFailed": "Nu am putut deschide eAWB. Încearcă din nou.",
+      "apiKeyInvalid": "Această cheie API eAWB a fost respinsă. Verifică cheia și încearcă din nou."
     },
     "paths": {
       "eawbHome": "eAWB",
@@ -584,7 +585,8 @@
       "testConnection": "Testează conexiunea",
       "editDetails": "Editează detaliile",
       "advancedSettings": "Setări avansate",
-      "disconnect": "Deconectează"
+      "disconnect": "Deconectează",
+      "continueSetup": "Continuă configurarea"
     },
     "advanced": {
       "title": "Setări avansate",
@@ -598,7 +600,13 @@
       "disconnected": "eAWB a fost deconectat. Poți reconecta oricând.",
       "testOk": "Conexiunea eAWB a reușit.",
       "pickupLinked": "Adresa de ridicare a fost legată.",
-      "lockerSaved": "Lockerul de ridicare implicit a fost salvat."
+      "lockerSaved": "Lockerul de ridicare implicit a fost salvat.",
+      "setupIncomplete": "Cheia API funcționează, dar configurarea eAWB este incompletă. Finalizează adresele de ridicare și facturare."
+    },
+    "incomplete": {
+      "title": "Configurare eAWB incompletă",
+      "badge": "Incomplet",
+      "description": "Unele detalii au fost salvate, dar configurarea nu a fost finalizată. Continuă wizard-ul pentru a selecta adresele de ridicare și facturare, apoi testează conexiunea."
     }
   },
   "stripeConnect": {

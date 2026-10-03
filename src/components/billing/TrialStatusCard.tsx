@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils';
 import { useTrialStatus, type TrialLevel } from '@/hooks/useTrialStatus';
 import { toIntlLocale } from '@/i18n/types';
 import type { AppLanguage } from '@/i18n/types';
+import { isNativeBillingPurchaseBlocked } from '@/hooks/useEntitlementGate';
+import { openWebSubscribeInBrowser } from '@/lib/billing/openWebSubscribe';
 
 const TONE: Record<TrialLevel, string> = {
   none: '',
@@ -72,7 +74,13 @@ export function TrialStatusCard() {
         size={prominentCta ? 'default' : 'sm'}
         variant={prominentCta ? 'default' : 'outline'}
         className={prominentCta ? 'w-full sm:w-auto' : undefined}
-        onClick={() => navigate('/subscribe')}
+        onClick={() => {
+          if (isNativeBillingPurchaseBlocked()) {
+            void openWebSubscribeInBrowser('/subscribe');
+            return;
+          }
+          navigate('/subscribe');
+        }}
       >
         {t('trial.choosePlan')}
       </Button>
