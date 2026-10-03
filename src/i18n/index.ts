@@ -61,7 +61,8 @@ const initPromise = i18n
       escapeValue: false,
     },
     detection: {
-      order: ['localStorage', 'navigator'],
+      // Romanian first for new visitors; English is the second option in the UI.
+      order: ['localStorage'],
       lookupLocalStorage: LANGUAGE_STORAGE_KEY,
       caches: ['localStorage'],
     },

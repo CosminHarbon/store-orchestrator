@@ -40,7 +40,6 @@ import { HeroMockup } from '@/components/landing/HeroMockup';
 import { SetupRequestDialog } from '@/components/landing/SetupRequestDialog';
 import { SpotlightCard } from '@/components/landing/SpotlightCard';
 import { useLanguage } from '@/i18n/LanguageProvider';
-import type { AppLanguage } from '@/i18n/types';
 import {
   advertisedMonthlyEquivalent,
   advertisedPrice,
@@ -320,10 +319,67 @@ export default function Landing() {
     setRequestOpen(true);
   };
 
-  const toggleLanguage = () => {
-    const next: AppLanguage = language === 'en' ? 'ro' : 'en';
-    void setLanguage(next);
-  };
+  const languageSwitcher = (
+    <span className="inline-flex items-center gap-0.5" role="group" aria-label={t('landing.nav.language')}>
+      <Globe className="h-4 w-4 shrink-0 text-[hsl(var(--sv-ink))]/55" aria-hidden />
+      {(['ro', 'en'] as const).map((code) => (
+        <button
+          key={code}
+          type="button"
+          className="sv-btn sv-btn--plain sv-btn--sm"
+          onClick={() => void setLanguage(code)}
+          aria-pressed={language === code}
+        >
+          {code.toUpperCase()}
+        </button>
+      ))}
+    </span>
+  );
+
+  const assistedSetupCard = (
+    <motion.div
+      {...reveal()}
+      data-testid="landing-pricing-setup"
+      className="sv-card sv-card--featured mx-auto grid max-w-5xl gap-8 p-6 sm:p-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-12"
+    >
+      <div className="flex flex-col gap-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[hsl(var(--sv-ink))]/45">
+          {t('landing.pricing.setupLabel')}
+        </p>
+        <span className="inline-flex w-fit items-center gap-1 rounded-full bg-gradient-to-r from-[hsl(var(--sv-accent))] to-[hsl(var(--sv-pink))] px-3 py-1 text-[11px] font-bold text-white">
+          <HeartHandshake className="h-3 w-3" />
+          {t('landing.pricing.setupTag')}
+        </span>
+        <div className="flex items-baseline gap-2">
+          <span className="font-display text-5xl font-extrabold tracking-tight sm:text-6xl">{OFFER.setup}</span>
+          <span className="text-sm text-[hsl(var(--sv-ink))]/55">{t('landing.pricing.setupOnce')}</span>
+        </div>
+        <p className="text-sm leading-relaxed text-[hsl(var(--sv-ink))]/60">{t('landing.pricing.setupDesign', OFFER)}</p>
+        <p className="text-sm leading-relaxed text-[hsl(var(--sv-ink))]/60">{t('landing.included.after', OFFER)}</p>
+        <div className="mt-auto pt-2">
+          <button
+            type="button"
+            onClick={openRequest}
+            className="sv-btn sv-btn--primary sv-btn--lg w-full sm:w-auto"
+            data-testid="landing-pricing-setup-cta"
+          >
+            {t('landing.hero.ctaPrimary')}
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+      <ul className="space-y-3 self-center">
+        {setupList.map((item) => (
+          <li key={item} className="flex gap-3 text-sm sm:text-base text-[hsl(var(--sv-ink))]/80">
+            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--sv-accent))]">
+              <Check className="h-3 w-3 text-white" strokeWidth={3} />
+            </span>
+            {item}
+          </li>
+        ))}
+      </ul>
+    </motion.div>
+  );
 
   return (
     <div className="sv-marketing min-h-screen">
@@ -363,17 +419,7 @@ export default function Landing() {
             </nav>
 
             <div className="flex items-center gap-1 sm:gap-1.5">
-              <span className="hidden sm:inline-flex">
-                <button
-                  type="button"
-                  className="sv-btn sv-btn--plain sv-btn--sm"
-                  onClick={toggleLanguage}
-                  aria-label={t('landing.nav.language')}
-                >
-                  <Globe className="h-4 w-4" />
-                  {language.toUpperCase()}
-                </button>
-              </span>
+              <span className="hidden sm:inline-flex">{languageSwitcher}</span>
               <ThemeToggle />
               <span className="hidden sm:inline-flex">
                 <Link to="/auth?tab=signin" className="sv-btn sv-btn--plain sv-btn--sm">
@@ -429,10 +475,7 @@ export default function Landing() {
                   <Link to="/auth?tab=signin" className="sv-btn sv-btn--ghost flex-1">
                     {t('landing.nav.login')}
                   </Link>
-                  <button type="button" onClick={toggleLanguage} className="sv-btn sv-btn--ghost" aria-label={t('landing.nav.language')}>
-                    <Globe className="h-4 w-4" />
-                    {language.toUpperCase()}
-                  </button>
+                  {languageSwitcher}
                 </div>
               </motion.div>
             ) : null}
@@ -538,6 +581,9 @@ export default function Landing() {
             <HeroMockup />
           </div>
         </Section>
+
+        {/* One-time assisted setup — placed early so the {{setup}} offer is visible above the fold flow */}
+        <Section className="py-16 sm:py-24">{assistedSetupCard}</Section>
 
         {/* What you get */}
         <Section id="included" className="py-16 sm:py-24">
@@ -688,51 +734,8 @@ export default function Landing() {
             subtitle={t('landing.pricing.subtitle')}
           />
 
-          {/* One-time assisted setup */}
-          <motion.div
-            {...reveal()}
-            data-testid="landing-pricing-setup"
-            className="sv-card sv-card--featured mx-auto grid max-w-5xl gap-8 p-6 sm:p-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-12"
-          >
-            <div className="flex flex-col gap-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[hsl(var(--sv-ink))]/45">
-                {t('landing.pricing.setupLabel')}
-              </p>
-              <span className="inline-flex w-fit items-center gap-1 rounded-full bg-gradient-to-r from-[hsl(var(--sv-accent))] to-[hsl(var(--sv-pink))] px-3 py-1 text-[11px] font-bold text-white">
-                <HeartHandshake className="h-3 w-3" />
-                {t('landing.pricing.setupTag')}
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className="font-display text-5xl font-extrabold tracking-tight sm:text-6xl">{OFFER.setup}</span>
-                <span className="text-sm text-[hsl(var(--sv-ink))]/55">{t('landing.pricing.setupOnce')}</span>
-              </div>
-              <p className="text-sm leading-relaxed text-[hsl(var(--sv-ink))]/60">{t('landing.included.after', OFFER)}</p>
-              <div className="mt-auto pt-2">
-                <button
-                  type="button"
-                  onClick={openRequest}
-                  className="sv-btn sv-btn--primary sv-btn--lg w-full sm:w-auto"
-                  data-testid="landing-pricing-setup-cta"
-                >
-                  {t('landing.hero.ctaPrimary')}
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-            <ul className="space-y-3 self-center">
-              {setupList.map((item) => (
-                <li key={item} className="flex gap-3 text-sm sm:text-base text-[hsl(var(--sv-ink))]/80">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--sv-accent))]">
-                    <Check className="h-3 w-3 text-white" strokeWidth={3} />
-                  </span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </motion.div>
-
           {/* Recurring subscription */}
-          <motion.div {...reveal()} className="mx-auto mt-20 max-w-2xl space-y-3 text-center">
+          <motion.div {...reveal()} className="mx-auto max-w-2xl space-y-3 text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[hsl(var(--sv-ink))]/45">
               {t('landing.pricing.subscriptionLabel')}
             </p>
