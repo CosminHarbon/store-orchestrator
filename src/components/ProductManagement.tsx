@@ -770,7 +770,7 @@ const ProductManagement = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="products" className="space-y-8 mt-6">
+        <TabsContent value="products" className="space-y-8 mt-6 pb-28 md:pb-24">
           {/* Header */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -1348,8 +1348,8 @@ const ProductManagement = () => {
             </Card>
           </section>
 
-          {/* Floating quick action */}
-          <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-2">
+          {/* Floating quick action — bottom-left so it clears the AI chat FAB + mobile tab bar */}
+          <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] left-4 z-40 md:bottom-6 md:left-6">
             <Button
               size="lg"
               className="rounded-full shadow-lg h-12 px-5"
